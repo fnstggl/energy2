@@ -100,12 +100,20 @@ class ScheduleDecision:
         region: Decided region
         power_fraction: Power level (1.0 = full, 0.5 = half speed)
         actual_runtime_hours: Runtime after throttling adjustment
+        forecast: Optional forecast snapshot used to make this decision.
+            Schema: {
+              "energy_cost": {"p50": float, "p90": float, "baseline": float},
+              "carbon":      {"p50": float, "p90": float, "baseline": float},
+            }
+            None means no forecast was available at decision time.
+            QuantileSafetyGate treats None as a blocked decision (fail-closed).
     """
     job_id: str
     start_time: datetime
     region: str
     power_fraction: float
     actual_runtime_hours: float
+    forecast: Optional[dict] = None
 
     @property
     def end_time(self) -> datetime:

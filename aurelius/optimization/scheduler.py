@@ -216,6 +216,12 @@ class JobScheduler:
                     if violations:
                         continue
 
+                    # Enforce power cap before computing objective
+                    if self.constraints.would_violate_power_cap(
+                        job, decision, current_schedule, all_jobs
+                    ):
+                        continue
+
                     # Calculate objective for just this job placement
                     obj = self.objective_fn.calculate(
                         [job],

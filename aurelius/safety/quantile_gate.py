@@ -150,27 +150,27 @@ class QuantileSafetyGate:
 
         Returns GateResult with pass/fail and reason.
         """
-        # Handle missing forecast data
+        # Handle missing forecast data — FAIL CLOSED
         if forecast is None:
             logger.warning(
-                f"Decision {job_id}: missing forecast; treated as passing for {metric}"
+                f"Decision {job_id}: missing forecast; BLOCKING (fail-closed) for {metric}"
             )
             return GateResult(
                 metric=metric,
-                passed=True,
-                reason="missing forecast; treated as passing",
+                passed=False,
+                reason="missing forecast; blocked (fail-closed)",
             )
 
-        # Get metric-specific forecast data
+        # Get metric-specific forecast data — FAIL CLOSED
         metric_data = forecast.get(metric)
         if metric_data is None:
             logger.warning(
-                f"Decision {job_id}: missing {metric} forecast; treated as passing"
+                f"Decision {job_id}: missing {metric} forecast; BLOCKING (fail-closed)"
             )
             return GateResult(
                 metric=metric,
-                passed=True,
-                reason=f"missing {metric} forecast; treated as passing",
+                passed=False,
+                reason=f"missing {metric} forecast; blocked (fail-closed)",
             )
 
         # Extract values
@@ -178,38 +178,38 @@ class QuantileSafetyGate:
         p90 = metric_data.get("p90")
         baseline = metric_data.get("baseline")
 
-        # Handle missing p50
+        # Handle missing p50 — FAIL CLOSED
         if p50 is None:
             logger.warning(
-                f"Decision {job_id}: missing p50 for {metric}; treated as passing"
+                f"Decision {job_id}: missing p50 for {metric}; BLOCKING (fail-closed)"
             )
             return GateResult(
                 metric=metric,
-                passed=True,
-                reason=f"missing p50 for {metric}; treated as passing",
+                passed=False,
+                reason=f"missing p50 for {metric}; blocked (fail-closed)",
             )
 
-        # Handle missing p90
+        # Handle missing p90 — FAIL CLOSED
         if p90 is None:
             logger.warning(
-                f"Decision {job_id}: missing p90 for {metric}; treated as passing"
+                f"Decision {job_id}: missing p90 for {metric}; BLOCKING (fail-closed)"
             )
             return GateResult(
                 metric=metric,
-                passed=True,
-                reason=f"missing p90 for {metric}; treated as passing",
+                passed=False,
+                reason=f"missing p90 for {metric}; blocked (fail-closed)",
             )
 
-        # Handle missing or invalid baseline
+        # Handle missing or invalid baseline — FAIL CLOSED
         if baseline is None or baseline <= 0:
             logger.warning(
                 f"Decision {job_id}: invalid baseline ({baseline}) for {metric}; "
-                f"treated as passing"
+                f"BLOCKING (fail-closed)"
             )
             return GateResult(
                 metric=metric,
-                passed=True,
-                reason=f"invalid baseline ({baseline}); treated as passing",
+                passed=False,
+                reason=f"invalid baseline ({baseline}); blocked (fail-closed)",
             )
 
         # Handle quantile=0.95 - use p90 as conservative proxy

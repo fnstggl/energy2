@@ -300,6 +300,9 @@ class ForecastPackager:
 # Run with: python -c "from aurelius.forecasting.uncertainty import _run_validation; _run_validation()"
 #
 # NOTE: _run_validation() confirms correctness of packaging logic in isolation.
+# Backward-compatibility alias – replay.py imports UncertaintyEstimator
+UncertaintyEstimator = ForecastPackager
+
 # Integration checks must be run separately to verify:
 # - Forecasting enabled -> optimizer decisions unchanged
 # - Dry-run execution adapters unchanged (except logging forecasts)

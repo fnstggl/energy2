@@ -198,6 +198,99 @@ def cmd_generate_data(args):
     print(f"\nData generation complete. Files saved to: {output_dir}")
 
 
+def cmd_backtest(args):
+    """Run walk-forward backtest against historical price/carbon CSV files."""
+    import pandas as pd
+    from .backtesting.engine import BacktestEngine
+    from .ingestion.grid_apis.csv_importer import CSVPriceImporter, CSVCarbonImporter
+    from .ingestion.job_logs import JobLogIngester
+    from .models import OptimizationConfig
+
+    regions = [r.strip() for r in args.regions.split(",")]
+    start_ts = pd.Timestamp(args.start, tz="UTC") if args.start else None
+    end_ts = pd.Timestamp(args.end, tz="UTC") if args.end else None
+
+    # Load price data
+    price_importer = CSVPriceImporter(args.price_source)
+    price_df = price_importer.load_all()
+    if price_df.empty:
+        print(f"ERROR: No price data loaded from {args.price_source}", file=sys.stderr)
+        sys.exit(1)
+
+    # Filter to requested regions
+    price_df = price_df[price_df["region"].isin(regions)]
+
+    # Load carbon data (optional)
+    if args.carbon_source:
+        carbon_importer = CSVCarbonImporter(args.carbon_source)
+        carbon_df = carbon_importer.load_all()
+        if not carbon_df.empty:
+            carbon_df = carbon_df[carbon_df["region"].isin(regions)]
+    else:
+        from .ingestion.grid_apis.base import empty_carbon_df
+        carbon_df = empty_carbon_df()
+
+    # Generate synthetic jobs if no job file provided
+    if args.jobs_file:
+        job_ingester = JobLogIngester()
+        jobs = job_ingester.load_from_json(args.jobs_file)
+    else:
+        from datetime import datetime
+        job_ingester = JobLogIngester()
+        sim_start = start_ts.to_pydatetime() if start_ts else datetime.utcnow()
+        jobs = job_ingester.generate_synthetic(
+            start_time=sim_start,
+            duration_hours=args.train_days * 24 + args.eval_days * 24,
+            num_jobs=args.num_jobs,
+            regions=regions,
+            seed=42,
+        )
+
+    config = OptimizationConfig()
+
+    engine = BacktestEngine(
+        method=args.method,
+        train_days=args.train_days,
+        eval_days=args.eval_days,
+        config=config,
+    )
+
+    print(f"\nRunning backtest: {args.train_days}d train / {args.eval_days}d eval windows")
+    print(f"Price source: {args.price_source}")
+    print(f"Regions: {regions}")
+    print()
+
+    rounds = engine.run(jobs, price_df, carbon_df, start=start_ts, end=end_ts)
+
+    if not rounds:
+        print("No backtest folds produced. Check date range and data coverage.")
+        sys.exit(1)
+
+    # Print summary table
+    print(f"{'Fold':>4}  {'Eval Start':>20}  {'Jobs':>5}  {'Optimizer $':>12}  {'FIFO $':>12}  {'Savings%':>9}")
+    print("-" * 75)
+    for r in rounds:
+        opt_cost = r.optimizer_metrics.total_energy_cost_usd if r.optimizer_metrics else 0
+        fifo_cost = r.baseline_metrics.get("fifo", None)
+        fifo_val = fifo_cost.total_energy_cost_usd if fifo_cost else float("nan")
+        savings = ((fifo_val - opt_cost) / fifo_val * 100) if fifo_val > 0 else float("nan")
+        print(
+            f"{r.fold_index:>4}  {str(r.eval_start)[:19]:>20}  "
+            f"{len(r.eval_jobs):>5}  ${opt_cost:>11.2f}  ${fifo_val:>11.2f}  "
+            f"{savings:>8.1f}%"
+        )
+
+    print()
+    print(f"Total folds: {len(rounds)}")
+
+    # Save JSON if requested
+    if args.output:
+        output_path = Path(args.output)
+        with open(output_path, "w") as f:
+            json.dump([r.to_dict() for r in rounds], f, indent=2, default=str)
+        print(f"Results saved to: {output_path}")
+
+
 def cmd_show_schema(args):
     """Show database schema."""
     from .database import print_schema
@@ -398,6 +491,57 @@ def main():
         help="Output file path for JSON report"
     )
 
+    # Backtest command
+    bt_parser = subparsers.add_parser(
+        "backtest",
+        help="Run leakage-free walk-forward backtest on historical data",
+    )
+    bt_parser.add_argument(
+        "--price-source", required=True,
+        help="Path to CSV file with columns: timestamp, region, price_per_mwh",
+    )
+    bt_parser.add_argument(
+        "--carbon-source", default=None,
+        help="Path to CSV file with columns: timestamp, region, gco2_per_kwh (optional)",
+    )
+    bt_parser.add_argument(
+        "--jobs-file", default=None,
+        help="Path to JSON job log file (generates synthetic jobs if omitted)",
+    )
+    bt_parser.add_argument(
+        "--num-jobs", type=int, default=20,
+        help="Number of synthetic jobs to generate per fold if --jobs-file not given",
+    )
+    bt_parser.add_argument(
+        "--start", default=None,
+        help="Backtest start date (ISO 8601, e.g. 2024-01-01)",
+    )
+    bt_parser.add_argument(
+        "--end", default=None,
+        help="Backtest end date (ISO 8601, e.g. 2024-03-01)",
+    )
+    bt_parser.add_argument(
+        "--regions", default="us-west,us-east,eu-west",
+        help="Comma-separated list of regions to include",
+    )
+    bt_parser.add_argument(
+        "--train-days", type=int, default=30,
+        help="Training window length in days (default: 30)",
+    )
+    bt_parser.add_argument(
+        "--eval-days", type=int, default=7,
+        help="Evaluation window length in days (default: 7)",
+    )
+    bt_parser.add_argument(
+        "--method", default="greedy",
+        choices=["greedy", "local_search"],
+        help="Optimizer method (default: greedy)",
+    )
+    bt_parser.add_argument(
+        "--output", default=None,
+        help="Save results as JSON to this path",
+    )
+
     # Parse arguments
     args = parser.parse_args()
 
@@ -409,6 +553,8 @@ def main():
         cmd_show_schema(args)
     elif args.command == "robustness-test":
         cmd_robustness_test(args)
+    elif args.command == "backtest":
+        cmd_backtest(args)
     else:
         parser.print_help()
         sys.exit(1)

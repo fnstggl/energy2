@@ -284,6 +284,51 @@ class ConstraintBuilder:
 
         return (min(min_power, max_power), max_power)
 
+    def would_violate_power_cap(
+        self,
+        job: Job,
+        decision: ScheduleDecision,
+        existing_schedule: list[ScheduleDecision],
+        all_jobs: list[Job],
+    ) -> bool:
+        """Return True if adding *decision* would breach any regional power cap.
+
+        Called inside the solver loop so infeasible candidates are skipped
+        before the objective is even computed.
+
+        Args:
+            job:               The job being placed.
+            decision:          The candidate ScheduleDecision to test.
+            existing_schedule: Decisions already committed to the schedule.
+            all_jobs:          All jobs (needed for power_kw lookup).
+        """
+        cap = self.config.region_power_caps.get(decision.region)
+        if cap is None:
+            return False  # no cap configured for this region
+
+        job_by_id = {j.job_id: j for j in all_jobs}
+        job_power = job.power_kw * decision.power_fraction
+
+        # Check every hour the candidate job would be running
+        current = decision.start_time.replace(minute=0, second=0, microsecond=0)
+        end = decision.end_time
+        while current < end:
+            region_load = job_power
+            for existing in existing_schedule:
+                if existing.region != decision.region:
+                    continue
+                if existing.start_time <= current < existing.end_time:
+                    existing_job = job_by_id.get(existing.job_id)
+                    if existing_job:
+                        region_load += existing_job.power_kw * existing.power_fraction
+            if region_load > cap:
+                return True
+            current = current.replace(minute=0, second=0, microsecond=0)
+            from datetime import timedelta
+            current += timedelta(hours=1)
+
+        return False
+
     def summarize_violations(
         self,
         violations: list[ConstraintViolation],
