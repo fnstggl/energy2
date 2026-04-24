@@ -20,6 +20,7 @@ from aurelius.ingestion.grid_apis.eia import EIAPriceProvider
 from aurelius.ingestion.grid_apis.entsoe import ENTSOEPriceProvider
 from aurelius.ingestion.grid_apis.electricitymaps import ElectricityMapsCarbonProvider
 from aurelius.ingestion.grid_apis.base import ProviderConfigError
+from aurelius.ingestion.grid_apis.market_registry import UnsupportedMarketPriceError
 
 UTC = timezone.utc
 
@@ -129,10 +130,24 @@ def test_csv_carbon_importer_fetch_carbon(carbon_csv_path, t0, sample_regions):
 # Provider key guards (no API keys in CI → must raise ProviderConfigError)
 # ---------------------------------------------------------------------------
 
-def test_eia_raises_without_key(monkeypatch, t0):
-    monkeypatch.delenv("EIA_API_KEY", raising=False)
+def test_eia_raises_unsupported_for_any_region(t0):
+    """EIA never provides wholesale prices — must raise UnsupportedMarketPriceError."""
     provider = EIAPriceProvider(api_key="")
-    with pytest.raises(ProviderConfigError, match="EIA_API_KEY"):
+    with pytest.raises(UnsupportedMarketPriceError):
+        provider.fetch_prices("us-west", t0, t0 + pd.Timedelta(hours=1))
+
+
+def test_eia_raises_unsupported_even_with_key(t0):
+    """EIA raises UnsupportedMarketPriceError regardless of whether a key is present."""
+    provider = EIAPriceProvider(api_key="dummy-key")
+    with pytest.raises(UnsupportedMarketPriceError):
+        provider.fetch_prices("us-east", t0, t0 + pd.Timedelta(hours=1))
+
+
+def test_eia_error_message_guides_to_real_providers(t0):
+    """Error message must name the correct alternatives."""
+    provider = EIAPriceProvider()
+    with pytest.raises(UnsupportedMarketPriceError, match="CAISOPriceProvider|PJMPriceProvider"):
         provider.fetch_prices("us-west", t0, t0 + pd.Timedelta(hours=1))
 
 
@@ -148,13 +163,6 @@ def test_electricitymaps_raises_without_key(monkeypatch, t0):
     provider = ElectricityMapsCarbonProvider(api_key="")
     with pytest.raises(ProviderConfigError, match="ELECTRICITYMAPS_API_KEY"):
         provider.fetch_carbon("us-west", t0, t0 + pd.Timedelta(hours=1))
-
-
-def test_eia_unknown_region_returns_empty(t0):
-    provider = EIAPriceProvider(api_key="dummy")
-    # unknown region doesn't hit the network – returns empty_price_df immediately
-    df = provider.fetch_prices("xx-unknown", t0, t0 + pd.Timedelta(hours=1))
-    assert df.empty
 
 
 def test_electricitymaps_unknown_region_returns_empty(t0):

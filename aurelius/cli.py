@@ -198,11 +198,162 @@ def cmd_generate_data(args):
     print(f"\nData generation complete. Files saved to: {output_dir}")
 
 
+def _load_price_df(args, regions):
+    """Resolve --price-provider / --price-file into a canonical price DataFrame."""
+    import pandas as pd
+    from .ingestion.grid_apis.market_registry import UnsupportedMarketPriceError
+
+    provider = args.price_provider
+    start_ts = pd.Timestamp(args.start, tz="UTC") if args.start else None
+    end_ts = pd.Timestamp(args.end, tz="UTC") if args.end else None
+
+    if provider == "csv":
+        if not args.price_file:
+            print("ERROR: --price-file is required when --price-provider=csv", file=sys.stderr)
+            sys.exit(1)
+        from .ingestion.grid_apis.csv_importer import CSVPriceImporter
+        importer = CSVPriceImporter(args.price_file)
+        df = importer.load_all()
+        if df.empty:
+            print(f"ERROR: No price data loaded from {args.price_file}", file=sys.stderr)
+            sys.exit(1)
+        return df[df["region"].isin(regions)]
+
+    if provider == "caiso":
+        from .ingestion.grid_apis.caiso import CAISOPriceProvider
+        for region in regions:
+            if region not in ("us-west",):
+                print(f"ERROR: CAISO provider only supports us-west (got '{region}')", file=sys.stderr)
+                sys.exit(1)
+        p = CAISOPriceProvider()
+        start_dt = start_ts.to_pydatetime() if start_ts else None
+        end_dt = end_ts.to_pydatetime() if end_ts else None
+        if not start_dt or not end_dt:
+            print("ERROR: --start and --end are required for live provider caiso", file=sys.stderr)
+            sys.exit(1)
+        dfs = []
+        for region in regions:
+            dfs.append(p.fetch_prices(region, start_dt, end_dt))
+        return pd.concat(dfs, ignore_index=True)
+
+    if provider == "pjm":
+        from .ingestion.grid_apis.pjm import PJMPriceProvider
+        from .ingestion.grid_apis.base import ProviderConfigError
+        for region in regions:
+            if region not in ("us-east",):
+                print(f"ERROR: PJM provider only supports us-east (got '{region}')", file=sys.stderr)
+                sys.exit(1)
+        start_dt = start_ts.to_pydatetime() if start_ts else None
+        end_dt = end_ts.to_pydatetime() if end_ts else None
+        if not start_dt or not end_dt:
+            print("ERROR: --start and --end are required for live provider pjm", file=sys.stderr)
+            sys.exit(1)
+        p = PJMPriceProvider()
+        dfs = []
+        for region in regions:
+            try:
+                dfs.append(p.fetch_prices(region, start_dt, end_dt))
+            except ProviderConfigError as e:
+                print(f"ERROR: {e}", file=sys.stderr)
+                sys.exit(1)
+        return pd.concat(dfs, ignore_index=True)
+
+    if provider == "entsoe":
+        from .ingestion.grid_apis.entsoe import ENTSOEPriceProvider
+        from .ingestion.grid_apis.base import ProviderConfigError
+        start_dt = start_ts.to_pydatetime() if start_ts else None
+        end_dt = end_ts.to_pydatetime() if end_ts else None
+        if not start_dt or not end_dt:
+            print("ERROR: --start and --end are required for live provider entsoe", file=sys.stderr)
+            sys.exit(1)
+        p = ENTSOEPriceProvider()
+        dfs = []
+        for region in regions:
+            try:
+                dfs.append(p.fetch_prices(region, start_dt, end_dt))
+            except ProviderConfigError as e:
+                print(f"ERROR: {e}", file=sys.stderr)
+                sys.exit(1)
+        return pd.concat(dfs, ignore_index=True)
+
+    if provider == "eia":
+        print(
+            "ERROR: EIA provider is not supported for wholesale electricity prices. "
+            "EIA API v2 provides demand (MWh), not prices ($/MWh). "
+            "Use --price-provider=caiso (us-west) or --price-provider=pjm (us-east).",
+            file=sys.stderr,
+        )
+        sys.exit(1)
+
+    print(f"ERROR: Unknown price provider '{provider}'", file=sys.stderr)
+    sys.exit(1)
+
+
+def _load_carbon_df(args, regions):
+    """Resolve --carbon-provider / --carbon-file into a canonical carbon DataFrame."""
+    import pandas as pd
+    from .ingestion.grid_apis.base import empty_carbon_df
+
+    provider = args.carbon_provider
+
+    if provider == "none":
+        return empty_carbon_df()
+
+    if provider == "csv":
+        if not args.carbon_file:
+            print("ERROR: --carbon-file is required when --carbon-provider=csv", file=sys.stderr)
+            sys.exit(1)
+        from .ingestion.grid_apis.csv_importer import CSVCarbonImporter
+        importer = CSVCarbonImporter(args.carbon_file)
+        df = importer.load_all()
+        if not df.empty:
+            df = df[df["region"].isin(regions)]
+        return df
+
+    if provider == "electricitymaps":
+        from .ingestion.grid_apis.electricitymaps import ElectricityMapsCarbonProvider
+        from .ingestion.grid_apis.base import ProviderConfigError
+        start_ts = pd.Timestamp(args.start, tz="UTC") if args.start else None
+        end_ts = pd.Timestamp(args.end, tz="UTC") if args.end else None
+        if not start_ts or not end_ts:
+            print("ERROR: --start and --end required for live carbon provider", file=sys.stderr)
+            sys.exit(1)
+        p = ElectricityMapsCarbonProvider()
+        dfs = []
+        for region in regions:
+            try:
+                dfs.append(p.fetch_carbon(region, start_ts.to_pydatetime(), end_ts.to_pydatetime()))
+            except ProviderConfigError as e:
+                print(f"ERROR: {e}", file=sys.stderr)
+                sys.exit(1)
+        return pd.concat(dfs, ignore_index=True)
+
+    if provider == "watttime":
+        from .ingestion.grid_apis.watttime import WattTimeCarbonProvider
+        from .ingestion.grid_apis.base import ProviderConfigError
+        start_ts = pd.Timestamp(args.start, tz="UTC") if args.start else None
+        end_ts = pd.Timestamp(args.end, tz="UTC") if args.end else None
+        if not start_ts or not end_ts:
+            print("ERROR: --start and --end required for live carbon provider", file=sys.stderr)
+            sys.exit(1)
+        p = WattTimeCarbonProvider()
+        dfs = []
+        for region in regions:
+            try:
+                dfs.append(p.fetch_carbon(region, start_ts.to_pydatetime(), end_ts.to_pydatetime()))
+            except ProviderConfigError as e:
+                print(f"ERROR: {e}", file=sys.stderr)
+                sys.exit(1)
+        return pd.concat(dfs, ignore_index=True)
+
+    print(f"ERROR: Unknown carbon provider '{provider}'", file=sys.stderr)
+    sys.exit(1)
+
+
 def cmd_backtest(args):
-    """Run walk-forward backtest against historical price/carbon CSV files."""
+    """Run walk-forward backtest with real or CSV price/carbon data."""
     import pandas as pd
     from .backtesting.engine import BacktestEngine
-    from .ingestion.grid_apis.csv_importer import CSVPriceImporter, CSVCarbonImporter
     from .ingestion.job_logs import JobLogIngester
     from .models import OptimizationConfig
 
@@ -210,25 +361,12 @@ def cmd_backtest(args):
     start_ts = pd.Timestamp(args.start, tz="UTC") if args.start else None
     end_ts = pd.Timestamp(args.end, tz="UTC") if args.end else None
 
-    # Load price data
-    price_importer = CSVPriceImporter(args.price_source)
-    price_df = price_importer.load_all()
+    price_df = _load_price_df(args, regions)
     if price_df.empty:
-        print(f"ERROR: No price data loaded from {args.price_source}", file=sys.stderr)
+        print("ERROR: Price DataFrame is empty after loading. Check provider/file and region.", file=sys.stderr)
         sys.exit(1)
 
-    # Filter to requested regions
-    price_df = price_df[price_df["region"].isin(regions)]
-
-    # Load carbon data (optional)
-    if args.carbon_source:
-        carbon_importer = CSVCarbonImporter(args.carbon_source)
-        carbon_df = carbon_importer.load_all()
-        if not carbon_df.empty:
-            carbon_df = carbon_df[carbon_df["region"].isin(regions)]
-    else:
-        from .ingestion.grid_apis.base import empty_carbon_df
-        carbon_df = empty_carbon_df()
+    carbon_df = _load_carbon_df(args, regions)
 
     # Generate synthetic jobs if no job file provided
     if args.jobs_file:
@@ -247,7 +385,6 @@ def cmd_backtest(args):
         )
 
     config = OptimizationConfig()
-
     engine = BacktestEngine(
         method=args.method,
         train_days=args.train_days,
@@ -256,7 +393,8 @@ def cmd_backtest(args):
     )
 
     print(f"\nRunning backtest: {args.train_days}d train / {args.eval_days}d eval windows")
-    print(f"Price source: {args.price_source}")
+    print(f"Price provider: {args.price_provider}")
+    print(f"Carbon provider: {args.carbon_provider}")
     print(f"Regions: {regions}")
     print()
 
@@ -266,7 +404,6 @@ def cmd_backtest(args):
         print("No backtest folds produced. Check date range and data coverage.")
         sys.exit(1)
 
-    # Print summary table
     print(f"{'Fold':>4}  {'Eval Start':>20}  {'Jobs':>5}  {'Optimizer $':>12}  {'FIFO $':>12}  {'Savings%':>9}")
     print("-" * 75)
     for r in rounds:
@@ -280,10 +417,8 @@ def cmd_backtest(args):
             f"{savings:>8.1f}%"
         )
 
-    print()
-    print(f"Total folds: {len(rounds)}")
+    print(f"\nTotal folds: {len(rounds)}")
 
-    # Save JSON if requested
     if args.output:
         output_path = Path(args.output)
         with open(output_path, "w") as f:
@@ -497,12 +632,38 @@ def main():
         help="Run leakage-free walk-forward backtest on historical data",
     )
     bt_parser.add_argument(
-        "--price-source", required=True,
-        help="Path to CSV file with columns: timestamp, region, price_per_mwh",
+        "--price-provider",
+        required=True,
+        choices=["caiso", "pjm", "entsoe", "csv"],
+        help=(
+            "Price data source: "
+            "caiso=CAISO OASIS (us-west, no auth), "
+            "pjm=PJM Data Miner (us-east, requires PJM_API_KEY), "
+            "entsoe=ENTSO-E (eu-*, requires ENTSOE_API_KEY), "
+            "csv=load from --price-file"
+        ),
     )
     bt_parser.add_argument(
-        "--carbon-source", default=None,
-        help="Path to CSV file with columns: timestamp, region, gco2_per_kwh (optional)",
+        "--price-file", default=None,
+        help="Path to CSV price file (required when --price-provider=csv). "
+             "Columns: timestamp, region, price_per_mwh",
+    )
+    bt_parser.add_argument(
+        "--carbon-provider",
+        default="none",
+        choices=["electricitymaps", "watttime", "csv", "none"],
+        help=(
+            "Carbon intensity source (default: none): "
+            "electricitymaps=ElectricityMaps API (requires ELECTRICITYMAPS_API_KEY), "
+            "watttime=WattTime MOER (requires WATTTIME_USERNAME + WATTTIME_PASSWORD), "
+            "csv=load from --carbon-file, "
+            "none=skip carbon data"
+        ),
+    )
+    bt_parser.add_argument(
+        "--carbon-file", default=None,
+        help="Path to CSV carbon file (required when --carbon-provider=csv). "
+             "Columns: timestamp, region, gco2_per_kwh",
     )
     bt_parser.add_argument(
         "--jobs-file", default=None,
