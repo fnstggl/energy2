@@ -1,0 +1,73 @@
+version: "3.9"
+
+services:
+  aurelius-api:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile
+    image: aurelius:latest
+    container_name: aurelius-api
+    ports:
+      - "8000:8000"
+    environment:
+      - AURELIUS_ENV=production
+      - DATABASE_URL=postgresql://aurelius:aurelius@postgres:5432/aurelius
+      - REDIS_URL=redis://redis:6379/0
+      # API keys (set in .env — never committed)
+      - EIA_API_KEY=${EIA_API_KEY:-}
+      - ELECTRICITYMAPS_API_KEY=${ELECTRICITYMAPS_API_KEY:-}
+      - WATTTIME_USERNAME=${WATTTIME_USERNAME:-}
+      - WATTTIME_PASSWORD=${WATTTIME_PASSWORD:-}
+      - AURELIUS_API_KEY=${AURELIUS_API_KEY:-changeme}
+    volumes:
+      - aurelius-data:/app/data
+      - aurelius-artifacts:/app/ml_artifacts
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_started
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "python", "-c",
+             "import urllib.request; urllib.request.urlopen('http://localhost:8000/health')"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 20s
+
+  postgres:
+    image: postgres:15-alpine
+    container_name: aurelius-postgres
+    environment:
+      POSTGRES_DB: aurelius
+      POSTGRES_USER: aurelius
+      POSTGRES_PASSWORD: aurelius
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+      # Run migrations on startup if they exist
+      - ../aurelius/database/migrations:/docker-entrypoint-initdb.d:ro
+    ports:
+      - "5432:5432"
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U aurelius -d aurelius"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  redis:
+    image: redis:7-alpine
+    container_name: aurelius-redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis-data:/data
+    restart: unless-stopped
+    command: redis-server --save 60 1 --loglevel warning
+
+volumes:
+  aurelius-data:
+  aurelius-artifacts:
+  postgres-data:
+  redis-data:

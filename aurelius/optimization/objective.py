@@ -13,12 +13,12 @@ Where:
 - risk_penalty = Σ(uncertainty_penalty) for scheduling during uncertain periods
 """
 
+import logging
+from dataclasses import dataclass
 from datetime import datetime, timedelta
 from typing import Optional
-from dataclasses import dataclass
-import logging
 
-from ..models import Job, ScheduleDecision, OptimizationConfig
+from ..models import Job, OptimizationConfig, ScheduleDecision
 
 logger = logging.getLogger(__name__)
 
@@ -28,16 +28,20 @@ class ObjectiveComponents:
     """Breakdown of objective function components.
 
     Attributes:
-        energy_cost: Total energy cost in dollars
+        energy_cost: Total energy cost in dollars (includes PUE overhead)
         carbon_cost: Total carbon cost (weighted gCO2)
         risk_penalty: Total risk/uncertainty penalty
+        sla_penalty_cost: Total SLA violation penalty cost in dollars
+        data_transfer_cost: Total inter-region data transfer cost in dollars
         total: Weighted sum of all components
-        energy_kwh: Total energy consumed in kWh
+        energy_kwh: Total energy consumed in kWh (before PUE)
         carbon_kg: Total carbon emissions in kg CO2
     """
     energy_cost: float
     carbon_cost: float
     risk_penalty: float
+    sla_penalty_cost: float
+    data_transfer_cost: float
     total: float
     energy_kwh: float
     carbon_kg: float
@@ -91,6 +95,8 @@ class ObjectiveFunction:
         total_risk_penalty = 0.0
         total_energy_kwh = 0.0
         total_carbon_kg = 0.0
+        total_sla_penalty_cost = 0.0
+        total_data_transfer_cost = 0.0
 
         for decision in schedule:
             job = job_by_id.get(decision.job_id)
@@ -98,58 +104,78 @@ class ObjectiveFunction:
                 logger.warning(f"Job {decision.job_id} not found")
                 continue
 
+            # PUE multiplier: accounts for facility power overhead
+            # PUE >= 1.0; typical data-center PUE is 1.1–1.6
+            pue = getattr(job, "pue", 1.0)
+
             # Calculate energy and costs for each hour the job runs
             current_time = decision.start_time
             remaining_hours = decision.actual_runtime_hours
             effective_power = job.power_kw * decision.power_fraction
 
             while remaining_hours > 0:
-                # How much of this hour does the job use?
                 hour_fraction = min(1.0, remaining_hours)
-
-                # Get price for this hour (floor to hour boundary)
                 hour_key = current_time.replace(minute=0, second=0, microsecond=0)
 
-                # Energy for this hour segment
-                energy_kwh = effective_power * hour_fraction
-                total_energy_kwh += energy_kwh
+                # IT energy (kWh) before PUE
+                it_energy_kwh = effective_power * hour_fraction
+                total_energy_kwh += it_energy_kwh
+
+                # Total facility energy including PUE overhead
+                facility_energy_kwh = it_energy_kwh * pue
 
                 # Price lookup
                 region_prices = price_data.get(decision.region, {})
-                price_per_mwh = region_prices.get(hour_key, 50.0)  # default
-                energy_cost = (price_per_mwh / 1000) * energy_kwh
+                price_per_mwh = region_prices.get(hour_key, 50.0)
+                energy_cost = (price_per_mwh / 1000) * facility_energy_kwh
                 total_energy_cost += energy_cost
 
-                # Carbon lookup
+                # Carbon lookup — use facility energy for carbon accounting
                 region_carbon = carbon_data.get(decision.region, {})
-                gco2_per_kwh = region_carbon.get(hour_key, 400.0)  # default
-                carbon_g = gco2_per_kwh * energy_kwh
+                gco2_per_kwh = region_carbon.get(hour_key, 400.0)
+                carbon_g = gco2_per_kwh * facility_energy_kwh
                 total_carbon_kg += carbon_g / 1000
-                # Carbon cost is normalized (gCO2 * some factor)
-                carbon_cost = carbon_g * 0.001  # scaling factor
+                carbon_cost = carbon_g * 0.001
                 total_carbon_cost += carbon_cost
 
                 # Risk penalty
                 if risk_data:
                     region_risk = risk_data.get(decision.region, {})
                     risk_factor = region_risk.get(hour_key, 0.05)
-                    risk_penalty = risk_factor * energy_kwh
-                    total_risk_penalty += risk_penalty
+                    total_risk_penalty += risk_factor * it_energy_kwh
 
                 remaining_hours -= hour_fraction
                 current_time += timedelta(hours=1)
 
-        # Calculate weighted total
+            # SLA penalty: charged per hour past job deadline
+            sla_penalty_per_hour = getattr(job, "sla_penalty_per_hour", 0.0)
+            if sla_penalty_per_hour > 0.0:
+                job_end = decision.start_time + timedelta(hours=decision.actual_runtime_hours)
+                if job_end > job.deadline:
+                    overrun_hours = (job_end - job.deadline).total_seconds() / 3600
+                    total_sla_penalty_cost += sla_penalty_per_hour * overrun_hours
+
+            # Data transfer cost: flat per-job charge
+            data_transfer_gb = getattr(job, "data_transfer_gb", 0.0)
+            if data_transfer_gb > 0.0:
+                transfer_cost = data_transfer_gb * self.config.data_transfer_cost_per_gb
+                total_data_transfer_cost += transfer_cost
+
+        # Weighted total: alpha*energy + beta*carbon + gamma*risk + delta*SLA + data_transfer
         total = (
-            self.config.alpha * total_energy_cost +
-            self.config.beta * total_carbon_cost +
-            self.config.gamma * total_risk_penalty
+            self.config.alpha * total_energy_cost
+            + self.config.beta * total_carbon_cost
+            + self.config.gamma * total_risk_penalty
+            + self.config.delta * total_sla_penalty_cost
+            + total_data_transfer_cost
         )
 
         return ObjectiveComponents(
             energy_cost=round(total_energy_cost, 2),
             carbon_cost=round(total_carbon_cost, 4),
             risk_penalty=round(total_risk_penalty, 4),
+            sla_penalty_cost=round(total_sla_penalty_cost, 2),
+            data_transfer_cost=round(total_data_transfer_cost, 4),
             total=round(total, 4),
             energy_kwh=round(total_energy_kwh, 2),
             carbon_kg=round(total_carbon_kg, 2),

@@ -7,10 +7,56 @@ These models represent the fundamental entities in the system:
 - Simulation results
 """
 
+import uuid
 from dataclasses import dataclass, field
 from datetime import datetime
-from typing import Optional
-import uuid
+from typing import Literal, Optional
+
+# Supported workload types
+WorkloadType = Literal[
+    "realtime_inference",
+    "llm_batch_inference",
+    "fine_tuning",
+    "training",
+    "data_processing",
+    "scheduled_batch",
+    "background_maintenance",
+]
+
+SlaClass = Literal["latency_critical", "deadline", "best_effort"]
+
+# Default scheduling flexibility windows per workload type (hours)
+WORKLOAD_DEFAULT_MAX_DELAY_HOURS: dict[str, float] = {
+    "realtime_inference": 0.0,
+    "llm_batch_inference": 24.0,
+    "fine_tuning": 24.0,
+    "training": 48.0,
+    "data_processing": 48.0,
+    "scheduled_batch": 24.0,
+    "background_maintenance": 48.0,
+}
+
+# Default interruptibility per workload type
+WORKLOAD_DEFAULT_INTERRUPTIBLE: dict[str, bool] = {
+    "realtime_inference": False,
+    "llm_batch_inference": True,
+    "fine_tuning": False,  # overridden to True when checkpointable=True
+    "training": False,      # overridden to True when checkpointable=True
+    "data_processing": True,
+    "scheduled_batch": True,
+    "background_maintenance": True,
+}
+
+# Default SLA class per workload type
+WORKLOAD_DEFAULT_SLA_CLASS: dict[str, str] = {
+    "realtime_inference": "latency_critical",
+    "llm_batch_inference": "deadline",
+    "fine_tuning": "deadline",
+    "training": "best_effort",
+    "data_processing": "deadline",
+    "scheduled_batch": "deadline",
+    "background_maintenance": "best_effort",
+}
 
 
 @dataclass
@@ -24,9 +70,22 @@ class Job:
         deadline: Latest acceptable completion time
         power_kw: Power consumption in kilowatts at full speed
         earliest_start: Earliest allowed start time
-        latest_start: Latest allowed start time (derived from deadline - runtime)
-        region_options: List of regions where job can run
+        region_options: List of regions where job can run (must be non-empty)
         priority: Job priority (higher = more important)
+        latest_start: Latest allowed start time (derived from deadline - runtime)
+        workload_type: Category of workload for default interruptibility/SLA
+        gpu_type: GPU model identifier (e.g. "a100", "h100", "v100", "t4")
+        gpu_count: Number of GPUs required
+        sla_penalty_per_hour: Cost incurred per hour past deadline ($/hr)
+        sla_class: SLA tier — determines safety gate thresholds
+        data_transfer_gb: Estimated inter-region data transfer in GB
+        pue: Power Usage Effectiveness multiplier for facility overhead
+        interruptible: Whether the job can be preempted mid-run
+        preemptible: Whether the job can be killed and requeued
+        checkpointable: Whether the job saves state and can be resumed
+        max_delay_hours: Maximum allowed scheduling delay from earliest_start
+        allowed_regions: If non-empty, optimizer must only select from these
+        forbidden_regions: Optimizer must never select these regions
     """
     job_id: str
     submit_time: datetime
@@ -38,10 +97,39 @@ class Job:
     priority: int = 1
     latest_start: Optional[datetime] = None
 
+    # Phase 3 fields — all optional with safe defaults
+    workload_type: str = "scheduled_batch"
+    gpu_type: Optional[str] = None
+    gpu_count: int = 0
+    sla_penalty_per_hour: float = 0.0
+    sla_class: str = "best_effort"
+    data_transfer_gb: float = 0.0
+    pue: float = 1.0
+    interruptible: bool = False
+    preemptible: bool = False
+    checkpointable: bool = False
+    max_delay_hours: Optional[float] = None
+    allowed_regions: list[str] = field(default_factory=list)
+    forbidden_regions: list[str] = field(default_factory=list)
+
     def __post_init__(self):
         if self.latest_start is None:
             from datetime import timedelta
             self.latest_start = self.deadline - timedelta(hours=self.runtime_hours)
+
+        # Enforce data residency: allowed_regions narrows region_options
+        if self.allowed_regions:
+            valid = [r for r in self.region_options if r in self.allowed_regions]
+            if valid:
+                self.region_options = valid
+            # If no valid region exists, keep original so optimizer can mark unschedulable
+
+        # Remove forbidden regions from options
+        if self.forbidden_regions:
+            filtered = [r for r in self.region_options if r not in self.forbidden_regions]
+            if filtered:
+                self.region_options = filtered
+            # If all forbidden, keep original and let optimizer handle
 
     @property
     def slack_hours(self) -> float:
@@ -195,14 +283,23 @@ class OptimizationConfig:
         alpha: Weight for energy cost objective
         beta: Weight for carbon cost objective
         gamma: Weight for risk/uncertainty penalty
+        delta: Weight for SLA penalty cost
         min_power_fraction: Minimum allowed power throttle
         max_power_fraction: Maximum power (usually 1.0)
         region_power_caps: Power cap per region in kW
         default_region: Default region for baseline
+        carbon_objective: Carbon optimization mode
+            "cost_only" — ignore carbon signals
+            "cost_with_carbon_weight" — minimize alpha*cost + beta*carbon
+            "carbon_constrained" — enforce carbon threshold as hard constraint
+        carbon_threshold_gco2_per_kwh: Hard carbon cap (carbon_constrained mode)
+        data_transfer_cost_per_gb: Cost per GB of inter-region transfer ($/GB)
+        sla_risk_thresholds: Max acceptable downside risk per workload_type (fraction)
     """
     alpha: float = 1.0
-    beta: float = 0.3  # Increased to make carbon tradeoffs visible
+    beta: float = 0.3
     gamma: float = 0.05
+    delta: float = 1.0  # SLA penalty weight
     min_power_fraction: float = 0.5
     max_power_fraction: float = 1.0
     region_power_caps: dict[str, float] = field(default_factory=lambda: {
@@ -210,16 +307,31 @@ class OptimizationConfig:
         "us-east": 10000,
         "eu-west": 8000,
     })
-    # Default region for baseline - uses expensive/dirty region to show optimization value
     default_region: str = "us-east"
+    carbon_objective: str = "cost_only"
+    carbon_threshold_gco2_per_kwh: Optional[float] = None
+    data_transfer_cost_per_gb: float = 0.01
+    sla_risk_thresholds: dict[str, float] = field(default_factory=lambda: {
+        "realtime_inference": 0.02,
+        "llm_batch_inference": 0.05,
+        "fine_tuning": 0.07,
+        "training": 0.10,
+        "data_processing": 0.07,
+        "scheduled_batch": 0.07,
+        "background_maintenance": 0.10,
+    })
 
     def to_dict(self) -> dict:
         return {
             "alpha": self.alpha,
             "beta": self.beta,
             "gamma": self.gamma,
+            "delta": self.delta,
             "min_power_fraction": self.min_power_fraction,
             "max_power_fraction": self.max_power_fraction,
             "region_power_caps": self.region_power_caps,
             "default_region": self.default_region,
+            "carbon_objective": self.carbon_objective,
+            "carbon_threshold_gco2_per_kwh": self.carbon_threshold_gco2_per_kwh,
+            "data_transfer_cost_per_gb": self.data_transfer_cost_per_gb,
         }
