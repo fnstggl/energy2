@@ -4,7 +4,6 @@ Simple, transparent, deterministic training algorithms that produce
 versioned artifacts for offline use only.
 
 These trainers:
-- Use only stdlib + numpy (already in repo)
 - Are deterministic given same input + seed
 - Produce explainable, audit-friendly outputs
 - Never affect execution or grant permissions
@@ -16,9 +15,14 @@ from collections import defaultdict
 from dataclasses import dataclass
 from typing import Any, Optional
 import math
+import logging
+
+import numpy as np
 
 from .dataset import TrainingRecord
 from .artifacts import generate_timestamp_utc
+
+logger = logging.getLogger(__name__)
 
 
 # ============================================================================
@@ -550,6 +554,309 @@ def train_risk_priors(
         },
         "buckets": buckets,
     }
+
+
+# ============================================================================
+# 6. LIGHTGBM FEATURE EXTRACTION
+# ============================================================================
+
+def _region_to_int(region: Optional[str], region_map: dict[str, int]) -> int:
+    """Encode region string to integer. Unknown regions map to -1."""
+    if region is None:
+        return -1
+    return region_map.get(region, -1)
+
+
+def _extract_lgbm_features(
+    records: list[TrainingRecord],
+    region_map: dict[str, int],
+) -> tuple[np.ndarray, list[str]]:
+    """Extract numeric feature matrix from TrainingRecord list.
+
+    Features (all normalized to floats, missing → 0.0):
+        region_enc, hour_utc, forecast_p50_energy, p90_energy_range,
+        forecast_p50_carbon, p90_carbon_range, baseline_energy
+
+    Returns:
+        (X np.ndarray of shape [N, n_features], feature_names list)
+    """
+    feature_names = [
+        "region_enc",
+        "hour_utc",
+        "forecast_p50_energy",
+        "p90_energy_range",
+        "forecast_p50_carbon",
+        "p90_carbon_range",
+        "baseline_energy",
+    ]
+
+    rows = []
+    for r in records:
+        p50e = r.forecast_energy_cost_p50 or 0.0
+        p90e = r.forecast_energy_cost_p90 or 0.0
+        p50c = r.forecast_carbon_p50 or 0.0
+        p90c = r.forecast_carbon_p90 or 0.0
+        baseline_e = r.forecast_energy_cost_baseline or p50e
+
+        rows.append([
+            float(_region_to_int(r.region, region_map)),
+            float(r.hour_utc) if r.hour_utc is not None else 0.0,
+            p50e,
+            max(0.0, p90e - p50e),   # uncertainty range
+            p50c,
+            max(0.0, p90c - p50c),
+            baseline_e,
+        ])
+
+    return np.array(rows, dtype=float), feature_names
+
+
+# ============================================================================
+# 7. LIGHTGBM SAVINGS MODEL
+# ============================================================================
+
+_MIN_LGBM_RECORDS = 50   # Minimum records before LightGBM training is attempted
+_LGBM_HOLDOUT_FRAC = 0.2  # Fraction of records reserved for holdout eval
+
+
+def train_savings_model_lgbm(
+    records: list[TrainingRecord],
+    seed: int = 42,
+    min_records: int = _MIN_LGBM_RECORDS,
+) -> dict[str, Any]:
+    """Train a LightGBM gradient-boosted savings estimation model.
+
+    Replaces the bucketed-statistics approach with a real gradient-boosted
+    regression. Falls back to bucketed stats if LightGBM is unavailable or
+    there are fewer than ``min_records`` labelled samples.
+
+    Training uses a time-ordered 80/20 split so the holdout represents
+    genuinely unseen future records.  The split is time-ordered (not random)
+    to prevent leakage.
+
+    Args:
+        records: Training records from PostExecutionRecord.
+        seed: Random seed for reproducibility.
+        min_records: Minimum labelled records required for LightGBM training.
+
+    Returns:
+        Artifact dict with model_string, feature_names, metrics, and metadata.
+        Falls back to bucketed stats if LightGBM not available / insufficient data.
+    """
+    # Extract labelled records (need realized_savings)
+    labelled = [r for r in records if r.realized_savings is not None]
+
+    if len(labelled) < min_records:
+        logger.warning(
+            f"train_savings_model_lgbm: only {len(labelled)} labelled records "
+            f"(need {min_records}); falling back to bucketed stats"
+        )
+        result = train_savings_model(records)
+        result["method"] = "bucketed_savings_stats_fallback"
+        result["lgbm_skipped_reason"] = f"insufficient_records:{len(labelled)}<{min_records}"
+        return result
+
+    try:
+        import lightgbm as lgb  # noqa: F401
+    except ImportError:
+        logger.warning("train_savings_model_lgbm: lightgbm not available; falling back to bucketed stats")
+        result = train_savings_model(records)
+        result["method"] = "bucketed_savings_stats_fallback"
+        result["lgbm_skipped_reason"] = "lightgbm_not_installed"
+        return result
+
+    # Time-ordered split (no randomisation — prevents leakage)
+    n_holdout = max(1, int(len(labelled) * _LGBM_HOLDOUT_FRAC))
+    train_records = labelled[:-n_holdout]
+    holdout_records = labelled[-n_holdout:]
+
+    # Build region encoding from training set
+    regions_seen = sorted({r.region for r in train_records if r.region})
+    region_map = {r: i for i, r in enumerate(regions_seen)}
+
+    X_train, feature_names = _extract_lgbm_features(train_records, region_map)
+    y_train = np.array([r.realized_savings for r in train_records], dtype=float)
+
+    X_holdout, _ = _extract_lgbm_features(holdout_records, region_map)
+    y_holdout = np.array([r.realized_savings for r in holdout_records], dtype=float)
+
+    # Naive baseline: predict the training mean on holdout
+    naive_pred = np.full(len(y_holdout), float(np.mean(y_train)))
+    naive_rmse = float(np.sqrt(np.mean((y_holdout - naive_pred) ** 2)))
+
+    # Train LightGBM regressor
+    import lightgbm as lgb
+    params = {
+        "objective": "regression",
+        "metric": "rmse",
+        "num_leaves": 31,
+        "learning_rate": 0.05,
+        "n_estimators": 200,
+        "min_child_samples": max(5, len(train_records) // 20),
+        "subsample": 0.8,
+        "colsample_bytree": 0.8,
+        "seed": seed,
+        "verbose": -1,
+    }
+    model = lgb.LGBMRegressor(**params)
+    model.fit(X_train, y_train)
+
+    # Evaluate on holdout
+    y_pred_holdout = model.predict(X_holdout)
+    model_rmse = float(np.sqrt(np.mean((y_holdout - y_pred_holdout) ** 2)))
+    model_mae = float(np.mean(np.abs(y_holdout - y_pred_holdout)))
+
+    beats_naive = model_rmse < naive_rmse
+    logger.info(
+        f"train_savings_model_lgbm: "
+        f"model_rmse={model_rmse:.4f}, naive_rmse={naive_rmse:.4f}, "
+        f"beats_naive={beats_naive}, "
+        f"n_train={len(train_records)}, n_holdout={len(holdout_records)}"
+    )
+
+    # Serialize model using LightGBM's native text format
+    model_string = model.booster_.model_to_string()
+
+    return {
+        "version": 2,
+        "generated_at_utc": generate_timestamp_utc(),
+        "method": "lightgbm_regression",
+        "feature_names": feature_names,
+        "region_map": region_map,
+        "model_string": model_string,
+        "metrics": {
+            "model_rmse_holdout": round(model_rmse, 4),
+            "naive_mean_rmse_holdout": round(naive_rmse, 4),
+            "model_mae_holdout": round(model_mae, 4),
+            "beats_naive_baseline": beats_naive,
+            "n_train": len(train_records),
+            "n_holdout": len(holdout_records),
+        },
+        "params": params,
+    }
+
+
+# ============================================================================
+# 8. LIGHTGBM RISK PRIORS MODEL
+# ============================================================================
+
+def train_risk_priors_lgbm(
+    records: list[TrainingRecord],
+    error_models: dict[str, Any],
+    seed: int = 42,
+    min_records: int = _MIN_LGBM_RECORDS,
+) -> dict[str, Any]:
+    """Train a LightGBM binary classification model for p90 coverage risk.
+
+    Target: 1 if p90 was NOT covered (risk event), 0 if covered.
+    Falls back to weighted empirical risk if insufficient data or LightGBM unavailable.
+
+    Args:
+        records: Training records from PostExecutionRecord.
+        error_models: Output from train_error_models() (used by fallback).
+        seed: Random seed.
+        min_records: Minimum labelled records needed for LightGBM training.
+
+    Returns:
+        Artifact dict with model_string, metrics, and metadata.
+    """
+    # Need energy_cost_p90_covered labels
+    labelled = [r for r in records if r.energy_cost_p90_covered is not None]
+
+    if len(labelled) < min_records:
+        logger.warning(
+            f"train_risk_priors_lgbm: only {len(labelled)} labelled records "
+            f"(need {min_records}); falling back to empirical risk"
+        )
+        result = train_risk_priors(records, error_models)
+        result["method"] = "weighted_empirical_risk_fallback"
+        result["lgbm_skipped_reason"] = f"insufficient_records:{len(labelled)}<{min_records}"
+        return result
+
+    try:
+        import lightgbm as lgb  # noqa: F401
+    except ImportError:
+        logger.warning("train_risk_priors_lgbm: lightgbm not available; falling back")
+        result = train_risk_priors(records, error_models)
+        result["method"] = "weighted_empirical_risk_fallback"
+        result["lgbm_skipped_reason"] = "lightgbm_not_installed"
+        return result
+
+    # Time-ordered split
+    n_holdout = max(1, int(len(labelled) * _LGBM_HOLDOUT_FRAC))
+    train_records = labelled[:-n_holdout]
+    holdout_records = labelled[-n_holdout:]
+
+    regions_seen = sorted({r.region for r in train_records if r.region})
+    region_map = {r: i for i, r in enumerate(regions_seen)}
+
+    X_train, feature_names = _extract_lgbm_features(train_records, region_map)
+    # y=1 means risk event (p90 NOT covered)
+    y_train = np.array(
+        [0.0 if r.energy_cost_p90_covered else 1.0 for r in train_records], dtype=float
+    )
+
+    X_holdout, _ = _extract_lgbm_features(holdout_records, region_map)
+    y_holdout = np.array(
+        [0.0 if r.energy_cost_p90_covered else 1.0 for r in holdout_records], dtype=float
+    )
+
+    # Naive baseline: always predict training class rate
+    naive_rate = float(np.mean(y_train))
+    naive_log_loss = _log_loss_scalar(y_holdout, np.full(len(y_holdout), naive_rate))
+
+    import lightgbm as lgb
+    params = {
+        "objective": "binary",
+        "metric": "binary_logloss",
+        "num_leaves": 15,
+        "learning_rate": 0.05,
+        "n_estimators": 100,
+        "min_child_samples": max(5, len(train_records) // 20),
+        "subsample": 0.8,
+        "seed": seed,
+        "verbose": -1,
+    }
+    model = lgb.LGBMClassifier(**params)
+    model.fit(X_train, y_train)
+
+    y_pred_proba = model.predict_proba(X_holdout)[:, 1]
+    model_log_loss = _log_loss_scalar(y_holdout, y_pred_proba)
+    beats_naive = model_log_loss < naive_log_loss
+
+    logger.info(
+        f"train_risk_priors_lgbm: "
+        f"model_logloss={model_log_loss:.4f}, naive_logloss={naive_log_loss:.4f}, "
+        f"beats_naive={beats_naive}, "
+        f"n_train={len(train_records)}, n_holdout={len(holdout_records)}"
+    )
+
+    model_string = model.booster_.model_to_string()
+
+    return {
+        "version": 2,
+        "generated_at_utc": generate_timestamp_utc(),
+        "method": "lightgbm_binary_classification",
+        "feature_names": feature_names,
+        "region_map": region_map,
+        "model_string": model_string,
+        "metrics": {
+            "model_logloss_holdout": round(model_log_loss, 4),
+            "naive_logloss_holdout": round(naive_log_loss, 4),
+            "beats_naive_baseline": beats_naive,
+            "risk_event_rate_train": round(naive_rate, 4),
+            "n_train": len(train_records),
+            "n_holdout": len(holdout_records),
+        },
+        "params": params,
+    }
+
+
+def _log_loss_scalar(y_true: np.ndarray, y_pred: np.ndarray) -> float:
+    """Compute binary log-loss, clipping predictions for numerical stability."""
+    eps = 1e-7
+    y_pred = np.clip(y_pred, eps, 1 - eps)
+    return float(-np.mean(y_true * np.log(y_pred) + (1 - y_true) * np.log(1 - y_pred)))
 
 
 # ============================================================================

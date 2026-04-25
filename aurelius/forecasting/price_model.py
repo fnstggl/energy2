@@ -16,11 +16,13 @@ v1.1 enables minimal short-horizon lag features (1h, 6h) for accuracy
 while preserving predict-time safety and deterministic fallback.
 """
 
+import json
 import logging
 import math
 from dataclasses import dataclass
 from datetime import datetime, timedelta
-from typing import Any, Optional
+from pathlib import Path
+from typing import Any, Optional, Union
 
 import numpy as np
 
@@ -122,11 +124,21 @@ class PriceQuantileForecaster:
     - Deterministic outputs
     """
 
-    def __init__(self, config: Optional[PriceModelConfig] = None):
+    # Default location relative to the package root for bias-correction artifacts.
+    _DEFAULT_CORRECTIONS_REL = Path("data/ml_artifacts/forecast_corrections_v1.json")
+
+    def __init__(
+        self,
+        config: Optional[PriceModelConfig] = None,
+        corrections_path: Optional[Union[str, Path]] = None,
+    ):
         """Initialize the price quantile forecaster.
 
         Args:
             config: Model configuration
+            corrections_path: Path to forecast_corrections_v1.json artifact.
+                Defaults to <package>/data/ml_artifacts/forecast_corrections_v1.json.
+                Set to False to disable bias correction loading.
         """
         self.config = config or PriceModelConfig()
         self._model_p50: Any = None
@@ -142,6 +154,39 @@ class PriceQuantileForecaster:
         self._use_rolling = True
         self._lag_hours = [1, 6]  # lag_1h, lag_6h
         self._rolling_hours = [6]  # rolling_mean_6h only
+        # Bias-correction lookup: {region: {hour: bias}} loaded from artifact
+        self._p50_bias: dict[str, dict[int, float]] = {}
+        self._corrections_loaded: bool = False
+        if corrections_path is not False:
+            self._load_corrections(corrections_path)
+
+    def _load_corrections(self, path: Optional[Union[str, Path]]) -> None:
+        """Load forecast bias corrections from artifact file if available."""
+        if path is None:
+            # Resolve relative to package root
+            pkg_root = Path(__file__).parent.parent
+            path = pkg_root / self._DEFAULT_CORRECTIONS_REL
+        path = Path(path)
+        if not path.exists():
+            logger.debug(f"PriceQuantileForecaster: no corrections artifact at {path}; skipping")
+            return
+        try:
+            data = json.loads(path.read_text(encoding="utf-8"))
+            bias: dict[str, dict[int, float]] = {}
+            for bucket in data.get("buckets", []):
+                region = bucket.get("region")
+                hour = bucket.get("hour_utc")
+                ec = bucket.get("energy_cost", {})
+                if region and hour is not None and "mean_error" in ec:
+                    bias.setdefault(region, {})[int(hour)] = float(ec["mean_error"])
+            self._p50_bias = bias
+            self._corrections_loaded = True
+            logger.info(
+                f"PriceQuantileForecaster: loaded bias corrections from {path} "
+                f"({sum(len(v) for v in bias.values())} region-hour entries)"
+            )
+        except Exception as exc:
+            logger.warning(f"PriceQuantileForecaster: failed to load corrections from {path}: {exc}")
 
     def fit(self, prices: list[EnergyPrice]) -> "PriceQuantileForecaster":
         """Fit the quantile models on historical price data.
@@ -291,15 +336,27 @@ class PriceQuantileForecaster:
             baseline,
         )
 
+        # Apply bias correction to p50 if artifact was loaded
+        region_bias = self._p50_bias.get(region, {})
+
         # Build forecast objects
         model_type = self._metadata.model_type if self._metadata else "unknown"
         forecasts = []
         for i, ts in enumerate(timestamps):
+            p50_raw = p50_preds[i]
+            # Subtract empirical mean error (mean_error = predicted - actual)
+            if region_bias:
+                hour_bias = region_bias.get(ts.hour, 0.0)
+                p50_corrected = p50_raw - hour_bias
+            else:
+                p50_corrected = p50_raw
+            # Ensure p90 >= corrected p50
+            p90 = max(p90_preds[i], p50_corrected)
             forecasts.append(PriceQuantileForecast(
                 timestamp=ts,
                 region=region,
-                p50=round(p50_preds[i], 2),
-                p90=round(p90_preds[i], 2),
+                p50=round(p50_corrected, 2),
+                p90=round(p90, 2),
                 model_type=model_type,
                 features_version="v1.1",
             ))
@@ -381,6 +438,92 @@ class PriceQuantileForecaster:
                 result[f.region] = {}
             result[f.region][f.timestamp] = {"p50": f.p50, "p90": f.p90}
         return result
+
+    # ------------------------------------------------------------------
+    # Persistence
+    # ------------------------------------------------------------------
+
+    def save(self, path: Union[str, Path]) -> None:
+        """Persist the fitted model to disk using joblib.
+
+        Args:
+            path: Destination file path (e.g. models/price_v1.joblib).
+        """
+        import joblib
+        path = Path(path)
+        path.parent.mkdir(parents=True, exist_ok=True)
+        joblib.dump(self, path)
+        logger.info(f"PriceQuantileForecaster saved to {path}")
+
+    @classmethod
+    def load(cls, path: Union[str, Path]) -> "PriceQuantileForecaster":
+        """Load a persisted model from disk.
+
+        Args:
+            path: Path previously written by save().
+
+        Returns:
+            Loaded PriceQuantileForecaster instance.
+        """
+        import joblib
+        path = Path(path)
+        obj = joblib.load(path)
+        logger.info(f"PriceQuantileForecaster loaded from {path}")
+        return obj
+
+    # ------------------------------------------------------------------
+    # Holdout validation
+    # ------------------------------------------------------------------
+
+    def validate_coverage(
+        self,
+        holdout_data: list[EnergyPrice],
+    ) -> dict:
+        """Compute empirical p90 coverage on a holdout set.
+
+        Predictions are made per-region using no lag context (to guarantee
+        zero leakage from the holdout into lag features).  This gives a
+        conservative lower-bound on coverage; live coverage with proper
+        context will be equal or better.
+
+        Args:
+            holdout_data: EnergyPrice records withheld from training.
+
+        Returns:
+            dict with keys:
+                empirical_p90_coverage (float): fraction of actuals ≤ p90
+                n_samples (int)
+                meets_88pct_threshold (bool): True if coverage ≥ 0.88
+        """
+        if not self._fitted:
+            raise RuntimeError("validate_coverage: model must be fitted first")
+        if not holdout_data:
+            raise ValueError("validate_coverage: holdout_data is empty")
+
+        by_region: dict[str, list[EnergyPrice]] = {}
+        for p in holdout_data:
+            by_region.setdefault(p.region, []).append(p)
+
+        covered_count = 0
+        total_count = 0
+
+        for region, recs in by_region.items():
+            recs_sorted = sorted(recs, key=lambda r: r.timestamp)
+            timestamps = [r.timestamp for r in recs_sorted]
+            actuals = [r.price_per_mwh for r in recs_sorted]
+            # Predict without context — leakage-free by construction
+            forecasts = self.predict(region, timestamps, recent_prices=None)
+            for f, actual in zip(forecasts, actuals):
+                total_count += 1
+                if actual <= f.p90:
+                    covered_count += 1
+
+        coverage = covered_count / total_count if total_count > 0 else 0.0
+        return {
+            "empirical_p90_coverage": round(coverage, 4),
+            "n_samples": total_count,
+            "meets_88pct_threshold": coverage >= 0.88,
+        }
 
 
 class PriceForecaster:

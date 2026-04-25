@@ -17,11 +17,13 @@ v1.1 enables minimal short-horizon lag features (1h, 6h) for accuracy
 while preserving predict-time safety and deterministic fallback.
 """
 
+import json
 import logging
 import math
 from dataclasses import dataclass
 from datetime import datetime, timedelta
-from typing import Any, Optional
+from pathlib import Path
+from typing import Any, Optional, Union
 
 import numpy as np
 
@@ -130,11 +132,20 @@ class CarbonQuantileForecaster:
         "asia-east": 550, # Coal heavy
     }
 
-    def __init__(self, config: Optional[CarbonModelConfig] = None):
+    _DEFAULT_CORRECTIONS_REL = Path("data/ml_artifacts/forecast_corrections_v1.json")
+
+    def __init__(
+        self,
+        config: Optional[CarbonModelConfig] = None,
+        corrections_path: Optional[Union[str, Path]] = None,
+    ):
         """Initialize the carbon quantile forecaster.
 
         Args:
             config: Model configuration
+            corrections_path: Path to forecast_corrections_v1.json artifact.
+                Defaults to <package>/data/ml_artifacts/forecast_corrections_v1.json.
+                Set to False to disable bias correction loading.
         """
         self.config = config or CarbonModelConfig()
         self._model_p50: Any = None
@@ -150,6 +161,38 @@ class CarbonQuantileForecaster:
         self._use_rolling = True
         self._lag_hours = [1, 6]  # lag_1h, lag_6h
         self._rolling_hours = [6]  # rolling_mean_6h only
+        # Bias-correction lookup: {region: {hour: bias}}
+        self._p50_bias: dict[str, dict[int, float]] = {}
+        self._corrections_loaded: bool = False
+        if corrections_path is not False:
+            self._load_corrections(corrections_path)
+
+    def _load_corrections(self, path: Optional[Union[str, Path]]) -> None:
+        """Load forecast bias corrections from artifact file if available."""
+        if path is None:
+            pkg_root = Path(__file__).parent.parent
+            path = pkg_root / self._DEFAULT_CORRECTIONS_REL
+        path = Path(path)
+        if not path.exists():
+            logger.debug(f"CarbonQuantileForecaster: no corrections artifact at {path}; skipping")
+            return
+        try:
+            data = json.loads(path.read_text(encoding="utf-8"))
+            bias: dict[str, dict[int, float]] = {}
+            for bucket in data.get("buckets", []):
+                region = bucket.get("region")
+                hour = bucket.get("hour_utc")
+                carbon = bucket.get("carbon", {})
+                if region and hour is not None and "mean_error" in carbon:
+                    bias.setdefault(region, {})[int(hour)] = float(carbon["mean_error"])
+            self._p50_bias = bias
+            self._corrections_loaded = True
+            logger.info(
+                f"CarbonQuantileForecaster: loaded bias corrections from {path} "
+                f"({sum(len(v) for v in bias.values())} region-hour entries)"
+            )
+        except Exception as exc:
+            logger.warning(f"CarbonQuantileForecaster: failed to load corrections from {path}: {exc}")
 
     def fit(self, carbon_data: list[CarbonIntensity]) -> "CarbonQuantileForecaster":
         """Fit the quantile models on historical carbon data.
@@ -299,15 +342,25 @@ class CarbonQuantileForecaster:
             baseline,
         )
 
+        # Apply bias correction to p50 if artifact was loaded
+        region_bias = self._p50_bias.get(region, {})
+
         # Build forecast objects
         model_type = self._metadata.model_type if self._metadata else "unknown"
         forecasts = []
         for i, ts in enumerate(timestamps):
+            p50_raw = p50_preds[i]
+            if region_bias:
+                hour_bias = region_bias.get(ts.hour, 0.0)
+                p50_corrected = p50_raw - hour_bias
+            else:
+                p50_corrected = p50_raw
+            p90 = max(p90_preds[i], p50_corrected)
             forecasts.append(CarbonQuantileForecast(
                 timestamp=ts,
                 region=region,
-                p50=round(p50_preds[i], 1),
-                p90=round(p90_preds[i], 1),
+                p50=round(p50_corrected, 1),
+                p90=round(p90, 1),
                 model_type=model_type,
                 features_version="v1.1",
             ))
@@ -392,6 +445,72 @@ class CarbonQuantileForecaster:
                 result[f.region] = {}
             result[f.region][f.timestamp] = {"p50": f.p50, "p90": f.p90}
         return result
+
+    # ------------------------------------------------------------------
+    # Persistence
+    # ------------------------------------------------------------------
+
+    def save(self, path: Union[str, Path]) -> None:
+        """Persist the fitted model to disk using joblib."""
+        import joblib
+        path = Path(path)
+        path.parent.mkdir(parents=True, exist_ok=True)
+        joblib.dump(self, path)
+        logger.info(f"CarbonQuantileForecaster saved to {path}")
+
+    @classmethod
+    def load(cls, path: Union[str, Path]) -> "CarbonQuantileForecaster":
+        """Load a persisted model from disk."""
+        import joblib
+        path = Path(path)
+        obj = joblib.load(path)
+        logger.info(f"CarbonQuantileForecaster loaded from {path}")
+        return obj
+
+    # ------------------------------------------------------------------
+    # Holdout validation
+    # ------------------------------------------------------------------
+
+    def validate_coverage(
+        self,
+        holdout_data: list[CarbonIntensity],
+    ) -> dict:
+        """Compute empirical p90 coverage on a holdout set.
+
+        Args:
+            holdout_data: CarbonIntensity records withheld from training.
+
+        Returns:
+            dict with empirical_p90_coverage, n_samples, meets_88pct_threshold.
+        """
+        if not self._fitted:
+            raise RuntimeError("validate_coverage: model must be fitted first")
+        if not holdout_data:
+            raise ValueError("validate_coverage: holdout_data is empty")
+
+        by_region: dict[str, list[CarbonIntensity]] = {}
+        for c in holdout_data:
+            by_region.setdefault(c.region, []).append(c)
+
+        covered_count = 0
+        total_count = 0
+
+        for region, recs in by_region.items():
+            recs_sorted = sorted(recs, key=lambda r: r.timestamp)
+            timestamps = [r.timestamp for r in recs_sorted]
+            actuals = [r.gco2_per_kwh for r in recs_sorted]
+            forecasts = self.predict(region, timestamps, recent_data=None)
+            for f, actual in zip(forecasts, actuals):
+                total_count += 1
+                if actual <= f.p90:
+                    covered_count += 1
+
+        coverage = covered_count / total_count if total_count > 0 else 0.0
+        return {
+            "empirical_p90_coverage": round(coverage, 4),
+            "n_samples": total_count,
+            "meets_88pct_threshold": coverage >= 0.88,
+        }
 
 
 class CarbonForecaster:

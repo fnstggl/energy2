@@ -44,6 +44,9 @@ from .trainers import (
     generate_uncertainty_rules,
     train_savings_model,
     train_risk_priors,
+    train_savings_model_lgbm,
+    train_risk_priors_lgbm,
+    _MIN_LGBM_RECORDS,
 )
 
 # Configure logging
@@ -129,6 +132,8 @@ def run_training(
     output_dir: Path,
     seed: int,
     overwrite: bool,
+    min_records: int = _MIN_LGBM_RECORDS,
+    use_lgbm: bool = True,
 ) -> bool:
     """Run the complete offline training pipeline.
 
@@ -137,6 +142,8 @@ def run_training(
         output_dir: Directory for output artifacts
         seed: Random seed (for determinism)
         overwrite: Whether to overwrite existing files
+        min_records: Minimum records required for LightGBM training
+        use_lgbm: If True, use LightGBM for savings and risk models
 
     Returns:
         True if successful, False otherwise
@@ -194,17 +201,50 @@ def run_training(
     writer.write("uncertainty_rules_v1.json", uncertainty_rules)
     logger.info(f"  → {len(uncertainty_rules['rules'])} rules")
 
-    # 4. Savings model
-    logger.info("Training savings model...")
-    savings_model = train_savings_model(training_records)
+    # 4. Savings model (LightGBM if available and sufficient data)
+    if use_lgbm:
+        logger.info("Training savings model (LightGBM)...")
+        savings_model = train_savings_model_lgbm(
+            training_records, seed=seed, min_records=min_records
+        )
+        method = savings_model.get("method", "unknown")
+        logger.info(f"  → method={method}")
+        if "metrics" in savings_model:
+            m = savings_model["metrics"]
+            logger.info(
+                f"  → model_rmse={m.get('model_rmse_holdout', 'n/a')}, "
+                f"naive_rmse={m.get('naive_mean_rmse_holdout', 'n/a')}, "
+                f"beats_naive={m.get('beats_naive_baseline', 'n/a')}"
+            )
+        elif "buckets" in savings_model:
+            logger.info(f"  → {len(savings_model['buckets'])} buckets (fallback)")
+    else:
+        logger.info("Training savings model (bucketed stats)...")
+        savings_model = train_savings_model(training_records)
+        logger.info(f"  → {len(savings_model['buckets'])} buckets")
     writer.write("savings_model_v1.json", savings_model)
-    logger.info(f"  → {len(savings_model['buckets'])} buckets")
 
-    # 5. Risk priors
-    logger.info("Training risk priors...")
-    risk_priors = train_risk_priors(training_records, error_models)
+    # 5. Risk priors (LightGBM if available and sufficient data)
+    if use_lgbm:
+        logger.info("Training risk priors (LightGBM)...")
+        risk_priors = train_risk_priors_lgbm(
+            training_records, error_models, seed=seed, min_records=min_records
+        )
+        method = risk_priors.get("method", "unknown")
+        logger.info(f"  → method={method}")
+        if "metrics" in risk_priors:
+            m = risk_priors["metrics"]
+            logger.info(
+                f"  → model_logloss={m.get('model_logloss_holdout', 'n/a')}, "
+                f"beats_naive={m.get('beats_naive_baseline', 'n/a')}"
+            )
+        elif "buckets" in risk_priors:
+            logger.info(f"  → {len(risk_priors['buckets'])} buckets (fallback)")
+    else:
+        logger.info("Training risk priors (empirical)...")
+        risk_priors = train_risk_priors(training_records, error_models)
+        logger.info(f"  → {len(risk_priors['buckets'])} buckets")
     writer.write("risk_priors_v1.json", risk_priors)
-    logger.info(f"  → {len(risk_priors['buckets'])} buckets")
 
     # 6. Manifest
     logger.info("Writing manifest...")
@@ -520,6 +560,18 @@ def main():
         action="store_true",
         help="Run inline validation tests",
     )
+    parser.add_argument(
+        "--min-records",
+        type=int,
+        default=_MIN_LGBM_RECORDS,
+        help=f"Minimum labelled records for LightGBM training (default: {_MIN_LGBM_RECORDS}). "
+             "Fewer records fall back to bucketed stats.",
+    )
+    parser.add_argument(
+        "--no-lgbm",
+        action="store_true",
+        help="Disable LightGBM and use bucketed stats for savings/risk models",
+    )
 
     args = parser.parse_args()
 
@@ -534,10 +586,12 @@ def main():
     logger.info("=" * 60)
     logger.info("Aurelius Offline ML Training")
     logger.info("=" * 60)
-    logger.info(f"Input:  {input_path}")
-    logger.info(f"Output: {output_dir}")
-    logger.info(f"Seed:   {args.seed}")
-    logger.info(f"Overwrite: {args.overwrite}")
+    logger.info(f"Input:       {input_path}")
+    logger.info(f"Output:      {output_dir}")
+    logger.info(f"Seed:        {args.seed}")
+    logger.info(f"Overwrite:   {args.overwrite}")
+    logger.info(f"Min records: {args.min_records}")
+    logger.info(f"Use LightGBM: {not args.no_lgbm}")
     logger.info("")
 
     success = run_training(
@@ -545,6 +599,8 @@ def main():
         output_dir=output_dir,
         seed=args.seed,
         overwrite=args.overwrite,
+        min_records=args.min_records,
+        use_lgbm=not args.no_lgbm,
     )
 
     sys.exit(0 if success else 1)
