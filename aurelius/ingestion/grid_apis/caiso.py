@@ -1,31 +1,57 @@
-"""CAISO OASIS day-ahead LMP price adapter.
+"""CAISO OASIS LMP price adapters (day-ahead and real-time).
 
-Fetches hourly day-ahead locational marginal prices (DA-LMP) from the
-California ISO OASIS public API. No API key required.
+Both providers use the public CAISO OASIS SingleZip endpoint — no auth required.
 
-CAISO OASIS API:
+Endpoint:
     https://oasis.caiso.com/oasisapi/SingleZip
-    queryname=PRC_LMP, market_run_id=DAM
 
-Supported regions (Aurelius → CAISO pricing node):
-    "us-west" → NP15_7_N001  (Northern California trading hub)
+Day-ahead (PRC_LMP / DAM):
+    URL template:
+        https://oasis.caiso.com/oasisapi/SingleZip
+            ?queryname=PRC_LMP
+            &market_run_id=DAM
+            &startdatetime=<YYYYMMDDThhmm-0000>
+            &enddatetime=<YYYYMMDDThhmm-0000>
+            &node=TH_NP15_GEN-APND
+            &resultformat=6
+            &version=1
 
-Override with hub_map= constructor argument.
+Real-time 5-min intervals (PRC_INTVL_LMP / RTM):
+    URL template:
+        https://oasis.caiso.com/oasisapi/SingleZip
+            ?queryname=PRC_INTVL_LMP
+            &market_run_id=RTM
+            &startdatetime=<YYYYMMDDThhmm-0000>
+            &enddatetime=<YYYYMMDDThhmm-0000>
+            &node=TH_NP15_GEN-APND
+            &resultformat=6
+            &version=1
 
-Price unit:
-    USD/MWh (LMP = Locational Marginal Price)
+Reference node:
+    TH_NP15_GEN-APND — NP15 trading-hub aggregate price node (Northern California).
+    This is the standard liquid reference hub used for California LMP backtesting.
 
-    The "LMP" type in CAISO OASIS data is the total price including:
-        - MCE (Market Clearing Energy component)
-        - MCC (Congestion component)
-        - MLC (Loss component)
-    This adapter fetches LMP_TYPE=LMP (total) and maps it to price_per_mwh.
+resultformat=6:
+    Requests ZIP/CSV output explicitly. Without it CAISO may return XML.
 
-Notes:
-    - CAISO OASIS returns a ZIP file containing a CSV; this is parsed in-memory.
-    - Requests are chunked into ≤31-day windows.
-    - Page sleep and retry logic guard against 503 responses.
-    - CAISO OASIS can be slow; timeout is set to 120 seconds per request.
+CSV columns (both PRC_LMP and PRC_INTVL_LMP):
+    INTERVALSTARTTIME_GMT  — ISO 8601 UTC timestamp (field is already UTC/GMT)
+    LMP_TYPE               — LMP | MCE | MCC | MLC  (we keep LMP = total price only)
+    MW                     — price in USD/MWh (column name is "MW" by CAISO convention
+                             but the value IS a price for PRC_LMP / PRC_INTVL_LMP queries)
+
+Timestamp handling:
+    CAISO OASIS timestamps in INTERVALSTARTTIME_GMT are UTC.
+    All output timestamps are UTC-aware pd.Timestamps.
+    No naive timestamps are ever produced.
+
+Price field:
+    LMP_TYPE == "LMP" row → MW column → price_per_mwh (USD/MWh).
+    MCE / MCC / MLC component rows are filtered out.
+
+Demand/load guard:
+    The MW column from PRC_LMP / PRC_INTVL_LMP queries holds prices (USD/MWh).
+    It is never mapped to a demand or load value.
 """
 
 from __future__ import annotations
@@ -55,16 +81,21 @@ _RETRY_BACKOFF = 3.0
 _PAGE_SLEEP = 1.0
 _CHUNK_DAYS = 31
 
+# TH_NP15_GEN-APND: NP15 trading-hub aggregate price node (Northern California).
+# Standard reference hub for CAISO LMP backtesting and live monitoring.
 _DEFAULT_HUB_MAP: dict[str, str] = {
-    "us-west": "NP15_7_N001",
+    "us-west": "TH_NP15_GEN-APND",
 }
 
 
 class CAISOPriceProvider(PriceProvider):
     """Fetch hourly day-ahead LMP from CAISO OASIS (no auth required).
 
+    Queries PRC_LMP with market_run_id=DAM. Returns hourly prices for the
+    NP15 trading hub (TH_NP15_GEN-APND) — the standard California reference hub.
+
     Args:
-        hub_map: Mapping of Aurelius region → CAISO pricing node ID.
+        hub_map: Override mapping of Aurelius region → CAISO pricing node ID.
     """
 
     def __init__(
@@ -86,8 +117,7 @@ class CAISOPriceProvider(PriceProvider):
         """Fetch hourly day-ahead LMP for *region* in [start, end).
 
         Returns:
-            DataFrame with canonical PRICE_COLUMNS.
-            Returns empty_price_df() on failure.
+            DataFrame with canonical PRICE_COLUMNS; empty on failure.
         """
         node = self._hub_map.get(region)
         if node is None:
@@ -97,151 +127,241 @@ class CAISOPriceProvider(PriceProvider):
             )
             return empty_price_df()
 
-        def _to_utc(dt: datetime) -> datetime:
-            if dt.tzinfo is None:
-                return dt.replace(tzinfo=timezone.utc)
-            return dt.astimezone(timezone.utc)
+        return _fetch_lmp(
+            node=node,
+            region=region,
+            start=start,
+            end=end,
+            queryname="PRC_LMP",
+            market_run_id="DAM",
+            source_name=self.source_name,
+            granularity="hourly",
+            floor_to="h",
+        )
 
-        start_utc = _to_utc(start)
-        end_utc = _to_utc(end)
-        all_rows: list[dict] = []
 
-        current = start_utc
-        while current < end_utc:
-            chunk_end = min(current + timedelta(days=_CHUNK_DAYS), end_utc)
+class CAISORealtimePriceProvider(PriceProvider):
+    """Fetch 5-minute real-time interval LMP from CAISO OASIS (no auth required).
 
-            # CAISO OASIS datetime format: YYYYMMDDThhmm-0000 (UTC offset)
-            start_str = current.strftime("%Y%m%dT%H%M") + "-0000"
-            end_str = chunk_end.strftime("%Y%m%dT%H%M") + "-0000"
+    Queries PRC_INTVL_LMP with market_run_id=RTM. Returns 5-minute interval
+    prices for TH_NP15_GEN-APND — used for live/shadow monitoring of California LMP.
 
-            params = {
-                "queryname": "PRC_LMP",
-                "market_run_id": "DAM",
-                "startdatetime": start_str,
-                "enddatetime": end_str,
-                "version": "1",
-                "node": node,
-            }
+    Args:
+        hub_map: Override mapping of Aurelius region → CAISO pricing node ID.
+    """
 
-            for attempt in range(_MAX_RETRIES):
-                try:
-                    resp = requests.get(
-                        _OASIS_URL,
-                        params=params,
-                        timeout=120,
-                    )
-                    if resp.status_code == 429 or resp.status_code == 503:
-                        wait = _RETRY_BACKOFF * (2 ** attempt)
-                        logger.warning(
-                            f"CAISO OASIS throttled ({resp.status_code}); "
-                            f"retrying in {wait:.0f}s"
-                        )
-                        time.sleep(wait)
-                        continue
-                    resp.raise_for_status()
+    def __init__(
+        self,
+        hub_map: Optional[dict[str, str]] = None,
+    ) -> None:
+        self._hub_map = hub_map or _DEFAULT_HUB_MAP
 
-                    rows = self._parse_zip_response(resp.content, region, node)
-                    all_rows.extend(rows)
-                    break
+    @property
+    def source_name(self) -> str:
+        return "caiso_oasis_rtm"
 
-                except ProviderConfigError:
-                    raise
-                except Exception as exc:
-                    if attempt == _MAX_RETRIES - 1:
-                        logger.error(f"CAISO OASIS request failed: {exc}")
-                    time.sleep(_RETRY_BACKOFF * (2 ** attempt))
+    def fetch_prices(
+        self,
+        region: str,
+        start: datetime,
+        end: datetime,
+    ) -> pd.DataFrame:
+        """Fetch 5-minute real-time LMP for *region* in [start, end).
 
-            current = chunk_end
-            time.sleep(_PAGE_SLEEP)
-
-        if not all_rows:
+        Returns:
+            DataFrame with canonical PRICE_COLUMNS; empty on failure.
+            source_granularity == "5min".
+        """
+        node = self._hub_map.get(region)
+        if node is None:
             logger.warning(
-                f"CAISO OASIS returned no data for node={node} "
-                f"{start_utc}..{end_utc}"
+                f"Region '{region}' not in CAISO hub map; "
+                f"available: {list(self._hub_map)}"
             )
             return empty_price_df()
 
-        df = pd.DataFrame(all_rows)
-        return normalize_price_df(df, source=self.source_name, currency="USD", granularity="hourly")
-
-    @staticmethod
-    def _parse_zip_response(
-        content: bytes,
-        region: str,
-        node: str,
-    ) -> list[dict]:
-        """Extract price rows from a CAISO OASIS ZIP/CSV response.
-
-        CAISO OASIS returns:
-            - A ZIP file containing one or more CSV files.
-            - Each CSV has columns including INTERVALSTARTTIME_GMT, LMP_TYPE, and
-              a value column (named "MW" in some OASIS versions — despite the name
-              this column holds USD/MWh price values for PRC_LMP queries).
-
-        We filter rows where LMP_TYPE == "LMP" (total price, not congestion/loss).
-
-        Args:
-            content: Raw bytes of the HTTP response (a ZIP file).
-            region:  Aurelius region label for the output DataFrame.
-            node:    CAISO pricing node (for logging).
-
-        Returns:
-            List of dicts with keys: timestamp, region, price_per_mwh.
-        """
-        rows: list[dict] = []
-
-        try:
-            zip_buf = io.BytesIO(content)
-            with zipfile.ZipFile(zip_buf, "r") as zf:
-                csv_names = [n for n in zf.namelist() if n.lower().endswith(".csv")]
-                if not csv_names:
-                    # CAISO sometimes returns an XML error inside the ZIP
-                    xml_names = [n for n in zf.namelist() if n.lower().endswith(".xml")]
-                    if xml_names:
-                        with zf.open(xml_names[0]) as f:
-                            err_text = f.read(2000).decode("utf-8", errors="replace")
-                        logger.error(f"CAISO OASIS returned XML error for node={node}: {err_text[:500]}")
-                    else:
-                        logger.error(f"CAISO OASIS ZIP contains no CSV for node={node}")
-                    return rows
-
-                for csv_name in csv_names:
-                    with zf.open(csv_name) as f:
-                        try:
-                            df = pd.read_csv(f)
-                        except Exception as exc:
-                            logger.error(f"CAISO CSV parse error ({csv_name}): {exc}")
-                            continue
-
-                        rows.extend(_extract_lmp_rows(df, region, csv_name))
-
-        except zipfile.BadZipFile:
-            # Response may be a plain XML/HTML error page
-            snippet = content[:500].decode("utf-8", errors="replace")
-            logger.error(f"CAISO OASIS response is not a ZIP (node={node}): {snippet}")
-
-        return rows
+        return _fetch_lmp(
+            node=node,
+            region=region,
+            start=start,
+            end=end,
+            queryname="PRC_INTVL_LMP",
+            market_run_id="RTM",
+            source_name=self.source_name,
+            granularity="5min",
+            floor_to=None,  # preserve 5-minute interval precision
+        )
 
 
-def _extract_lmp_rows(df: pd.DataFrame, region: str, source_name: str) -> list[dict]:
-    """Parse price rows from a CAISO OASIS CSV DataFrame.
+def _fetch_lmp(
+    node: str,
+    region: str,
+    start: datetime,
+    end: datetime,
+    queryname: str,
+    market_run_id: str,
+    source_name: str,
+    granularity: str,
+    floor_to: Optional[str],
+) -> pd.DataFrame:
+    """Core CAISO OASIS fetch loop used by both day-ahead and real-time providers."""
 
-    CAISO OASIS PRC_LMP CSVs have these key columns:
-        INTERVALSTARTTIME_GMT  – ISO 8601 UTC timestamp
-        LMP_TYPE               – LMP | MCE | MCC | MLC
-        MW                     – Price in USD/MWh (column name is "MW" by CAISO convention
-                                  but the value IS a price for PRC_LMP queries)
+    def _to_utc(dt: datetime) -> datetime:
+        if dt.tzinfo is None:
+            return dt.replace(tzinfo=timezone.utc)
+        return dt.astimezone(timezone.utc)
 
-    We keep only LMP_TYPE == "LMP" rows (total price).
+    start_utc = _to_utc(start)
+    end_utc = _to_utc(end)
+    all_rows: list[dict] = []
+
+    current = start_utc
+    while current < end_utc:
+        chunk_end = min(current + timedelta(days=_CHUNK_DAYS), end_utc)
+
+        # CAISO OASIS datetime format: YYYYMMDDThhmm-0000 (UTC offset)
+        start_str = current.strftime("%Y%m%dT%H%M") + "-0000"
+        end_str = chunk_end.strftime("%Y%m%dT%H%M") + "-0000"
+
+        params = {
+            "queryname": queryname,
+            "market_run_id": market_run_id,
+            "startdatetime": start_str,
+            "enddatetime": end_str,
+            "version": "1",
+            "node": node,
+            "resultformat": "6",  # ZIP/CSV output (explicit; avoids XML default)
+        }
+
+        for attempt in range(_MAX_RETRIES):
+            try:
+                resp = requests.get(
+                    _OASIS_URL,
+                    params=params,
+                    timeout=120,
+                )
+                if resp.status_code == 429 or resp.status_code == 503:
+                    wait = _RETRY_BACKOFF * (2 ** attempt)
+                    logger.warning(
+                        f"CAISO OASIS throttled ({resp.status_code}); "
+                        f"retrying in {wait:.0f}s"
+                    )
+                    time.sleep(wait)
+                    continue
+                resp.raise_for_status()
+
+                rows = _parse_zip_response(resp.content, region, node, floor_to)
+                all_rows.extend(rows)
+                break
+
+            except ProviderConfigError:
+                raise
+            except Exception as exc:
+                if attempt == _MAX_RETRIES - 1:
+                    logger.error(
+                        f"CAISO OASIS request failed "
+                        f"(queryname={queryname}, node={node}): {exc}"
+                    )
+                time.sleep(_RETRY_BACKOFF * (2 ** attempt))
+
+        current = chunk_end
+        time.sleep(_PAGE_SLEEP)
+
+    if not all_rows:
+        logger.warning(
+            f"CAISO OASIS returned no data "
+            f"(queryname={queryname}, node={node}, {start_utc}..{end_utc})"
+        )
+        return empty_price_df()
+
+    df = pd.DataFrame(all_rows)
+    return normalize_price_df(df, source=source_name, currency="USD", granularity=granularity)
+
+
+def _parse_zip_response(
+    content: bytes,
+    region: str,
+    node: str,
+    floor_to: Optional[str] = "h",
+) -> list[dict]:
+    """Extract price rows from a CAISO OASIS ZIP/CSV response.
+
+    CAISO OASIS returns a ZIP file containing one or more CSV files.
+    Each CSV has INTERVALSTARTTIME_GMT (UTC), LMP_TYPE, and MW (price USD/MWh).
+
+    Args:
+        content:  Raw bytes of the HTTP response (a ZIP file).
+        region:   Aurelius region label for the output DataFrame.
+        node:     CAISO pricing node (for logging).
+        floor_to: pd.Timestamp floor unit for timestamps ("h" for hourly,
+                  None to preserve raw interval precision).
+
+    Returns:
+        List of dicts with keys: timestamp, region, price_per_mwh.
     """
     rows: list[dict] = []
 
-    # Normalise column names (CAISO occasionally uses different casing)
+    try:
+        zip_buf = io.BytesIO(content)
+        with zipfile.ZipFile(zip_buf, "r") as zf:
+            csv_names = [n for n in zf.namelist() if n.lower().endswith(".csv")]
+            if not csv_names:
+                xml_names = [n for n in zf.namelist() if n.lower().endswith(".xml")]
+                if xml_names:
+                    with zf.open(xml_names[0]) as f:
+                        err_text = f.read(2000).decode("utf-8", errors="replace")
+                    logger.error(
+                        f"CAISO OASIS returned XML error for node={node}: {err_text[:500]}"
+                    )
+                else:
+                    logger.error(f"CAISO OASIS ZIP contains no CSV for node={node}")
+                return rows
+
+            for csv_name in csv_names:
+                with zf.open(csv_name) as f:
+                    try:
+                        df = pd.read_csv(f)
+                    except Exception as exc:
+                        logger.error(f"CAISO CSV parse error ({csv_name}): {exc}")
+                        continue
+
+                    rows.extend(_extract_lmp_rows(df, region, csv_name, floor_to))
+
+    except zipfile.BadZipFile:
+        snippet = content[:500].decode("utf-8", errors="replace")
+        logger.error(f"CAISO OASIS response is not a ZIP (node={node}): {snippet}")
+
+    return rows
+
+
+def _extract_lmp_rows(
+    df: pd.DataFrame,
+    region: str,
+    source_name: str,
+    floor_to: Optional[str] = "h",
+) -> list[dict]:
+    """Parse price rows from a CAISO OASIS CSV DataFrame.
+
+    CAISO OASIS PRC_LMP and PRC_INTVL_LMP CSVs share the same key columns:
+        INTERVALSTARTTIME_GMT  – ISO 8601 UTC timestamp (already UTC)
+        LMP_TYPE               – LMP | MCE | MCC | MLC
+        MW                     – Price in USD/MWh (column name is "MW" by CAISO
+                                  convention but holds a $/MWh price for PRC_LMP
+                                  and PRC_INTVL_LMP queries — NOT energy in MWh)
+
+    We keep only LMP_TYPE == "LMP" rows (total LMP; filters out congestion/loss).
+
+    Args:
+        floor_to: Timestamp floor unit ("h" for day-ahead hourly data, None for
+                  5-min real-time interval data).
+    """
+    rows: list[dict] = []
+
     df.columns = [c.strip().upper() for c in df.columns]
 
     ts_col = next((c for c in df.columns if "INTERVALSTARTTIME" in c and "GMT" in c), None)
     type_col = "LMP_TYPE" if "LMP_TYPE" in df.columns else None
-    # The price value column is called "MW" in CAISO OASIS for PRC_LMP
+    # MW is the price column in CAISO PRC_LMP / PRC_INTVL_LMP responses
     val_col = "MW" if "MW" in df.columns else None
 
     if ts_col is None or val_col is None:
@@ -251,15 +371,15 @@ def _extract_lmp_rows(df: pd.DataFrame, region: str, source_name: str) -> list[d
         )
         return rows
 
-    # Filter to total LMP only (not congestion/loss components)
+    # Filter to total LMP only — exclude congestion (MCC), loss (MLC), energy (MCE) components
     if type_col:
         df = df[df[type_col].astype(str).str.upper() == "LMP"]
 
     for _, row in df.iterrows():
         try:
             ts = pd.Timestamp(row[ts_col]).tz_convert("UTC")
-            # Round to hour (CAISO DAM is already hourly but be safe)
-            ts = ts.floor("h")
+            if floor_to:
+                ts = ts.floor(floor_to)
             price = float(row[val_col])
             rows.append({"timestamp": ts, "region": region, "price_per_mwh": price})
         except (ValueError, TypeError, KeyError):

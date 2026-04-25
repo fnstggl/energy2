@@ -1,10 +1,11 @@
 """Grid data provider package for Aurelius ingestion.
 
 Price providers (real wholesale electricity prices only):
-    CAISOPriceProvider     – us-west  (CAISO NP15 day-ahead LMP, no auth)
-    PJMPriceProvider       – us-east  (PJM Western Hub DA LMP, requires PJM_API_KEY)
-    ENTSOEPriceProvider    – eu-*     (ENTSO-E day-ahead prices, requires ENTSOE_API_KEY)
-    CSVPriceImporter       – any region from CSV file
+    CAISOPriceProvider         – us-west day-ahead LMP  (CAISO NP15, no auth)
+    CAISORealtimePriceProvider – us-west real-time 5-min LMP  (CAISO NP15, no auth)
+    PJMPriceProvider           – us-east  (PJM Western Hub DA LMP, requires PJM_API_KEY)
+    ENTSOEPriceProvider        – eu-*     (ENTSO-E day-ahead prices, requires ENTSOE_API_KEY)
+    CSVPriceImporter           – any region from CSV file
 
 Carbon providers:
     ElectricityMapsCarbonProvider  – requires ELECTRICITYMAPS_API_KEY
@@ -16,8 +17,9 @@ Deprecated:
                         (MWh), not wholesale electricity prices ($/MWh).
 
 Market registry:
-    MARKET_REGISTRY              – full metadata per region
+    MARKET_REGISTRY              – day-ahead metadata per region
     get_registry_entry(region)   – raises UnsupportedMarketPriceError if unknown
+    get_price_provider_for_region(region, price_type) – supports real_time_lmp lookup
     UnsupportedMarketPriceError  – raised for unsupported regions
 """
 
@@ -36,7 +38,7 @@ from .csv_importer import CSVPriceImporter, CSVCarbonImporter
 from .eia import EIAPriceProvider
 from .entsoe import ENTSOEPriceProvider
 from .electricitymaps import ElectricityMapsCarbonProvider
-from .caiso import CAISOPriceProvider
+from .caiso import CAISOPriceProvider, CAISORealtimePriceProvider
 from .pjm import PJMPriceProvider
 from .watttime import WattTimeCarbonProvider
 from .market_registry import (
@@ -62,6 +64,7 @@ __all__ = [
     "CSVPriceImporter",
     "CSVCarbonImporter",
     "CAISOPriceProvider",
+    "CAISORealtimePriceProvider",
     "PJMPriceProvider",
     "ENTSOEPriceProvider",
     "EIAPriceProvider",
