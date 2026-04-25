@@ -38,6 +38,7 @@ from __future__ import annotations
 import logging
 from dataclasses import dataclass, field
 from datetime import datetime, timedelta, timezone
+from pathlib import Path
 from typing import Any, Optional, Type
 
 import pandas as pd
@@ -225,6 +226,7 @@ class BacktestEngine:
         carbon_forecaster_cls: Optional[Type] = None,
         carbon_forecaster_config: Optional[Any] = None,
         context_hours: int = 48,
+        recorder_path: Optional[Path] = None,
     ) -> None:
         self.method = method
         self.config = config or OptimizationConfig()
@@ -242,6 +244,12 @@ class BacktestEngine:
         self.carbon_forecaster_cls = carbon_forecaster_cls
         self.carbon_forecaster_config = carbon_forecaster_config
         self.context_hours = context_hours
+
+        # Optional PostExecutionRecorder for learning-loop data accumulation
+        self._recorder = None
+        if recorder_path is not None:
+            from aurelius.execution.post_execution import PostExecutionRecorder
+            self._recorder = PostExecutionRecorder(output_path=str(recorder_path))
 
     @property
     def uses_ml_forecaster(self) -> bool:
@@ -388,7 +396,7 @@ class BacktestEngine:
             except Exception as exc:
                 logger.error(f"Fold {split.fold_index}, baseline '{name}': {exc}")
 
-        return BacktestRound(
+        round_ = BacktestRound(
             fold_index=split.fold_index,
             train_start=split.train_start,
             train_end=split.train_end,
@@ -401,6 +409,20 @@ class BacktestEngine:
             baseline_metrics=baseline_metrics,
             forecast_quality=forecast_quality,
         )
+
+        if self._recorder is not None:
+            self._record_fold_decisions(
+                fold_index=split.fold_index,
+                opt_schedule=opt_schedule,
+                baseline_schedules=baseline_schedules,
+                eval_jobs=eval_jobs,
+                forecast_price_data=forecast_price_data,
+                forecast_carbon_data=forecast_carbon_data,
+                eval_price_data=eval_price_data,
+                eval_carbon_data=eval_carbon_data,
+            )
+
+        return round_
 
     # ------------------------------------------------------------------
     # ML forecaster path
@@ -577,6 +599,135 @@ class BacktestEngine:
         except Exception as exc:
             logger.warning(f"Forecast quality measurement failed: {exc}")
             return ForecastQuality(forecast_method="ml_quantile")
+
+
+    # ------------------------------------------------------------------
+    # PostExecutionRecorder wiring
+    # ------------------------------------------------------------------
+
+    def _record_fold_decisions(
+        self,
+        fold_index: int,
+        opt_schedule: list[ScheduleDecision],
+        baseline_schedules: dict[str, list[ScheduleDecision]],
+        eval_jobs: list[Job],
+        forecast_price_data: dict,
+        forecast_carbon_data: dict,
+        eval_price_data: dict,
+        eval_carbon_data: dict,
+    ) -> None:
+        """Write one PostExecutionRecord per optimizer decision for this fold.
+
+        Uses synthetic ExecutionResult/ExecutionConfig (status="dry_run") so
+        the recorder never touches live infrastructure.  Forecast values come
+        from the optimizer's price/carbon signal; realized values come from
+        eval-window actuals (ground truth for that fold).
+        """
+        from aurelius.execution.post_execution import (
+            ForecastSnapshot,
+            PostExecutionRecord,
+            RealizedOutcome,
+        )
+        from aurelius.execution.base import ExecutionConfig, ExecutionResult
+
+        job_map: dict[str, Job] = {j.job_id: j for j in eval_jobs}
+
+        # Use the first available baseline for comparison (deterministic order)
+        ref_baseline_name = next(iter(baseline_schedules), None)
+        ref_baseline_map: dict[str, ScheduleDecision] = {}
+        if ref_baseline_name:
+            for d in baseline_schedules[ref_baseline_name]:
+                ref_baseline_map[d.job_id] = d
+
+        exec_config = ExecutionConfig(mode="dry_run", constraint_profile="batch_optimized")
+
+        for decision in opt_schedule:
+            try:
+                job = job_map.get(decision.job_id)
+                baseline_decision = ref_baseline_map.get(decision.job_id)
+
+                # --- Build ForecastSnapshot from the optimizer's price signal ---
+                fc_price = None
+                fc_baseline_price = None
+                region_fc = forecast_price_data.get(decision.region, {})
+                start_key = decision.start_time
+                if start_key.tzinfo is None:
+                    start_key = start_key.replace(tzinfo=timezone.utc)
+                if region_fc:
+                    fc_price = region_fc.get(start_key)
+                    if fc_price is None:
+                        # Round to nearest hour
+                        rounded = start_key.replace(minute=0, second=0, microsecond=0)
+                        fc_price = region_fc.get(rounded)
+
+                if baseline_decision is not None and region_fc:
+                    bl_key = baseline_decision.start_time
+                    if bl_key.tzinfo is None:
+                        bl_key = bl_key.replace(tzinfo=timezone.utc)
+                    fc_baseline_price = region_fc.get(bl_key)
+                    if fc_baseline_price is None:
+                        bl_rounded = bl_key.replace(minute=0, second=0, microsecond=0)
+                        fc_baseline_price = region_fc.get(bl_rounded)
+
+                power_kw = job.power_kw if job else 1.0
+                runtime = decision.actual_runtime_hours or (job.runtime_hours if job else 1.0)
+
+                fc_energy_cost_p50 = None
+                if fc_price is not None:
+                    fc_energy_cost_p50 = fc_price * power_kw * runtime / 1000.0
+
+                fc_energy_cost_baseline = None
+                if fc_baseline_price is not None:
+                    fc_energy_cost_baseline = fc_baseline_price * power_kw * runtime / 1000.0
+
+                snapshot = ForecastSnapshot(
+                    energy_cost_p50=fc_energy_cost_p50,
+                    energy_cost_p90=None,
+                    energy_cost_baseline=fc_energy_cost_baseline,
+                )
+
+                # --- Build RealizedOutcome from eval-window actuals ---
+                real_price = None
+                real_energy_cost = None
+                region_eval = eval_price_data.get(decision.region, {})
+                if region_eval:
+                    real_price = region_eval.get(start_key)
+                    if real_price is None:
+                        rounded = start_key.replace(minute=0, second=0, microsecond=0)
+                        real_price = region_eval.get(rounded)
+                if real_price is not None:
+                    real_energy_cost = real_price * power_kw * runtime / 1000.0
+
+                realized = RealizedOutcome(
+                    realized_start_time=decision.start_time,
+                    realized_energy_price=real_price,
+                    realized_energy_cost=real_energy_cost,
+                )
+
+                exec_result = ExecutionResult(
+                    job_id=decision.job_id,
+                    submitted=False,
+                    aws_job_id=None,
+                    region=decision.region,
+                    submit_time=decision.start_time,
+                    status="dry_run",
+                )
+
+                self._recorder.record(
+                    decision=decision,
+                    baseline_decision=baseline_decision,
+                    execution_result=exec_result,
+                    config=exec_config,
+                    forecast=snapshot,
+                    realized=realized,
+                )
+            except Exception as exc:
+                logger.debug(
+                    "Fold %d: failed to record decision for job %s: %s",
+                    fold_index,
+                    decision.job_id,
+                    exc,
+                )
 
 
 def _to_ts(dt: datetime) -> pd.Timestamp:

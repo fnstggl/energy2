@@ -182,9 +182,16 @@ class CarbonQuantileForecaster:
             for bucket in data.get("buckets", []):
                 region = bucket.get("region")
                 hour = bucket.get("hour_utc")
-                carbon = bucket.get("carbon", {})
-                if region and hour is not None and "mean_error" in carbon:
-                    bias.setdefault(region, {})[int(hour)] = float(carbon["mean_error"])
+                if region is None or hour is None:
+                    continue
+                # Primary schema: carbon_p50_bias (from train_forecast_corrections)
+                bias_val = bucket.get("carbon_p50_bias")
+                # Legacy schema: carbon.mean_error
+                if bias_val is None:
+                    carbon = bucket.get("carbon", {})
+                    bias_val = carbon.get("mean_error") if isinstance(carbon, dict) else None
+                if bias_val is not None:
+                    bias.setdefault(region, {})[int(hour)] = float(bias_val)
             self._p50_bias = bias
             self._corrections_loaded = True
             logger.info(

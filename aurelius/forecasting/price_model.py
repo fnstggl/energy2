@@ -176,9 +176,16 @@ class PriceQuantileForecaster:
             for bucket in data.get("buckets", []):
                 region = bucket.get("region")
                 hour = bucket.get("hour_utc")
-                ec = bucket.get("energy_cost", {})
-                if region and hour is not None and "mean_error" in ec:
-                    bias.setdefault(region, {})[int(hour)] = float(ec["mean_error"])
+                if region is None or hour is None:
+                    continue
+                # Primary schema: energy_cost_p50_bias (from train_forecast_corrections)
+                bias_val = bucket.get("energy_cost_p50_bias")
+                # Legacy schema: energy_cost.mean_error
+                if bias_val is None:
+                    ec = bucket.get("energy_cost", {})
+                    bias_val = ec.get("mean_error") if isinstance(ec, dict) else None
+                if bias_val is not None:
+                    bias.setdefault(region, {})[int(hour)] = float(bias_val)
             self._p50_bias = bias
             self._corrections_loaded = True
             logger.info(

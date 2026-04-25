@@ -340,6 +340,53 @@ def label_decision_outcome(
             return "neutral"
 
 
+def lookup_realized_price(
+    region: str,
+    start_time: datetime,
+    runtime_hours: float,
+    market_registry: Optional[Any] = None,
+) -> Optional[float]:
+    """Look up the average realized energy price for a job execution window.
+
+    Queries the market registry for hourly prices covering the job's runtime
+    and returns the simple average $/MWh.  Safe to call with market_registry=None
+    — returns None without side effects.
+
+    Args:
+        region: Canonical region identifier (e.g. "us-east", "CAISO").
+        start_time: When the job started (UTC datetime).
+        runtime_hours: Duration of the job in fractional hours.
+        market_registry: Optional provider registry.  If None, returns None.
+
+    Returns:
+        Average realized price in $/MWh, or None if unavailable.
+    """
+    if market_registry is None:
+        return None
+    try:
+        from datetime import timedelta as _td
+        end_time = start_time + _td(hours=runtime_hours)
+        # Market registry may expose fetch_prices(region, start, end) → DataFrame
+        price_df = market_registry.fetch_prices(region, start_time, end_time)
+        if price_df is None:
+            return None
+        import pandas as pd
+        if not isinstance(price_df, pd.DataFrame) or price_df.empty:
+            return None
+        if "price_per_mwh" not in price_df.columns:
+            return None
+        mean_price = float(price_df["price_per_mwh"].mean())
+        return mean_price if not (mean_price != mean_price) else None  # NaN guard
+    except Exception as exc:
+        logger.debug(
+            "lookup_realized_price failed for region=%s start=%s: %s",
+            region,
+            start_time,
+            exc,
+        )
+        return None
+
+
 class PostExecutionRecorder:
     """Records post-execution measurements for offline analysis.
 
@@ -366,14 +413,23 @@ class PostExecutionRecorder:
         )
     """
 
-    def __init__(self, output_path: Optional[str] = None):
+    def __init__(
+        self,
+        output_path: Optional[str] = None,
+        market_registry: Optional[Any] = None,
+    ):
         """Initialize the recorder.
 
         Args:
-            output_path: Path to JSONL output file (uses default if None)
+            output_path: Path to JSONL output file (uses default if None).
+            market_registry: Optional market registry for live realized-price
+                lookups.  When provided, the recorder will attempt to populate
+                ``realized_energy_price`` from the registry for decisions that
+                don't already have it.
         """
         path = output_path or get_default_post_execution_path()
         self._writer = JSONLWriter(path)
+        self._market_registry = market_registry
 
     def record(
         self,
@@ -404,13 +460,34 @@ class PostExecutionRecorder:
             at debug level to avoid cluttering production logs.
         """
         try:
+            realized_to_use = realized or RealizedOutcome()
+
+            # Populate realized_energy_price from the market registry when missing
+            if (
+                self._market_registry is not None
+                and realized_to_use.realized_energy_price is None
+            ):
+                runtime = getattr(decision, "actual_runtime_hours", None) or 1.0
+                looked_up = lookup_realized_price(
+                    region=decision.region,
+                    start_time=decision.start_time,
+                    runtime_hours=runtime,
+                    market_registry=self._market_registry,
+                )
+                if looked_up is not None:
+                    from dataclasses import replace as _dc_replace
+                    realized_to_use = _dc_replace(
+                        realized_to_use,
+                        realized_energy_price=looked_up,
+                    )
+
             record = self._create_record(
                 decision=decision,
                 baseline_decision=baseline_decision,
                 execution_result=execution_result,
                 config=config,
                 forecast=forecast or ForecastSnapshot(),
-                realized=realized or RealizedOutcome(),
+                realized=realized_to_use,
                 was_skipped_by_safety_or_latency=was_skipped_by_safety_or_latency,
             )
 

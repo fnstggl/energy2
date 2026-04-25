@@ -190,15 +190,24 @@ class ShadowRunner:
         self,
         config: Optional[OptimizationConfig] = None,
         output_path: Optional[Path] = None,
+        post_execution_path: Optional[Path] = None,
     ):
         """
         Args:
             config: Optimization config used for cost weights.
-            output_path: If set, write shadow results as JSONL to this path.
+            output_path: If set, write ShadowResult JSONL to this path.
+            post_execution_path: If set, also write PostExecutionRecord JSONL
+                for learning-loop consumption by train_offline.py.
         """
         self.config = config or OptimizationConfig()
         self.objective_fn = ObjectiveFunction(self.config)
         self.output_path = output_path
+
+        # Optional PostExecutionRecorder for learning-loop data accumulation
+        self._pe_recorder = None
+        if post_execution_path is not None:
+            from .post_execution import PostExecutionRecorder
+            self._pe_recorder = PostExecutionRecorder(output_path=str(post_execution_path))
 
     def run(
         self,
@@ -299,6 +308,10 @@ class ShadowRunner:
             )
             result.records.append(record)
 
+            # Write PostExecutionRecord for learning-loop data accumulation
+            if self._pe_recorder is not None:
+                self._write_pe_record(decision, baseline_decision, aurelius_obj, baseline_obj)
+
             # Accumulate aggregates
             result.total_realized_cost += aurelius_obj.total
             result.total_baseline_cost += baseline_obj.total
@@ -324,6 +337,85 @@ class ShadowRunner:
             self._persist(result)
 
         return result
+
+    def _write_pe_record(
+        self,
+        decision: ScheduleDecision,
+        baseline_decision: Optional[ScheduleDecision],
+        aurelius_obj: "ObjectiveResult",
+        baseline_obj: "ObjectiveResult",
+    ) -> None:
+        """Write a PostExecutionRecord for learning-loop consumption.
+
+        Uses realized costs from the shadow run. Never raises.
+        """
+        try:
+            from .post_execution import (
+                ForecastSnapshot,
+                RealizedOutcome,
+            )
+            from .base import ExecutionConfig, ExecutionResult
+
+            # Build forecast snapshot from decision.forecast if available
+            forecast_data = getattr(decision, "forecast", None) or {}
+            if isinstance(forecast_data, dict):
+                fc_p50 = forecast_data.get("energy_cost_p50")
+                fc_p90 = forecast_data.get("energy_cost_p90")
+                fc_baseline = forecast_data.get("energy_cost_baseline")
+                fc_carbon_p50 = forecast_data.get("carbon_p50")
+                fc_carbon_p90 = forecast_data.get("carbon_p90")
+                fc_carbon_baseline = forecast_data.get("carbon_baseline")
+            else:
+                fc_p50 = fc_p90 = fc_baseline = None
+                fc_carbon_p50 = fc_carbon_p90 = fc_carbon_baseline = None
+
+            # If no p50 in forecast, use baseline cost as the forecast "signal"
+            if fc_p50 is None:
+                fc_p50 = baseline_obj.energy_cost if baseline_obj else None
+            if fc_baseline is None:
+                fc_baseline = baseline_obj.energy_cost if baseline_obj else None
+
+            snapshot = ForecastSnapshot(
+                energy_cost_p50=fc_p50,
+                energy_cost_p90=fc_p90,
+                energy_cost_baseline=fc_baseline,
+                carbon_p50=fc_carbon_p50,
+                carbon_p90=fc_carbon_p90,
+                carbon_baseline=fc_carbon_baseline,
+            )
+
+            realized = RealizedOutcome(
+                realized_start_time=decision.start_time,
+                realized_energy_cost=aurelius_obj.energy_cost,
+                realized_carbon=aurelius_obj.carbon_kg,
+            )
+
+            exec_result = ExecutionResult(
+                job_id=decision.job_id,
+                submitted=False,
+                aws_job_id=None,
+                region=decision.region,
+                submit_time=decision.start_time,
+                status="dry_run",
+            )
+            exec_config = ExecutionConfig(
+                mode="dry_run", constraint_profile="batch_optimized"
+            )
+
+            self._pe_recorder.record(
+                decision=decision,
+                baseline_decision=baseline_decision,
+                execution_result=exec_result,
+                config=exec_config,
+                forecast=snapshot,
+                realized=realized,
+            )
+        except Exception as exc:
+            logger.debug(
+                "ShadowRunner: failed to write PostExecutionRecord for job %s: %s",
+                decision.job_id,
+                exc,
+            )
 
     def _check_constraints(
         self,
