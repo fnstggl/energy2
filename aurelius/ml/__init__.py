@@ -41,6 +41,16 @@ from .trainers import (
     train_risk_priors,
 )
 
+from .forecast_evaluator import (
+    ForecastEvaluator,
+    ForecastPoint,
+    EvaluationResult,
+    ModelComparisonResult,
+    compare_models,
+)
+
+from .model_store import ModelStore
+
 __all__ = [
     # Dataset
     "load_post_execution_records",
@@ -57,4 +67,12 @@ __all__ = [
     "generate_uncertainty_rules",
     "train_savings_model",
     "train_risk_priors",
+    # Forecast evaluation
+    "ForecastEvaluator",
+    "ForecastPoint",
+    "EvaluationResult",
+    "ModelComparisonResult",
+    "compare_models",
+    # Model store
+    "ModelStore",
 ]
