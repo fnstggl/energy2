@@ -10,11 +10,12 @@ from aurelius.ingestion.grid_apis.market_registry import (
     get_price_provider_for_region,
     get_registry_entry,
     list_supported_regions,
+    _REAL_TIME_REGISTRY,
 )
 
 
 # ---------------------------------------------------------------------------
-# Registry entries
+# Day-ahead registry entries
 # ---------------------------------------------------------------------------
 
 class TestRegistryEntries:
@@ -23,6 +24,29 @@ class TestRegistryEntries:
         assert entry.provider == "caiso_oasis"
         assert entry.auth_required is False
         assert entry.auth_env_var is None
+
+    def test_us_west_node_is_np15_trading_hub(self):
+        """us-west must use TH_NP15_GEN-APND — the standard CAISO NP15 trading hub."""
+        entry = get_registry_entry("us-west")
+        assert entry.hub_or_zone == "TH_NP15_GEN-APND"
+
+    def test_us_west_timezone_is_america_los_angeles(self):
+        entry = get_registry_entry("us-west")
+        assert entry.timezone == "America/Los_Angeles"
+
+    def test_us_west_price_type_is_day_ahead_lmp(self):
+        entry = get_registry_entry("us-west")
+        assert entry.price_type == "day_ahead_lmp"
+
+    def test_us_west_endpoint_hint_has_resultformat_6(self):
+        """resultformat=6 must be in the endpoint hint (ZIP/CSV output)."""
+        entry = get_registry_entry("us-west")
+        assert "resultformat=6" in entry.endpoint_hint
+
+    def test_us_west_endpoint_hint_uses_prc_lmp_dam(self):
+        entry = get_registry_entry("us-west")
+        assert "PRC_LMP" in entry.endpoint_hint
+        assert "DAM" in entry.endpoint_hint
 
     def test_us_east_resolves_to_pjm(self):
         entry = get_registry_entry("us-east")
@@ -72,6 +96,70 @@ class TestRegistryEntries:
         assert set(regions) == set(MARKET_REGISTRY.keys())
         assert len(regions) >= 5  # at minimum: us-west, us-east, us-south, eu-west, eu-north
 
+    def test_caiso_is_not_universal_price_source(self):
+        """CAISO covers us-west only; other regions must use their own providers."""
+        west = get_registry_entry("us-west")
+        east = get_registry_entry("us-east")
+        assert west.provider != east.provider, "CAISO must not be the universal price source"
+        assert east.provider == "pjm"
+
+
+# ---------------------------------------------------------------------------
+# Real-time registry entries
+# ---------------------------------------------------------------------------
+
+class TestRealTimeRegistry:
+    def test_us_west_has_real_time_entry(self):
+        rt = get_price_provider_for_region("us-west", price_type="real_time_lmp")
+        assert rt.provider == "caiso_oasis"
+        assert rt.price_type == "real_time_lmp"
+
+    def test_us_west_real_time_granularity_is_5min(self):
+        rt = get_price_provider_for_region("us-west", price_type="real_time_lmp")
+        assert rt.granularity == "5min"
+
+    def test_us_west_real_time_node_is_np15_trading_hub(self):
+        rt = get_price_provider_for_region("us-west", price_type="real_time_lmp")
+        assert rt.hub_or_zone == "TH_NP15_GEN-APND"
+
+    def test_us_west_real_time_endpoint_uses_prc_intvl_lmp(self):
+        rt = get_price_provider_for_region("us-west", price_type="real_time_lmp")
+        assert "PRC_INTVL_LMP" in rt.endpoint_hint
+        assert "RTM" in rt.endpoint_hint
+        assert "resultformat=6" in rt.endpoint_hint
+
+    def test_us_west_real_time_auth_not_required(self):
+        rt = get_price_provider_for_region("us-west", price_type="real_time_lmp")
+        assert rt.auth_required is False
+        assert rt.auth_env_var is None
+
+    def test_real_time_registry_unit_is_usd_per_mwh(self):
+        for region, entry in _REAL_TIME_REGISTRY.items():
+            assert entry.unit in {"USD/MWh", "EUR/MWh"}, (
+                f"Real-time entry for '{region}' has bad unit '{entry.unit}'"
+            )
+
+    def test_real_time_registry_price_type_not_demand(self):
+        forbidden = {"demand", "load", "generation", "consumption"}
+        for region, entry in _REAL_TIME_REGISTRY.items():
+            for word in forbidden:
+                assert word not in entry.price_type.lower()
+
+    def test_rtm_alias_accepted(self):
+        """'rtm' is an accepted alias for real_time_lmp."""
+        rt = get_price_provider_for_region("us-west", price_type="rtm")
+        assert rt.price_type == "real_time_lmp"
+
+    def test_real_time_alias_accepted(self):
+        """'real_time' is an accepted alias for real_time_lmp."""
+        rt = get_price_provider_for_region("us-west", price_type="real_time")
+        assert rt.price_type == "real_time_lmp"
+
+    def test_us_east_has_no_real_time_entry(self):
+        """PJM is day-ahead only in this registry — real_time_lmp should raise."""
+        with pytest.raises(UnsupportedMarketPriceError):
+            get_price_provider_for_region("us-east", price_type="real_time_lmp")
+
 
 # ---------------------------------------------------------------------------
 # UnsupportedMarketPriceError
@@ -92,17 +180,23 @@ class TestUnsupportedMarketPriceError:
             get_registry_entry("xx-bad-region")
 
     def test_get_price_provider_price_type_mismatch_raises(self):
-        """Requesting a price_type that doesn't match the registry entry raises."""
-        with pytest.raises(UnsupportedMarketPriceError, match="real_time"):
-            get_price_provider_for_region("us-west", price_type="real_time")
+        """Requesting a price_type that doesn't match any entry raises."""
+        with pytest.raises(UnsupportedMarketPriceError):
+            # us-east has day_ahead_lmp, not real_time_lmp (PJM not in RT registry)
+            get_price_provider_for_region("us-east", price_type="real_time_lmp")
 
-    def test_get_price_provider_matching_type_returns_entry(self):
-        entry = get_price_provider_for_region("us-west", price_type="day_ahead")
+    def test_get_price_provider_matching_day_ahead_type_returns_entry(self):
+        entry = get_price_provider_for_region("us-west", price_type="day_ahead_lmp")
         assert entry.provider == "caiso_oasis"
 
     def test_get_price_provider_no_type_filter_returns_entry(self):
         entry = get_price_provider_for_region("us-east")
         assert entry.provider == "pjm"
+
+    def test_unsupported_price_type_string_raises(self):
+        """A completely unknown price_type must raise, not silently return."""
+        with pytest.raises(UnsupportedMarketPriceError):
+            get_price_provider_for_region("us-west", price_type="spot_price_unknown")
 
 
 # ---------------------------------------------------------------------------
@@ -125,7 +219,8 @@ class TestAssertPriceTypeNotDemand:
             assert_price_type_not_demand(label)
 
     @pytest.mark.parametrize("label", [
-        "day_ahead",
+        "day_ahead_lmp",
+        "real_time_lmp",
         "lmp",
         "total_lmp_da",
         "price_per_mwh",
@@ -162,7 +257,6 @@ class TestEIANotAPrice:
         t0 = datetime(2024, 1, 1, tzinfo=timezone.utc)
         try:
             result = provider.fetch_prices("us-east", t0, t0 + pd.Timedelta(hours=1))
-            # If we reach here, it must NOT be a non-empty DataFrame
             assert result is None or (hasattr(result, "empty") and result.empty), (
                 "EIAPriceProvider returned a non-empty DataFrame — this means demand/load "
                 "data was silently mapped to price_per_mwh, which is WRONG."
