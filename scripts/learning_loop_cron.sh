@@ -40,6 +40,8 @@ REPO_ROOT="$(cd "${SCRIPT_DIR}/.." && pwd)"
 DATA_DIR="${AURELIUS_DATA_DIR:-${REPO_ROOT}/aurelius/data}"
 ARTIFACT_DIR="${AURELIUS_ARTIFACT_DIR:-${DATA_DIR}/ml_artifacts}"
 PE_JSONL="${AURELIUS_PE_JSONL:-${DATA_DIR}/post_execution/post_execution_records.jsonl}"
+PRICE_HISTORY_CSV="${AURELIUS_PRICE_HISTORY_CSV:-${DATA_DIR}/prices/historical_prices.csv}"
+CARBON_HISTORY_CSV="${AURELIUS_CARBON_HISTORY_CSV:-${DATA_DIR}/carbon/historical_carbon.csv}"
 MIN_RECORDS="${AURELIUS_MIN_RECORDS:-50}"
 SEED="${AURELIUS_SEED:-1337}"
 LOG_DIR="${AURELIUS_LOG_DIR:-${REPO_ROOT}/logs}"
@@ -84,14 +86,16 @@ log() {
 }
 
 log "=== Aurelius Daily Learning Loop ==="
-log "Repo root:      ${REPO_ROOT}"
-log "Data dir:       ${DATA_DIR}"
-log "Artifact dir:   ${ARTIFACT_DIR}"
-log "PE JSONL:       ${PE_JSONL}"
-log "Min records:    ${MIN_RECORDS}"
-log "Region:         ${REGION}"
-log "Days back:      ${DAYS_BACK}"
-log "Dry run:        ${DRY_RUN}"
+log "Repo root:        ${REPO_ROOT}"
+log "Data dir:         ${DATA_DIR}"
+log "Artifact dir:     ${ARTIFACT_DIR}"
+log "PE JSONL:         ${PE_JSONL}"
+log "Price history:    ${PRICE_HISTORY_CSV}"
+log "Carbon history:   ${CARBON_HISTORY_CSV}"
+log "Min records:      ${MIN_RECORDS}"
+log "Region:           ${REGION}"
+log "Days back:        ${DAYS_BACK}"
+log "Dry run:          ${DRY_RUN}"
 
 cd "${REPO_ROOT}"
 
@@ -101,14 +105,28 @@ cd "${REPO_ROOT}"
 log ""
 log "--- Step 1: Ingesting new price/carbon data ---"
 
-if [[ -z "${EIA_API_KEY:-}" && -z "${ELECTRICITYMAPS_API_KEY:-}" ]]; then
-    log "WARNING: No API keys set (EIA_API_KEY, ELECTRICITYMAPS_API_KEY)."
-    log "         Skipping live data ingestion. Using existing data only."
+# CAISO (us-west) needs no key; PJM (us-east) needs PJM_API_KEY.
+# Carbon ingestion is always best-effort and gated inside cmd_ingest.
+_has_price_source=false
+if [[ "${REGION}" == "us-west" ]]; then
+    _has_price_source=true  # CAISO OASIS requires no API key
+elif [[ -n "${PJM_API_KEY:-}" ]]; then
+    _has_price_source=true  # PJM Data Miner API
+elif [[ -n "${ENTSOE_API_KEY:-}" ]]; then
+    _has_price_source=true  # ENTSO-E for EU regions
+fi
+
+if [[ "${_has_price_source}" == "false" ]]; then
+    log "WARNING: No price API key available for region '${REGION}'."
+    log "         Set PJM_API_KEY (us-east) or ENTSOE_API_KEY (eu-*), or use us-west (no key needed)."
+    log "         Skipping live price ingestion. Using existing data only."
 else
     INGEST_CMD=(
         python -m aurelius.cli ingest
         --region "${REGION}"
         --days "${DAYS_BACK}"
+        --price-output "${PRICE_HISTORY_CSV}"
+        --carbon-output "${CARBON_HISTORY_CSV}"
     )
     if [[ "${DRY_RUN}" == "true" ]]; then
         log "DRY RUN: would run: ${INGEST_CMD[*]}"
@@ -175,6 +193,154 @@ if ! "${TRAIN_CMD[@]}" 2>&1; then
 fi
 
 log "Training complete. Staging dir: ${STAGING_DIR}"
+
+# ---------------------------------------------------------------------------
+# Step 3.5: Retrain price/carbon forecasters (MAPE comparison)
+# ---------------------------------------------------------------------------
+# If historical price CSV exists, retrain the LightGBM quantile forecasters
+# using the newly generated forecast_corrections artifact (bias correction).
+# retrain_forecasters.py writes promoted models to STAGING_DIR/models/ only
+# when the holdout MAPE improves by ≥ 1%.
+# ---------------------------------------------------------------------------
+log ""
+log "--- Step 3.5: Retraining price/carbon forecasters (MAPE evaluation) ---"
+
+FORECASTER_PROMOTED=false
+FORECASTER_MAPE_RESULT="skipped"
+
+if [[ -f "${PRICE_HISTORY_CSV}" ]]; then
+    # Store the corrections artifact path so retrain_forecasters.py can load it
+    CORRECTIONS_PATH="${STAGING_DIR}/forecast_corrections_v1.json"
+
+    # Determine date range from the CSV (use last 180 days if enough data)
+    RETRAIN_START=$(python - "${PRICE_HISTORY_CSV}" << 'PYTHON_EOF'
+import csv, sys
+from datetime import datetime, timedelta, timezone
+path = sys.argv[1]
+try:
+    with open(path) as f:
+        rows = list(csv.DictReader(f))
+    if not rows:
+        print("")
+        sys.exit(0)
+    ts_col = next((k for k in rows[0] if "time" in k.lower() or "date" in k.lower()), None)
+    if not ts_col:
+        print("")
+        sys.exit(0)
+    dates = [r[ts_col][:10] for r in rows if r.get(ts_col, "")]
+    earliest = min(dates)
+    latest   = max(dates)
+    # Use up to 180 days; default start = earliest date in CSV
+    from datetime import datetime
+    latest_dt  = datetime.fromisoformat(latest)
+    start_dt   = latest_dt - timedelta(days=180)
+    # Never go before earliest available data
+    earliest_dt = datetime.fromisoformat(earliest)
+    start_dt = max(start_dt, earliest_dt)
+    print(start_dt.strftime("%Y-%m-%d"))
+except Exception as exc:
+    print(f"ERROR: {exc}", file=sys.stderr)
+    print("")
+PYTHON_EOF
+    )
+
+    RETRAIN_END=$(python - "${PRICE_HISTORY_CSV}" << 'PYTHON_EOF'
+import csv, sys
+path = sys.argv[1]
+try:
+    with open(path) as f:
+        rows = list(csv.DictReader(f))
+    ts_col = next((k for k in (rows[0] if rows else {}) if "time" in k.lower() or "date" in k.lower()), None)
+    if not rows or not ts_col:
+        print("")
+        sys.exit(0)
+    dates = [r[ts_col][:10] for r in rows if r.get(ts_col, "")]
+    print(max(dates))
+except Exception as exc:
+    print("")
+PYTHON_EOF
+    )
+
+    if [[ -n "${RETRAIN_START}" && -n "${RETRAIN_END}" && "${RETRAIN_START}" < "${RETRAIN_END}" ]]; then
+        log "Retraining forecasters: ${RETRAIN_START} → ${RETRAIN_END}"
+
+        STORE_ROOT="${STAGING_DIR}/models"
+        mkdir -p "${STORE_ROOT}"
+
+        RETRAIN_CMD=(
+            python scripts/retrain_forecasters.py
+            --start "${RETRAIN_START}"
+            --end "${RETRAIN_END}"
+            --data-csv-price "${PRICE_HISTORY_CSV}"
+            --store-root "${STORE_ROOT}"
+            --holdout-days 30
+            --primary-metric mape
+            --min-improvement 1.0
+            --seed "${SEED}"
+        )
+
+        if [[ -f "${CARBON_HISTORY_CSV}" ]]; then
+            RETRAIN_CMD+=(--data-csv-carbon "${CARBON_HISTORY_CSV}")
+        fi
+
+        log "Running: ${RETRAIN_CMD[*]}"
+        if "${RETRAIN_CMD[@]}" 2>&1; then
+            FORECASTER_PROMOTED=true
+            FORECASTER_MAPE_RESULT="promoted"
+            log "Forecasters retrained and promoted (MAPE improved)."
+        else
+            RETRAIN_EXIT=$?
+            if [[ ${RETRAIN_EXIT} -eq 2 ]]; then
+                # Exit code 2 = no improvement, not an error
+                FORECASTER_MAPE_RESULT="no_improvement"
+                log "Forecaster MAPE did not improve; existing models retained."
+            else
+                # Actual error — non-fatal, log and continue
+                FORECASTER_MAPE_RESULT="error"
+                log "WARNING: Forecaster retraining failed (non-fatal). Artifacts NOT promoted."
+            fi
+        fi
+
+        # Write MAPE comparison outcome to manifest so Step 5 / drift check can read it
+        python - "${STAGING_DIR}" "${FORECASTER_MAPE_RESULT}" "${STORE_ROOT}" << 'PYTHON_EOF'
+import json, sys
+from pathlib import Path
+
+staging    = Path(sys.argv[1])
+mape_result = sys.argv[2]
+store_root  = Path(sys.argv[3])
+manifest_p = staging / "manifest_v1.json"
+
+if manifest_p.exists():
+    manifest = json.loads(manifest_p.read_text())
+else:
+    manifest = {}
+
+manifest["forecaster_mape_result"] = mape_result
+
+# Record the latest holdout MAPE if the model store has it
+try:
+    result_files = list(store_root.glob("**/evaluation_result*.json"))
+    if result_files:
+        latest = sorted(result_files)[-1]
+        ev = json.loads(latest.read_text())
+        candidate_mape = ev.get("candidate", {}).get("price", {}).get("mape")
+        if candidate_mape is not None:
+            manifest["baseline_mape"] = float(candidate_mape)
+            print(f"Stored baseline_mape={candidate_mape:.4f} for next drift check.")
+except Exception as exc:
+    print(f"Could not extract holdout MAPE: {exc}")
+
+manifest_p.write_text(json.dumps(manifest, indent=2))
+PYTHON_EOF
+
+    else
+        log "Insufficient date range (${RETRAIN_START} → ${RETRAIN_END}); skipping forecaster retraining."
+    fi
+else
+    log "No historical price CSV found at ${PRICE_HISTORY_CSV}; skipping forecaster retraining."
+    log "Run 'python -m aurelius.cli ingest --region ${REGION} --days 90' to seed historical data."
+fi
 
 # ---------------------------------------------------------------------------
 # Step 4: Validate candidate artifacts
@@ -335,7 +501,13 @@ PYTHON_EOF
     if [[ "${COMPARE_RESULT}" == PROMOTE:* ]]; then
         PROMOTE=true
     else
-        log "Candidate artifacts not better than current. Keeping existing artifacts."
+        # If savings model did not improve, still promote if forecaster MAPE improved
+        if [[ "${FORECASTER_PROMOTED}" == "true" ]]; then
+            log "Savings model did not improve, but forecaster MAPE improved — promoting."
+            PROMOTE=true
+        else
+            log "Candidate artifacts not better than current. Keeping existing artifacts."
+        fi
     fi
 fi
 

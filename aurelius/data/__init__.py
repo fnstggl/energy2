@@ -7,9 +7,10 @@ Provides minimal, dependency-free persistence for:
 - Safe for air-gapped environments
 """
 
-from .persistence import JSONLWriter, get_default_post_execution_path
+from .persistence import JSONLWriter, RotatingJSONLWriter, get_default_post_execution_path
 
 __all__ = [
     "JSONLWriter",
+    "RotatingJSONLWriter",
     "get_default_post_execution_path",
 ]

@@ -447,6 +447,126 @@ def cmd_backtest(args):
         print(f"Results saved to: {output_path}")
 
 
+def cmd_ingest(args):
+    """Fetch recent price/carbon data and append to historical CSV files.
+
+    Fetches `--days` days of data ending at the current UTC hour for the
+    specified region. Appends new rows to the output CSVs (creates them if
+    absent). Exits non-zero if no price provider is available for the region.
+
+    Output CSVs are used by `scripts/retrain_forecasters.py` for model training.
+    """
+    import os
+    from datetime import datetime, timedelta, timezone
+
+    import pandas as pd
+
+    from .ingestion.grid_apis.market_registry import get_registry_entry, UnsupportedMarketPriceError
+    from .ingestion.grid_apis.base import empty_price_df, empty_carbon_df, ProviderConfigError
+
+    region = args.region.strip()
+    days = args.days
+
+    # Default output paths inside the package data directory
+    _data_root = Path(__file__).parent / "data"
+    price_out = Path(args.price_output) if args.price_output else _data_root / "prices" / "historical_prices.csv"
+    carbon_out = Path(args.carbon_output) if args.carbon_output else _data_root / "carbon" / "historical_carbon.csv"
+
+    price_out.parent.mkdir(parents=True, exist_ok=True)
+    carbon_out.parent.mkdir(parents=True, exist_ok=True)
+
+    end_dt = datetime.now(timezone.utc).replace(minute=0, second=0, microsecond=0)
+    start_dt = end_dt - timedelta(days=days)
+
+    logger.info(
+        f"Ingesting {days} day(s) for region '{region}' "
+        f"[{start_dt.date()} → {end_dt.date()}]"
+    )
+
+    # --- Price ingestion ---
+    try:
+        entry = get_registry_entry(region)
+    except UnsupportedMarketPriceError as exc:
+        print(f"ERROR: {exc}", file=sys.stderr)
+        sys.exit(1)
+
+    price_df = empty_price_df()
+    provider_key = entry.provider  # "caiso_oasis" | "pjm" | "entsoe" | ...
+
+    try:
+        if provider_key == "caiso_oasis":
+            from .ingestion.grid_apis.caiso import CAISOPriceProvider
+            p = CAISOPriceProvider()
+            price_df = p.fetch_prices(region, start_dt, end_dt)
+        elif provider_key == "pjm":
+            from .ingestion.grid_apis.pjm import PJMPriceProvider
+            api_key = os.environ.get("PJM_API_KEY", "")
+            if not api_key:
+                logger.warning("PJM_API_KEY not set; skipping price ingestion for us-east.")
+            else:
+                p = PJMPriceProvider(api_key=api_key)
+                price_df = p.fetch_prices(region, start_dt, end_dt)
+        elif provider_key in ("entsoe", "entso_e"):
+            from .ingestion.grid_apis.entsoe import ENTSOEPriceProvider
+            api_key = os.environ.get("ENTSOE_API_KEY", "")
+            if not api_key:
+                logger.warning("ENTSOE_API_KEY not set; skipping price ingestion for EU region.")
+            else:
+                p = ENTSOEPriceProvider(api_key=api_key)
+                price_df = p.fetch_prices(region, start_dt, end_dt)
+        else:
+            logger.warning(f"No live price provider for key '{provider_key}'; skipping price ingestion.")
+    except ProviderConfigError as exc:
+        logger.warning(f"Price provider config error: {exc}; skipping.")
+    except Exception as exc:  # noqa: BLE001
+        logger.error(f"Price ingestion failed: {exc}")
+        sys.exit(1)
+
+    if not price_df.empty:
+        _append_csv(price_df, price_out, ["timestamp", "region", "price_per_mwh", "currency", "source"])
+        logger.info(f"Appended {len(price_df)} price rows → {price_out}")
+    else:
+        logger.warning("No price data fetched; price CSV not updated.")
+
+    # --- Carbon ingestion (best-effort, non-fatal) ---
+    carbon_df = empty_carbon_df()
+    try:
+        em_key = os.environ.get("ELECTRICITYMAPS_API_KEY", "")
+        wt_user = os.environ.get("WATTTIME_USERNAME", "")
+        if em_key:
+            from .ingestion.grid_apis.electricitymaps import ElectricityMapsCarbonProvider
+            cp = ElectricityMapsCarbonProvider(api_key=em_key)
+            carbon_df = cp.fetch_carbon(region, start_dt, end_dt)
+        elif wt_user:
+            from .ingestion.grid_apis.watttime import WattTimeCarbonProvider
+            wt_pass = os.environ.get("WATTTIME_PASSWORD", "")
+            cp = WattTimeCarbonProvider(username=wt_user, password=wt_pass)
+            carbon_df = cp.fetch_carbon(region, start_dt, end_dt)
+        else:
+            logger.info(
+                "No carbon API key set (ELECTRICITYMAPS_API_KEY or WATTTIME_USERNAME); "
+                "skipping carbon ingestion."
+            )
+    except Exception as exc:  # noqa: BLE001
+        logger.warning(f"Carbon ingestion non-fatal error: {exc}")
+
+    if not carbon_df.empty:
+        _append_csv(carbon_df, carbon_out, ["timestamp", "region", "gco2_per_kwh", "source"])
+        logger.info(f"Appended {len(carbon_df)} carbon rows → {carbon_out}")
+
+    logger.info("Ingest complete.")
+
+
+def _append_csv(df, path: Path, prefer_cols: list) -> None:
+    """Append rows from *df* to *path* (creates with header if absent)."""
+    cols = [c for c in prefer_cols if c in df.columns] + [
+        c for c in df.columns if c not in prefer_cols
+    ]
+    write_header = not path.exists() or path.stat().st_size == 0
+    with open(path, "a", newline="", encoding="utf-8") as fh:
+        df[cols].to_csv(fh, index=False, header=write_header)
+
+
 def cmd_show_schema(args):
     """Show database schema."""
     from .database import print_schema
@@ -724,6 +844,28 @@ def main():
         help="Save results as JSON to this path",
     )
 
+    # Ingest command
+    ingest_parser = subparsers.add_parser(
+        "ingest",
+        help="Fetch and append recent price/carbon data to historical CSV files",
+    )
+    ingest_parser.add_argument(
+        "--region", default="us-east",
+        help="Region to ingest (default: us-east)",
+    )
+    ingest_parser.add_argument(
+        "--days", type=int, default=1,
+        help="Number of days to fetch (default: 1)",
+    )
+    ingest_parser.add_argument(
+        "--price-output", default=None,
+        help="Path to append price CSV (default: aurelius/data/prices/historical_prices.csv)",
+    )
+    ingest_parser.add_argument(
+        "--carbon-output", default=None,
+        help="Path to append carbon CSV (default: aurelius/data/carbon/historical_carbon.csv)",
+    )
+
     # Parse arguments
     args = parser.parse_args()
 
@@ -737,6 +879,8 @@ def main():
         cmd_robustness_test(args)
     elif args.command == "backtest":
         cmd_backtest(args)
+    elif args.command == "ingest":
+        cmd_ingest(args)
     else:
         parser.print_help()
         sys.exit(1)

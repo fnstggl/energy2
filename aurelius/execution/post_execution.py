@@ -24,7 +24,7 @@ import json
 import logging
 
 from ..models import ScheduleDecision
-from ..data.persistence import JSONLWriter, get_default_post_execution_path
+from ..data.persistence import JSONLWriter, RotatingJSONLWriter, get_default_post_execution_path
 from .base import ExecutionConfig, ExecutionResult
 
 logger = logging.getLogger(__name__)
@@ -417,18 +417,32 @@ class PostExecutionRecorder:
         self,
         output_path: Optional[str] = None,
         market_registry: Optional[Any] = None,
+        max_size_bytes: Optional[int] = RotatingJSONLWriter.DEFAULT_MAX_SIZE_BYTES,
+        max_records: Optional[int] = None,
+        keep_rotated: int = 10,
     ):
         """Initialize the recorder.
 
         Args:
-            output_path: Path to JSONL output file (uses default if None).
+            output_path:    Path to JSONL output file (uses default if None).
             market_registry: Optional market registry for live realized-price
                 lookups.  When provided, the recorder will attempt to populate
                 ``realized_energy_price`` from the registry for decisions that
                 don't already have it.
+            max_size_bytes: Rotate the JSONL when it exceeds this size
+                (default: 100 MB).  Set to None to disable size rotation.
+            max_records:    Rotate after this many records since last rotation
+                (default: None = disabled).
+            keep_rotated:   How many rotated archive files to retain
+                (default: 10).
         """
         path = output_path or get_default_post_execution_path()
-        self._writer = JSONLWriter(path)
+        self._writer = RotatingJSONLWriter(
+            path,
+            max_size_bytes=max_size_bytes,
+            max_records=max_records,
+            keep_rotated=keep_rotated,
+        )
         self._market_registry = market_registry
 
     def record(

@@ -6,13 +6,18 @@ Provides append-only JSONL file writing with:
 - No network calls
 - Safe for air-gapped environments
 - Failure-tolerant (exceptions swallowed, logged)
+
+Classes:
+    JSONLWriter          — basic append-only writer
+    RotatingJSONLWriter  — adds size/count-based log rotation
 """
 
 import json
 import logging
 import os
+from datetime import datetime, timezone
 from pathlib import Path
-from typing import Any
+from typing import Any, Optional
 
 logger = logging.getLogger(__name__)
 
@@ -98,6 +103,118 @@ class JSONLWriter:
         except Exception as e:
             logger.debug(f"Failed to read records from {self.path}: {e}")
             return []
+
+
+class RotatingJSONLWriter:
+    """Append-only JSONL writer with size- and count-based rotation.
+
+    When the active file exceeds *max_size_bytes* or *max_records*, it is
+    renamed to ``<stem>.<UTC-timestamp>.jsonl`` and a fresh file is created.
+    The rotation happens atomically within the same directory.
+
+    Rotation is best-effort: if the rename fails, writing continues to the
+    existing file to avoid data loss.
+
+    Args:
+        path:           Base path for the active JSONL file.
+        max_size_bytes: Rotate when file exceeds this size (default: 100 MB).
+                        Set to None to disable size-based rotation.
+        max_records:    Rotate when this many records have been written since
+                        the last rotation (default: None = disabled).
+        keep_rotated:   Maximum number of rotated archive files to keep.
+                        Oldest are deleted first (default: 10).
+
+    Usage:
+        writer = RotatingJSONLWriter(
+            "/var/aurelius/pe_records.jsonl",
+            max_size_bytes=100 * 1024 * 1024,  # 100 MB
+            max_records=500_000,
+        )
+        writer.append({"run_id": "abc", ...})
+    """
+
+    DEFAULT_MAX_SIZE_BYTES = 100 * 1024 * 1024  # 100 MB
+
+    def __init__(
+        self,
+        path: str | Path,
+        max_size_bytes: Optional[int] = DEFAULT_MAX_SIZE_BYTES,
+        max_records: Optional[int] = None,
+        keep_rotated: int = 10,
+    ) -> None:
+        self.path = Path(path)
+        self.max_size_bytes = max_size_bytes
+        self.max_records = max_records
+        self.keep_rotated = keep_rotated
+        self._records_since_rotation: int = 0
+        self._writer = JSONLWriter(self.path)
+
+    def append(self, record: dict[str, Any]) -> bool:
+        """Append *record* to the active file, rotating first if needed."""
+        self._maybe_rotate()
+        ok = self._writer.append(record)
+        if ok:
+            self._records_since_rotation += 1
+        return ok
+
+    def read_all(self) -> list[dict[str, Any]]:
+        """Read all records from the current (non-rotated) file."""
+        return self._writer.read_all()
+
+    def _should_rotate(self) -> bool:
+        """Return True if the active file has exceeded a rotation threshold."""
+        if not self.path.exists():
+            return False
+        try:
+            if self.max_size_bytes is not None:
+                size = self.path.stat().st_size
+                if size >= self.max_size_bytes:
+                    return True
+            if self.max_records is not None:
+                if self._records_since_rotation >= self.max_records:
+                    return True
+        except OSError:
+            pass
+        return False
+
+    def _maybe_rotate(self) -> None:
+        """Rotate the active file if a threshold has been exceeded."""
+        if not self._should_rotate():
+            return
+        try:
+            # Use microsecond precision to avoid collisions when rotating rapidly.
+            ts = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%S_%fZ")
+            archive_path = self.path.parent / f"{self.path.stem}.{ts}{self.path.suffix}"
+            self.path.rename(archive_path)
+            logger.info(
+                f"RotatingJSONLWriter: rotated {self.path.name} → {archive_path.name} "
+                f"(size={archive_path.stat().st_size:,} bytes, "
+                f"records_since_last_rotation={self._records_since_rotation})"
+            )
+            self._records_since_rotation = 0
+            self._writer = JSONLWriter(self.path)
+            self._prune_archives()
+        except Exception as exc:
+            logger.warning(
+                f"RotatingJSONLWriter: rotation failed (continuing with existing file): {exc}"
+            )
+
+    def _prune_archives(self) -> None:
+        """Delete oldest archive files if more than *keep_rotated* exist."""
+        try:
+            # Pattern matches: pe.20240101T120000_123456Z.jsonl (two-dot form)
+            pattern = f"{self.path.stem}.*{self.path.suffix}"
+            archives = sorted(self.path.parent.glob(pattern))
+            excess = len(archives) - self.keep_rotated
+            # Guard: only prune when excess is strictly positive to avoid
+            # negative-slice behaviour (archives[:-1] would delete most files).
+            if excess <= 0:
+                return
+            for old_file in archives[:excess]:
+                old_file.unlink(missing_ok=True)
+                logger.info(f"RotatingJSONLWriter: pruned old archive {old_file.name}")
+        except Exception as exc:
+            logger.debug(f"RotatingJSONLWriter: archive pruning error (non-fatal): {exc}")
 
 
 # Inline tests

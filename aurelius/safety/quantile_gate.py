@@ -326,8 +326,8 @@ def _run_validation():
     assert len(result) == 2, "Disabled gate should pass all"
     print(f"  Disabled gate passed all {len(result)} decisions: PASS")
 
-    # Test 2: Missing forecast treated as passing
-    print("\nTest 2: MISSING FORECAST")
+    # Test 2: Missing forecast BLOCKED (fail-closed)
+    print("\nTest 2: MISSING FORECAST — BLOCKED (fail-closed)")
     print("-" * 40)
     config = QuantileGateConfig(
         min_expected_savings_pct=5.0,
@@ -335,8 +335,8 @@ def _run_validation():
     )
     decisions = [MockDecision(job_id="job1", forecast=None)]
     result = gate.filter(decisions, config)
-    assert len(result) == 1, "Missing forecast should pass"
-    print(f"  Missing forecast treated as passing: PASS")
+    assert len(result) == 0, "Missing forecast must be BLOCKED (fail-closed)"
+    print(f"  Missing forecast correctly blocked (fail-closed): PASS")
 
     # Test 3: Valid forecast - passes thresholds
     print("\nTest 3: VALID FORECAST - PASSES")
@@ -423,8 +423,8 @@ def _run_validation():
     assert len(result) == 0, "Should fail when one metric fails"
     print(f"  Energy passes, carbon fails: filtered correctly: PASS")
 
-    # Test 7: Invalid baseline treated as passing
-    print("\nTest 7: INVALID BASELINE")
+    # Test 7: Invalid (zero) baseline BLOCKED (fail-closed)
+    print("\nTest 7: INVALID BASELINE — BLOCKED (fail-closed)")
     print("-" * 40)
     config = QuantileGateConfig(
         min_expected_savings_pct=5.0,
@@ -440,8 +440,8 @@ def _run_validation():
         )
     ]
     result = gate.filter(decisions, config)
-    assert len(result) == 1, "Invalid baseline should pass"
-    print(f"  Zero baseline treated as passing: PASS")
+    assert len(result) == 0, "Zero baseline must be BLOCKED (fail-closed)"
+    print(f"  Zero baseline correctly blocked (fail-closed): PASS")
 
     # Test 8: Order preserved
     print("\nTest 8: ORDER PRESERVED")
