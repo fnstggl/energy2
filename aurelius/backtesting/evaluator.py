@@ -7,11 +7,14 @@ used to score each backtesting fold.
 
 from __future__ import annotations
 
+import logging
 from dataclasses import dataclass, field
 from datetime import timedelta
 from typing import Optional
 
 from aurelius.models import Job, ScheduleDecision
+
+logger = logging.getLogger(__name__)
 
 
 @dataclass
@@ -28,6 +31,16 @@ class RealizedMetrics:
         if self.jobs_evaluated == 0:
             return 0.0
         return self.total_energy_cost_usd / self.jobs_evaluated
+
+    @property
+    def data_coverage_pct(self) -> float:
+        """Fraction of job-hours that had real (non-fallback) price data."""
+        total = self.jobs_evaluated
+        if total == 0:
+            return 100.0
+        missing = self.missing_price_hours
+        # Approximate: jobs_evaluated ≈ total job-hours (imprecise but directional)
+        return max(0.0, 100.0 * (1.0 - missing / max(1, total + missing)))
 
     def to_dict(self) -> dict:
         return {
@@ -46,6 +59,7 @@ def evaluate_schedule(
     carbon_data: dict[str, dict],
     price_fallback: float = 50.0,
     carbon_fallback: float = 400.0,
+    warn_on_missing: bool = True,
 ) -> RealizedMetrics:
     """Compute realized energy cost and carbon from actual data.
 
@@ -62,6 +76,7 @@ def evaluate_schedule(
     """
     job_by_id = {j.job_id: j for j in jobs}
     metrics = RealizedMetrics()
+    _warned_missing: set[tuple[str, str]] = set()
 
     for decision in schedule:
         job = job_by_id.get(decision.job_id)
@@ -84,6 +99,15 @@ def evaluate_schedule(
             if price is None:
                 price = price_fallback
                 metrics.missing_price_hours += 1
+                if warn_on_missing:
+                    key = (decision.region, current.strftime("%Y-%m-%dT%H"))
+                    if key not in _warned_missing:
+                        _warned_missing.add(key)
+                        logger.warning(
+                            f"No actual price for region={decision.region} at {current} "
+                            f"— using fallback ${price_fallback:.2f}/MWh. "
+                            "Results may be unreliable if many hours are missing."
+                        )
 
             carbon = region_carbon.get(current)
             if carbon is None:

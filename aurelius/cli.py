@@ -404,20 +404,41 @@ def cmd_backtest(args):
         print("No backtest folds produced. Check date range and data coverage.")
         sys.exit(1)
 
-    print(f"{'Fold':>4}  {'Eval Start':>20}  {'Jobs':>5}  {'Optimizer $':>12}  {'FIFO $':>12}  {'Savings%':>9}")
-    print("-" * 75)
+    print(f"{'Fold':>4}  {'Eval Start':>20}  {'Jobs':>5}  {'Optimizer $':>12}  {'FIFO $':>12}  {'Savings%':>9}  {'MissHrs':>7}")
+    print("-" * 85)
+    total_missing = 0
     for r in rounds:
         opt_cost = r.optimizer_metrics.total_energy_cost_usd if r.optimizer_metrics else 0
+        missing = r.optimizer_metrics.missing_price_hours if r.optimizer_metrics else 0
+        total_missing += missing
         fifo_cost = r.baseline_metrics.get("fifo", None)
         fifo_val = fifo_cost.total_energy_cost_usd if fifo_cost else float("nan")
         savings = ((fifo_val - opt_cost) / fifo_val * 100) if fifo_val > 0 else float("nan")
+        miss_flag = f"  ⚠ {missing}" if missing > 0 else f"  {missing:>7}"
         print(
             f"{r.fold_index:>4}  {str(r.eval_start)[:19]:>20}  "
             f"{len(r.eval_jobs):>5}  ${opt_cost:>11.2f}  ${fifo_val:>11.2f}  "
-            f"{savings:>8.1f}%"
+            f"{savings:>8.1f}%{miss_flag}"
         )
 
     print(f"\nTotal folds: {len(rounds)}")
+    if total_missing > 0:
+        print(f"WARNING: {total_missing} evaluation hours used fallback price ($50/MWh) — real data was missing for those hours.")
+        print("         Results should be interpreted with caution.")
+
+    # Print all-baselines summary across folds
+    all_baseline_names = list(rounds[0].baseline_metrics.keys()) if rounds else []
+    if all_baseline_names:
+        print("\n--- Savings vs all baselines (mean across folds) ---")
+        opt_costs = [r.optimizer_metrics.total_energy_cost_usd for r in rounds if r.optimizer_metrics]
+        mean_opt = sum(opt_costs) / len(opt_costs) if opt_costs else 0
+        for name in all_baseline_names:
+            bl_costs = [r.baseline_metrics[name].total_energy_cost_usd for r in rounds if name in r.baseline_metrics]
+            if not bl_costs:
+                continue
+            mean_bl = sum(bl_costs) / len(bl_costs)
+            savings_pct = (mean_bl - mean_opt) / mean_bl * 100 if mean_bl > 0 else float("nan")
+            print(f"  vs {name:<28}  ${mean_bl:>10.2f}  →  {savings_pct:>6.1f}% savings")
 
     if args.output:
         output_path = Path(args.output)
