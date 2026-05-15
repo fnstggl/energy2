@@ -85,7 +85,7 @@ MARKET_REGISTRY: dict[str, MarketRegistryEntry] = {
             "TH_NP15_GEN-APND trading-hub day-ahead LMP. "
             "CAISO OASIS returns ZIP/CSV (resultformat=6). "
             "Free public access; no API key required. "
-            "Max ~31-day window per request. "
+            "Max 30-day window per request (31 days triggers ERR_CODE 1004)."
             "Does not cover SP15 (Southern CA) or DLAP zones. "
             "CAISO covers California only — not a national price source."
         ),
@@ -224,7 +224,7 @@ _REAL_TIME_REGISTRY: dict[str, MarketRegistryEntry] = {
             "TH_NP15_GEN-APND trading-hub 5-minute real-time interval LMP. "
             "CAISO OASIS returns ZIP/CSV (resultformat=6). "
             "Free public access; no API key required. "
-            "Max ~31-day window per request. "
+            "Max 30-day window per request (31 days triggers ERR_CODE 1004)."
             "Real-time data may have a publication lag of a few minutes. "
             "CAISO covers California only — not a national price source."
         ),
