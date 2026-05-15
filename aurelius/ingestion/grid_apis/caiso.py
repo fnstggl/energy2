@@ -10,8 +10,8 @@ Day-ahead (PRC_LMP / DAM):
         https://oasis.caiso.com/oasisapi/SingleZip
             ?queryname=PRC_LMP
             &market_run_id=DAM
-            &startdatetime=<YYYYMMDDThhmm-0000>
-            &enddatetime=<YYYYMMDDThhmm-0000>
+            &startdatetime=<YYYYMMDDThh:mm-0000>
+            &enddatetime=<YYYYMMDDThh:mm-0000>
             &node=TH_NP15_GEN-APND
             &resultformat=6
             &version=1
@@ -21,8 +21,8 @@ Real-time 5-min intervals (PRC_INTVL_LMP / RTM):
         https://oasis.caiso.com/oasisapi/SingleZip
             ?queryname=PRC_INTVL_LMP
             &market_run_id=RTM
-            &startdatetime=<YYYYMMDDThhmm-0000>
-            &enddatetime=<YYYYMMDDThhmm-0000>
+            &startdatetime=<YYYYMMDDThh:mm-0000>
+            &enddatetime=<YYYYMMDDThh:mm-0000>
             &node=TH_NP15_GEN-APND
             &resultformat=6
             &version=1
@@ -219,9 +219,9 @@ def _fetch_lmp(
     while current < end_utc:
         chunk_end = min(current + timedelta(days=_CHUNK_DAYS), end_utc)
 
-        # CAISO OASIS datetime format: YYYYMMDDThhmm-0000 (UTC offset)
-        start_str = current.strftime("%Y%m%dT%H%M") + "-0000"
-        end_str = chunk_end.strftime("%Y%m%dT%H%M") + "-0000"
+        # CAISO OASIS datetime format: YYYYMMDDThh:mm-0000 (colon required)
+        start_str = current.strftime("%Y%m%dT%H:%M") + "-0000"
+        end_str = chunk_end.strftime("%Y%m%dT%H:%M") + "-0000"
 
         params = {
             "queryname": queryname,

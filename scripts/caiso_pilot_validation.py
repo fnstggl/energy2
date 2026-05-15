@@ -167,6 +167,7 @@ def run_diagnose() -> None:
         python scripts/caiso_pilot_validation.py --mode diagnose
     """
     import io
+    import time
     import zipfile
     import requests
 
@@ -175,38 +176,27 @@ def run_diagnose() -> None:
 
     cases = [
         {
-            "label": "31-day DAM PRC_LMP",
+            "label": "31-day DAM PRC_LMP (hh:mm format)",
             "params": {
                 "queryname": "PRC_LMP",
                 "market_run_id": "DAM",
-                "startdatetime": "20240101T0000-0000",
-                "enddatetime": "20240201T0000-0000",
+                "startdatetime": "20240101T00:00-0000",
+                "enddatetime": "20240201T00:00-0000",
                 "version": "1",
                 "node": node,
                 "resultformat": "6",
             },
         },
         {
-            "label": "1-day DAM PRC_LMP",
+            "label": "1-day DAM PRC_LMP (hh:mm format)",
             "params": {
                 "queryname": "PRC_LMP",
                 "market_run_id": "DAM",
-                "startdatetime": "20240101T0000-0000",
-                "enddatetime": "20240102T0000-0000",
+                "startdatetime": "20240101T00:00-0000",
+                "enddatetime": "20240102T00:00-0000",
                 "version": "1",
                 "node": node,
                 "resultformat": "6",
-            },
-        },
-        {
-            "label": "31-day DAM PRC_LMP without resultformat",
-            "params": {
-                "queryname": "PRC_LMP",
-                "market_run_id": "DAM",
-                "startdatetime": "20240101T0000-0000",
-                "enddatetime": "20240201T0000-0000",
-                "version": "1",
-                "node": node,
             },
         },
     ]
@@ -236,6 +226,8 @@ def run_diagnose() -> None:
                 print(resp.content[:2000].decode("utf-8", errors="replace"))
         except Exception as exc:
             print(f"  ERROR: {exc}")
+
+        time.sleep(6)  # CAISO rate-limits rapid successive requests
 
 
 def main() -> None:
