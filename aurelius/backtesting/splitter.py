@@ -4,6 +4,8 @@ Hard invariant: max(train_timestamp) < min(eval_timestamp).
 Any violation raises DataLeakageError immediately.
 """
 
+from __future__ import annotations
+
 from dataclasses import dataclass
 from datetime import timedelta
 from typing import Iterator

@@ -16,6 +16,8 @@ This is NOT DRM. This is NOT anti-tamper.
 This is authorization gating for production deployments.
 """
 
+from __future__ import annotations
+
 from dataclasses import dataclass
 from datetime import date, datetime
 from pathlib import Path
