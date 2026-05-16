@@ -324,20 +324,15 @@ class BacktestEngine:
             train_carbon_data = _df_to_carbon_data(carbon_df[carbon_mask])
 
         # --- Actual eval-window data (used only for scoring, never for forecasting) ---
-        eval_price_data = _df_to_price_data(
-            price_df[
-                (pd.to_datetime(price_df["timestamp"]) >= split.eval_start)
-                & (pd.to_datetime(price_df["timestamp"]) < split.eval_end)
-            ]
-        )
+        # Use the FULL price_df (not eval-window-bounded) so jobs whose runtime
+        # extends past split.eval_end get real prices instead of the $50/MWh
+        # fallback. Scoring with actual realized prices outside the eval window
+        # is NOT a leakage concern — the realized prices are public ground truth
+        # by the time the job runs, and the forecaster only sees train_price_data.
+        eval_price_data = _df_to_price_data(price_df)
         eval_carbon_data: dict[str, dict[datetime, float]] = {}
         if not carbon_df.empty:
-            eval_carbon_data = _df_to_carbon_data(
-                carbon_df[
-                    (pd.to_datetime(carbon_df["timestamp"]) >= split.eval_start)
-                    & (pd.to_datetime(carbon_df["timestamp"]) < split.eval_end)
-                ]
-            )
+            eval_carbon_data = _df_to_carbon_data(carbon_df)
 
         # --- Build forecast signals for the optimizer ---
         forecast_quality: Optional[ForecastQuality] = None
