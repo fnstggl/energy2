@@ -112,6 +112,15 @@ class Job:
     allowed_regions: list[str] = field(default_factory=list)
     forbidden_regions: list[str] = field(default_factory=list)
 
+    # Mid-job region migration support. None means the job CANNOT migrate
+    # (e.g. realtime_inference — latency-pinned to one region). A float value
+    # is the cost in hours per migration: checkpoint-write + cross-region
+    # state transfer + warmup at the destination. The job consumes energy
+    # during this window (at the destination region's price) but does no
+    # useful work. Typical values: training ~0.5h, fine-tuning ~0.25h,
+    # batch inference ~0.1h, stateless data jobs ~0.05h.
+    migration_cost_hours: Optional[float] = None
+
     def __post_init__(self):
         if self.latest_start is None:
             from datetime import timedelta
@@ -179,15 +188,38 @@ class CarbonIntensity:
 
 
 @dataclass
+class ScheduleSegment:
+    """One contiguous (region, time-window) leg of a possibly-migrated schedule.
+
+    A single-region (non-migrating) job has exactly one segment. A job that
+    migrates K times has K+1 segments. Between consecutive segments the job
+    incurs the source job's `migration_cost_hours` of paid-but-no-useful-work
+    time, which is included in the segment's own duration (the destination
+    segment starts later than `previous_segment.end_time` by migration_cost_hours
+    of "warmup" already baked into the destination segment's start_time and
+    its useful_runtime_hours computation).
+
+    For scoring, the segment's [start_time, end_time) window is the entire
+    paid window (useful work + any migration overhead at the start of this
+    segment). This makes evaluator math trivial: just sum hourly prices over
+    each segment's window at that segment's region.
+    """
+    start_time: datetime
+    end_time: datetime  # exclusive
+    region: str
+    power_fraction: float = 1.0
+
+
+@dataclass
 class ScheduleDecision:
     """A scheduling decision for a single job.
 
     Attributes:
         job_id: The job being scheduled
-        start_time: Decided start time
-        region: Decided region
-        power_fraction: Power level (1.0 = full, 0.5 = half speed)
-        actual_runtime_hours: Runtime after throttling adjustment
+        start_time: First-segment start time (for back-compat with single-segment readers)
+        region: First-segment region (for back-compat)
+        power_fraction: First-segment power level (1.0 = full, 0.5 = half speed)
+        actual_runtime_hours: Total runtime including migration overhead
         forecast: Optional forecast snapshot used to make this decision.
             Schema: {
               "energy_cost": {"p50": float, "p90": float, "baseline": float},
@@ -195,6 +227,10 @@ class ScheduleDecision:
             }
             None means no forecast was available at decision time.
             QuantileSafetyGate treats None as a blocked decision (fail-closed).
+        segments: Optional list of ScheduleSegment for migrated jobs.
+            None means single-segment (back-compat). When set, must be
+            non-empty and the first segment's start_time/region must match
+            the top-level fields.
     """
     job_id: str
     start_time: datetime
@@ -202,11 +238,39 @@ class ScheduleDecision:
     power_fraction: float
     actual_runtime_hours: float
     forecast: Optional[dict] = None
+    segments: Optional[list[ScheduleSegment]] = None
 
     @property
     def end_time(self) -> datetime:
         from datetime import timedelta
+        if self.segments:
+            return self.segments[-1].end_time
         return self.start_time + timedelta(hours=self.actual_runtime_hours)
+
+    @property
+    def migration_count(self) -> int:
+        """Number of region migrations (0 for single-segment schedules)."""
+        if self.segments is None or len(self.segments) <= 1:
+            return 0
+        return len(self.segments) - 1
+
+    @property
+    def all_segments(self) -> list[ScheduleSegment]:
+        """Return segments, synthesizing a single-segment list if needed.
+
+        This lets the evaluator and other consumers iterate uniformly over
+        decisions regardless of whether they were produced by a migration-aware
+        optimizer or a single-segment one.
+        """
+        from datetime import timedelta
+        if self.segments is not None:
+            return self.segments
+        return [ScheduleSegment(
+            start_time=self.start_time,
+            end_time=self.start_time + timedelta(hours=self.actual_runtime_hours),
+            region=self.region,
+            power_fraction=self.power_fraction,
+        )]
 
 
 @dataclass

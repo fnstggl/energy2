@@ -765,8 +765,15 @@ def main():
     )
     bt_parser.add_argument(
         "--method", default="greedy",
-        choices=["greedy", "local_search"],
-        help="Optimizer method (default: greedy)",
+        choices=["greedy", "local_search", "greedy_migrate", "local_search_migrate"],
+        help=(
+            "Optimizer method (default: greedy). The _migrate variants "
+            "post-process the base schedule by trying a single mid-job "
+            "region migration per job whose workload allows it "
+            "(realtime_inference cannot; training/fine-tuning/batch can). "
+            "Migration cost (~6-30 min depending on workload) is modeled "
+            "explicitly in the scoring."
+        ),
     )
     bt_parser.add_argument(
         "--forecaster", default="seasonal_naive",

@@ -84,44 +84,50 @@ def evaluate_schedule(
             continue
 
         metrics.jobs_evaluated += 1
-        power_kw = job.power_kw * decision.power_fraction
 
-        # Walk hour by hour across the job's runtime
-        current = decision.start_time.replace(minute=0, second=0, microsecond=0)
-        remaining = decision.actual_runtime_hours
+        # Iterate over segments (single synthetic segment for non-migrated decisions).
+        # Each segment's [start_time, end_time) window already includes any
+        # migration-overhead time at its start, so we just sum hourly prices at
+        # that segment's region.
+        for segment in decision.all_segments:
+            power_kw = job.power_kw * segment.power_fraction
+            seg_end = segment.end_time
+            current = segment.start_time.replace(minute=0, second=0, microsecond=0)
 
-        while remaining > 0:
-            hour_fraction = min(1.0, remaining)
-            region_prices = price_data.get(decision.region, {})
-            region_carbon = carbon_data.get(decision.region, {})
+            while current < seg_end:
+                # Last hour may be partial
+                next_hour = current + timedelta(hours=1)
+                hour_fraction = min(1.0, (seg_end - current).total_seconds() / 3600.0)
+                if hour_fraction <= 0:
+                    break
 
-            price = region_prices.get(current)
-            if price is None:
-                price = price_fallback
-                metrics.missing_price_hours += 1
-                if warn_on_missing:
-                    key = (decision.region, current.strftime("%Y-%m-%dT%H"))
-                    if key not in _warned_missing:
-                        _warned_missing.add(key)
-                        logger.warning(
-                            f"No actual price for region={decision.region} at {current} "
-                            f"— using fallback ${price_fallback:.2f}/MWh. "
-                            "Results may be unreliable if many hours are missing."
-                        )
+                region_prices = price_data.get(segment.region, {})
+                region_carbon = carbon_data.get(segment.region, {})
 
-            carbon = region_carbon.get(current)
-            if carbon is None:
-                carbon = carbon_fallback
-                metrics.missing_carbon_hours += 1
+                price = region_prices.get(current)
+                if price is None:
+                    price = price_fallback
+                    metrics.missing_price_hours += 1
+                    if warn_on_missing:
+                        key = (segment.region, current.strftime("%Y-%m-%dT%H"))
+                        if key not in _warned_missing:
+                            _warned_missing.add(key)
+                            logger.warning(
+                                f"No actual price for region={segment.region} at {current} "
+                                f"— using fallback ${price_fallback:.2f}/MWh. "
+                                "Results may be unreliable if many hours are missing."
+                            )
 
-            # Energy cost: price [$/MWh] * power [kW] / 1000 * hours
-            energy_kwh = power_kw * hour_fraction
-            metrics.total_energy_cost_usd += (price / 1000.0) * energy_kwh
+                carbon = region_carbon.get(current)
+                if carbon is None:
+                    carbon = carbon_fallback
+                    metrics.missing_carbon_hours += 1
 
-            # Carbon: gco2_per_kwh * kWh
-            metrics.total_carbon_gco2 += carbon * energy_kwh
+                # Energy cost: price [$/MWh] * power [kW] / 1000 * hours
+                energy_kwh = power_kw * hour_fraction
+                metrics.total_energy_cost_usd += (price / 1000.0) * energy_kwh
+                metrics.total_carbon_gco2 += carbon * energy_kwh
 
-            remaining -= hour_fraction
-            current += timedelta(hours=1)
+                current = next_hour
 
     return metrics

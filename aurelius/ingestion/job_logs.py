@@ -43,6 +43,9 @@ class JobLogIngester:
     #   data_processing: hours-days (ETL, feature gen)
     #   scheduled_batch: 8-72h (cron-style nightly/weekly jobs)
     #   background_maintenance: days (housekeeping, GC, log compaction)
+    # migration_cost_hours = how much paid-but-no-useful-work time a single
+    # region migration costs (checkpoint write + cross-region state transfer +
+    # warmup at destination). None means the job cannot migrate at all.
     WORKLOAD_PROFILES = {
         "realtime_inference": {
             "power_kw": (5, 80),
@@ -50,6 +53,7 @@ class JobLogIngester:
             "slack_hours": (0, 2),
             "multi_region_pct": 0.10,  # latency-bound; mostly pinned
             "weight": 0.10,
+            "migration_cost_hours": None,  # cannot migrate — latency SLA pinned to one region
         },
         "llm_batch_inference": {
             "power_kw": (50, 300),
@@ -57,6 +61,7 @@ class JobLogIngester:
             "slack_hours": (4, 24),
             "multi_region_pct": 0.90,
             "weight": 0.15,
+            "migration_cost_hours": 0.10,  # ~6 min: small KV cache + framework warmup
         },
         "fine_tuning": {
             "power_kw": (100, 500),
@@ -64,6 +69,7 @@ class JobLogIngester:
             "slack_hours": (24, 72),
             "multi_region_pct": 0.90,
             "weight": 0.15,
+            "migration_cost_hours": 0.25,  # ~15 min: optimizer state checkpoint + transfer
         },
         "training": {
             "power_kw": (200, 2000),
@@ -71,6 +77,7 @@ class JobLogIngester:
             "slack_hours": (48, 336),  # 2-14 days slack
             "multi_region_pct": 0.90,
             "weight": 0.15,
+            "migration_cost_hours": 0.50,  # ~30 min: large model + optimizer + dataloader warmup
         },
         "data_processing": {
             "power_kw": (20, 200),
@@ -78,6 +85,7 @@ class JobLogIngester:
             "slack_hours": (6, 48),
             "multi_region_pct": 0.85,
             "weight": 0.20,
+            "migration_cost_hours": 0.05,  # ~3 min: mostly stateless (input is files)
         },
         "scheduled_batch": {
             "power_kw": (10, 200),
@@ -85,6 +93,7 @@ class JobLogIngester:
             "slack_hours": (8, 72),
             "multi_region_pct": 0.80,
             "weight": 0.15,
+            "migration_cost_hours": 0.10,  # ~6 min
         },
         "background_maintenance": {
             "power_kw": (5, 100),
@@ -92,6 +101,7 @@ class JobLogIngester:
             "slack_hours": (24, 168),
             "multi_region_pct": 0.95,
             "weight": 0.10,
+            "migration_cost_hours": 0.05,  # ~3 min: stateless
         },
     }
 
@@ -238,13 +248,18 @@ class JobLogIngester:
                 # Per-profile slack and multi-region from WORKLOAD_PROFILES
                 slack = random.uniform(*profile_spec["slack_hours"])
                 profile_multi_pct = profile_spec["multi_region_pct"]
+                migration_cost_hours = profile_spec.get("migration_cost_hours")
+                workload_type = profile  # use profile name as workload_type
             else:
-                # Legacy: global slack/multi-region settings from function args
+                # Legacy: global slack/multi-region settings from function args.
+                # Legacy jobs do not migrate (preserves pre-migration behavior).
                 if random.random() < high_slack_pct:
                     slack = random.uniform(*slack_hours_range)
                 else:
                     slack = random.uniform(1, 4)
                 profile_multi_pct = multi_region_pct
+                migration_cost_hours = None
+                workload_type = "scheduled_batch"
 
             deadline = earliest_start + timedelta(hours=runtime_hours + slack)
 
@@ -262,6 +277,8 @@ class JobLogIngester:
                 earliest_start=earliest_start,
                 region_options=job_regions,
                 priority=random.randint(1, 5),
+                workload_type=workload_type,
+                migration_cost_hours=migration_cost_hours,
             )
             jobs.append(job)
 

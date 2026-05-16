@@ -17,7 +17,7 @@ from dataclasses import dataclass, field
 import logging
 import math
 
-from ..models import Job, ScheduleDecision, OptimizationConfig
+from ..models import Job, ScheduleDecision, ScheduleSegment, OptimizationConfig
 from .objective import ObjectiveFunction, ObjectiveComponents
 from .constraints import ConstraintBuilder
 
@@ -108,6 +108,16 @@ class JobScheduler:
             result = self._solve_local_search(
                 jobs, price_data, carbon_data, risk_data, time_limit_seconds
             )
+        elif method == "greedy_migrate":
+            # First solve single-segment with greedy, then try to improve each
+            # migratable job with a single-split (region migration mid-job).
+            result = self._solve_greedy(jobs, price_data, carbon_data, risk_data)
+            result = self._apply_migration_optimization(result, jobs, price_data)
+        elif method == "local_search_migrate":
+            result = self._solve_local_search(
+                jobs, price_data, carbon_data, risk_data, time_limit_seconds
+            )
+            result = self._apply_migration_optimization(result, jobs, price_data)
         elif method == "milp":
             result = self._solve_milp(
                 jobs, price_data, carbon_data, risk_data, time_limit_seconds
@@ -458,6 +468,160 @@ class JobScheduler:
             violations=violations,
             iterations=1,
         )
+
+    # ------------------------------------------------------------------
+    # Mid-job region migration support
+    # ------------------------------------------------------------------
+
+    def _apply_migration_optimization(
+        self,
+        result: "SchedulerResult",
+        jobs: list[Job],
+        price_data: dict[str, dict[datetime, float]],
+    ) -> "SchedulerResult":
+        """Post-process a single-segment schedule: try a single mid-job
+        region migration for each job whose workload profile allows it.
+
+        For each migratable job:
+          1. Compute the original single-segment forecasted cost.
+          2. Try every (split_hour, dest_region) variant.
+          3. Keep the variant with lowest total forecasted cost — including
+             the migration overhead (migration_cost_hours of paid runtime
+             at the destination region's price).
+          4. If no variant improves the original, leave the decision unchanged.
+
+        This is myopic ("single migration only") and uses the forecast for
+        decision-making, just like the base greedy. The evaluator later
+        scores with actual prices and accounts for migration cost via the
+        segment-aware accounting in models.ScheduleDecision.all_segments.
+        """
+        job_by_id = {j.job_id: j for j in jobs}
+        improved: list[ScheduleDecision] = []
+        migrations_added = 0
+
+        for decision in result.schedule:
+            job = job_by_id.get(decision.job_id)
+            if job is None:
+                improved.append(decision)
+                continue
+
+            improved_decision = self._try_single_migration(decision, job, price_data)
+            if improved_decision.migration_count > decision.migration_count:
+                migrations_added += 1
+            improved.append(improved_decision)
+
+        if migrations_added:
+            logger.info(
+                f"Migration optimization: added migration to {migrations_added} "
+                f"of {len(result.schedule)} jobs"
+            )
+
+        result.schedule = improved
+        return result
+
+    def _try_single_migration(
+        self,
+        decision: ScheduleDecision,
+        job: Job,
+        price_data: dict[str, dict[datetime, float]],
+    ) -> ScheduleDecision:
+        """Try every single split + dest-region. Return best (possibly unchanged)."""
+        if job.migration_cost_hours is None:
+            return decision
+        if len(job.region_options) < 2:
+            return decision
+        if decision.actual_runtime_hours < 2:
+            # Need at least 2h to split meaningfully
+            return decision
+
+        initial_region = decision.region
+        candidate_regions = [r for r in job.region_options if r != initial_region]
+        if not candidate_regions:
+            return decision
+
+        power_kw = job.power_kw * decision.power_fraction
+        runtime = decision.actual_runtime_hours
+        migration_cost = job.migration_cost_hours
+
+        original_cost = self._segment_forecast_cost(
+            decision.start_time, runtime, initial_region, power_kw, price_data,
+        )
+        best_cost = original_cost
+        best_decision = decision
+
+        for split_h in range(1, int(runtime)):
+            useful_after_split = runtime - split_h
+            for dest_region in candidate_regions:
+                seg1_start = decision.start_time
+                seg1_end = decision.start_time + timedelta(hours=split_h)
+                # Segment 2 includes migration_cost_hours of warmup at destination
+                # at the start of the segment, then useful work. We account for
+                # this by making segment 2's duration = migration_cost + useful_after_split.
+                seg2_start = seg1_end
+                seg2_duration = migration_cost + useful_after_split
+                seg2_end = seg2_start + timedelta(hours=seg2_duration)
+
+                # Deadline feasibility: total wallclock must fit
+                if seg2_end > job.deadline:
+                    continue
+
+                cost1 = self._segment_forecast_cost(
+                    seg1_start, split_h, initial_region, power_kw, price_data,
+                )
+                cost2 = self._segment_forecast_cost(
+                    seg2_start, seg2_duration, dest_region, power_kw, price_data,
+                )
+                total = cost1 + cost2
+
+                if total < best_cost:
+                    best_cost = total
+                    best_decision = ScheduleDecision(
+                        job_id=decision.job_id,
+                        start_time=seg1_start,
+                        region=initial_region,
+                        power_fraction=decision.power_fraction,
+                        actual_runtime_hours=runtime + migration_cost,
+                        forecast=decision.forecast,
+                        segments=[
+                            ScheduleSegment(
+                                start_time=seg1_start,
+                                end_time=seg1_end,
+                                region=initial_region,
+                                power_fraction=decision.power_fraction,
+                            ),
+                            ScheduleSegment(
+                                start_time=seg2_start,
+                                end_time=seg2_end,
+                                region=dest_region,
+                                power_fraction=decision.power_fraction,
+                            ),
+                        ],
+                    )
+
+        return best_decision
+
+    @staticmethod
+    def _segment_forecast_cost(
+        start: datetime,
+        duration_hours: float,
+        region: str,
+        power_kw: float,
+        price_data: dict[str, dict[datetime, float]],
+        fallback_price: float = 50.0,
+    ) -> float:
+        """Sum forecasted energy cost over a [start, start+duration) window."""
+        cost = 0.0
+        remaining = duration_hours
+        current = start.replace(minute=0, second=0, microsecond=0)
+        region_prices = price_data.get(region, {})
+        while remaining > 0:
+            hour_frac = min(1.0, remaining)
+            price = region_prices.get(current, fallback_price)
+            # price [$/MWh] * power [kW] / 1000 * hours = $
+            cost += (price / 1000.0) * power_kw * hour_frac
+            remaining -= hour_frac
+            current = current + timedelta(hours=1)
+        return cost
 
     def create_baseline_schedule(
         self,
