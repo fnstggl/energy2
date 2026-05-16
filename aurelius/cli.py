@@ -394,16 +394,33 @@ def cmd_backtest(args):
         )
 
     config = OptimizationConfig()
+
+    price_forecaster_cls = None
+    if args.forecaster == "ml_quantile":
+        try:
+            import lightgbm  # noqa: F401  preflight so the error is clear
+        except ImportError:
+            print(
+                "ERROR: --forecaster ml_quantile requires lightgbm. Install with:\n"
+                "  pip install lightgbm scikit-learn",
+                file=sys.stderr,
+            )
+            sys.exit(1)
+        from .forecasting.price_model import PriceQuantileForecaster
+        price_forecaster_cls = PriceQuantileForecaster
+
     engine = BacktestEngine(
         method=args.method,
         train_days=args.train_days,
         eval_days=args.eval_days,
         config=config,
+        price_forecaster_cls=price_forecaster_cls,
     )
 
     print(f"\nRunning backtest: {args.train_days}d train / {args.eval_days}d eval windows")
     print(f"Price provider: {args.price_provider}")
     print(f"Carbon provider: {args.carbon_provider}")
+    print(f"Forecaster: {args.forecaster}")
     print(f"Regions: {regions}")
     print()
 
@@ -727,6 +744,15 @@ def main():
         "--method", default="greedy",
         choices=["greedy", "local_search"],
         help="Optimizer method (default: greedy)",
+    )
+    bt_parser.add_argument(
+        "--forecaster", default="seasonal_naive",
+        choices=["seasonal_naive", "ml_quantile"],
+        help=(
+            "Price forecaster for each fold (default: seasonal_naive). "
+            "ml_quantile fits a LightGBM quantile model per fold on the "
+            "training window — requires `pip install lightgbm scikit-learn`."
+        ),
     )
     bt_parser.add_argument(
         "--output", default=None,
