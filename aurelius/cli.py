@@ -391,12 +391,22 @@ def cmd_backtest(args):
             num_jobs=args.num_jobs,
             regions=regions,
             seed=42,
+            workload_mix=args.workload_mix,
         )
 
     config = OptimizationConfig()
 
     price_forecaster_cls = None
     if args.forecaster == "ml_quantile":
+        # Mute the benign "X does not have valid feature names" warning that
+        # lightgbm-via-sklearn emits when fit gets a DataFrame and predict
+        # gets a numpy array. It does not affect predictions.
+        import warnings
+        warnings.filterwarnings(
+            "ignore",
+            message="X does not have valid feature names",
+            category=UserWarning,
+        )
         try:
             import lightgbm  # noqa: F401  preflight so the error is clear
         except ImportError:
@@ -433,6 +443,7 @@ def cmd_backtest(args):
     print(f"Price provider: {args.price_provider}")
     print(f"Carbon provider: {args.carbon_provider}")
     print(f"Forecaster: {args.forecaster}")
+    print(f"Workload mix: {args.workload_mix}")
     print(f"Regions: {regions}")
     print()
 
@@ -764,6 +775,20 @@ def main():
             "Price forecaster for each fold (default: seasonal_naive). "
             "ml_quantile fits a LightGBM quantile model per fold on the "
             "training window — requires `pip install lightgbm scikit-learn`."
+        ),
+    )
+    bt_parser.add_argument(
+        "--workload-mix", default="legacy",
+        choices=["legacy", "realistic"],
+        help=(
+            "Synthetic job mix (default: legacy). "
+            "legacy = size-based profiles (small/medium/large/xlarge), "
+            "global slack range, 70%% multi-region. "
+            "realistic = 7 workload-type profiles (realtime_inference, "
+            "llm_batch_inference, fine_tuning, training, data_processing, "
+            "scheduled_batch, background_maintenance) with per-profile slack "
+            "and multi-region flexibility — gives the optimizer realistic "
+            "headroom to capture price spreads."
         ),
     )
     bt_parser.add_argument(

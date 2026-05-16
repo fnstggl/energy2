@@ -25,12 +25,74 @@ logger = logging.getLogger(__name__)
 class JobLogIngester:
     """Handles batch job data ingestion and generation."""
 
-    # Typical job profiles (power_kw, runtime_hours ranges)
+    # Legacy size-based profiles (used when workload_mix is None / "legacy")
     JOB_PROFILES = {
         "small": {"power_kw": (10, 50), "runtime_hours": (0.5, 2)},
         "medium": {"power_kw": (50, 200), "runtime_hours": (2, 8)},
         "large": {"power_kw": (200, 500), "runtime_hours": (4, 24)},
         "xlarge": {"power_kw": (500, 1000), "runtime_hours": (12, 72)},
+    }
+
+    # Workload-type profiles — realistic datacenter mix with per-profile
+    # slack and multi-region flexibility. Used when workload_mix="realistic".
+    # Slack values reflect the typical deadline flexibility of each workload type:
+    #   realtime_inference: ~minutes (load-balancer-level flex only)
+    #   llm_batch_inference: hours (overnight batch summarization, embeddings)
+    #   fine_tuning: 1-3 days (research iteration, not customer-facing)
+    #   training: 2-14 days (large pre-training jobs, the biggest cost lever)
+    #   data_processing: hours-days (ETL, feature gen)
+    #   scheduled_batch: 8-72h (cron-style nightly/weekly jobs)
+    #   background_maintenance: days (housekeeping, GC, log compaction)
+    WORKLOAD_PROFILES = {
+        "realtime_inference": {
+            "power_kw": (5, 80),
+            "runtime_hours": (0.25, 2),
+            "slack_hours": (0, 2),
+            "multi_region_pct": 0.10,  # latency-bound; mostly pinned
+            "weight": 0.10,
+        },
+        "llm_batch_inference": {
+            "power_kw": (50, 300),
+            "runtime_hours": (1, 8),
+            "slack_hours": (4, 24),
+            "multi_region_pct": 0.90,
+            "weight": 0.15,
+        },
+        "fine_tuning": {
+            "power_kw": (100, 500),
+            "runtime_hours": (4, 24),
+            "slack_hours": (24, 72),
+            "multi_region_pct": 0.90,
+            "weight": 0.15,
+        },
+        "training": {
+            "power_kw": (200, 2000),
+            "runtime_hours": (24, 168),
+            "slack_hours": (48, 336),  # 2-14 days slack
+            "multi_region_pct": 0.90,
+            "weight": 0.15,
+        },
+        "data_processing": {
+            "power_kw": (20, 200),
+            "runtime_hours": (1, 8),
+            "slack_hours": (6, 48),
+            "multi_region_pct": 0.85,
+            "weight": 0.20,
+        },
+        "scheduled_batch": {
+            "power_kw": (10, 200),
+            "runtime_hours": (1, 12),
+            "slack_hours": (8, 72),
+            "multi_region_pct": 0.80,
+            "weight": 0.15,
+        },
+        "background_maintenance": {
+            "power_kw": (5, 100),
+            "runtime_hours": (0.5, 4),
+            "slack_hours": (24, 168),
+            "multi_region_pct": 0.95,
+            "weight": 0.10,
+        },
     }
 
     # Default regions for multi-region jobs
@@ -118,24 +180,22 @@ class JobLogIngester:
         high_slack_pct: float = 0.6,
         multi_region_pct: float = 0.7,
         seed: Optional[int] = None,
+        workload_mix: Optional[str] = None,
     ) -> list[Job]:
         """Generate synthetic batch jobs.
 
-        Creates realistic job workload with:
-        - Various job sizes (small to xlarge)
-        - 50-70% of jobs have significant slack (4-24 hours)
-        - Multi-region flexibility for most jobs
+        Two mixes available:
+          - "legacy" (default): size-based profiles (small/medium/large/xlarge)
+            using the function-level slack/multi-region args.
+          - "realistic": 7 workload-type profiles (realtime_inference, training,
+            fine_tuning, etc) with per-profile slack and multi-region settings
+            from WORKLOAD_PROFILES. profile_weights / slack_hours_range /
+            high_slack_pct / multi_region_pct are ignored in this mode — the
+            profile dict defines them.
 
         Args:
-            start_time: Start of the time window
-            duration_hours: Window duration for job submissions
-            num_jobs: Number of jobs to generate
-            regions: Available regions
-            profile_weights: Weights for job profiles (e.g., {"small": 0.5, "large": 0.2})
-            slack_hours_range: Min/max slack hours for jobs with high slack
-            high_slack_pct: Percentage of jobs with high slack (4-24 hours)
-            multi_region_pct: Percentage of jobs that can run in multiple regions
-            seed: Random seed for reproducibility
+            workload_mix: None or "legacy" → use JOB_PROFILES.
+                          "realistic" → use WORKLOAD_PROFILES.
 
         Returns:
             List of Job objects
@@ -144,49 +204,54 @@ class JobLogIngester:
             random.seed(seed)
 
         regions = regions or self.DEFAULT_REGIONS
-        profile_weights = profile_weights or {
-            "small": 0.4,
-            "medium": 0.35,
-            "large": 0.2,
-            "xlarge": 0.05,
-        }
-
-        profiles = list(profile_weights.keys())
-        weights = list(profile_weights.values())
-
-        # Floor start_time to hour boundary for consistent price lookups
         start_floored = start_time.replace(minute=0, second=0, microsecond=0)
+
+        use_workload_mix = workload_mix == "realistic"
+        if use_workload_mix:
+            profile_dict = self.WORKLOAD_PROFILES
+            profiles = list(profile_dict.keys())
+            weights = [profile_dict[p]["weight"] for p in profiles]
+        else:
+            profile_dict = self.JOB_PROFILES
+            profile_weights = profile_weights or {
+                "small": 0.4,
+                "medium": 0.35,
+                "large": 0.2,
+                "xlarge": 0.05,
+            }
+            profiles = list(profile_weights.keys())
+            weights = list(profile_weights.values())
 
         jobs = []
         for i in range(num_jobs):
-            # Random submission time within the window (integer hours for alignment)
             submit_offset = int(random.uniform(0, duration_hours * 0.7))
             submit_time = start_floored + timedelta(hours=submit_offset)
 
-            # Select job profile
             profile = random.choices(profiles, weights=weights)[0]
-            profile_spec = self.JOB_PROFILES[profile]
+            profile_spec = profile_dict[profile]
 
             power_kw = random.uniform(*profile_spec["power_kw"])
             runtime_hours = random.uniform(*profile_spec["runtime_hours"])
-
-            # Earliest start is at or after submit time (integer hours for alignment)
             earliest_start = submit_time + timedelta(hours=int(random.uniform(0, 2)))
 
-            # Slack determines deadline flexibility
-            # 50-70% of jobs get high slack (4-24 hours) for optimization opportunities
-            if random.random() < high_slack_pct:
-                slack = random.uniform(*slack_hours_range)  # High slack: 4-24 hours
+            if use_workload_mix:
+                # Per-profile slack and multi-region from WORKLOAD_PROFILES
+                slack = random.uniform(*profile_spec["slack_hours"])
+                profile_multi_pct = profile_spec["multi_region_pct"]
             else:
-                slack = random.uniform(1, 4)  # Low slack: 1-4 hours (urgent jobs)
+                # Legacy: global slack/multi-region settings from function args
+                if random.random() < high_slack_pct:
+                    slack = random.uniform(*slack_hours_range)
+                else:
+                    slack = random.uniform(1, 4)
+                profile_multi_pct = multi_region_pct
+
             deadline = earliest_start + timedelta(hours=runtime_hours + slack)
 
-            # Region options - multi-region jobs get ALL regions for maximum flexibility
-            # This allows optimizer to route anywhere vs baseline stuck in one region
-            if random.random() < multi_region_pct:
-                job_regions = regions.copy()  # All regions for multi-region jobs
+            if random.random() < profile_multi_pct:
+                job_regions = regions.copy()
             else:
-                job_regions = [random.choice(regions)]  # Single region (no routing flexibility)
+                job_regions = [random.choice(regions)]
 
             job = Job(
                 job_id=f"job-{uuid.uuid4().hex[:8]}",
@@ -200,9 +265,8 @@ class JobLogIngester:
             )
             jobs.append(job)
 
-        # Sort by submit time
         jobs.sort(key=lambda j: j.submit_time)
-        logger.info(f"Generated {len(jobs)} synthetic jobs")
+        logger.info(f"Generated {len(jobs)} synthetic jobs (mix={workload_mix or 'legacy'})")
         return jobs
 
     def save_to_csv(self, jobs: list[Job], filepath: Path) -> None:
