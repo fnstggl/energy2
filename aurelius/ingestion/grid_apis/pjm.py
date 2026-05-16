@@ -217,11 +217,35 @@ class PJMPriceProvider(PriceProvider):
 
             for item in items:
                 try:
-                    # PJM returns UTC timestamps in datetime_beginning_utc
-                    ts_str = item.get("datetime_beginning_utc") or item.get("datetime_beginning_ept", "")
-                    ts = pd.Timestamp(ts_str, tz="UTC") if "UTC" in ts_str.upper() else pd.Timestamp(ts_str)
-                    if ts.tzinfo is None:
-                        ts = ts.tz_localize("US/Eastern").tz_convert("UTC")
+                    # Use the FIELD NAME to determine the timezone, not the value's
+                    # content. PJM returns datetime_beginning_utc as a bare ISO string
+                    # like "2026-01-01T05:00:00" (no 'Z' / 'UTC' suffix), so naive
+                    # string sniffing falls through to the wrong branch and tries to
+                    # localize a UTC value as Eastern — which crashes on the DST
+                    # spring-forward hour (e.g. 2026-03-08T02:00).
+                    utc_str = item.get("datetime_beginning_utc")
+                    ept_str = item.get("datetime_beginning_ept")
+                    if utc_str:
+                        ts = pd.Timestamp(utc_str)
+                        if ts.tzinfo is None:
+                            ts = ts.tz_localize("UTC")
+                        else:
+                            ts = ts.tz_convert("UTC")
+                    elif ept_str:
+                        ts = pd.Timestamp(ept_str)
+                        if ts.tzinfo is None:
+                            # nonexistent='shift_forward': 2:00 AM on spring-forward
+                            # day becomes 3:00 AM. ambiguous='infer': use PJM's
+                            # ordering for fall-back duplicate hours.
+                            ts = ts.tz_localize(
+                                "US/Eastern",
+                                nonexistent="shift_forward",
+                                ambiguous="infer",
+                            ).tz_convert("UTC")
+                        else:
+                            ts = ts.tz_convert("UTC")
+                    else:
+                        continue
 
                     # total_lmp_da is the sum of energy + congestion + loss in $/MWh
                     price = float(item["total_lmp_da"])
