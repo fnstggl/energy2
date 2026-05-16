@@ -765,14 +765,21 @@ def main():
     )
     bt_parser.add_argument(
         "--method", default="greedy",
-        choices=["greedy", "local_search", "greedy_migrate", "local_search_migrate"],
+        choices=[
+            "greedy", "local_search",
+            "greedy_migrate", "local_search_migrate",
+            "greedy_migrate_dp", "local_search_migrate_dp",
+        ],
         help=(
             "Optimizer method (default: greedy). The _migrate variants "
             "post-process the base schedule by trying a single mid-job "
             "region migration per job whose workload allows it "
             "(realtime_inference cannot; training/fine-tuning/batch can). "
-            "Migration cost (~6-30 min depending on workload) is modeled "
-            "explicitly in the scoring."
+            "The _migrate_dp variants do exact multi-migration optimization "
+            "via DP over (useful_hours_done, region, num_migrations) — "
+            "captures cycle-chasing on long jobs that single migration "
+            "cannot. Migration cost (~6-30 min depending on workload) is "
+            "modeled explicitly in the scoring."
         ),
     )
     bt_parser.add_argument(

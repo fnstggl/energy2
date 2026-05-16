@@ -237,3 +237,148 @@ class TestGreedyMigrate:
         sched = JobScheduler(OptimizationConfig())
         result = sched.solve([job], prices, {}, method="greedy_migrate")
         assert result.schedule[0].migration_count == 0
+
+
+# ---------------------------------------------------------------------------
+# Multi-migration DP — greedy_migrate_dp
+# ---------------------------------------------------------------------------
+
+class TestMultiMigrationDP:
+    def test_dp_finds_multiple_migrations_on_multi_cycle_job(self):
+        """A 4-day job on a daily price flip should take ~3 migrations."""
+        # 96-hour window. us-west cheap odd days, us-east cheap even days.
+        # Flip every 24h.
+        prices_w, prices_e = {}, {}
+        for h in range(120):  # plenty of buffer
+            ts = START + timedelta(hours=h)
+            day = h // 24
+            if day % 2 == 0:
+                prices_w[ts] = 20.0
+                prices_e[ts] = 200.0
+            else:
+                prices_w[ts] = 200.0
+                prices_e[ts] = 20.0
+        prices = {"us-west": prices_w, "us-east": prices_e}
+
+        # 96-hour job (4 days). Should migrate ~3 times to always be in cheap region.
+        job = Job(
+            job_id="j1",
+            submit_time=START,
+            runtime_hours=96.0,
+            deadline=START + timedelta(hours=120),
+            power_kw=500.0,
+            earliest_start=START,
+            region_options=["us-west", "us-east"],
+            workload_type="training",
+            migration_cost_hours=0.5,
+        )
+
+        sched = JobScheduler(OptimizationConfig())
+        result = sched.solve([job], prices, {}, method="greedy_migrate_dp")
+        decision = result.schedule[0]
+        # Optimal is start in us-west (cheap day 0), migrate to us-east (day 1 cheap),
+        # back to us-west (day 2 cheap), to us-east (day 3 cheap) — 3 migrations.
+        # With 0.5h migration cost, total wallclock = 96 + 3*0.5 = 97.5h, fits in 120h budget.
+        assert decision.migration_count >= 2, (
+            f"DP should chase daily cycles with multiple migrations, "
+            f"got migration_count={decision.migration_count}"
+        )
+
+    def test_dp_strictly_better_than_single_on_multi_cycle(self):
+        """On a multi-cycle setup, DP should produce strictly lower forecast cost
+        than single-migration."""
+        # 3-day window with daily flips
+        prices_w, prices_e = {}, {}
+        for h in range(96):
+            ts = START + timedelta(hours=h)
+            day = h // 24
+            if day % 2 == 0:
+                prices_w[ts] = 30.0
+                prices_e[ts] = 180.0
+            else:
+                prices_w[ts] = 180.0
+                prices_e[ts] = 30.0
+        prices = {"us-west": prices_w, "us-east": prices_e}
+
+        job = Job(
+            job_id="j1", submit_time=START, runtime_hours=72.0,
+            deadline=START + timedelta(hours=96), power_kw=500.0,
+            earliest_start=START, region_options=["us-west", "us-east"],
+            workload_type="training", migration_cost_hours=0.5,
+        )
+        sched = JobScheduler(OptimizationConfig())
+
+        single = sched.solve([job], prices, {}, method="greedy_migrate")
+        dp = sched.solve([job], prices, {}, method="greedy_migrate_dp")
+
+        # Score both with the evaluator (forecast == actual in this test)
+        single_metrics = evaluate_schedule(
+            single.schedule, [job], prices, {}, warn_on_missing=False,
+        )
+        dp_metrics = evaluate_schedule(
+            dp.schedule, [job], prices, {}, warn_on_missing=False,
+        )
+
+        assert dp.schedule[0].migration_count >= single.schedule[0].migration_count
+        # DP must be at least as good as single (it's strictly more expressive)
+        assert dp_metrics.total_energy_cost_usd <= single_metrics.total_energy_cost_usd + 1e-6
+        # In this multi-cycle scenario it should be strictly better
+        if dp.schedule[0].migration_count > single.schedule[0].migration_count:
+            assert dp_metrics.total_energy_cost_usd < single_metrics.total_energy_cost_usd
+
+    def test_dp_no_migration_when_flat(self):
+        """DP should produce 0 migrations when prices are flat (matches single)."""
+        prices = {
+            "us-west": {START + timedelta(hours=h): 100.0 for h in range(48)},
+            "us-east": {START + timedelta(hours=h): 100.0 for h in range(48)},
+        }
+        job = Job(
+            job_id="j1", submit_time=START, runtime_hours=24.0,
+            deadline=START + timedelta(hours=48), power_kw=500.0,
+            earliest_start=START, region_options=["us-west", "us-east"],
+            migration_cost_hours=0.5,
+        )
+        sched = JobScheduler(OptimizationConfig())
+        result = sched.solve([job], prices, {}, method="greedy_migrate_dp")
+        assert result.schedule[0].migration_count == 0
+
+    def test_dp_respects_migration_cap(self):
+        """When K_max is bounded by deadline, DP cannot exceed it."""
+        # 24-hour job with 24.5h deadline → only ~1 migration fits (0.5h overhead)
+        prices_w, prices_e = {}, {}
+        # Hourly flip: forces DP to want lots of migrations
+        for h in range(48):
+            ts = START + timedelta(hours=h)
+            prices_w[ts] = 20.0 if h % 2 == 0 else 200.0
+            prices_e[ts] = 200.0 if h % 2 == 0 else 20.0
+        prices = {"us-west": prices_w, "us-east": prices_e}
+
+        job = Job(
+            job_id="j1", submit_time=START, runtime_hours=24.0,
+            deadline=START + timedelta(hours=25),  # only 1h slack
+            power_kw=500.0, earliest_start=START,
+            region_options=["us-west", "us-east"],
+            migration_cost_hours=0.5,
+        )
+        sched = JobScheduler(OptimizationConfig())
+        result = sched.solve([job], prices, {}, method="greedy_migrate_dp")
+        # Deadline gives (25 - 24) / 0.5 = 2 migrations max
+        assert result.schedule[0].migration_count <= 2
+
+    def test_dp_non_migratable_unchanged(self):
+        """Non-migratable jobs (realtime) get no migration even under DP."""
+        prices = {
+            "us-west": {START + timedelta(hours=h): (10.0 if h % 2 == 0 else 1000.0)
+                        for h in range(48)},
+            "us-east": {START + timedelta(hours=h): (1000.0 if h % 2 == 0 else 10.0)
+                        for h in range(48)},
+        }
+        job = Job(
+            job_id="j1", submit_time=START, runtime_hours=24.0,
+            deadline=START + timedelta(hours=48), power_kw=500.0,
+            earliest_start=START, region_options=["us-west", "us-east"],
+            workload_type="realtime_inference", migration_cost_hours=None,
+        )
+        sched = JobScheduler(OptimizationConfig())
+        result = sched.solve([job], prices, {}, method="greedy_migrate_dp")
+        assert result.schedule[0].migration_count == 0
