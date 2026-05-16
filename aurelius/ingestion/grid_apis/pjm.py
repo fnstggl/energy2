@@ -31,6 +31,11 @@ import time
 from datetime import datetime, timezone
 from typing import Optional
 
+try:
+    from zoneinfo import ZoneInfo  # Python 3.9+ stdlib
+except ImportError:  # pragma: no cover
+    from backports.zoneinfo import ZoneInfo  # type: ignore
+
 import pandas as pd
 import requests
 
@@ -48,6 +53,7 @@ _DA_LMP_ENDPOINT = "/da_hrl_lmps"
 _MAX_RETRIES = 3
 _RETRY_BACKOFF = 2.0
 _MAX_ROWS_PER_PAGE = 5000
+_EASTERN = ZoneInfo("America/New_York")  # PJM datetime_beginning_ept is EPT, DST-aware
 
 # pnode_id=1 is PJM Western Hub, the most liquid reference price
 _DEFAULT_NODE_MAP: dict[str, dict] = {
@@ -111,10 +117,16 @@ class PJMPriceProvider(PriceProvider):
         start_utc = _to_utc(start)
         end_utc = _to_utc(end)
 
-        # PJM API uses Eastern Prevailing Time (EPT) for datetime parameters.
-        # We pass UTC ISO strings and let PJM handle conversion.
-        start_str = start_utc.strftime("%Y-%m-%dT%H:%M")
-        end_str = end_utc.strftime("%Y-%m-%dT%H:%M")
+        # PJM Data Miner 2 datetime_beginning_ept filter requires:
+        #   - timestamps in Eastern Prevailing Time (EPT, DST-aware), not UTC
+        #   - format MM/DD/YYYY HH:MM
+        #   - range separator " to " (with spaces)
+        # ISO format with bracket notation returns 400 "DateTime filter
+        # field value range is invalid".
+        start_ept = start_utc.astimezone(_EASTERN)
+        end_ept = end_utc.astimezone(_EASTERN)
+        start_str = start_ept.strftime("%m/%d/%Y %H:%M")
+        end_str = end_ept.strftime("%m/%d/%Y %H:%M")
 
         headers = {
             "Ocp-Apim-Subscription-Key": self._api_key,
@@ -128,7 +140,7 @@ class PJMPriceProvider(PriceProvider):
             params = {
                 "startRow": offset,
                 "rowCount": _MAX_ROWS_PER_PAGE,
-                "datetime_beginning_ept": f"[{start_str},{end_str}]",
+                "datetime_beginning_ept": f"{start_str} to {end_str}",
                 "pnode_id": node_spec["pnode_id"],
                 "fields": "datetime_beginning_utc,datetime_ending_utc,pnode_name,total_lmp_da",
             }
@@ -150,6 +162,14 @@ class PJMPriceProvider(PriceProvider):
                         raise ProviderConfigError(
                             f"PJM API key rejected ({resp.status_code}). Check PJM_API_KEY."
                         )
+                    if 400 <= resp.status_code < 500:
+                        # Bad-request family: don't retry, log PJM's full error so
+                        # format mistakes (e.g. wrong datetime syntax) are visible.
+                        logger.error(
+                            "PJM rejected request (HTTP %d). Params: %s\n--- PJM response ---\n%s\n--- END ---",
+                            resp.status_code, params, resp.text[:2000],
+                        )
+                        return empty_price_df()
                     resp.raise_for_status()
                     payload = resp.json()
                     break
