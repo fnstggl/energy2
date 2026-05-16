@@ -142,7 +142,7 @@ class PJMPriceProvider(PriceProvider):
                 "rowCount": _MAX_ROWS_PER_PAGE,
                 "datetime_beginning_ept": f"{start_str} to {end_str}",
                 "pnode_id": node_spec["pnode_id"],
-                "fields": "datetime_beginning_utc,datetime_ending_utc,pnode_name,total_lmp_da",
+                "fields": "datetime_beginning_utc,pnode_name,total_lmp_da",
             }
 
             for attempt in range(_MAX_RETRIES):
@@ -163,24 +163,39 @@ class PJMPriceProvider(PriceProvider):
                             f"PJM API key rejected ({resp.status_code}). Check PJM_API_KEY."
                         )
                     if 400 <= resp.status_code < 500:
-                        # Bad-request family: don't retry, log PJM's full error so
-                        # format mistakes (e.g. wrong datetime syntax) are visible.
+                        # Bad-request family: don't retry. Parse PJM's structured
+                        # errors[] so the most relevant message surfaces (the feed
+                        # metadata body also includes the word "archived" in its
+                        # description, which would fool a substring match).
                         body = resp.text[:2000]
-                        if "archived data" in body.lower():
+                        try:
+                            errs = resp.json().get("errors", [])
+                            err_msgs = [
+                                f"{e.get('field','?')}: {e.get('message','?')} "
+                                f"(detail={e.get('detail')})"
+                                for e in errs
+                            ]
+                        except Exception:
+                            err_msgs = []
+                        is_archive_error = any(
+                            "archived data" in (e.get("message", "") or "").lower()
+                            for e in (errs if 'errs' in locals() else [])
+                        )
+                        if is_archive_error:
                             logger.error(
                                 "PJM rejected query as 'archived data' (HTTP %d). "
-                                "Data older than ~12 months is moved to PJM's archive "
+                                "Data older than ~24 months is moved to PJM's archive "
                                 "feed which does not accept pnode_id/fields filters. "
-                                "Shift your --start/--end into the last ~12 months "
+                                "Shift your --start/--end into the last ~24 months "
                                 "or query the archive feed separately. "
-                                "Window: %s..%s\nFull response: %s",
-                                resp.status_code, params.get("datetime_beginning_ept"),
-                                "", body,
+                                "PJM errors: %s",
+                                resp.status_code, err_msgs,
                             )
                         else:
                             logger.error(
-                                "PJM rejected request (HTTP %d). Params: %s\n--- PJM response ---\n%s\n--- END ---",
-                                resp.status_code, params, body,
+                                "PJM rejected request (HTTP %d). Errors: %s\n"
+                                "Params: %s\n--- PJM response (first 2KB) ---\n%s\n--- END ---",
+                                resp.status_code, err_msgs, params, body,
                             )
                         return empty_price_df()
                     resp.raise_for_status()
