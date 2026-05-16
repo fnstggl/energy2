@@ -406,6 +406,18 @@ def cmd_backtest(args):
                 file=sys.stderr,
             )
             sys.exit(1)
+        except OSError as exc:
+            # lightgbm imports but its native lib failed to load. Most common
+            # cause on macOS is the missing libomp.dylib system dependency.
+            hint = ""
+            if "libomp" in str(exc):
+                hint = "\nOn macOS, install the OpenMP runtime:\n  brew install libomp"
+            print(
+                f"ERROR: lightgbm is installed but failed to load its native "
+                f"library:\n  {exc}{hint}",
+                file=sys.stderr,
+            )
+            sys.exit(1)
         from .forecasting.price_model import PriceQuantileForecaster
         price_forecaster_cls = PriceQuantileForecaster
 
