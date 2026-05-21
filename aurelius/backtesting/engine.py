@@ -261,6 +261,16 @@ class BacktestEngine:
         # the bottleneck (more regions / better workload mix needed, not better ML).
         self.oracle_forecast = False
 
+        # Rolling-horizon (receding-horizon / MPC) mode. When set, models the
+        # production reality that day-ahead prices are PUBLISHED ~1 day ahead:
+        # the optimizer re-plans every `replan_hours` and, at each replan, knows
+        # the actual prices for the next `forecast_horizon_hours` (published DAM),
+        # falling back to the ML/naive forecast beyond that. This is NOT leakage —
+        # it mirrors exactly what a production scheduler sees. None = disabled
+        # (single one-shot optimize over the whole eval window).
+        self.forecast_horizon_hours: Optional[int] = None
+        self.replan_hours: int = 24
+
     @property
     def uses_ml_forecaster(self) -> bool:
         return self.price_forecaster_cls is not None
@@ -382,11 +392,20 @@ class BacktestEngine:
 
         # --- Run optimizer ---
         try:
-            opt_result = self.scheduler.solve(
-                eval_jobs, forecast_price_data, forecast_carbon_data,
-                method=self.method,
-            )
-            opt_schedule = opt_result.schedule
+            if self.forecast_horizon_hours is not None and not self.oracle_forecast:
+                # Rolling-horizon (receding-horizon) optimization: re-plan at a
+                # daily cadence, revealing actual published DAM prices for the
+                # next forecast_horizon_hours at each replan, ML/naive beyond.
+                opt_schedule = self._rolling_optimize(
+                    split, eval_jobs, eval_price_data, forecast_price_data,
+                    forecast_carbon_data,
+                )
+            else:
+                opt_result = self.scheduler.solve(
+                    eval_jobs, forecast_price_data, forecast_carbon_data,
+                    method=self.method,
+                )
+                opt_schedule = opt_result.schedule
         except Exception as exc:
             logger.error(f"Fold {split.fold_index}: optimizer failed: {exc}")
             opt_schedule = []
@@ -441,6 +460,87 @@ class BacktestEngine:
             )
 
         return round_
+
+    # ------------------------------------------------------------------
+    # Rolling-horizon (receding-horizon / MPC) optimization
+    # ------------------------------------------------------------------
+
+    def _rolling_optimize(
+        self,
+        split: TemporalSplit,
+        eval_jobs: list[Job],
+        eval_price_data: dict[str, dict[datetime, float]],
+        base_forecast: dict[str, dict[datetime, float]],
+        forecast_carbon_data: dict[str, dict[datetime, float]],
+    ) -> list[ScheduleDecision]:
+        """Receding-horizon optimization mirroring production DAM publication.
+
+        Models the reality that day-ahead prices are published ~1 day ahead:
+        the scheduler re-plans every `replan_hours`, and at each replan it
+        KNOWS the actual prices for the next `forecast_horizon_hours` (published
+        DAM), falling back to the ML/naive forecast (base_forecast) beyond.
+
+        Jobs are planned in waves keyed by earliest_start. A job is planned in
+        the first wave whose window reaches its earliest_start, and its schedule
+        is committed then (commit-at-start; mid-flight re-planning of in-flight
+        jobs is a documented Phase-2 enhancement). Scoring is always on actuals.
+
+        This is NOT leakage: revealing the next ~24h of actual DAM prices is
+        exactly what a production scheduler has access to. Only the >horizon
+        tail uses the (leakage-free) forecast.
+        """
+        horizon = self.forecast_horizon_hours
+        replan = max(1, self.replan_hours)
+
+        regions = set(base_forecast) | set(eval_price_data)
+        committed: dict[str, ScheduleDecision] = {}
+
+        def build_price_view(plan_time: datetime) -> dict[str, dict[datetime, float]]:
+            horizon_end = plan_time + timedelta(hours=horizon)
+            view: dict[str, dict[datetime, float]] = {}
+            for region in regions:
+                # Base: forecast everywhere we have it
+                pv = dict(base_forecast.get(region, {}))
+                # Override with ACTUAL within the published-DAM window
+                for h, price in eval_price_data.get(region, {}).items():
+                    if plan_time <= h < horizon_end:
+                        pv[h] = price
+                view[region] = pv
+            return view
+
+        # Walk replan waves across the eval window
+        plan_time = split.eval_start
+        eval_end = split.eval_end
+        while plan_time < eval_end:
+            wave_cutoff = plan_time + timedelta(hours=replan)
+            wave = [
+                j for j in eval_jobs
+                if j.job_id not in committed
+                and _to_ts(j.earliest_start) < wave_cutoff
+            ]
+            if wave:
+                price_view = build_price_view(plan_time)
+                res = self.scheduler.solve(
+                    wave, price_view, forecast_carbon_data, method=self.method,
+                )
+                for d in res.schedule:
+                    committed[d.job_id] = d
+            plan_time = wave_cutoff
+
+        # Any job whose earliest_start is beyond the last wave (shouldn't happen
+        # since eval_jobs are bounded by eval_end, but be safe): plan with the
+        # final available view.
+        leftover = [j for j in eval_jobs if j.job_id not in committed]
+        if leftover:
+            price_view = build_price_view(eval_end)
+            res = self.scheduler.solve(
+                leftover, price_view, forecast_carbon_data, method=self.method,
+            )
+            for d in res.schedule:
+                committed[d.job_id] = d
+
+        # Preserve input job order
+        return [committed[j.job_id] for j in eval_jobs if j.job_id in committed]
 
     # ------------------------------------------------------------------
     # ML forecaster path

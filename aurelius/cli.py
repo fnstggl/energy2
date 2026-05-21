@@ -445,6 +445,9 @@ def cmd_backtest(args):
     )
     if args.forecaster == "oracle":
         engine.oracle_forecast = True
+    if args.forecast_horizon_hours is not None:
+        engine.forecast_horizon_hours = args.forecast_horizon_hours
+        engine.replan_hours = args.replan_hours
 
     print(f"\nRunning backtest: {args.train_days}d train / {args.eval_days}d eval windows")
     print(f"Price provider: {args.price_provider}")
@@ -454,6 +457,9 @@ def cmd_backtest(args):
              if args.forecaster == "oracle" else ""))
     print(f"Workload mix: {args.workload_mix}"
           + (f"  filter={args.workload_filter}" if args.workload_filter else ""))
+    if args.forecast_horizon_hours is not None:
+        print(f"Rolling horizon: {args.forecast_horizon_hours}h actual DAM / "
+              f"replan every {args.replan_hours}h (ML beyond horizon)")
     print(f"Regions: {regions}")
     print()
 
@@ -806,6 +812,25 @@ def main():
             "bottleneck; if they're similar, the price spread is the bottleneck. "
             "NEVER report oracle numbers as real savings."
         ),
+    )
+    bt_parser.add_argument(
+        "--forecast-horizon-hours", type=int, default=None,
+        help=(
+            "Enable rolling-horizon (receding-horizon / MPC) optimization. "
+            "Models production reality: day-ahead prices are published ~1 day "
+            "ahead, so the scheduler re-plans daily and KNOWS the actual prices "
+            "for the next N hours (published DAM), using the ML/naive forecast "
+            "only beyond that. Typical value: 24 (single-day DAM) or 36. "
+            "When omitted, the optimizer does a single one-shot plan over the "
+            "whole eval window using the forecast for every hour (the "
+            "pessimistic / pure-forecast baseline). NOT leakage — the next-day "
+            "actual prices are genuinely published in production."
+        ),
+    )
+    bt_parser.add_argument(
+        "--replan-hours", type=int, default=24,
+        help="Re-planning cadence for rolling-horizon mode (default: 24h = daily). "
+             "Only used when --forecast-horizon-hours is set.",
     )
     bt_parser.add_argument(
         "--workload-filter", default=None,

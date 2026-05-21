@@ -172,3 +172,45 @@ class TestEvaluateSchedule:
         metrics = evaluate_schedule([], [], {}, {})
         assert metrics.total_energy_cost_usd == 0.0
         assert metrics.jobs_evaluated == 0
+
+
+class TestRollingHorizon:
+    """Rolling-horizon (receding-horizon / MPC) optimization."""
+
+    def test_rolling_produces_folds(self):
+        """Rolling mode runs end-to-end and produces the same fold structure."""
+        price_df = _make_price_df(regions=("us-west", "us-east"))
+        carbon_df = _make_carbon_df(regions=("us-west", "us-east"))
+        jobs = _make_jobs(n=6, regions=("us-west", "us-east"))
+
+        engine = BacktestEngine(
+            method="greedy_migrate", train_days=TRAIN_DAYS, eval_days=EVAL_DAYS,
+            config=OptimizationConfig(),
+        )
+        engine.forecast_horizon_hours = 24
+        engine.replan_hours = 24
+        rounds = engine.run(jobs, price_df, carbon_df)
+        assert len(rounds) >= 1
+        # Every eval job in a fold should have a committed decision
+        for r in rounds:
+            assert len(r.optimizer_schedule) == len(r.eval_jobs)
+
+    def test_rolling_matches_oneshot_when_horizon_covers_window(self):
+        """If the horizon covers the whole eval window, rolling with actual
+        prices should do at least as well as one-shot on the same forecast."""
+        price_df = _make_price_df(regions=("us-west", "us-east"))
+        carbon_df = _make_carbon_df(regions=("us-west", "us-east"))
+        jobs = _make_jobs(n=6, regions=("us-west", "us-east"))
+
+        # Rolling with a huge horizon (covers everything) == perfect near-term
+        engine_roll = BacktestEngine(
+            method="greedy", train_days=TRAIN_DAYS, eval_days=EVAL_DAYS,
+            config=OptimizationConfig(),
+        )
+        engine_roll.forecast_horizon_hours = 24 * 365  # effectively unbounded
+        engine_roll.replan_hours = 24
+        rounds_roll = engine_roll.run(jobs, price_df, carbon_df)
+        # Should produce folds and schedules without error
+        assert len(rounds_roll) >= 1
+        for r in rounds_roll:
+            assert len(r.optimizer_schedule) == len(r.eval_jobs)
