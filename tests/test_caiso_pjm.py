@@ -7,6 +7,7 @@ import io
 import zipfile
 from datetime import datetime, timezone
 from unittest.mock import MagicMock, patch
+from zoneinfo import ZoneInfo
 
 import pandas as pd
 import pytest
@@ -22,7 +23,10 @@ from aurelius.ingestion.grid_apis.caiso import (
     _extract_lmp_rows,
     _parse_zip_response,
 )
-from aurelius.ingestion.grid_apis.pjm import PJMPriceProvider
+from aurelius.ingestion.grid_apis.pjm import (
+    PJMPriceProvider,
+    PJMRealtimePriceProvider,
+)
 from aurelius.ingestion.grid_apis.market_registry import assert_price_type_not_demand
 
 UTC = timezone.utc
@@ -581,3 +585,151 @@ class TestPJMFetchPrices:
         provider = PJMPriceProvider(api_key="bad-key")
         with pytest.raises(ProviderConfigError, match="PJM API key"):
             provider.fetch_prices("us-east", T0, T1)
+
+
+# ---------------------------------------------------------------------------
+# PJM real-time: fixture response → canonical schema
+# ---------------------------------------------------------------------------
+
+def _make_pjm_rt_response(num_intervals=12, freq_minutes=5, status_code=200):
+    """Build a fake PJM RT response.
+
+    Mirrors the real API: datetime_beginning_utc is a bare ISO string with no
+    "UTC" suffix, and the price lives in total_lmp_rt.
+    """
+    eastern = ZoneInfo("America/New_York")
+    items = []
+    base = pd.Timestamp("2026-05-20T04:00:00+00:00")  # 00:00 EPT
+    for i in range(num_intervals):
+        ts = base + pd.Timedelta(minutes=freq_minutes * i)
+        items.append({
+            "datetime_beginning_utc": ts.strftime("%Y-%m-%dT%H:%M:%S"),
+            "datetime_beginning_ept": (ts.tz_convert(eastern)
+                                       .strftime("%Y-%m-%dT%H:%M:%S")),
+            "pnode_name": "PJM-RTO",
+            "total_lmp_rt": 30.0 + i,
+        })
+    resp = MagicMock()
+    resp.status_code = status_code
+    resp.json.return_value = {"items": items, "totalRows": num_intervals}
+    resp.raise_for_status = MagicMock()
+    return resp
+
+
+class TestPJMRealtimeCredentialGuard:
+    def test_missing_api_key_raises_config_error(self, monkeypatch):
+        monkeypatch.delenv("PJM_API_KEY", raising=False)
+        provider = PJMRealtimePriceProvider(api_key="")
+        with pytest.raises(ProviderConfigError, match="PJM_API_KEY"):
+            provider.fetch_prices("us-east", T0, T1)
+
+
+class TestPJMRealtimeFetchPrices:
+    @patch("aurelius.ingestion.grid_apis.pjm.requests")
+    def test_fetch_prices_canonical_schema(self, mock_requests):
+        mock_requests.get.return_value = _make_pjm_rt_response(num_intervals=12)
+
+        provider = PJMRealtimePriceProvider(api_key="test-key")
+        df = provider.fetch_prices("us-east", T0, T1)
+
+        assert list(df.columns) == PRICE_COLUMNS
+        assert not df.empty
+        assert (df["region"] == "us-east").all()
+        assert df["timestamp"].dtype.tz is not None
+
+    @patch("aurelius.ingestion.grid_apis.pjm.requests")
+    def test_source_name_is_rt(self, mock_requests):
+        mock_requests.get.return_value = _make_pjm_rt_response(num_intervals=3)
+
+        provider = PJMRealtimePriceProvider(api_key="test-key")
+        df = provider.fetch_prices("us-east", T0, T1)
+
+        assert (df["source"] == "pjm_rt_lmp").all()
+
+    @patch("aurelius.ingestion.grid_apis.pjm.requests")
+    def test_default_granularity_is_5min(self, mock_requests):
+        mock_requests.get.return_value = _make_pjm_rt_response(num_intervals=3)
+
+        provider = PJMRealtimePriceProvider(api_key="test-key")
+        df = provider.fetch_prices("us-east", T0, T1)
+
+        assert (df["source_granularity"] == "5min").all()
+
+    @patch("aurelius.ingestion.grid_apis.pjm.requests")
+    def test_default_uses_fivemin_endpoint(self, mock_requests):
+        mock_requests.get.return_value = _make_pjm_rt_response(num_intervals=3)
+
+        provider = PJMRealtimePriceProvider(api_key="test-key")
+        provider.fetch_prices("us-east", T0, T1)
+
+        url = mock_requests.get.call_args[0][0]
+        assert url.endswith("/rt_fivemin_hrl_lmps")
+
+    @patch("aurelius.ingestion.grid_apis.pjm.requests")
+    def test_hourly_uses_hourly_endpoint_and_granularity(self, mock_requests):
+        mock_requests.get.return_value = _make_pjm_rt_response(
+            num_intervals=3, freq_minutes=60
+        )
+
+        provider = PJMRealtimePriceProvider(api_key="test-key", hourly=True)
+        df = provider.fetch_prices("us-east", T0, T1)
+
+        url = mock_requests.get.call_args[0][0]
+        assert url.endswith("/rt_hrl_lmps")
+        assert (df["source_granularity"] == "hourly").all()
+
+    @patch("aurelius.ingestion.grid_apis.pjm.requests")
+    def test_5min_timestamps_not_floored_to_hour(self, mock_requests):
+        mock_requests.get.return_value = _make_pjm_rt_response(num_intervals=12)
+
+        provider = PJMRealtimePriceProvider(api_key="test-key")
+        df = provider.fetch_prices("us-east", T0, T1)
+
+        minutes = {ts.minute for ts in df["timestamp"]}
+        assert minutes != {0}  # 5-min precision preserved, not collapsed to top-of-hour
+
+    @patch("aurelius.ingestion.grid_apis.pjm.requests")
+    def test_total_lmp_rt_mapped_to_price(self, mock_requests):
+        mock_requests.get.return_value = _make_pjm_rt_response(num_intervals=1)
+
+        provider = PJMRealtimePriceProvider(api_key="test-key")
+        df = provider.fetch_prices("us-east", T0, T1)
+
+        assert df["price_per_mwh"].iloc[0] == pytest.approx(30.0)
+
+    @patch("aurelius.ingestion.grid_apis.pjm.requests")
+    def test_unknown_region_returns_empty(self, mock_requests):
+        provider = PJMRealtimePriceProvider(api_key="test-key")
+        df = provider.fetch_prices("eu-west", T0, T1)
+
+        assert df.empty
+        assert list(df.columns) == PRICE_COLUMNS
+        mock_requests.get.assert_not_called()
+
+    @patch("aurelius.ingestion.grid_apis.pjm.requests")
+    def test_401_raises_config_error(self, mock_requests):
+        resp = MagicMock()
+        resp.status_code = 401
+        resp.raise_for_status = MagicMock()
+        mock_requests.get.return_value = resp
+
+        provider = PJMRealtimePriceProvider(api_key="bad-key")
+        with pytest.raises(ProviderConfigError, match="PJM API key"):
+            provider.fetch_prices("us-east", T0, T1)
+
+    @patch("aurelius.ingestion.grid_apis.pjm.requests")
+    def test_archive_error_returns_empty_without_retry(self, mock_requests):
+        resp = MagicMock()
+        resp.status_code = 400
+        resp.text = "bad request"
+        resp.json.return_value = {
+            "errors": [{"field": "datetime", "message": "Archived data ..."}]
+        }
+        resp.raise_for_status = MagicMock()
+        mock_requests.get.return_value = resp
+
+        provider = PJMRealtimePriceProvider(api_key="test-key")
+        df = provider.fetch_prices("us-east", T0, T1)
+
+        assert df.empty
+        assert mock_requests.get.call_count == 1  # 4xx is not retried

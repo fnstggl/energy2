@@ -101,15 +101,15 @@ MARKET_REGISTRY: dict[str, MarketRegistryEntry] = {
         granularity="hourly",
         timezone="US/Eastern",
         supported_from="1998-01-01",
-        hub_or_zone="WESTERN HUB (pnode_id=1)",
+        hub_or_zone="PJM-RTO system aggregate (pnode_id=1)",
         endpoint_hint="https://api.pjm.com/api/v1/da_hrl_lmps",
         auth_required=True,
         auth_env_var="PJM_API_KEY",
         limitations=(
-            "PJM Western Hub day-ahead hourly LMP. "
+            "PJM-RTO system-aggregate day-ahead hourly LMP (pnode_id=1). "
             "Requires PJM_API_KEY (free registration at developer.pjm.com). "
             "Ocp-Apim-Subscription-Key header required. "
-            "Does not cover nodal prices or other hubs."
+            "Does not cover nodal prices or individual hubs/zones."
         ),
     ),
     "us-south": MarketRegistryEntry(
@@ -227,6 +227,31 @@ _REAL_TIME_REGISTRY: dict[str, MarketRegistryEntry] = {
             "Max ~31-day window per request. "
             "Real-time data may have a publication lag of a few minutes. "
             "CAISO covers California only — not a national price source."
+        ),
+    ),
+    "us-east": MarketRegistryEntry(
+        canonical_region="us-east",
+        market="PJM",
+        operator="PJM Interconnection",
+        provider="pjm",
+        price_type="real_time_lmp",
+        currency="USD",
+        unit="USD/MWh",
+        granularity="5min",
+        timezone="US/Eastern",
+        supported_from="2018-04-01",
+        hub_or_zone="PJM-RTO system aggregate (pnode_id=1)",
+        endpoint_hint="https://api.pjm.com/api/v1/rt_fivemin_hrl_lmps",
+        auth_required=True,
+        auth_env_var="PJM_API_KEY",
+        limitations=(
+            "PJM-RTO system-aggregate five-minute real-time LMP (pnode_id=1, "
+            "total_lmp_rt). Requires PJM_API_KEY; Ocp-Apim-Subscription-Key header. "
+            "datetime_beginning_ept filter is in Eastern time (MM/DD/YYYY HH:MM, "
+            "' to ' range separator). Five-minute feed available from 2018-04-01; "
+            "data older than ~6 months moves to PJM's archive feed with reduced "
+            "query flexibility. PJMRealtimePriceProvider(hourly=True) uses the "
+            "hourly rt_hrl_lmps feed instead."
         ),
     ),
 }

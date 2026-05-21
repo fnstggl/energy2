@@ -155,10 +155,15 @@ class TestRealTimeRegistry:
         rt = get_price_provider_for_region("us-west", price_type="real_time")
         assert rt.price_type == "real_time_lmp"
 
-    def test_us_east_has_no_real_time_entry(self):
-        """PJM is day-ahead only in this registry — real_time_lmp should raise."""
-        with pytest.raises(UnsupportedMarketPriceError):
-            get_price_provider_for_region("us-east", price_type="real_time_lmp")
+    def test_us_east_has_real_time_entry(self):
+        """PJM now exposes a real-time five-minute LMP entry for us-east."""
+        rt = get_price_provider_for_region("us-east", price_type="real_time_lmp")
+        assert rt.provider == "pjm"
+        assert rt.price_type == "real_time_lmp"
+        assert rt.granularity == "5min"
+        assert rt.auth_required is True
+        assert rt.auth_env_var == "PJM_API_KEY"
+        assert "rt_fivemin_hrl_lmps" in rt.endpoint_hint
 
 
 # ---------------------------------------------------------------------------
@@ -182,8 +187,8 @@ class TestUnsupportedMarketPriceError:
     def test_get_price_provider_price_type_mismatch_raises(self):
         """Requesting a price_type that doesn't match any entry raises."""
         with pytest.raises(UnsupportedMarketPriceError):
-            # us-east has day_ahead_lmp, not real_time_lmp (PJM not in RT registry)
-            get_price_provider_for_region("us-east", price_type="real_time_lmp")
+            # eu-west has day_ahead_lmp only — no real-time entry in the RT registry
+            get_price_provider_for_region("eu-west", price_type="real_time_lmp")
 
     def test_get_price_provider_matching_day_ahead_type_returns_entry(self):
         entry = get_price_provider_for_region("us-west", price_type="day_ahead_lmp")

@@ -258,6 +258,28 @@ def _load_price_df(args, regions):
                 sys.exit(1)
         return pd.concat(dfs, ignore_index=True)
 
+    if provider == "pjm-rt":
+        from .ingestion.grid_apis.base import ProviderConfigError
+        from .ingestion.grid_apis.pjm import PJMRealtimePriceProvider
+        for region in regions:
+            if region not in ("us-east",):
+                print(f"ERROR: PJM provider only supports us-east (got '{region}')", file=sys.stderr)
+                sys.exit(1)
+        start_dt = start_ts.to_pydatetime() if start_ts else None
+        end_dt = end_ts.to_pydatetime() if end_ts else None
+        if not start_dt or not end_dt:
+            print("ERROR: --start and --end are required for live provider pjm-rt", file=sys.stderr)
+            sys.exit(1)
+        p = PJMRealtimePriceProvider()
+        dfs = []
+        for region in regions:
+            try:
+                dfs.append(p.fetch_prices(region, start_dt, end_dt))
+            except ProviderConfigError as e:
+                print(f"ERROR: {e}", file=sys.stderr)
+                sys.exit(1)
+        return pd.concat(dfs, ignore_index=True)
+
     if provider == "entsoe":
         from .ingestion.grid_apis.entsoe import ENTSOEPriceProvider
         from .ingestion.grid_apis.base import ProviderConfigError
@@ -720,11 +742,12 @@ def main():
     bt_parser.add_argument(
         "--price-provider",
         required=True,
-        choices=["caiso", "pjm", "entsoe", "csv"],
+        choices=["caiso", "pjm", "pjm-rt", "entsoe", "csv"],
         help=(
             "Price data source: "
-            "caiso=CAISO OASIS (us-west, no auth), "
-            "pjm=PJM Data Miner (us-east, requires PJM_API_KEY), "
+            "caiso=CAISO OASIS day-ahead (us-west, no auth), "
+            "pjm=PJM Data Miner day-ahead (us-east, requires PJM_API_KEY), "
+            "pjm-rt=PJM Data Miner real-time 5-min (us-east, requires PJM_API_KEY), "
             "entsoe=ENTSO-E (eu-*, requires ENTSOE_API_KEY), "
             "csv=load from --price-file"
         ),
