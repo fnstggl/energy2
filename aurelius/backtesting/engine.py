@@ -362,6 +362,23 @@ class BacktestEngine:
         # --- Build forecast signals for the optimizer ---
         forecast_quality: Optional[ForecastQuality] = None
 
+        # Forecast horizon must cover the latest hour any eval job could be
+        # scheduled into — i.e. up to the latest job deadline — NOT just the
+        # eval window. Otherwise candidate start times past eval_end have no
+        # forecast price and the objective falls back to a flat $50/MWh
+        # (objective.py), which creates phantom-cheap future hours and lets the
+        # optimizer "park" deadline-flexible jobs months out (e.g. scheduling a
+        # late-March job to start in late May). That both corrupts the savings
+        # number and triggers missing-price warnings at scoring time.
+        forecast_end = split.eval_end
+        for j in eval_jobs:
+            j_deadline = _to_ts(j.deadline)
+            if j_deadline > forecast_end:
+                forecast_end = j_deadline
+        # Pad by a day so a job starting at its deadline-minus-runtime still has
+        # prices for its full runtime.
+        forecast_end = forecast_end + pd.Timedelta(days=1)
+
         if self.oracle_forecast:
             # DIAGNOSTIC: perfect-foresight. Feed actual eval-window prices to
             # the optimizer. This is intentional leakage — used only to measure
@@ -374,15 +391,15 @@ class BacktestEngine:
             forecast_price_data, forecast_carbon_data, forecast_quality = (
                 self._build_ml_forecast(
                     split, train_price_data, train_carbon_data,
-                    eval_price_data, eval_carbon_data,
+                    eval_price_data, eval_carbon_data, forecast_end,
                 )
             )
         else:
             forecast_price_data = _build_hourly_price_forecast(
-                train_price_data, split.eval_start, split.eval_end
+                train_price_data, split.eval_start, forecast_end
             )
             forecast_carbon_data = _build_hourly_carbon_forecast(
-                train_carbon_data, split.eval_start, split.eval_end
+                train_carbon_data, split.eval_start, forecast_end
             )
 
         n_fc = sum(len(v) for v in forecast_price_data.values())
@@ -553,6 +570,7 @@ class BacktestEngine:
         train_carbon_data: dict,
         eval_price_data: dict,
         eval_carbon_data: dict,
+        forecast_end: Optional[pd.Timestamp] = None,
     ) -> tuple[dict, dict, ForecastQuality]:
         """Fit ML forecasters on training data and predict the eval window.
 
@@ -581,8 +599,9 @@ class BacktestEngine:
             price_fc.fit(train_price_records)
         except Exception as exc:
             logger.error(f"ML price forecaster fit failed: {exc}; falling back to naive")
-            naive_price = _build_hourly_price_forecast(train_price_data, split.eval_start, split.eval_end)
-            naive_carbon = _build_hourly_carbon_forecast(train_carbon_data, split.eval_start, split.eval_end)
+            _fc_end = forecast_end if forecast_end is not None else split.eval_end
+            naive_price = _build_hourly_price_forecast(train_price_data, split.eval_start, _fc_end)
+            naive_carbon = _build_hourly_carbon_forecast(train_carbon_data, split.eval_start, _fc_end)
             return naive_price, naive_carbon, ForecastQuality(forecast_method="seasonal_naive_fallback")
 
         # Recent context: last context_hours of training records, sliced
@@ -604,7 +623,10 @@ class BacktestEngine:
         regions = list(set(r.region for r in train_price_records))
 
         eval_start_dt = split.eval_start.to_pydatetime()
-        eval_end_dt = split.eval_end.to_pydatetime()
+        # Forecast out to forecast_end (covers latest job deadline), not just
+        # the eval window — see _run_fold for why (phantom-$50 future hours).
+        _fc_end = forecast_end if forecast_end is not None else split.eval_end
+        eval_end_dt = _fc_end.to_pydatetime() if hasattr(_fc_end, "to_pydatetime") else _fc_end
         if eval_start_dt.tzinfo is None:
             eval_start_dt = eval_start_dt.replace(tzinfo=timezone.utc)
         if eval_end_dt.tzinfo is None:
@@ -612,6 +634,15 @@ class BacktestEngine:
 
         n_hours = int((eval_end_dt - eval_start_dt).total_seconds() / 3600)
         eval_timestamps = [eval_start_dt + timedelta(hours=h) for h in range(n_hours)]
+
+        # Forecast-quality measurement must use ONLY the real eval window
+        # (eval_start..split.eval_end), not the extended forecast horizon, so
+        # metrics aren't diluted by post-window hours.
+        true_eval_end_dt = split.eval_end.to_pydatetime()
+        if true_eval_end_dt.tzinfo is None:
+            true_eval_end_dt = true_eval_end_dt.replace(tzinfo=timezone.utc)
+        n_eval_hours = int((true_eval_end_dt - eval_start_dt).total_seconds() / 3600)
+        eval_window_timestamps = [eval_start_dt + timedelta(hours=h) for h in range(n_eval_hours)]
 
         for region in regions:
             region_context = [r for r in recent_context if r.region == region]
@@ -667,7 +698,7 @@ class BacktestEngine:
         # --- Compute forecast quality using eval-window actuals ---
         # This is MEASUREMENT only: actuals are not fed back to the forecaster
         fq = self._measure_forecast_quality(
-            price_fc, regions, eval_timestamps, recent_context,
+            price_fc, regions, eval_window_timestamps, recent_context,
             eval_price_data,
         )
 
