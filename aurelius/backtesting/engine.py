@@ -228,6 +228,7 @@ class BacktestEngine:
         carbon_forecaster_config: Optional[Any] = None,
         context_hours: int = 192,  # 168h for lag_168h + 24h safety margin
         recorder_path: Optional[Path] = None,
+        rt_risk_lambda: Optional[float] = None,
     ) -> None:
         self.method = method
         self.config = config or OptimizationConfig()
@@ -270,6 +271,13 @@ class BacktestEngine:
         # (single one-shot optimize over the whole eval window).
         self.forecast_horizon_hours: Optional[int] = None
         self.replan_hours: int = 24
+
+        # DA->RT spread risk adjustment. When set (>= 0) AND a settlement price
+        # series is provided, the optimizer plans against a risk-adjusted RT
+        # estimate (DA + learned conditional spread + lambda * upside risk),
+        # fit per fold on the training window only. None = disabled (plan on raw
+        # DA). lambda=0 applies debias only; higher penalizes spike-prone slots.
+        self.rt_risk_lambda: Optional[float] = rt_risk_lambda
 
     @property
     def uses_ml_forecaster(self) -> bool:
@@ -380,6 +388,25 @@ class BacktestEngine:
         else:
             settle_price_data = eval_price_data
 
+        # --- Fit DA->RT spread risk model on TRAIN window only (no leakage) ---
+        # The optimizer will plan against risk-adjusted prices (estimate of RT),
+        # while baselines keep raw prices and scoring stays on actual RT.
+        spread_risk_model = None
+        if (
+            self.rt_risk_lambda is not None
+            and settle_price_df is not None
+            and not settle_price_df.empty
+        ):
+            settle_mask = (
+                (pd.to_datetime(settle_price_df["timestamp"]) >= split.train_start)
+                & (pd.to_datetime(settle_price_df["timestamp"]) < split.train_end)
+            )
+            train_settle_data = _df_to_price_data(settle_price_df[settle_mask])
+            from aurelius.forecasting.spread_risk import SpreadRiskModel
+            spread_risk_model = SpreadRiskModel(risk_lambda=self.rt_risk_lambda).fit(
+                train_price_data, train_settle_data
+            )
+
         # --- Build forecast signals for the optimizer ---
         forecast_quality: Optional[ForecastQuality] = None
 
@@ -436,11 +463,16 @@ class BacktestEngine:
                 # next forecast_horizon_hours at each replan, ML/naive beyond.
                 opt_schedule = self._rolling_optimize(
                     split, eval_jobs, eval_price_data, forecast_price_data,
-                    forecast_carbon_data,
+                    forecast_carbon_data, spread_risk_model,
                 )
             else:
+                # Plan against risk-adjusted RT estimate (optimizer only).
+                opt_prices = (
+                    spread_risk_model.adjust_price_map(forecast_price_data)
+                    if spread_risk_model is not None else forecast_price_data
+                )
                 opt_result = self.scheduler.solve(
-                    eval_jobs, forecast_price_data, forecast_carbon_data,
+                    eval_jobs, opt_prices, forecast_carbon_data,
                     method=self.method,
                 )
                 opt_schedule = opt_result.schedule
@@ -510,6 +542,7 @@ class BacktestEngine:
         eval_price_data: dict[str, dict[datetime, float]],
         base_forecast: dict[str, dict[datetime, float]],
         forecast_carbon_data: dict[str, dict[datetime, float]],
+        spread_risk_model=None,
     ) -> list[ScheduleDecision]:
         """Receding-horizon optimization mirroring production DAM publication.
 
@@ -544,6 +577,12 @@ class BacktestEngine:
                     if plan_time <= h < horizon_end:
                         pv[h] = price
                 view[region] = pv
+            # Plan against a risk-adjusted RT estimate: even the known DA prices
+            # within the horizon are converted toward expected RT (+ spike
+            # penalty), since the customer ultimately pays RT. Scoring is still
+            # done on actual RT outside this function.
+            if spread_risk_model is not None:
+                view = spread_risk_model.adjust_price_map(view)
             return view
 
         # Walk replan waves. At each wave we (1) MID-FLIGHT RE-PLAN the remaining

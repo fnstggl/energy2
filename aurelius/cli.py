@@ -498,6 +498,7 @@ def cmd_backtest(args):
         eval_days=args.eval_days,
         config=config,
         price_forecaster_cls=price_forecaster_cls,
+        rt_risk_lambda=args.rt_risk_lambda,
     )
     if args.forecaster == "oracle":
         engine.oracle_forecast = True
@@ -520,6 +521,13 @@ def cmd_backtest(args):
     if args.forecast_horizon_hours is not None:
         print(f"Rolling horizon: {args.forecast_horizon_hours}h actual DAM / "
               f"replan every {args.replan_hours}h (ML beyond horizon)")
+    if args.rt_risk_lambda is not None:
+        if settle_price_df is None:
+            print("WARNING: --rt-risk-lambda set but no --settlement-price-file; "
+                  "DA->RT risk adjustment is inactive (plan price == settle price).")
+        else:
+            print(f"DA->RT risk adjustment: ON (lambda={args.rt_risk_lambda}; "
+                  "optimizer plans on debiased RT estimate + spike penalty)")
     print(f"Regions: {regions}")
     print()
 
@@ -807,6 +815,17 @@ def main():
             "data (e.g. day-ahead). This is the DA-plan / RT-settle model for an "
             "RT-exposed customer. Omit it to model a DA-hedged customer (settlement "
             "== planning price). Columns: timestamp, region, price_per_mwh"
+        ),
+    )
+    bt_parser.add_argument(
+        "--rt-risk-lambda", type=float, default=None,
+        help=(
+            "Enable DA->RT spread risk adjustment with this risk-aversion weight "
+            "(requires --settlement-price-file). The optimizer plans against a "
+            "risk-adjusted RT estimate: DA + learned per-(region,hour) median "
+            "spread + lambda * upside spread, fit on the training window only. "
+            "0 = debias toward expected RT only; higher avoids spike-prone "
+            "hours/regions more aggressively. Omit to plan on raw day-ahead."
         ),
     )
     bt_parser.add_argument(
