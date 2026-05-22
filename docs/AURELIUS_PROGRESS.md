@@ -604,3 +604,65 @@ The system must remain:
 - reproducible
 
 ===============================================================================
+
+===============================================================================
+ELECTRICITY MAPS CONTRIB AUDIT + MARKET-DATA PROVIDER ABSTRACTION
+===============================================================================
+
+What was audited
+- Full inspection of the public electricitymaps/electricitymaps-contrib repo
+  (AGPL-3.0): config/zones/*.yaml, config/data_centers/data_centers.json,
+  electricitymap/contrib/parsers/*.py, DATA_SOURCES.md, license files.
+- Clone lived only in /tmp and was NOT committed to Aurelius.
+- Full audit written to docs/ELECTRICITYMAPS_CONTRIB_AUDIT.md.
+
+Key audit findings
+- The contrib repo is a CARBON-INTENSITY / GENERATION-MIX project, not a price
+  project. NO US ISO zone (CISO/PJM/ERCOT/NYISO/MISO/SPP/ISO-NE) binds a price
+  parser — only carbon/production/consumption/exchange.
+- The 84 zones that DO have a price parser are European (ENTSO-E) or other
+  international operators, and all return zonal/bidding-zone/country prices,
+  never true nodal LMP.
+- EU prices come from ENTSO-E Transparency, which Aurelius already reads
+  directly — so the repo adds nothing for prices beyond confirming the source.
+- Highest-value asset: config/data_centers/data_centers.json (cloud region ->
+  grid zone). A verified subset was adapted (clean-room, factual) into the
+  region registry.
+
+What was implemented (this branch)
+- aurelius/ingestion/market_data_provider.py — provenance-aware abstraction:
+  MarketPricePoint, CarbonPoint, ProviderCapability, MarketDataProvider, plus
+  Provenance/MarketType/Signal vocab, a benchmark-admissibility gate
+  (assert_benchmark_admissible / filter_benchmark_admissible), and converters to
+  the canonical DataFrame schema. Sits ABOVE grid_apis/base.py (no duplication).
+- aurelius/ingestion/region_registry.py — canonical region -> ISO/TSO source
+  region + Electricity Maps zone + carbon-provider zones + cloud-region aliases,
+  each with a confidence level (unimplemented ISOs marked LOW). Single source of
+  truth for EM zone maps.
+- aurelius/ingestion/grid_apis/electricitymaps.py — added ElectricityMapsProvider
+  (implements MarketDataProvider) with sandbox mode (ELECTRICITYMAPS_SANDBOX),
+  is_sandbox propagation, token redaction in repr/logs, registry-backed zone
+  map, and explicit refusal to serve US prices / nodal LMP. Legacy
+  ElectricityMapsCarbonProvider preserved for backward compatibility.
+- Tests: tests/test_market_data_provider.py, tests/test_region_registry.py,
+  tests/test_electricitymaps_provider.py (39 new tests; HTTP fully mocked).
+
+Was the Electricity Maps repo used only as reference?
+- Yes. No AGPL source code was vendored, imported, or copy-pasted. Only factual
+  identifiers (zone keys, EIC codes, source URLs) and cloud-region geography
+  were used, re-expressed in Aurelius' own schema. Documented in the audit.
+
+What remains
+- Wire MarketDataProvider capability discovery into optimizer/backtester source
+  selection (prefer source-of-truth ISO before EM fallback).
+- Call assert_benchmark_admissible() inside the savings/benchmark harness.
+- Implement SPP/MISO/NYISO/ISO-NE price providers to lift their registry
+  confidence from LOW (currently carbon-only).
+- Migrate any remaining hard-coded EM zone maps in cli.py to the registry.
+
+Production API access still required for real benchmark claims?
+- YES. Electricity Maps sandbox/randomized data is connector/schema-test only
+  and is hard-blocked from benchmark/savings paths. Real economic claims still
+  require real, unrandomized historical data from the source-of-truth ISO/TSO
+  (and a paid EM plan for deeper carbon history). This branch adds plumbing and
+  guardrails, not validated savings.
