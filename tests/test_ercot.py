@@ -268,3 +268,10 @@ class TestERCOTHelpers:
         first = _localize_central_to_utc([pd.Timestamp("2024-11-03 01:30")], ["N"])[0]
         second = _localize_central_to_utc([pd.Timestamp("2024-11-03 01:30")], ["Y"])[0]
         assert (second - first) == pd.Timedelta(hours=1)
+
+    def test_localize_accepts_boolean_dst_flag(self):
+        # The live ERCOT API returns DSTFlag as a JSON boolean, not "Y"/"N".
+        # bool False = first/DST occurrence; bool True = repeated standard hour.
+        first = _localize_central_to_utc([pd.Timestamp("2024-11-03 01:30")], [False])[0]
+        second = _localize_central_to_utc([pd.Timestamp("2024-11-03 01:30")], [True])[0]
+        assert (second - first) == pd.Timedelta(hours=1)

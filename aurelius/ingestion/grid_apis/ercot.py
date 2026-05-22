@@ -211,8 +211,13 @@ def _localize_central_to_utc(
     pushes the skipped spring-forward hour to the next valid instant.
     """
     idx = pd.DatetimeIndex(naive)
-    # ambiguous=True selects the DST (earlier) reading; False selects standard.
-    ambiguous = np.array([str(f).strip().upper() != "Y" for f in dst_flags], dtype=bool)
+    # ERCOT marks the repeated fall-back hour with DSTFlag truthy (JSON boolean
+    # True, or "Y"/"true"); that occurrence is standard time (the second reading),
+    # so ambiguous=False. All other rows take the DST/first reading (ambiguous=True).
+    repeated = {"Y", "TRUE", "1"}
+    ambiguous = np.array(
+        [str(f).strip().upper() not in repeated for f in dst_flags], dtype=bool
+    )
     localized = idx.tz_localize(
         _CENTRAL, ambiguous=ambiguous, nonexistent="shift_forward"
     )
