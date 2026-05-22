@@ -42,6 +42,7 @@ from .quantile_model import (
     time_series_cv_split,
     train_lightgbm_quantile,
     validate_quantiles,
+    compute_volatility_regime_features,
 )
 
 logger = logging.getLogger(__name__)
@@ -103,12 +104,20 @@ class PriceModelConfig:
         max_depth: Maximum tree depth
         learning_rate: Learning rate for boosting
         use_baseline_fallback: Whether to fallback to baseline if LightGBM unavailable
+        include_volatility_features: Enable volatility regime features (spike detection,
+            rolling_std, price_momentum). Recommended for high-volatility grids like ERCOT
+            winter. Adds 6 features; requires slightly more training data but significantly
+            improves detection of price-spike regimes.
+        num_leaves: LightGBM num_leaves (overrides max_depth when set to > 0).
+            Default 0 means use max_depth.
     """
     seed: int = DEFAULT_SEED
-    n_estimators: int = 100
+    n_estimators: int = 200
     max_depth: int = 6
-    learning_rate: float = 0.1
+    learning_rate: float = 0.05
     use_baseline_fallback: bool = True
+    include_volatility_features: bool = True
+    num_leaves: int = 63
 
 
 class PriceQuantileForecaster:
@@ -160,6 +169,9 @@ class PriceQuantileForecaster:
         self._use_rolling = True
         self._lag_hours = [1, 6, 24, 168]
         self._rolling_hours = [6, 24]
+        # v2.0: Volatility regime features for price spike detection.
+        # Enabled when config.include_volatility_features is True.
+        self._use_volatility = self.config.include_volatility_features
         # Bias-correction lookup: {region: {hour: bias}} loaded from artifact
         self._p50_bias: dict[str, dict[int, float]] = {}
         self._corrections_loaded: bool = False
@@ -220,20 +232,21 @@ class PriceQuantileForecaster:
         self._known_regions = sorted(set(regions))
         self._baseline_mean = float(np.mean(values)) if len(values) > 0 else 50.0
 
-        # v1.1: Build feature matrix with minimal lags (lag_1h, lag_6h, rolling_mean_6h)
         X = build_feature_matrix(
             timestamps,
             regions,
             values,
             include_lags=self._use_lags,
             include_rolling=self._use_rolling,
+            include_volatility=self._use_volatility,
             known_regions=self._known_regions,
             lag_hours=self._lag_hours,
             rolling_hours=self._rolling_hours,
         )
         X_np = X.values
 
-        # Train p50 model
+        num_leaves = getattr(self.config, "num_leaves", 0)
+
         logger.info("Training p50 (median) price model...")
         self._model_p50 = train_lightgbm_quantile(
             X_np, values, QUANTILE_P50,
@@ -241,9 +254,9 @@ class PriceQuantileForecaster:
             n_estimators=self.config.n_estimators,
             max_depth=self.config.max_depth,
             learning_rate=self.config.learning_rate,
+            num_leaves=num_leaves,
         )
 
-        # Train p90 model
         logger.info("Training p90 (upper bound) price model...")
         self._model_p90 = train_lightgbm_quantile(
             X_np, values, QUANTILE_P90,
@@ -251,27 +264,29 @@ class PriceQuantileForecaster:
             n_estimators=self.config.n_estimators,
             max_depth=self.config.max_depth,
             learning_rate=self.config.learning_rate,
+            num_leaves=num_leaves,
         )
 
         self._fitted = True
 
-        # Determine model type based on what was trained
         if self._model_p50 is not None and self._model_p90 is not None:
-            model_type = "ridge+lightgbm_quantile"
+            vol_suffix = "+volatility" if self._use_volatility else ""
+            model_type = f"lightgbm_quantile{vol_suffix}"
         else:
             model_type = "baseline_fallback"
 
+        features_version = "v2.0" if self._use_volatility else "v1.2"
         self._metadata = ModelMetadata(
             model_type=model_type,
             trained_at=datetime.utcnow(),
-            features_version="v1.1",  # Updated for minimal lags
+            features_version=features_version,
             training_samples=len(prices),
             regions=self._known_regions,
             seed=self.config.seed,
         )
 
         logger.info(
-            f"Fitted price quantile model ({model_type}) on "
+            f"Fitted price quantile model ({model_type}, {features_version}) on "
             f"{len(prices)} samples, {len(self._known_regions)} regions"
         )
 
@@ -313,7 +328,6 @@ class PriceQuantileForecaster:
         use_lags = check_recent_data_sufficient(recent_values)
 
         if use_lags:
-            # Build feature matrix with lag features from recent data
             X, _ = build_feature_matrix_for_predict(
                 timestamps,
                 regions,
@@ -321,16 +335,17 @@ class PriceQuantileForecaster:
                 known_regions=self._known_regions,
                 lag_hours=self._lag_hours,
                 rolling_hours=self._rolling_hours,
+                include_volatility=self._use_volatility,
             )
         else:
-            # Fallback: temporal+region only, fill lag columns with 0
             logger.debug("Price model: using temporal+region only (insufficient recent data)")
             X = build_feature_matrix(
                 timestamps,
                 regions,
                 values=None,
-                include_lags=True,  # Keep columns for model compatibility
+                include_lags=True,
                 include_rolling=True,
+                include_volatility=self._use_volatility,
                 known_regions=self._known_regions,
                 lag_hours=self._lag_hours,
                 rolling_hours=self._rolling_hours,
@@ -365,13 +380,14 @@ class PriceQuantileForecaster:
                 p50_corrected = p50_raw
             # Ensure p90 >= corrected p50
             p90 = max(p90_preds[i], p50_corrected)
+            fv = self._metadata.features_version if self._metadata else "v2.0"
             forecasts.append(PriceQuantileForecast(
                 timestamp=ts,
                 region=region,
                 p50=round(p50_corrected, 2),
                 p90=round(p90, 2),
                 model_type=model_type,
-                features_version="v1.1",
+                features_version=fv,
             ))
 
         return forecasts

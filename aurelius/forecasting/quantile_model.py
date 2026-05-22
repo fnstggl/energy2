@@ -240,6 +240,63 @@ def compute_rolling_features(
     return result
 
 
+def compute_volatility_regime_features(
+    values: np.ndarray,
+    spike_multiplier: float = 2.0,
+) -> dict[str, np.ndarray]:
+    """Compute volatility regime features for price spike detection.
+
+    These features help the model identify when we are in a high-volatility
+    regime (e.g. ERCOT winter cold-snap spikes) vs normal periods.
+    All features are computed strictly from past values — no leakage.
+
+    Features:
+        rolling_std_24h:      24h rolling standard deviation (raw volatility)
+        rolling_std_168h:     168h rolling std (weekly baseline volatility)
+        volatility_ratio_24h: rolling_std_24h / rolling_mean_24h (coefficient of variation)
+        spike_flag:           1 if current value > spike_multiplier × rolling_mean_168h
+        price_momentum_6h:    (current - 6h ago) / (6h ago + ε); positive = rising prices
+        price_momentum_24h:   (current - 24h ago) / (24h ago + ε); day-over-day trend
+
+    Args:
+        values:           Array of price values (chronological order)
+        spike_multiplier: Multiplier for rolling_mean_168h to flag a spike (default 2.0)
+
+    Returns:
+        Dict mapping feature name to array of feature values
+    """
+    series = pd.Series(values, dtype=float)
+    eps = 1e-3  # prevent division by zero in $/MWh context
+
+    mean_24 = series.rolling(window=24, min_periods=1).mean()
+    mean_168 = series.rolling(window=168, min_periods=1).mean()
+    std_24 = series.rolling(window=24, min_periods=2).std().fillna(0.0)
+    std_168 = series.rolling(window=168, min_periods=2).std().fillna(0.0)
+
+    # Coefficient of variation: how noisy is the recent 24h window?
+    vol_ratio_24 = (std_24 / (mean_24 + eps)).fillna(0.0)
+    # Clip to [0, 5] to avoid extreme outliers
+    vol_ratio_24 = vol_ratio_24.clip(upper=5.0)
+
+    # Spike flag: current price > spike_multiplier × 168h mean
+    spike_flag = (series > (spike_multiplier * mean_168)).astype(float)
+
+    # Price momentum: (current - past) / (past + ε) clipped to [-1, 5]
+    lag6 = series.shift(6).bfill().fillna(series.iloc[0])
+    lag24 = series.shift(24).bfill().fillna(series.iloc[0])
+    momentum_6h = ((series - lag6) / (lag6 + eps)).clip(-1.0, 5.0).fillna(0.0)
+    momentum_24h = ((series - lag24) / (lag24 + eps)).clip(-1.0, 5.0).fillna(0.0)
+
+    return {
+        "rolling_std_24h": std_24.values,
+        "rolling_std_168h": std_168.values,
+        "volatility_ratio_24h": vol_ratio_24.values,
+        "spike_flag": spike_flag.values,
+        "price_momentum_6h": momentum_6h.values,
+        "price_momentum_24h": momentum_24h.values,
+    }
+
+
 # Minimum hours of recent data required to enable lag features
 MIN_RECENT_HOURS = 6
 
@@ -270,15 +327,17 @@ def build_feature_matrix(
     values: Optional[np.ndarray] = None,
     include_lags: bool = True,
     include_rolling: bool = True,
+    include_volatility: bool = False,
     known_regions: Optional[list[str]] = None,
     lag_hours: Optional[list[int]] = None,
     rolling_hours: Optional[list[int]] = None,
 ) -> pd.DataFrame:
     """Build full feature matrix for training or prediction.
 
-    v1.1 defaults:
-    - lag_hours: [1, 6] (minimal high-signal lags)
-    - rolling_hours: [6] (rolling_mean_6h only, no std)
+    v1.2 defaults:
+    - lag_hours: [1, 6, 24, 168] (full seasonal lag set)
+    - rolling_hours: [6, 24]
+    - include_volatility: False by default, opt-in for regime features
 
     Args:
         timestamps: List of timestamps
@@ -286,14 +345,14 @@ def build_feature_matrix(
         values: Optional array of target values (for lagged features)
         include_lags: Whether to include lagged features
         include_rolling: Whether to include rolling features
+        include_volatility: Whether to include volatility regime features
         known_regions: Known regions for consistent encoding
-        lag_hours: Specific lag hours to use (default: [1, 6])
-        rolling_hours: Specific rolling windows (default: [6])
+        lag_hours: Specific lag hours to use
+        rolling_hours: Specific rolling windows
 
     Returns:
         DataFrame with all features
     """
-    # v1.1 minimal defaults
     if lag_hours is None:
         lag_hours = [1, 6]
     if rolling_hours is None:
@@ -306,9 +365,8 @@ def build_feature_matrix(
     df["region_encoded"] = encode_region(regions, known_regions)
 
     # Lagged and rolling features
-    if include_lags or include_rolling:
+    if include_lags or include_rolling or include_volatility:
         if values is not None and len(values) == len(timestamps):
-            # Compute actual lag/rolling features from values
             ts_array = pd.to_datetime(timestamps)
 
             if include_lags:
@@ -320,9 +378,13 @@ def build_feature_matrix(
                 rolling = compute_rolling_features(values, windows_hours=rolling_hours, include_std=False)
                 for name, arr in rolling.items():
                     df[name] = arr
+
+            if include_volatility:
+                vol_feats = compute_volatility_regime_features(values)
+                for name, arr in vol_feats.items():
+                    df[name] = arr
         else:
-            # v1.1: Create placeholder columns with zeros for model compatibility
-            # This ensures consistent feature count between train and fallback predict
+            # Placeholder columns for model compatibility when no values available
             if include_lags:
                 for lag in lag_hours:
                     df[f"lag_{lag}h"] = 0.0
@@ -330,6 +392,14 @@ def build_feature_matrix(
             if include_rolling:
                 for window in rolling_hours:
                     df[f"rolling_mean_{window}h"] = 0.0
+
+            if include_volatility:
+                for col in [
+                    "rolling_std_24h", "rolling_std_168h",
+                    "volatility_ratio_24h", "spike_flag",
+                    "price_momentum_6h", "price_momentum_24h",
+                ]:
+                    df[col] = 0.0
 
     # Fill NaN with 0
     df = df.fillna(0)
@@ -344,6 +414,7 @@ def build_feature_matrix_for_predict(
     known_regions: Optional[list[str]] = None,
     lag_hours: Optional[list[int]] = None,
     rolling_hours: Optional[list[int]] = None,
+    include_volatility: bool = False,
 ) -> tuple[pd.DataFrame, bool]:
     """Build feature matrix for prediction with automatic fallback.
 
@@ -357,12 +428,12 @@ def build_feature_matrix_for_predict(
         known_regions: Known regions for encoding
         lag_hours: Lag hours to use if sufficient data
         rolling_hours: Rolling windows if sufficient data
+        include_volatility: Whether to include volatility regime features
 
     Returns:
         Tuple of (feature_matrix, used_lags) where used_lags indicates
         whether lag features were enabled
     """
-    # v1.1 minimal defaults
     if lag_hours is None:
         lag_hours = [1, 6]
     if rolling_hours is None:
@@ -372,7 +443,6 @@ def build_feature_matrix_for_predict(
     use_lags = check_recent_data_sufficient(recent_values)
 
     if not use_lags:
-        # Silent fallback to temporal + region only
         logger.debug(
             "Insufficient recent data for lag features, using temporal+region only"
         )
@@ -382,38 +452,44 @@ def build_feature_matrix_for_predict(
             values=None,
             include_lags=False,
             include_rolling=False,
+            include_volatility=False,
             known_regions=known_regions,
         )
         return df, False
 
-    # Build feature matrix with lag features using recent values
-    # We need to construct a combined timeline for proper lag computation
     n_recent = len(recent_values)
     n_predict = len(timestamps)
 
-    # Create synthetic timestamps for recent values (hourly, ending at first predict timestamp)
     from datetime import timedelta
     first_ts = timestamps[0]
     recent_timestamps = [first_ts - timedelta(hours=(n_recent - i)) for i in range(n_recent)]
 
-    # Combine recent + predict timestamps and values
     all_timestamps = recent_timestamps + list(timestamps)
     all_regions = [regions[0]] * n_recent + list(regions)
-    all_values = np.concatenate([recent_values, np.zeros(n_predict)])
 
-    # Build full matrix then slice to prediction portion
+    # For lag and rolling features: fill prediction period with the LAST KNOWN PRICE.
+    # Rationale: zero-fill corrupts volatility/momentum features by creating an
+    # artificial "price drop to $0" signal. Forward-filling with the last context
+    # value represents the persistence assumption ("current regime continues"),
+    # which is a leakage-free and behaviorally correct default for feature
+    # computation (we're describing the CURRENT PRICE REGIME, not predicting future
+    # prices — that's what the model itself will do).
+    last_known_price = float(recent_values[-1]) if len(recent_values) > 0 else 0.0
+    fill_values = np.full(n_predict, last_known_price)
+    all_values = np.concatenate([recent_values, fill_values])
+
     full_df = build_feature_matrix(
         all_timestamps,
         all_regions,
         all_values,
         include_lags=True,
         include_rolling=True,
+        include_volatility=include_volatility,
         known_regions=known_regions,
         lag_hours=lag_hours,
         rolling_hours=rolling_hours,
     )
 
-    # Return only the prediction rows
     df = full_df.iloc[n_recent:].reset_index(drop=True)
     return df, True
 
@@ -459,9 +535,10 @@ def train_lightgbm_quantile(
     y_train: np.ndarray,
     quantile: float,
     seed: int = DEFAULT_SEED,
-    n_estimators: int = 100,
+    n_estimators: int = 200,
     max_depth: int = 6,
-    learning_rate: float = 0.1,
+    learning_rate: float = 0.05,
+    num_leaves: int = 63,
 ) -> Any:
     """Train a LightGBM quantile regressor.
 
@@ -473,6 +550,7 @@ def train_lightgbm_quantile(
         n_estimators: Number of boosting rounds
         max_depth: Maximum tree depth
         learning_rate: Learning rate
+        num_leaves: LightGBM num_leaves (controls model capacity)
 
     Returns:
         Trained LightGBM model (or None if unavailable)
@@ -480,20 +558,22 @@ def train_lightgbm_quantile(
     try:
         import lightgbm as lgb
 
-        # Set seed for reproducibility
         set_deterministic_seed(seed)
 
-        model = lgb.LGBMRegressor(
+        lgb_kwargs: dict = dict(
             objective="quantile",
             alpha=quantile,
             n_estimators=n_estimators,
             max_depth=max_depth,
             learning_rate=learning_rate,
             random_state=seed,
-            n_jobs=1,  # Deterministic
+            n_jobs=1,
             verbose=-1,
         )
+        if num_leaves > 0:
+            lgb_kwargs["num_leaves"] = num_leaves
 
+        model = lgb.LGBMRegressor(**lgb_kwargs)
         model.fit(X_train, y_train)
         return model
 

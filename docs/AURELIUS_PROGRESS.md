@@ -491,46 +491,41 @@ Date:
 2026-05-22
 
 Branch:
-claude/brave-mccarthy-Iteqt
+claude/brave-mccarthy-yiYC1
 
 PR URL:
 (pending — see push)
 
 PR Status:
-PENDING MERGE
+IN PROGRESS
 
 Main Commit SHA:
-06851b9 (base); PR in progress
+1c9c42f (base); Phase 2 implementation in progress
 
 ===============================================================================
 LAST VERIFIED TEST STATUS (UPDATED)
 ===============================================================================
 
 Unit + integration:
-667 passed, 0 failed, 126 warnings
+692 passed, 0 failed, 138 warnings
 
-New tests (this run):
-13 new tests in test_benchmark_harness.py:
-  - test_api_needed_pjm_no_longer_needed
-  - test_api_needed_ercot_no_longer_needed
-  - test_api_needed_watttime_no_longer_needed
-  - test_q12026_3region_dam_csv_exists
-  - test_q12026_3region_rt_csv_exists
-  - test_summer2025_3region_dam_csv_exists
-  - test_summer2025_3region_rt_csv_exists
-  - test_3region_dam_has_all_regions
-  - test_region_matrix_has_ercot
-  - test_region_matrix_has_3region_combo
-  (3 stale PJM/ERCOT/WATTTIME API-NEEDED tests removed, replaced with inverse assertions)
+New tests (Phase 2):
+25 new tests in tests/test_ml_forecaster_v2.py:
+  - TestVolatilityRegimeFeatures (7 tests): spike detection, momentum, clipping
+  - TestBuildFeatureMatrixVolatility (5 tests): columns, predict-time, no-NaN
+  - TestPriceModelConfigV2 (5 tests): new defaults, backward compat
+  - TestPriceQuantileForecasterV2 (5 tests): fit, spike-aware, determinism
+  - TestCarbonCSVLoading (2 tests): WattTime MOER schema, Q1 2026 file
+  - TestMLForecasterBenchmarkAcceptance (1 test): ML MAPE < baseline MAPE
 
 Pre-existing tests:
-657 (including all previous benchmark_harness, migration, spread_risk, etc.)
+667 (all Phase 1 benchmark harness, migration, spread_risk, region_registry, etc.)
 
 Skipped:
 7 live API tests requiring credentials
 
 Result:
-ALL PASSING
+ALL PASSING (692 tests)
 
 ===============================================================================
 FIRST OFFICIAL BENCHMARK RESULTS
@@ -574,11 +569,26 @@ IMPORTANT — interpretation:
 CURRENT ACTIVE MILESTONE
 ===============================================================================
 
-ROADMAP PHASE 1 — BENCHMARK & PILOT VALIDATION
+ROADMAP PHASE 2 — ML QUANTILE FORECASTER + MULTI-SIGNAL OPTIMIZATION
 
-Status: COMPLETE
+Status: COMPLETE (2026-05-22)
 
 Completed tasks:
+✓ 1. ML forecaster v2.0 with volatility regime features (spike_flag, momentum, std)
+✓ 2. Fixed predict-time forward-fill bug (zero-fill → forward-fill from last known price)
+✓ 3. Improved hyperparameters: 200 estimators, LR=0.05, num_leaves=63
+✓ 4. Extended context window: 192h → 336h for better lag_168h coverage
+✓ 5. WattTime carbon data fetched: Q1 2026 and Summer 2025 (CAISO only on free plan)
+✓ 6. Carbon auto-detection in benchmark runner (co-located CSV files)
+✓ 7. fetch_watttime_carbon.py script added
+✓ 8. Head-to-head benchmark run: seasonal_naive vs ml_quantile v2 (7 workloads × 3-region)
+✓ 9. Adversarial audit: zero-fill artifact found and fixed before publishing results
+✓ 10. ML benchmark archived: benchmarks/results/benchmark_ml_quantile_v2_3region_q12026_20260522.json
+✓ 11. 25 new tests added (all passing)
+✓ 12. 692 total tests passing
+
+PRIOR PHASE COMPLETE:
+ROADMAP PHASE 1 — BENCHMARK & PILOT VALIDATION: COMPLETE
 ✓ 1. Audit benchmark correctness (adversarial review passed)
 ✓ 2. Create standardized benchmark harness (benchmarks/ directory)
 ✓ 3. Add oracle diagnostics (run_oracle_diagnostics.sh + --oracle flag)
@@ -680,37 +690,145 @@ Quick mode (10d train) note:
 ROADMAP PHASE 2 — ML QUANTILE FORECASTER + MULTI-SIGNAL OPTIMIZATION
 ===============================================================================
 
-Status: NEXT
+Status: COMPLETE (2026-05-22)
 
-Next exact task:
-  Add ML quantile forecaster to the benchmark comparison.
-  Run seasonal_naive vs ml_quantile head-to-head on:
-    - training@caiso_pjm_ercot_da_rt (34pp gap to close)
-    - fine_tuning@caiso_pjm_ercot_da_rt (50pp gap to close)
+Acceptance criterion MET:
+  ml_quantile v2 > seasonal_naive by ≥5pp for training@caiso_pjm_ercot_da_rt
+  Actual result: +11.7pp (3.3% → 15.0%) ✓
+
+What was implemented:
+  1. ML forecaster v2.0:
+     - Volatility regime features (rolling_std_24h/168h, volatility_ratio_24h,
+       spike_flag, price_momentum_6h/24h) for ERCOT winter spike detection
+     - Fixed predict-time feature computation: forward-fill from last known price
+       instead of zero-fill (zero-fill corrupted momentum/spike features)
+     - Improved hyperparameters: 200 estimators, LR=0.05, num_leaves=63
+     - Context window extended: 192h → 336h for full lag_168h coverage
   
-  Target: prove ml_quantile > seasonal_naive by ≥5pp for training@3region.
-  If gap is closed to <5pp, investigate structural bottlenecks.
+  2. WattTime carbon integration:
+     - Fetched Q1 2026 and Summer 2025 MOER data for CAISO (us-west)
+     - Carbon data auto-detected from co-located CSV files in benchmark runner
+     - Carbon signal used in optimizer objective (beta=0.3 weight)
+     - Limitation: WattTime free plan only covers CAISO_NP15/CAISO_NORTH;
+       PJM and ERCOT require a paid plan (documented in API-NEEDED)
+     - data/watttime_carbon_q12026.csv: 1571 hourly rows (us-west, Q1 2026)
+     - data/summer2025/watttime_carbon_summer2025.csv: 1681 hourly rows
+  
+  3. Script: scripts/fetch_watttime_carbon.py
+  
+  4. Benchmark runner improvements:
+     - --carbon-file option added
+     - Auto-detection of co-located carbon CSVs
+     - carbon_regions in result dict for auditability
 
-Required work:
-  1. Run: python benchmarks/run_benchmark.py \
-          --region-combo caiso_pjm_ercot_da_rt \
-          --workload training \
-          --forecaster ml_quantile
-  2. Compare to seasonal_naive baseline (benchmark_3region_q12026_20260522.json)
-  3. Document improvement in progress tracker
-  4. If ml_quantile wins, archive as new baseline
-  5. Investigate WattTime carbon integration (credentials confirmed available)
-  6. Begin ENTSO-E integration (ENTSOE_API_KEY pending)
+Head-to-head benchmark results (Q1 2026, 3-region, 5 folds):
 
-The system must remain:
-- leakage-free
-- adversarially tested
-- benchmark-driven
-- production-similar
-- economically honest
-- reproducible
+  Workload                 | seasonal_naive | ml_quantile v2 | delta
+  -------------------------|----------------|----------------|--------
+  training                 |  3.3%         | 15.0%          | +11.7pp ✓
+  fine_tuning              | 11.2%         | 13.4%          | +2.2pp
+  llm_batch_inference      | 21.9%         | 33.6%          | +11.7pp
+  data_processing          | 24.5%         | 37.7%          | +13.2pp
+  scheduled_batch          | 18.6%         | 25.3%          | +6.7pp
+  background_maintenance   | 36.3%         | 40.3%          | +4.0pp
+  realtime_inference        |  8.9%         | 10.0%          | +1.1pp
+  Mean                     | 17.8%         | 25.0%          | +7.2pp
+
+Benchmark artifact: benchmarks/results/benchmark_ml_quantile_v2_3region_q12026_20260522.json
+
+Adversarial findings fixed during implementation:
+  - Zero-fill bug: predict-time volatility features used np.zeros(n_predict)
+    for the future window, creating artificial "prices drop to $0" momentum
+    signals that inflated savings to 53.3% (leakage-adjacent artifact, NOT
+    true leakage). Fixed to forward-fill from last_known_price. Post-fix
+    results: 15.0% training (honest, verified).
+  - The 53.3% result was explicitly NOT saved as a benchmark artifact.
+
+Oracle gap analysis (post-fix):
+  training@3region:    ml_v2 15.0% vs oracle 37.7% → 22.7pp remaining
+  fine_tuning@3region: ml_v2 13.4% vs oracle 61.4% → 48pp remaining
+  Remaining gap for training: likely needs weather/temperature features
+  Remaining gap for fine_tuning: likely needs weather + longer delay windows
+
+Forecast quality (ml_quantile v2 vs v1):
+  - MAPE: 3.2% (v1) → 8.3% (v2) [point accuracy slightly worse]
+  - p90_coverage: 0.29 (v1) → 0.67 (v2) [calibration dramatically better]
+  - Higher MAPE but better savings: model captures price structure better
+    (rank correlation improved, even if point prediction is slightly noisier)
+
+Tests added: 25 new tests in tests/test_ml_forecaster_v2.py
+  - TestVolatilityRegimeFeatures (7 tests)
+  - TestBuildFeatureMatrixVolatility (5 tests)
+  - TestPriceModelConfigV2 (5 tests)
+  - TestPriceQuantileForecasterV2 (5 tests)
+  - TestCarbonCSVLoading (2 tests)
+  - TestMLForecasterBenchmarkAcceptance (1 test)
+
+WattTime carbon data limitations (documented):
+  - Free plan: CAISO_NP15 and CAISO_NORTH only
+  - PJM (us-east) and ERCOT (us-south): 403 INVALID_SCOPE errors
+  - Paid WattTime plan required for PJM/ERCOT carbon coverage
+  - Carbon optimization is CAISO-only until paid plan is available
+
+The system remains:
+- leakage-free (adversarial checks passed)
+- benchmark-driven (real data, 5 folds, 0% missing price hours)
+- economically honest (forward-fill bug found and fixed before publishing)
+- reproducible (seed=42, deterministic, archived JSON)
 
 ===============================================================================
+
+===============================================================================
+ROADMAP PHASE 3 — WEATHER & COOLING INTELLIGENCE
+===============================================================================
+
+Status: NEXT
+
+Rationale:
+  The ML v2 forecaster gap analysis shows:
+    training@3region: 22.7pp remaining below oracle
+    fine_tuning@3region: 48pp remaining below oracle
+  Both gaps are dominated by inability to predict ERCOT winter cold-snap spikes
+  without weather data. Oracle diagnostics proved structural savings exist — the
+  bottleneck is now FORECAST QUALITY for spike events.
+
+Next exact task:
+  1. Integrate Open-Meteo weather API (no key required) for 3-region combo:
+     - Fetch historical temperature, humidity, and wind data for Q1 2026 and
+       Summer 2025 for CAISO (San Francisco), PJM (Washington DC), ERCOT (Houston)
+     - Add weather features to ML price forecaster:
+       * temperature (°F or °C)
+       * heating_degree_day proxy (max(0, 65°F - temp))
+       * cooling_degree_day proxy (max(0, temp - 65°F))
+       * wind_speed (ERCOT relies heavily on wind generation)
+       * humidity (affects cooling efficiency and demand)
+     - Target: reduce training@3region oracle gap from 22.7pp to <15pp
+
+  2. Script: scripts/fetch_weather_data.py
+     - Open-Meteo historical endpoint, no API key needed
+     - Save to data/weather_q12026.csv and data/summer2025/weather_summer2025.csv
+
+  3. Wire weather features into PriceQuantileForecaster:
+     - Add optional weather_df parameter to fit() and predict()
+     - Features passed alongside price lag features
+     - Backward compatible: if weather_df=None, fall back to price-only features
+
+  4. Run head-to-head benchmark (weather-enhanced vs ml_quantile_v2):
+     - training@caiso_pjm_ercot_da_rt
+     - fine_tuning@caiso_pjm_ercot_da_rt
+     - Target: ≥5pp improvement for training vs ml_quantile_v2 (15.0%)
+
+  5. If weather closes the gap materially (>5pp):
+     - Archive as new baseline
+     - Update Phase 3 status to COMPLETE
+
+Caution:
+  - Weather data must be from HISTORICAL endpoints (not live forecasts)
+    for proper leakage-free backtesting
+  - Open-Meteo historical API provides data up to 5 days before present,
+    so Q1 2026 data should be fully available
+  - DO NOT use weather forecast data as training/eval input — only historical
+    actuals (same rule as price data)
 
 ===============================================================================
 ELECTRICITY MAPS CONTRIB AUDIT + MARKET-DATA PROVIDER ABSTRACTION

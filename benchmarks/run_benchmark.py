@@ -36,6 +36,7 @@ import json
 import sys
 from datetime import datetime, timezone
 from pathlib import Path
+from typing import Optional
 
 # Add repo root to sys.path so `aurelius` is importable without install
 _REPO_ROOT = Path(__file__).resolve().parent.parent
@@ -178,6 +179,45 @@ def _get_ml_forecaster_cls():
         return None, None
 
 
+def _load_carbon_df(region_combo: dict, repo_root: Path) -> pd.DataFrame:
+    """Auto-detect and load a carbon CSV for the given region_combo.
+
+    Looks for carbon files co-located with the price data (same date directory).
+    Returns an empty DataFrame if no carbon file is found — the optimizer then
+    runs price-only (which is the correct fallback, not a silent error).
+
+    Admissible sources: watttime_moer (CAISO only on free tier for now).
+    """
+    from aurelius.ingestion.grid_apis.csv_importer import CSVCarbonImporter
+
+    carbon_candidates: list[Path] = []
+
+    # Look next to the DA price file
+    da_path = repo_root / region_combo["da_price_file"]
+    carbon_candidates.append(da_path.parent / "watttime_carbon_q12026.csv")
+    carbon_candidates.append(da_path.parent / "watttime_carbon_summer2025.csv")
+
+    # Also check top-level data/ dir
+    data_dir = repo_root / "data"
+    carbon_candidates.append(data_dir / "watttime_carbon_q12026.csv")
+
+    for candidate in carbon_candidates:
+        if candidate.exists():
+            try:
+                df = CSVCarbonImporter(str(candidate)).load_all()
+                # Filter to regions in this combo that have carbon data
+                regions_with_carbon = df["region"].unique().tolist() if not df.empty else []
+                combo_regions = region_combo["regions"]
+                overlap = [r for r in combo_regions if r in regions_with_carbon]
+                if overlap:
+                    df_filtered = df[df["region"].isin(combo_regions)]
+                    return df_filtered
+            except Exception:
+                pass
+
+    return pd.DataFrame()
+
+
 def run_single_benchmark(
     *,
     region_combo: dict,
@@ -188,6 +228,7 @@ def run_single_benchmark(
     method: str = "greedy_migrate",
     oracle: bool = False,
     forecaster: str = "seasonal_naive",
+    carbon_file: Optional[str] = None,
     repo_root: Path,
 ) -> dict:
     """Run one (region_combo × workload_type) benchmark cell.
@@ -195,6 +236,9 @@ def run_single_benchmark(
     Args:
         forecaster: "seasonal_naive" (default, no leakage risk) or
                     "ml_quantile" (LightGBM quantile, re-fit per fold).
+        carbon_file: Path to carbon CSV (relative to repo root). If None,
+                    auto-detects from co-located files. If no carbon data is
+                    found, the optimizer runs price-only (correct fallback).
 
     Returns a result dict with savings vs each baseline.
     """
@@ -213,6 +257,18 @@ def run_single_benchmark(
         settle_df = settle_df[settle_df["region"].isin(regions)]
         if settle_df.empty:
             settle_df = None
+
+    # Carbon data: explicit file takes precedence, then auto-detect
+    if carbon_file:
+        from aurelius.ingestion.grid_apis.csv_importer import CSVCarbonImporter
+        carbon_df = CSVCarbonImporter(str(repo_root / carbon_file)).load_all()
+        carbon_df = carbon_df[carbon_df["region"].isin(regions)] if not carbon_df.empty else pd.DataFrame()
+    else:
+        carbon_df = _load_carbon_df(region_combo, repo_root)
+
+    carbon_regions = carbon_df["region"].unique().tolist() if not carbon_df.empty else []
+    if carbon_regions:
+        print(f"  Carbon signal: {carbon_regions} (watttime_moer)")
 
     start_ts = pd.Timestamp(region_combo["date_start"], tz="UTC")
     end_ts = pd.Timestamp(region_combo["date_end"], tz="UTC")
@@ -243,7 +299,14 @@ def run_single_benchmark(
         PriceQuantileForecaster, PriceModelConfig = _get_ml_forecaster_cls()
         if PriceQuantileForecaster is not None:
             price_forecaster_cls = PriceQuantileForecaster
-            price_forecaster_config = PriceModelConfig(seed=42, n_estimators=100)
+            # v2.0: use updated config with volatility features and better hyperparams
+            price_forecaster_config = PriceModelConfig(
+                seed=42,
+                n_estimators=200,
+                learning_rate=0.05,
+                include_volatility_features=True,
+                num_leaves=63,
+            )
         else:
             print("  WARNING: ml_quantile unavailable, falling back to seasonal_naive")
             effective_forecaster = "seasonal_naive"
@@ -256,6 +319,7 @@ def run_single_benchmark(
         rt_risk_lambda=1.0 if settle_df is not None else None,
         price_forecaster_cls=price_forecaster_cls,
         price_forecaster_config=price_forecaster_config,
+        context_hours=336,  # 2 weeks for lag_168h to work across the full eval horizon
     )
     if oracle:
         engine.oracle_forecast = True
@@ -263,7 +327,7 @@ def run_single_benchmark(
     rounds = engine.run(
         jobs,
         price_df,
-        carbon_df=pd.DataFrame(),
+        carbon_df=carbon_df,
         start=start_ts,
         end=end_ts,
         settle_price_df=settle_df,
@@ -327,6 +391,7 @@ def run_single_benchmark(
         "forecaster": effective_forecaster,
         "oracle": oracle,
         "settle_model": rt_file is not None and settle_df is not None,
+        "carbon_regions": carbon_regions,
         "missing_price_hours": missing_hours,
         "missing_price_pct": round(missing_pct, 2),
         "savings": savings,
@@ -422,6 +487,9 @@ def parse_args() -> argparse.Namespace:
                    help="Forecasting method: 'seasonal_naive' (default, no ML) or "
                         "'ml_quantile' (LightGBM, re-fit per fold). "
                         "NEVER mix oracle with ml_quantile for savings claims.")
+    p.add_argument("--carbon-file", default=None,
+                   help="Path to carbon CSV (relative to repo root). If omitted, auto-detects "
+                        "from co-located files. Admissible: watttime_moer (production data only).")
     return p.parse_args()
 
 
@@ -486,6 +554,7 @@ def main() -> int:
                     method=args.method,
                     oracle=False,
                     forecaster=args.forecaster,
+                    carbon_file=args.carbon_file,
                     repo_root=repo_root,
                 )
                 result["run_ts"] = run_ts
@@ -530,6 +599,7 @@ def main() -> int:
                         method=args.method,
                         oracle=True,
                         forecaster="seasonal_naive",  # oracle always uses naive (ceiling test, not ML test)
+                        carbon_file=args.carbon_file,
                         repo_root=repo_root,
                     )
                     r["run_ts"] = run_ts
