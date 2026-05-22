@@ -1,0 +1,99 @@
+# =============================================================================
+# Aurelius Workload Matrix
+# =============================================================================
+#
+# Defines all workload types and their benchmark parameters.
+# Each workload type tests a specific optimizer use-case.
+#
+# Fields:
+#   workload_type:    canonical type name (must match aurelius.models.WorkloadType)
+#   description:      what this workload represents
+#   sla_class:        latency_critical | deadline | best_effort
+#   max_delay_hours:  default scheduling flexibility
+#   interruptible:    can this be preempted mid-run
+#   checkpointable:   can this save state and resume
+#   expected_savings_floor_pct:
+#     Minimum savings vs current_price_only expected for this type.
+#     If actual savings fall below this, it's a signal (not hard fail).
+#     These are conservative floors, not targets.
+#   notes:
+#     Explanation of why this type has the expected savings potential.
+
+workloads:
+  - workload_type: "training"
+    description: "Long-running GPU training jobs (hours to days)"
+    sla_class: "best_effort"
+    max_delay_hours: 48
+    interruptible: false
+    checkpointable: true
+    expected_savings_floor_pct: 5.0
+    notes: >
+      Highest savings potential: long runtime + large flexibility window
+      means the optimizer can find cheap overnight or off-peak slots.
+      Checkpointable enables mid-job region migration.
+
+  - workload_type: "fine_tuning"
+    description: "Fine-tuning runs (hours to tens of hours)"
+    sla_class: "deadline"
+    max_delay_hours: 24
+    interruptible: false
+    checkpointable: true
+    expected_savings_floor_pct: 3.0
+    notes: >
+      Moderate savings: 24h window still allows price valley capture.
+      Checkpointable so migration is feasible.
+
+  - workload_type: "llm_batch_inference"
+    description: "Offline/batch LLM inference (non-latency-sensitive)"
+    sla_class: "deadline"
+    max_delay_hours: 24
+    interruptible: true
+    checkpointable: false
+    expected_savings_floor_pct: 3.0
+    notes: >
+      Good savings: interruptible and 24h window. No checkpoint overhead
+      makes migration cheaper (stateless restart).
+
+  - workload_type: "data_processing"
+    description: "ETL, embedding computation, data pipeline jobs"
+    sla_class: "deadline"
+    max_delay_hours: 48
+    interruptible: true
+    checkpointable: false
+    expected_savings_floor_pct: 4.0
+    notes: >
+      Good savings: wide flexibility window and interruptible.
+
+  - workload_type: "scheduled_batch"
+    description: "Scheduled batch jobs with soft deadlines"
+    sla_class: "deadline"
+    max_delay_hours: 24
+    interruptible: true
+    checkpointable: false
+    expected_savings_floor_pct: 2.0
+    notes: >
+      Moderate savings: 24h window, interruptible.
+
+  - workload_type: "background_maintenance"
+    description: "Cluster maintenance, model evaluation, checksum runs"
+    sla_class: "best_effort"
+    max_delay_hours: 48
+    interruptible: true
+    checkpointable: false
+    expected_savings_floor_pct: 5.0
+    notes: >
+      Highest flexibility: best_effort SLA, 48h window, interruptible.
+      Should achieve strong savings — if not, investigate.
+
+  - workload_type: "realtime_inference"
+    description: "Latency-critical online inference serving"
+    sla_class: "latency_critical"
+    max_delay_hours: 0
+    interruptible: false
+    checkpointable: false
+    expected_savings_floor_pct: 0.0
+    notes: >
+      ZERO delay tolerance — must start at earliest_start.
+      Optimizer cannot time-shift. Savings come only from region selection.
+      If single-region: expect near-zero savings vs current_price_only.
+      If multi-region: small savings possible from cheaper region selection.

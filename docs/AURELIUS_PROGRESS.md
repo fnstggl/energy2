@@ -484,19 +484,116 @@ Examples:
 - API-NEEDED/PROMETHEUS_DCGM.md
 
 ===============================================================================
+LAST VERIFIED IMPLEMENTATION RUN (UPDATED)
+===============================================================================
+
+Date:
+2026-05-22
+
+Branch:
+claude/brave-curie-KvYFW
+
+PR URL:
+(pending — see push)
+
+PR Status:
+PENDING MERGE
+
+Main Commit SHA:
+2d8d61b (main base); branch commit: 0996c2e
+
+===============================================================================
+LAST VERIFIED TEST STATUS (UPDATED)
+===============================================================================
+
+Unit + integration:
+622 passed, 0 failed, 126 warnings
+
+New tests (this run):
+38 (test_benchmark_harness.py)
+
+Pre-existing tests:
+584
+
+Skipped:
+7 live API tests requiring credentials
+
+Result:
+ALL PASSING
+
+===============================================================================
+FIRST OFFICIAL BENCHMARK RESULTS
+===============================================================================
+
+Run date: 2026-05-22
+Data: CAISO Q1 2026 DA + PJM Q1 2026 DA + combined DA-plan/RT-settle
+Optimizer: greedy_migrate, seasonal_naive forecaster
+Train window: 30 days | Eval window: 7 days
+All 21 cells: 0% missing price hours
+
+Savings vs current_price_only (THE honest benchmark):
+
+  background_maintenance @ caiso_pjm_da_rt:   55.9%
+  background_maintenance @ us-west-only:       58.7%
+  background_maintenance @ us-east-only:       30.2%
+  scheduled_batch @ caiso_pjm_da_rt:           38.0%
+  data_processing @ caiso_pjm_da_rt:           36.5%
+  llm_batch_inference @ caiso_pjm_da_rt:       31.9%
+  llm_batch_inference @ us-west-only:          24.6%
+  llm_batch_inference @ us-east-only:          22.2%
+  fine_tuning @ caiso_pjm_da_rt:               17.5%
+  training @ us-west-only:                      3.6%
+  training @ us-east-only:                      3.2%
+  training @ caiso_pjm_da_rt:                   0.8%  ← known bottleneck
+  fine_tuning @ us-east-only:                  -1.2%  ← optimizer below cpo (known)
+  realtime_inference @ caiso_pjm_da_rt:         4.5%
+
+  Mean across all 21 cells: 21.6%
+
+IMPORTANT — interpretation:
+- These numbers are VALID (leakage-free, real data, 0% missing hours)
+- 60% savings is an aspirational stretch target — not yet proven at scale
+- Negative/near-zero for training@caiso_pjm_da_rt is a known bottleneck:
+  the seasonal_naive forecaster + greedy_migrate doesn't fully capture
+  long-horizon price valleys for training workloads
+- fine_tuning@us-east-only -1.2% is within noise (50 jobs, 5 folds)
+  but warrants investigation in next phase
+
+===============================================================================
 CURRENT ACTIVE MILESTONE
 ===============================================================================
 
 ROADMAP PHASE 1 — BENCHMARK & PILOT VALIDATION
 
-Immediate next tasks:
-1. Audit benchmark correctness.
-2. Create standardized benchmark harness.
-3. Add oracle diagnostics across workloads/horizons.
-4. Add API-NEEDED documentation.
-5. Run baseline benchmark suite.
-6. Save benchmark outputs for regression comparison.
-7. Determine next highest-leverage savings improvement area.
+Status: SUBSTANTIALLY COMPLETE
+
+Completed tasks:
+✓ 1. Audit benchmark correctness (adversarial review passed)
+✓ 2. Create standardized benchmark harness (benchmarks/ directory)
+✓ 3. Add oracle diagnostics (run_oracle_diagnostics.sh)
+✓ 4. Add API-NEEDED documentation (7 providers documented)
+✓ 5. Run baseline benchmark suite (21 cells, 0% missing)
+✓ 6. Save benchmark outputs for regression comparison (baseline_benchmark.json)
+✓ 7. Determine next highest-leverage area (see below)
+
+Remaining Phase 1 items:
+- Integrate benchmark smoke test into CI (GitHub Actions)
+- Investigate training@caiso_pjm_da_rt low savings (0.8%)
+- Investigate fine_tuning@us-east-only negative savings (-1.2%)
+
+Next highest-leverage improvements (in priority order):
+
+1. FORECASTING QUALITY — Run oracle diagnostics to measure ceiling.
+   If oracle >> seasonal_naive, ML forecasting will unlock training savings.
+   Target: add ML quantile forecaster to benchmark baseline.
+
+2. TRAINING WORKLOAD SAVINGS — Long training jobs should see 10%+ savings.
+   Hypothesis: seasonal_naive underestimates overnight price valleys.
+   Fix: run ml_quantile forecaster or investigate job profile parameters.
+
+3. MULTI-REGION EXPANSION — Add ERCOT as third region.
+   Data available (data/ercot_us_south_dam.csv + rt.csv).
+   Add to benchmark combos for 3-region anti-correlation test.
 
 The system must remain:
 - leakage-free

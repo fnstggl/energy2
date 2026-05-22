@@ -1,0 +1,83 @@
+# =============================================================================
+# Aurelius Benchmark Configuration
+# =============================================================================
+#
+# This file defines the top-level parameters for all benchmark runs.
+# Every run must be reproducible by running run_all_workloads.sh or
+# run_all_regions.sh with this config.
+#
+# IMPORTANT:
+# - All results are compared against current_price_only as the primary baseline.
+# - 60% savings is an aspirational stretch target, NOT a current claim.
+# - No savings number is valid unless backed by leakage-free backtesting
+#   on real historical data.
+
+benchmark_version: "1.0"
+run_date: "auto"  # replaced at runtime by the runner
+
+# ---------------------------------------------------------------------------
+# Primary comparison baseline (the honest benchmark)
+# ---------------------------------------------------------------------------
+primary_baseline: "current_price_only"
+
+# ---------------------------------------------------------------------------
+# Forecast horizons to test (hours)
+# ---------------------------------------------------------------------------
+forecast_horizons:
+  - 24    # single day-ahead (most production-realistic)
+  - 36    # 1.5-day ahead
+  - 48    # two days
+  - 72    # three days
+  # 168 (week) excluded by default — unreliable signal, only for oracle diagnostics
+
+# ---------------------------------------------------------------------------
+# Backtesting windows
+# ---------------------------------------------------------------------------
+train_days: 30    # training window per fold
+eval_days: 7      # evaluation window per fold
+
+# ---------------------------------------------------------------------------
+# Optimizer methods to test
+# ---------------------------------------------------------------------------
+optimizer_methods:
+  - "greedy"               # baseline optimizer (time-shifting only)
+  - "greedy_migrate"       # time-shifting + single region migration
+
+# ---------------------------------------------------------------------------
+# Forecasters to compare
+# ---------------------------------------------------------------------------
+forecasters:
+  - "seasonal_naive"    # production-safe, no leakage risk
+  # ml_quantile: only run when lightgbm is available and ≥30 days training data
+
+# Oracle run is always separate (run_oracle_diagnostics.sh)
+# NEVER mix oracle results with production forecaster results.
+
+# ---------------------------------------------------------------------------
+# Synthetic job counts per backtest run
+# ---------------------------------------------------------------------------
+num_jobs: 50
+
+# ---------------------------------------------------------------------------
+# DA->RT risk adjustment
+# ---------------------------------------------------------------------------
+rt_risk_lambda: 1.0   # active when settlement file present; 1.0 = default
+
+# ---------------------------------------------------------------------------
+# Failure thresholds (benchmark MUST fail if exceeded)
+# ---------------------------------------------------------------------------
+failure_conditions:
+  # Savings vs current_price_only must not regress by more than this fraction
+  regression_threshold_pct: 2.0
+  # Fallback price hours must be below this % of total scheduled hours
+  max_missing_price_pct: 5.0
+  # current_price_only must always be present in results
+  require_current_price_only: true
+  # Synthetic data must never be mislabeled as real
+  require_real_data: true
+
+# ---------------------------------------------------------------------------
+# Output paths
+# ---------------------------------------------------------------------------
+results_dir: "benchmarks/results"
+archive_baseline_file: "benchmarks/results/baseline_benchmark.json"
