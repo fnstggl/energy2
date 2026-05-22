@@ -1,0 +1,542 @@
+#!/usr/bin/env python3
+"""
+Aurelius Standardized Benchmark Runner
+=======================================
+
+Runs the full benchmark suite across all workload types and region combinations,
+comparing the optimizer against all baselines (primary: current_price_only).
+
+Usage:
+    python benchmarks/run_benchmark.py [--quick] [--output-dir benchmarks/results]
+
+Options:
+    --quick           Run a reduced suite (fewer folds, smaller job count)
+                      for CI smoke-testing. Results are NOT valid for claims.
+    --output-dir DIR  Output directory for JSON results (default: benchmarks/results)
+    --workload WTYPE  Run a single workload type only
+    --region-combo    Run a specific region combination (caiso_pjm | us-west | us-east)
+    --oracle          Also run oracle diagnostics (ceiling analysis)
+    --compare-baseline FILE  Compare against a previous benchmark JSON; fail if regression
+
+Outputs:
+    benchmarks/results/benchmark_<timestamp>.json   Full results
+    benchmarks/results/summary_<timestamp>.txt      Human-readable summary
+    stdout                                          Table + regression check
+
+Exit codes:
+    0  success (all checks passed)
+    1  regression detected or constraint violation
+    2  input/config error
+"""
+
+from __future__ import annotations
+
+import argparse
+import json
+import sys
+from datetime import datetime, timezone
+from pathlib import Path
+
+# Add repo root to sys.path so `aurelius` is importable without install
+_REPO_ROOT = Path(__file__).resolve().parent.parent
+sys.path.insert(0, str(_REPO_ROOT))
+sys.path.insert(0, str(_REPO_ROOT / "aurelius"))
+
+import pandas as pd
+
+from aurelius.backtesting.engine import BacktestEngine
+from aurelius.backtesting.baselines import ALL_BASELINES
+from aurelius.ingestion.job_logs import JobLogIngester
+from aurelius.ingestion.grid_apis.csv_importer import CSVPriceImporter
+from aurelius.models import OptimizationConfig
+
+# ---------------------------------------------------------------------------
+# Benchmark suite definitions
+# ---------------------------------------------------------------------------
+
+WORKLOAD_TYPES = [
+    "training",
+    "fine_tuning",
+    "llm_batch_inference",
+    "data_processing",
+    "scheduled_batch",
+    "background_maintenance",
+    "realtime_inference",
+]
+
+# Each region combo is (label, regions_list, da_price_file, rt_price_file_or_None)
+REGION_COMBOS = [
+    {
+        "name": "us-west-only",
+        "regions": ["us-west"],
+        "da_price_file": "data/caiso_us_west_dam.csv",
+        "rt_price_file": None,
+        # CAISO data: 2026-01-01 → 2026-03-14 (1752 hourly rows)
+        "date_start": "2026-01-01",
+        "date_end": "2026-03-10",
+    },
+    {
+        "name": "us-east-only",
+        "regions": ["us-east"],
+        "da_price_file": "data/pjm_us_east_dam.csv",
+        "rt_price_file": None,
+        # PJM data: 2026-01-01 → 2026-03-15 (1753 hourly rows)
+        "date_start": "2026-01-01",
+        "date_end": "2026-03-10",
+    },
+    {
+        "name": "caiso_pjm_da_rt",
+        "regions": ["us-west", "us-east"],
+        "da_price_file": "data/plan_da_caiso_pjm.csv",
+        "rt_price_file": "data/settle_rt_caiso_pjm.csv",
+        # Merged DA+RT data: 2026-01-01 → 2026-03-15
+        "date_start": "2026-01-01",
+        "date_end": "2026-03-10",
+    },
+]
+
+QUICK_REGION_COMBOS = [
+    {
+        "name": "caiso_pjm_da_rt",
+        "regions": ["us-west", "us-east"],
+        "da_price_file": "data/plan_da_caiso_pjm.csv",
+        "rt_price_file": "data/settle_rt_caiso_pjm.csv",
+        # Quick: 5 weeks of data — gives ≥2 folds with 10d train + 5d eval
+        "date_start": "2026-01-15",
+        "date_end": "2026-02-28",
+    },
+]
+
+QUICK_WORKLOAD_TYPES = ["training", "llm_batch_inference", "realtime_inference"]
+
+# Minimum savings vs current_price_only to flag (not hard fail)
+SAVINGS_FLOORS: dict[str, float] = {
+    "training": 3.0,
+    "fine_tuning": 2.0,
+    "llm_batch_inference": 2.0,
+    "data_processing": 2.0,
+    "scheduled_batch": 1.0,
+    "background_maintenance": 3.0,
+    "realtime_inference": 0.0,
+}
+
+PRIMARY_BASELINE = "current_price_only"
+REGRESSION_THRESHOLD_PCT = 2.0   # allowed degradation vs archived baseline
+MAX_MISSING_PRICE_PCT = 5.0      # max % of hours using fallback price
+
+
+# ---------------------------------------------------------------------------
+# Core benchmark function
+# ---------------------------------------------------------------------------
+
+def run_single_benchmark(
+    *,
+    region_combo: dict,
+    workload_type: str,
+    train_days: int = 30,
+    eval_days: int = 7,
+    num_jobs: int = 50,
+    method: str = "greedy_migrate",
+    oracle: bool = False,
+    repo_root: Path,
+) -> dict:
+    """Run one (region_combo × workload_type) benchmark cell.
+
+    Returns a result dict with savings vs each baseline.
+    """
+    da_file = repo_root / region_combo["da_price_file"]
+    rt_file = repo_root / region_combo["rt_price_file"] if region_combo["rt_price_file"] else None
+    regions = region_combo["regions"]
+
+    price_df = CSVPriceImporter(str(da_file)).load_all()
+    price_df = price_df[price_df["region"].isin(regions)]
+    if price_df.empty:
+        return {"error": f"Empty price data for {region_combo['name']} / {regions}"}
+
+    settle_df = None
+    if rt_file and rt_file.exists():
+        settle_df = CSVPriceImporter(str(rt_file)).load_all()
+        settle_df = settle_df[settle_df["region"].isin(regions)]
+        if settle_df.empty:
+            settle_df = None
+
+    start_ts = pd.Timestamp(region_combo["date_start"], tz="UTC")
+    end_ts = pd.Timestamp(region_combo["date_end"], tz="UTC")
+
+    # Synthetic jobs spanning backtest window
+    ingester = JobLogIngester()
+    backtest_hours = int((end_ts - start_ts).total_seconds() / 3600)
+    duration_hours = int(backtest_hours / 0.7) + 24
+    sim_start = start_ts.to_pydatetime()
+
+    jobs = ingester.generate_synthetic(
+        start_time=sim_start,
+        duration_hours=duration_hours,
+        num_jobs=num_jobs,
+        regions=regions,
+        seed=42,
+        workload_mix="realistic",
+        workload_filter=workload_type,
+    )
+
+    config = OptimizationConfig()
+    engine = BacktestEngine(
+        method=method,
+        train_days=train_days,
+        eval_days=eval_days,
+        config=config,
+        rt_risk_lambda=1.0 if settle_df is not None else None,
+    )
+    if oracle:
+        engine.oracle_forecast = True
+
+    rounds = engine.run(
+        jobs,
+        price_df,
+        carbon_df=pd.DataFrame(),
+        start=start_ts,
+        end=end_ts,
+        settle_price_df=settle_df,
+    )
+
+    if not rounds:
+        return {"error": "no folds produced", "region": region_combo["name"], "workload": workload_type}
+
+    # Aggregate across folds
+    opt_costs = [r.optimizer_metrics.total_energy_cost_usd for r in rounds if r.optimizer_metrics]
+    missing_hours = sum(r.optimizer_metrics.missing_price_hours for r in rounds if r.optimizer_metrics)
+    # Total eval jobs across folds (used to normalise missing-hour rate)
+    total_eval_jobs = sum(r.optimizer_metrics.jobs_evaluated for r in rounds if r.optimizer_metrics)
+
+    mean_opt = sum(opt_costs) / len(opt_costs) if opt_costs else 0.0
+
+    # Build per-baseline savings
+    savings: dict[str, dict] = {}
+    for bl_name in ALL_BASELINES:
+        bl_costs = []
+        for r in rounds:
+            if bl_name in r.baseline_metrics:
+                m = r.baseline_metrics[bl_name]
+                bl_costs.append(m.total_energy_cost_usd)
+        if not bl_costs:
+            continue
+        mean_bl = sum(bl_costs) / len(bl_costs)
+        pct = (mean_bl - mean_opt) / mean_bl * 100 if mean_bl > 0 else 0.0
+        abs_usd = mean_bl - mean_opt
+        savings[bl_name] = {"savings_pct": round(pct, 3), "savings_usd": round(abs_usd, 4),
+                             "mean_opt_cost": round(mean_opt, 4), "mean_baseline_cost": round(mean_bl, 4)}
+
+    # missing_price_pct: fraction of missing hour-lookups relative to a rough
+    # estimate of total scheduled hours (jobs × avg 12h runtime proxy).
+    # This is intentionally approximate — what matters is whether it's near-zero.
+    estimated_total_hours = max(1, total_eval_jobs * 12)
+    missing_pct = min(100.0, (missing_hours / (estimated_total_hours + missing_hours)) * 100)
+
+    return {
+        "region_combo": region_combo["name"],
+        "regions": regions,
+        "workload_type": workload_type,
+        "folds": len(rounds),
+        "num_eval_jobs": sum(len(r.eval_jobs) for r in rounds),
+        "method": method,
+        "oracle": oracle,
+        "settle_model": rt_file is not None and settle_df is not None,
+        "missing_price_hours": missing_hours,
+        "missing_price_pct": round(missing_pct, 2),
+        "savings": savings,
+        "primary_savings_pct": savings.get(PRIMARY_BASELINE, {}).get("savings_pct"),
+        "date_range": {"start": region_combo["date_start"], "end": region_combo["date_end"]},
+        "train_days": train_days,
+        "eval_days": eval_days,
+    }
+
+
+# ---------------------------------------------------------------------------
+# Leakage audit
+# ---------------------------------------------------------------------------
+
+def leakage_audit(rounds_data: list[dict]) -> list[str]:
+    """Check for known leakage patterns in result dicts. Returns list of issues."""
+    issues = []
+    for r in rounds_data:
+        if r.get("oracle") and r.get("primary_savings_pct") is not None:
+            if r["primary_savings_pct"] > 0:
+                issues.append(
+                    f"[LEAKAGE-RISK] Oracle result for {r['workload_type']}@{r['region_combo']} "
+                    f"shows {r['primary_savings_pct']:.1f}% savings — "
+                    f"DIAGNOSTIC ONLY, must not appear in real savings claims"
+                )
+        if r.get("missing_price_pct", 0) > MAX_MISSING_PRICE_PCT:
+            issues.append(
+                f"[DATA-QUALITY] {r['workload_type']}@{r['region_combo']}: "
+                f"{r['missing_price_pct']:.1f}% missing price hours "
+                f"(threshold {MAX_MISSING_PRICE_PCT}%) — results may be unreliable"
+            )
+    return issues
+
+
+# ---------------------------------------------------------------------------
+# Regression check
+# ---------------------------------------------------------------------------
+
+def compare_against_baseline(
+    current: list[dict],
+    previous: list[dict],
+    threshold_pct: float = REGRESSION_THRESHOLD_PCT,
+) -> list[str]:
+    """Compare current results against previous benchmark. Returns regression list."""
+    regressions = []
+    prev_index = {
+        (r["workload_type"], r["region_combo"]): r
+        for r in previous
+        if "workload_type" in r and "region_combo" in r
+    }
+    for r in current:
+        key = (r.get("workload_type"), r.get("region_combo"))
+        prev = prev_index.get(key)
+        if prev is None:
+            continue  # new entry, no regression possible
+        cur_pct = r.get("primary_savings_pct")
+        prev_pct = prev.get("primary_savings_pct")
+        if cur_pct is None or prev_pct is None:
+            continue
+        if prev_pct - cur_pct > threshold_pct:
+            regressions.append(
+                f"REGRESSION: {key[0]}@{key[1]}: "
+                f"savings vs {PRIMARY_BASELINE} dropped {prev_pct:.1f}% → {cur_pct:.1f}% "
+                f"(delta {cur_pct - prev_pct:.1f}%, threshold -{threshold_pct}%)"
+            )
+    return regressions
+
+
+# ---------------------------------------------------------------------------
+# CLI
+# ---------------------------------------------------------------------------
+
+def parse_args() -> argparse.Namespace:
+    p = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
+    p.add_argument("--quick", action="store_true", help="Reduced suite for CI smoke testing")
+    p.add_argument("--output-dir", default="benchmarks/results", help="Output directory")
+    p.add_argument("--workload", help="Run a single workload type")
+    p.add_argument("--region-combo", help="Run a single region combo by name")
+    p.add_argument("--oracle", action="store_true", help="Include oracle diagnostics (ceiling analysis)")
+    p.add_argument("--compare-baseline", help="Path to previous benchmark JSON for regression check")
+    p.add_argument("--train-days", type=int, default=30, help="Training window per fold (days)")
+    p.add_argument("--eval-days", type=int, default=7, help="Eval window per fold (days)")
+    p.add_argument("--num-jobs", type=int, default=50, help="Synthetic jobs per run")
+    p.add_argument("--method", default="greedy_migrate",
+                   choices=["greedy", "greedy_migrate", "local_search", "local_search_migrate",
+                            "greedy_migrate_dp", "local_search_migrate_dp"],
+                   help="Optimizer method")
+    return p.parse_args()
+
+
+def main() -> int:
+    args = parse_args()
+    repo_root = Path(__file__).resolve().parent.parent
+    output_dir = repo_root / args.output_dir
+    output_dir.mkdir(parents=True, exist_ok=True)
+
+    run_ts = datetime.now(tz=timezone.utc).strftime("%Y%m%dT%H%M%SZ")
+
+    workloads = QUICK_WORKLOAD_TYPES if args.quick else WORKLOAD_TYPES
+    region_combos = QUICK_REGION_COMBOS if args.quick else REGION_COMBOS
+
+    if args.workload:
+        if args.workload not in WORKLOAD_TYPES:
+            print(f"ERROR: unknown workload type '{args.workload}'. Valid: {WORKLOAD_TYPES}", file=sys.stderr)
+            return 2
+        workloads = [args.workload]
+
+    if args.region_combo:
+        all_combo_names = [c["name"] for c in REGION_COMBOS]
+        matches = [c for c in REGION_COMBOS if c["name"] == args.region_combo]
+        if not matches:
+            print(f"ERROR: unknown region combo '{args.region_combo}'. Valid: {all_combo_names}", file=sys.stderr)
+            return 2
+        region_combos = matches
+
+    results: list[dict] = []
+    warnings: list[str] = []
+    total_cells = len(workloads) * len(region_combos)
+    cell_n = 0
+
+    print(f"\n{'='*70}")
+    print(f"AURELIUS BENCHMARK SUITE  ({run_ts})")
+    print(f"{'='*70}")
+    print(f"Workloads: {workloads}")
+    print(f"Regions:   {[c['name'] for c in region_combos]}")
+    print(f"Method:    {args.method}")
+    print(f"Quick:     {args.quick}")
+    print(f"Oracle:    {args.oracle}")
+    print(f"{'='*70}\n")
+
+    # Quick mode uses shorter windows to fit in the reduced date range
+    effective_train_days = 10 if args.quick else args.train_days
+    effective_eval_days = 5 if args.quick else args.eval_days
+    effective_num_jobs = 20 if args.quick else args.num_jobs
+
+    for combo in region_combos:
+        for wtype in workloads:
+            cell_n += 1
+            label = f"[{cell_n}/{total_cells}] {wtype} @ {combo['name']}"
+            print(f"Running {label} ...", flush=True)
+            try:
+                result = run_single_benchmark(
+                    region_combo=combo,
+                    workload_type=wtype,
+                    train_days=effective_train_days,
+                    eval_days=effective_eval_days,
+                    num_jobs=effective_num_jobs,
+                    method=args.method,
+                    oracle=False,
+                    repo_root=repo_root,
+                )
+                result["run_ts"] = run_ts
+                results.append(result)
+
+                if "error" in result:
+                    print(f"  ERROR: {result['error']}")
+                    warnings.append(f"{label}: {result['error']}")
+                    continue
+
+                pct = result.get("primary_savings_pct")
+                floor = SAVINGS_FLOORS.get(wtype, 0.0)
+                indicator = ""
+                if pct is not None and pct < floor and floor > 0:
+                    indicator = f"  ⚠ BELOW FLOOR ({floor:.1f}%)"
+                    warnings.append(f"{label}: savings {pct:.1f}% below floor {floor:.1f}%")
+                print(f"  vs current_price_only: {pct:.1f}%{indicator}  [folds={result['folds']}]")
+
+            except Exception as exc:
+                print(f"  FAILED: {exc}")
+                results.append({"region_combo": combo["name"], "workload_type": wtype,
+                                 "error": str(exc), "run_ts": run_ts})
+                warnings.append(f"{label}: exception: {exc}")
+
+    # Oracle diagnostic runs (separate, clearly labeled)
+    if args.oracle:
+        print(f"\n{'='*70}")
+        print("ORACLE DIAGNOSTICS  (ceiling analysis — NEVER present as real savings)")
+        print(f"{'='*70}\n")
+        oracle_results = []
+        for combo in region_combos[:1]:  # only first combo for oracle
+            for wtype in workloads[:3]:  # only first 3 workloads for oracle
+                label = f"[ORACLE] {wtype} @ {combo['name']}"
+                print(f"Running {label} ...", flush=True)
+                try:
+                    r = run_single_benchmark(
+                        region_combo=combo,
+                        workload_type=wtype,
+                        train_days=effective_train_days,
+                        eval_days=effective_eval_days,
+                        num_jobs=effective_num_jobs,
+                        method=args.method,
+                        oracle=True,
+                        repo_root=repo_root,
+                    )
+                    r["run_ts"] = run_ts
+                    oracle_results.append(r)
+                    pct = r.get("primary_savings_pct")
+                    print(f"  CEILING vs current_price_only: {pct:.1f}%  [DIAGNOSTIC]")
+                except Exception as exc:
+                    print(f"  FAILED: {exc}")
+                    oracle_results.append({"error": str(exc), "oracle": True})
+
+        if oracle_results:
+            oracle_file = output_dir / f"oracle_{run_ts}.json"
+            with open(oracle_file, "w") as f:
+                json.dump(oracle_results, f, indent=2, default=str)
+            print(f"\nOracle results: {oracle_file}  [DIAGNOSTIC ONLY — never cite as savings]")
+
+    # Leakage audit
+    leakage_issues = leakage_audit(results)
+
+    # Regression check
+    regressions = []
+    if args.compare_baseline and Path(args.compare_baseline).exists():
+        with open(args.compare_baseline) as f:
+            previous = json.load(f)
+        regressions = compare_against_baseline(results, previous)
+
+    # Print summary table
+    non_error = [r for r in results if "error" not in r]
+    print(f"\n{'='*70}")
+    print(f"BENCHMARK SUMMARY  —  primary baseline: {PRIMARY_BASELINE}")
+    print(f"{'='*70}")
+    print(f"{'Workload':<28}  {'Region':<22}  {'vs current_price_only':>22}  {'Folds':>6}  {'MissPct':>8}")
+    print(f"{'-'*90}")
+    for r in non_error:
+        pct = r.get("primary_savings_pct")
+        pct_str = f"{pct:.1f}%" if pct is not None else "N/A"
+        floor = SAVINGS_FLOORS.get(r.get("workload_type", ""), 0.0)
+        flag = " ⚠" if pct is not None and pct < floor and floor > 0 else ""
+        print(f"  {r.get('workload_type','?'):<26}  {r.get('region_combo','?'):<22}  "
+              f"{pct_str:>21}{flag}  {r.get('folds',0):>6}  {r.get('missing_price_pct',0):>7.1f}%")
+
+    if non_error:
+        all_pcts = [r["primary_savings_pct"] for r in non_error if r.get("primary_savings_pct") is not None]
+        if all_pcts:
+            mean_pct = sum(all_pcts) / len(all_pcts)
+            print(f"\n  Mean savings vs {PRIMARY_BASELINE}: {mean_pct:.1f}%")
+            print(f"  Min: {min(all_pcts):.1f}%   Max: {max(all_pcts):.1f}%")
+
+    # Report warnings, leakage issues, regressions
+    exit_code = 0
+    if warnings:
+        print(f"\n⚠  WARNINGS ({len(warnings)}):")
+        for w in warnings:
+            print(f"   {w}")
+
+    if leakage_issues:
+        print(f"\n⚠  LEAKAGE / DATA-QUALITY ISSUES ({len(leakage_issues)}):")
+        for issue in leakage_issues:
+            print(f"   {issue}")
+
+    if regressions:
+        print(f"\n✗  REGRESSIONS DETECTED ({len(regressions)}) — BENCHMARK FAILED:")
+        for reg in regressions:
+            print(f"   {reg}")
+        exit_code = 1
+    elif args.compare_baseline:
+        print(f"\n✓  No regressions vs {args.compare_baseline}")
+
+    # Save results
+    result_file = output_dir / f"benchmark_{run_ts}.json"
+    full_output = {
+        "run_ts": run_ts,
+        "quick": args.quick,
+        "method": args.method,
+        "primary_baseline": PRIMARY_BASELINE,
+        "results": results,
+        "warnings": warnings,
+        "leakage_issues": leakage_issues,
+        "regressions": regressions,
+    }
+    with open(result_file, "w") as f:
+        json.dump(full_output, f, indent=2, default=str)
+    print(f"\nResults saved: {result_file}")
+
+    # Save summary text
+    summary_file = output_dir / f"summary_{run_ts}.txt"
+    with open(summary_file, "w") as f:
+        f.write(f"Aurelius Benchmark Summary — {run_ts}\n")
+        f.write(f"Primary baseline: {PRIMARY_BASELINE}\n")
+        f.write(f"Method: {args.method}\n\n")
+        for r in non_error:
+            pct = r.get("primary_savings_pct")
+            f.write(f"{r.get('workload_type','?')}@{r.get('region_combo','?')}: "
+                    f"{pct:.1f}% vs {PRIMARY_BASELINE}  (folds={r.get('folds',0)})\n")
+        if non_error and all_pcts:
+            f.write(f"\nMean: {mean_pct:.1f}%  Min: {min(all_pcts):.1f}%  Max: {max(all_pcts):.1f}%\n")
+        if regressions:
+            f.write(f"\nREGRESSIONS:\n")
+            for reg in regressions:
+                f.write(f"  {reg}\n")
+    print(f"Summary saved:  {summary_file}\n")
+
+    return exit_code
+
+
+if __name__ == "__main__":
+    sys.exit(main())

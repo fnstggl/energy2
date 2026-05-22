@@ -1,0 +1,88 @@
+# =============================================================================
+# Aurelius Baseline Matrix
+# =============================================================================
+#
+# Defines all baselines that the optimizer must be compared against.
+#
+# The PRIMARY baseline is current_price_only.
+# Every result must include savings vs current_price_only.
+#
+# IMPORTANT:
+# All baselines must use the same information set as the optimizer:
+# - Same price data
+# - Same carbon data
+# - Same job set
+# - Same regional options per job
+# - No future data (except oracle, which is diagnostic only)
+#
+# Baselines that appear "weak" (FIFO, peak_blind_asap) are included for
+# completeness and comparison history, but savings vs them MUST NOT be
+# presented as the primary result.
+
+baselines:
+  - name: "current_price_only"
+    primary: true
+    description: >
+      Picks the cheapest region at job.earliest_start — no time-shifting,
+      no forecasting, no migration. Strong baseline: a naive operator would
+      already do this. Savings vs this baseline = REAL optimizer value.
+    implementation: "aurelius.backtesting.baselines.current_price_only_policy"
+    notes: >
+      THE primary benchmark. If optimizer can't beat this, it adds no value.
+
+  - name: "fifo"
+    primary: false
+    description: >
+      Schedule jobs in submission order, using the default region, no price
+      awareness. Represents zero optimization.
+    implementation: "aurelius.backtesting.baselines.fifo_policy"
+    notes: >
+      Weakest baseline. Savings vs FIFO are NOT the headline number.
+
+  - name: "peak_blind_asap"
+    primary: false
+    description: >
+      Start every job at earliest_start in the default region. No price
+      awareness, no delay, no region selection.
+    implementation: "aurelius.backtesting.baselines.peak_blind_asap_policy"
+
+  - name: "latency_first"
+    primary: false
+    description: >
+      Start at earliest_start at max power in the default region.
+      Represents a latency-first operator with no cost concern.
+    implementation: "aurelius.backtesting.baselines.latency_first_policy"
+
+  - name: "closest_region"
+    primary: false
+    description: >
+      Pick the alphabetically first allowed region for each job.
+      Proxy for a latency/proximity-first operator.
+    implementation: "aurelius.backtesting.baselines.closest_region_policy"
+
+  - name: "fixed_primary_region"
+    primary: false
+    description: >
+      Always use config.default_region. Represents an operator locked to
+      a single datacenter.
+    implementation: "aurelius.backtesting.baselines.fixed_primary_region_policy"
+
+  - name: "round_robin"
+    primary: false
+    description: >
+      Cycle jobs across regions alphabetically. Represents load balancing
+      without cost awareness.
+    implementation: "aurelius.backtesting.baselines.round_robin_policy"
+
+# ---------------------------------------------------------------------------
+# Diagnostic (not a real baseline)
+# ---------------------------------------------------------------------------
+oracle_diagnostic:
+  name: "oracle"
+  description: >
+    Feeds the optimizer perfect future price knowledge (intentional leakage).
+    USE ONLY FOR CEILING DIAGNOSTICS — never report as real savings.
+    If oracle savings >> ml_quantile savings: forecasting is the bottleneck.
+    If oracle savings ≈ ml_quantile savings: price spread is the bottleneck.
+  flag: "--forecaster oracle"
+  warning: "DIAGNOSTIC ONLY — NOT a valid savings claim"
