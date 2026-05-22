@@ -304,6 +304,9 @@ def _fetch_ercot_spp(
     # Keep only the requested window (we widened the query by a day each side).
     mask = (df["timestamp"] >= pd.Timestamp(start_utc)) & (df["timestamp"] < pd.Timestamp(end_utc))
     df = df.loc[mask, ["timestamp", "region", "price_per_mwh"]]
+    # Adjacent date-chunks overlap by the ±1-day widening, so the same interval
+    # can be returned twice; drop duplicate (timestamp, region) pairs.
+    df = df.drop_duplicates(subset=["timestamp", "region"], keep="last")
     if df.empty:
         return empty_price_df()
     return normalize_price_df(df, source=source_name, currency="USD", granularity=granularity)
