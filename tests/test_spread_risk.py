@@ -58,6 +58,28 @@ def test_unfitted_model_is_identity():
     assert m.adjust_price_map(pmap) == pmap
 
 
+def test_da_level_scarcity_signal_flags_high_da_hours():
+    """High-DA readings that foreshadow RT spikes get flagged via the DA-level
+    signal, even when the spikes are too rare per hour-of-day to register there."""
+    plan = {"tx": {}}
+    settle = {"tx": {}}
+    base = pd.Timestamp("2025-01-01T00:00:00Z")
+    for d in range(30):
+        for h in range(24):
+            ts = (base + pd.Timedelta(days=d, hours=h)).to_pydatetime()
+            da = 50.0 + ((d + h) % 30) * 10.0          # continuous 50..340
+            spike = da >= 330.0                          # only the very top DA
+            plan["tx"][ts] = da
+            settle["tx"][ts] = da + (400.0 if spike else 0.0)
+    m = SpreadRiskModel(risk_lambda=1.0, min_samples=5, n_da_bins=5).fit(plan, settle)
+    ts = pd.Timestamp("2025-04-01T05:00:00Z").to_pydatetime()
+    # Same (region, hour); only the DA price differs. A top-bin (high-DA) reading
+    # must carry a larger adjustment than a low-DA reading at the same hour.
+    adj_high = m.adjustment("tx", ts, da_price=340.0)
+    adj_low = m.adjustment("tx", ts, da_price=60.0)
+    assert adj_high > adj_low
+
+
 def test_adjust_price_map_raises_spike_hour():
     plan, settle = _maps()
     m = SpreadRiskModel(risk_lambda=1.0, min_samples=5).fit(plan, settle)

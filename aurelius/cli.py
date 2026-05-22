@@ -492,13 +492,18 @@ def cmd_backtest(args):
         from .forecasting.price_model import PriceQuantileForecaster
         price_forecaster_cls = PriceQuantileForecaster
 
+    # Negative lambda disables the DA->RT risk adjustment (plan on raw DA).
+    rt_risk_lambda = (
+        None if (args.rt_risk_lambda is None or args.rt_risk_lambda < 0)
+        else args.rt_risk_lambda
+    )
     engine = BacktestEngine(
         method=args.method,
         train_days=args.train_days,
         eval_days=args.eval_days,
         config=config,
         price_forecaster_cls=price_forecaster_cls,
-        rt_risk_lambda=args.rt_risk_lambda,
+        rt_risk_lambda=rt_risk_lambda,
     )
     if args.forecaster == "oracle":
         engine.oracle_forecast = True
@@ -521,13 +526,14 @@ def cmd_backtest(args):
     if args.forecast_horizon_hours is not None:
         print(f"Rolling horizon: {args.forecast_horizon_hours}h actual DAM / "
               f"replan every {args.replan_hours}h (ML beyond horizon)")
-    if args.rt_risk_lambda is not None:
-        if settle_price_df is None:
-            print("WARNING: --rt-risk-lambda set but no --settlement-price-file; "
-                  "DA->RT risk adjustment is inactive (plan price == settle price).")
-        else:
-            print(f"DA->RT risk adjustment: ON (lambda={args.rt_risk_lambda}; "
-                  "optimizer plans on debiased RT estimate + spike penalty)")
+    if rt_risk_lambda is None:
+        print("DA->RT risk adjustment: OFF (planning on raw day-ahead)")
+    elif settle_price_df is None:
+        print("DA->RT risk adjustment: inactive (no --settlement-price-file; "
+              "plan price == settle price)")
+    else:
+        print(f"DA->RT risk adjustment: ON (lambda={rt_risk_lambda}; optimizer "
+              "plans on debiased RT estimate + spike penalty)")
     print(f"Regions: {regions}")
     print()
 
@@ -571,8 +577,12 @@ def cmd_backtest(args):
             if not bl_costs:
                 continue
             mean_bl = sum(bl_costs) / len(bl_costs)
+            mean_savings = mean_bl - mean_opt
             savings_pct = (mean_bl - mean_opt) / mean_bl * 100 if mean_bl > 0 else float("nan")
-            print(f"  vs {name:<28}  ${mean_bl:>10.2f}  →  {savings_pct:>6.1f}% savings")
+            print(
+                f"  vs {name:<24}  saved ${mean_savings:>11,.2f}  ({savings_pct:>5.1f}%)"
+                f"   [opt ${mean_opt:>10,.2f} vs ${mean_bl:>10,.2f}]"
+            )
 
     if args.output:
         output_path = Path(args.output)
@@ -818,14 +828,15 @@ def main():
         ),
     )
     bt_parser.add_argument(
-        "--rt-risk-lambda", type=float, default=None,
+        "--rt-risk-lambda", type=float, default=1.0,
         help=(
-            "Enable DA->RT spread risk adjustment with this risk-aversion weight "
-            "(requires --settlement-price-file). The optimizer plans against a "
-            "risk-adjusted RT estimate: DA + learned per-(region,hour) median "
-            "spread + lambda * upside spread, fit on the training window only. "
-            "0 = debias toward expected RT only; higher avoids spike-prone "
-            "hours/regions more aggressively. Omit to plan on raw day-ahead."
+            "DA->RT spread risk-aversion weight (default 1.0; active only with "
+            "--settlement-price-file). The optimizer plans against a risk-adjusted "
+            "RT estimate: DA + learned per-(region,hour) median spread + lambda * "
+            "upside spike risk (max of hour-of-day and DA-price-level signals), "
+            "fit on the training window only. 0 = debias toward expected RT only; "
+            "higher avoids spike-prone hours/regions more aggressively. Set a "
+            "negative value to disable and plan on raw day-ahead."
         ),
     )
     bt_parser.add_argument(
