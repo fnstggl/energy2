@@ -5,6 +5,8 @@ Price providers (real wholesale electricity prices only):
     CAISORealtimePriceProvider – us-west real-time 5-min LMP  (CAISO NP15, no auth)
     PJMPriceProvider           – us-east  (PJM-RTO day-ahead LMP, requires PJM_API_KEY)
     PJMRealtimePriceProvider   – us-east  (PJM-RTO real-time LMP, requires PJM_API_KEY)
+    ERCOTPriceProvider         – us-south (ERCOT HB_HOUSTON day-ahead SPP, requires ERCOT creds)
+    ERCOTRealtimePriceProvider – us-south (ERCOT HB_HOUSTON real-time 15-min SPP, requires ERCOT creds)
     ENTSOEPriceProvider        – eu-*     (ENTSO-E day-ahead prices, requires ENTSOE_API_KEY)
     CSVPriceImporter           – any region from CSV file
 
@@ -41,6 +43,7 @@ from .entsoe import ENTSOEPriceProvider
 from .electricitymaps import ElectricityMapsCarbonProvider
 from .caiso import CAISOPriceProvider, CAISORealtimePriceProvider
 from .pjm import PJMPriceProvider, PJMRealtimePriceProvider
+from .ercot import ERCOTPriceProvider, ERCOTRealtimePriceProvider
 from .watttime import WattTimeCarbonProvider
 from .market_registry import (
     MARKET_REGISTRY,
@@ -68,6 +71,8 @@ __all__ = [
     "CAISORealtimePriceProvider",
     "PJMPriceProvider",
     "PJMRealtimePriceProvider",
+    "ERCOTPriceProvider",
+    "ERCOTRealtimePriceProvider",
     "ENTSOEPriceProvider",
     "EIAPriceProvider",
     "ElectricityMapsCarbonProvider",

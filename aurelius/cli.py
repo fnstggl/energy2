@@ -280,6 +280,31 @@ def _load_price_df(args, regions):
                 sys.exit(1)
         return pd.concat(dfs, ignore_index=True)
 
+    if provider in ("ercot", "ercot-rt"):
+        from .ingestion.grid_apis.base import ProviderConfigError
+        from .ingestion.grid_apis.ercot import (
+            ERCOTPriceProvider,
+            ERCOTRealtimePriceProvider,
+        )
+        for region in regions:
+            if region not in ("us-south",):
+                print(f"ERROR: ERCOT provider only supports us-south (got '{region}')", file=sys.stderr)
+                sys.exit(1)
+        start_dt = start_ts.to_pydatetime() if start_ts else None
+        end_dt = end_ts.to_pydatetime() if end_ts else None
+        if not start_dt or not end_dt:
+            print(f"ERROR: --start and --end are required for live provider {provider}", file=sys.stderr)
+            sys.exit(1)
+        p = ERCOTRealtimePriceProvider() if provider == "ercot-rt" else ERCOTPriceProvider()
+        dfs = []
+        for region in regions:
+            try:
+                dfs.append(p.fetch_prices(region, start_dt, end_dt))
+            except ProviderConfigError as e:
+                print(f"ERROR: {e}", file=sys.stderr)
+                sys.exit(1)
+        return pd.concat(dfs, ignore_index=True)
+
     if provider == "entsoe":
         from .ingestion.grid_apis.entsoe import ENTSOEPriceProvider
         from .ingestion.grid_apis.base import ProviderConfigError
@@ -388,6 +413,15 @@ def cmd_backtest(args):
         print("ERROR: Price DataFrame is empty after loading. Check provider/file and region.", file=sys.stderr)
         sys.exit(1)
 
+    settle_price_df = None
+    if getattr(args, "settlement_price_file", None):
+        from .ingestion.grid_apis.csv_importer import CSVPriceImporter
+        settle_price_df = CSVPriceImporter(args.settlement_price_file).load_all()
+        settle_price_df = settle_price_df[settle_price_df["region"].isin(regions)]
+        if settle_price_df.empty:
+            print("ERROR: Settlement price file is empty for the requested regions.", file=sys.stderr)
+            sys.exit(1)
+
     carbon_df = _load_carbon_df(args, regions)
 
     # Generate synthetic jobs if no job file provided
@@ -458,12 +492,18 @@ def cmd_backtest(args):
         from .forecasting.price_model import PriceQuantileForecaster
         price_forecaster_cls = PriceQuantileForecaster
 
+    # Negative lambda disables the DA->RT risk adjustment (plan on raw DA).
+    rt_risk_lambda = (
+        None if (args.rt_risk_lambda is None or args.rt_risk_lambda < 0)
+        else args.rt_risk_lambda
+    )
     engine = BacktestEngine(
         method=args.method,
         train_days=args.train_days,
         eval_days=args.eval_days,
         config=config,
         price_forecaster_cls=price_forecaster_cls,
+        rt_risk_lambda=rt_risk_lambda,
     )
     if args.forecaster == "oracle":
         engine.oracle_forecast = True
@@ -472,7 +512,11 @@ def cmd_backtest(args):
         engine.replan_hours = args.replan_hours
 
     print(f"\nRunning backtest: {args.train_days}d train / {args.eval_days}d eval windows")
-    print(f"Price provider: {args.price_provider}")
+    print(f"Price provider: {args.price_provider} (planning signal)")
+    if settle_price_df is not None:
+        print("Settlement: realized prices from --settlement-price-file (RT-exposed customer)")
+    else:
+        print("Settlement: planning price (DA-hedged customer; pays what was planned)")
     print(f"Carbon provider: {args.carbon_provider}")
     print(f"Forecaster: {args.forecaster}"
           + ("  [DIAGNOSTIC: perfect-foresight leakage — not a real savings number]"
@@ -482,10 +526,19 @@ def cmd_backtest(args):
     if args.forecast_horizon_hours is not None:
         print(f"Rolling horizon: {args.forecast_horizon_hours}h actual DAM / "
               f"replan every {args.replan_hours}h (ML beyond horizon)")
+    if rt_risk_lambda is None:
+        print("DA->RT risk adjustment: OFF (planning on raw day-ahead)")
+    elif settle_price_df is None:
+        print("DA->RT risk adjustment: inactive (no --settlement-price-file; "
+              "plan price == settle price)")
+    else:
+        print(f"DA->RT risk adjustment: ON (lambda={rt_risk_lambda}; optimizer "
+              "plans on debiased RT estimate + spike penalty)")
     print(f"Regions: {regions}")
     print()
 
-    rounds = engine.run(jobs, price_df, carbon_df, start=start_ts, end=end_ts)
+    rounds = engine.run(jobs, price_df, carbon_df, start=start_ts, end=end_ts,
+                        settle_price_df=settle_price_df)
 
     if not rounds:
         print("No backtest folds produced. Check date range and data coverage.")
@@ -524,8 +577,12 @@ def cmd_backtest(args):
             if not bl_costs:
                 continue
             mean_bl = sum(bl_costs) / len(bl_costs)
+            mean_savings = mean_bl - mean_opt
             savings_pct = (mean_bl - mean_opt) / mean_bl * 100 if mean_bl > 0 else float("nan")
-            print(f"  vs {name:<28}  ${mean_bl:>10.2f}  →  {savings_pct:>6.1f}% savings")
+            print(
+                f"  vs {name:<24}  saved ${mean_savings:>11,.2f}  ({savings_pct:>5.1f}%)"
+                f"   [opt ${mean_opt:>10,.2f} vs ${mean_bl:>10,.2f}]"
+            )
 
     if args.output:
         output_path = Path(args.output)
@@ -742,12 +799,14 @@ def main():
     bt_parser.add_argument(
         "--price-provider",
         required=True,
-        choices=["caiso", "pjm", "pjm-rt", "entsoe", "csv"],
+        choices=["caiso", "pjm", "pjm-rt", "ercot", "ercot-rt", "entsoe", "csv"],
         help=(
             "Price data source: "
             "caiso=CAISO OASIS day-ahead (us-west, no auth), "
             "pjm=PJM Data Miner day-ahead (us-east, requires PJM_API_KEY), "
             "pjm-rt=PJM Data Miner real-time 5-min (us-east, requires PJM_API_KEY), "
+            "ercot=ERCOT day-ahead SPP (us-south, requires ERCOT creds), "
+            "ercot-rt=ERCOT real-time 15-min SPP (us-south, requires ERCOT creds), "
             "entsoe=ENTSO-E (eu-*, requires ENTSOE_API_KEY), "
             "csv=load from --price-file"
         ),
@@ -756,6 +815,29 @@ def main():
         "--price-file", default=None,
         help="Path to CSV price file (required when --price-provider=csv). "
              "Columns: timestamp, region, price_per_mwh",
+    )
+    bt_parser.add_argument(
+        "--settlement-price-file", default=None,
+        help=(
+            "Optional CSV of SETTLEMENT prices (what the customer actually pays, "
+            "e.g. realized real-time LMP). When given, schedules are SCORED against "
+            "these prices while the optimizer still plans against --price-provider "
+            "data (e.g. day-ahead). This is the DA-plan / RT-settle model for an "
+            "RT-exposed customer. Omit it to model a DA-hedged customer (settlement "
+            "== planning price). Columns: timestamp, region, price_per_mwh"
+        ),
+    )
+    bt_parser.add_argument(
+        "--rt-risk-lambda", type=float, default=1.0,
+        help=(
+            "DA->RT spread risk-aversion weight (default 1.0; active only with "
+            "--settlement-price-file). The optimizer plans against a risk-adjusted "
+            "RT estimate: DA + learned per-(region,hour) median spread + lambda * "
+            "upside spike risk (max of hour-of-day and DA-price-level signals), "
+            "fit on the training window only. 0 = debias toward expected RT only; "
+            "higher avoids spike-prone hours/regions more aggressively. Set a "
+            "negative value to disable and plan on raw day-ahead."
+        ),
     )
     bt_parser.add_argument(
         "--carbon-provider",

@@ -117,20 +117,27 @@ MARKET_REGISTRY: dict[str, MarketRegistryEntry] = {
         market="ERCOT",
         operator="Electric Reliability Council of Texas",
         provider="ercot",
-        price_type="real_time_lmp",
+        price_type="day_ahead_lmp",
         currency="USD",
         unit="USD/MWh",
-        granularity="15min",
+        granularity="hourly",
         timezone="US/Central",
-        supported_from="2010-01-01",
-        hub_or_zone="Houston Hub",
-        endpoint_hint="https://api.ercot.com/api/public-reports/",
+        supported_from="2011-01-01",
+        hub_or_zone="HB_HOUSTON (Houston trading hub)",
+        endpoint_hint=(
+            "https://api.ercot.com/api/public-reports"
+            "/np4-190-cd/dam_stlmnt_pnt_prices?settlementPoint=HB_HOUSTON"
+        ),
         auth_required=True,
         auth_env_var="ERCOT_API_KEY",
         limitations=(
-            "NOT YET IMPLEMENTED. ERCOT API requires separate registration and uses "
-            "settlement-point prices (SPPs) rather than LMPs. Houston Hub is the most "
-            "liquid reference point. 15-min granularity; hourly aggregation needed."
+            "ERCOT day-ahead hourly Settlement Point Price (SPP) at HB_HOUSTON, the "
+            "most liquid Texas trading hub. ERCOT publishes SPPs (the nodal/hub "
+            "price loads settle against) rather than LMPs; values are USD/MWh. "
+            "Requires ERCOT Public API credentials: ERCOT_API_KEY (APIM subscription "
+            "key) plus ERCOT_USERNAME + ERCOT_PASSWORD for the OAuth2 ROPC id_token "
+            "(or a pre-fetched ERCOT_ID_TOKEN). Register at apiexplorer.ercot.com. "
+            "Does not cover individual resource nodes or load zones other than the hub."
         ),
     ),
     "eu-west": MarketRegistryEntry(
@@ -252,6 +259,33 @@ _REAL_TIME_REGISTRY: dict[str, MarketRegistryEntry] = {
             "data older than ~6 months moves to PJM's archive feed with reduced "
             "query flexibility. PJMRealtimePriceProvider(hourly=True) uses the "
             "hourly rt_hrl_lmps feed instead."
+        ),
+    ),
+    "us-south": MarketRegistryEntry(
+        canonical_region="us-south",
+        market="ERCOT",
+        operator="Electric Reliability Council of Texas",
+        provider="ercot",
+        price_type="real_time_lmp",
+        currency="USD",
+        unit="USD/MWh",
+        granularity="15min",
+        timezone="US/Central",
+        supported_from="2011-01-01",
+        hub_or_zone="HB_HOUSTON (Houston trading hub)",
+        endpoint_hint=(
+            "https://api.ercot.com/api/public-reports"
+            "/np6-905-cd/spp_node_zone_hub?settlementPoint=HB_HOUSTON"
+        ),
+        auth_required=True,
+        auth_env_var="ERCOT_API_KEY",
+        limitations=(
+            "ERCOT real-time 15-minute Settlement Point Price (SPP) at HB_HOUSTON. "
+            "ERCOT settles real-time at 15-minute intervals (the average of the "
+            "5-minute SCED LMPs); resample to hourly mean for an hourly settlement "
+            "series. Values are USD/MWh. Requires ERCOT Public API credentials "
+            "(ERCOT_API_KEY + ERCOT_USERNAME/ERCOT_PASSWORD or ERCOT_ID_TOKEN). "
+            "Register at apiexplorer.ercot.com."
         ),
     ),
 }

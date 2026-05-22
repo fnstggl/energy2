@@ -169,3 +169,60 @@ def test_electricitymaps_unknown_region_returns_empty(t0):
     provider = ElectricityMapsCarbonProvider(api_key="dummy")
     df = provider.fetch_carbon("xx-unknown", t0, t0 + pd.Timedelta(hours=1))
     assert df.empty
+
+
+# ---------------------------------------------------------------------------
+# Job file round-trip fidelity (JSON/CSV) and timezone normalization
+# ---------------------------------------------------------------------------
+
+def _sample_jobs():
+    from aurelius.ingestion.job_logs import JobLogIngester
+    start = pd.Timestamp("2026-01-01", tz="UTC").to_pydatetime()
+    return JobLogIngester().generate_synthetic(
+        start_time=start, duration_hours=240, num_jobs=20,
+        regions=["us-west", "us-east", "us-south"], seed=7, workload_mix="realistic",
+    )
+
+
+def test_json_round_trip_preserves_migration_and_workload(tmp_path):
+    from aurelius.ingestion.job_logs import JobLogIngester
+    ing = JobLogIngester()
+    jobs = _sample_jobs()
+    p = tmp_path / "jobs.json"
+    ing.save_to_json(jobs, p)
+    loaded = ing.load_from_json(p)
+    assert len(loaded) == len(jobs)
+    for a, b in zip(jobs, loaded):
+        assert a.migration_cost_hours == b.migration_cost_hours
+        assert a.workload_type == b.workload_type
+        assert a.earliest_start == b.earliest_start
+        assert a.region_options == b.region_options
+
+
+def test_csv_round_trip_preserves_migration_and_workload(tmp_path):
+    from aurelius.ingestion.job_logs import JobLogIngester
+    ing = JobLogIngester()
+    jobs = _sample_jobs()
+    p = tmp_path / "jobs.csv"
+    ing.save_to_csv(jobs, p)
+    loaded = ing.load_from_csv(p)
+    assert len(loaded) == len(jobs)
+    for a, b in zip(jobs, loaded):
+        assert a.migration_cost_hours == b.migration_cost_hours
+        assert a.workload_type == b.workload_type
+
+
+def test_load_json_normalizes_naive_datetimes_to_utc(tmp_path):
+    import json
+    from aurelius.ingestion.job_logs import JobLogIngester
+    naive = [{
+        "job_id": "j1", "submit_time": "2026-01-15T00:00:00",
+        "runtime_hours": 2.0, "deadline": "2026-01-16T00:00:00",
+        "power_kw": 50.0, "earliest_start": "2026-01-15T03:00:00",
+        "region_options": ["us-west"],
+    }]
+    p = tmp_path / "naive.json"
+    p.write_text(json.dumps(naive))
+    job = JobLogIngester().load_from_json(p)[0]
+    assert job.earliest_start.tzinfo is not None
+    assert job.submit_time.utcoffset().total_seconds() == 0

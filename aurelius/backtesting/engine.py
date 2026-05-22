@@ -228,6 +228,7 @@ class BacktestEngine:
         carbon_forecaster_config: Optional[Any] = None,
         context_hours: int = 192,  # 168h for lag_168h + 24h safety margin
         recorder_path: Optional[Path] = None,
+        rt_risk_lambda: Optional[float] = None,
     ) -> None:
         self.method = method
         self.config = config or OptimizationConfig()
@@ -271,6 +272,13 @@ class BacktestEngine:
         self.forecast_horizon_hours: Optional[int] = None
         self.replan_hours: int = 24
 
+        # DA->RT spread risk adjustment. When set (>= 0) AND a settlement price
+        # series is provided, the optimizer plans against a risk-adjusted RT
+        # estimate (DA + learned conditional spread + lambda * upside risk),
+        # fit per fold on the training window only. None = disabled (plan on raw
+        # DA). lambda=0 applies debias only; higher penalizes spike-prone slots.
+        self.rt_risk_lambda: Optional[float] = rt_risk_lambda
+
     @property
     def uses_ml_forecaster(self) -> bool:
         return self.price_forecaster_cls is not None
@@ -282,16 +290,26 @@ class BacktestEngine:
         carbon_df: pd.DataFrame,
         start: Optional[pd.Timestamp] = None,
         end: Optional[pd.Timestamp] = None,
+        settle_price_df: Optional[pd.DataFrame] = None,
     ) -> list[BacktestRound]:
         """Run the full walk-forward backtest.
 
         Args:
             jobs:      All jobs. The engine assigns jobs to folds by
                        earliest_start timestamp.
-            price_df:  Canonical price DataFrame (columns: timestamp, region, price_per_mwh).
+            price_df:  Canonical PLANNING price DataFrame (columns: timestamp,
+                       region, price_per_mwh). This is the known-ahead signal the
+                       optimizer plans against (e.g. day-ahead LMP) and the
+                       forecaster is trained on.
             carbon_df: Canonical carbon DataFrame (columns: timestamp, region, gco2_per_kwh).
             start:     Backtest start timestamp (defaults to min timestamp in price_df).
             end:       Backtest end timestamp (defaults to max timestamp in price_df + 1h).
+            settle_price_df: Optional SETTLEMENT price DataFrame (same schema).
+                       When provided, schedules are SCORED against these prices
+                       (e.g. realized real-time LMP) while the optimizer still
+                       plans against price_df. This models an RT-exposed customer
+                       who plans on day-ahead but pays real-time. When None,
+                       settlement == planning price (DA-hedged customer).
 
         Returns:
             List of BacktestRound objects, one per fold.
@@ -307,7 +325,7 @@ class BacktestEngine:
 
         rounds: list[BacktestRound] = []
         for split in splits:
-            round_ = self._run_fold(split, jobs, price_df, carbon_df)
+            round_ = self._run_fold(split, jobs, price_df, carbon_df, settle_price_df)
             if round_ is not None:
                 rounds.append(round_)
 
@@ -328,6 +346,7 @@ class BacktestEngine:
         all_jobs: list[Job],
         price_df: pd.DataFrame,
         carbon_df: pd.DataFrame,
+        settle_price_df: Optional[pd.DataFrame] = None,
     ) -> Optional[BacktestRound]:
         """Execute a single fold."""
         eval_jobs = [
@@ -358,6 +377,35 @@ class BacktestEngine:
         eval_carbon_data: dict[str, dict[datetime, float]] = {}
         if not carbon_df.empty:
             eval_carbon_data = _df_to_carbon_data(carbon_df)
+
+        # Settlement prices: what the customer actually PAYS. Schedules are scored
+        # against these (e.g. realized real-time LMP) while the optimizer plans
+        # against eval_price_data (e.g. known day-ahead). When no settlement df is
+        # given, settlement == planning price (DA-hedged customer pays what they
+        # planned). This split is the DA-plan / RT-settle model.
+        if settle_price_df is not None and not settle_price_df.empty:
+            settle_price_data = _df_to_price_data(settle_price_df)
+        else:
+            settle_price_data = eval_price_data
+
+        # --- Fit DA->RT spread risk model on TRAIN window only (no leakage) ---
+        # The optimizer will plan against risk-adjusted prices (estimate of RT),
+        # while baselines keep raw prices and scoring stays on actual RT.
+        spread_risk_model = None
+        if (
+            self.rt_risk_lambda is not None
+            and settle_price_df is not None
+            and not settle_price_df.empty
+        ):
+            settle_mask = (
+                (pd.to_datetime(settle_price_df["timestamp"]) >= split.train_start)
+                & (pd.to_datetime(settle_price_df["timestamp"]) < split.train_end)
+            )
+            train_settle_data = _df_to_price_data(settle_price_df[settle_mask])
+            from aurelius.forecasting.spread_risk import SpreadRiskModel
+            spread_risk_model = SpreadRiskModel(risk_lambda=self.rt_risk_lambda).fit(
+                train_price_data, train_settle_data
+            )
 
         # --- Build forecast signals for the optimizer ---
         forecast_quality: Optional[ForecastQuality] = None
@@ -415,11 +463,16 @@ class BacktestEngine:
                 # next forecast_horizon_hours at each replan, ML/naive beyond.
                 opt_schedule = self._rolling_optimize(
                     split, eval_jobs, eval_price_data, forecast_price_data,
-                    forecast_carbon_data,
+                    forecast_carbon_data, spread_risk_model,
                 )
             else:
+                # Plan against risk-adjusted RT estimate (optimizer only).
+                opt_prices = (
+                    spread_risk_model.adjust_price_map(forecast_price_data)
+                    if spread_risk_model is not None else forecast_price_data
+                )
                 opt_result = self.scheduler.solve(
-                    eval_jobs, forecast_price_data, forecast_carbon_data,
+                    eval_jobs, opt_prices, forecast_carbon_data,
                     method=self.method,
                 )
                 opt_schedule = opt_result.schedule
@@ -427,7 +480,7 @@ class BacktestEngine:
             logger.error(f"Fold {split.fold_index}: optimizer failed: {exc}")
             opt_schedule = []
 
-        opt_metrics = evaluate_schedule(opt_schedule, eval_jobs, eval_price_data, eval_carbon_data)
+        opt_metrics = evaluate_schedule(opt_schedule, eval_jobs, settle_price_data, eval_carbon_data)
         if opt_metrics.missing_price_hours > 0:
             logger.warning(
                 f"Fold {split.fold_index}: {opt_metrics.missing_price_hours} optimizer hours "
@@ -444,7 +497,7 @@ class BacktestEngine:
                 continue
             try:
                 bl_schedule = policy(eval_jobs, forecast_price_data, forecast_carbon_data, self.config)
-                bl_metrics = evaluate_schedule(bl_schedule, eval_jobs, eval_price_data, eval_carbon_data)
+                bl_metrics = evaluate_schedule(bl_schedule, eval_jobs, settle_price_data, eval_carbon_data)
                 baseline_schedules[name] = bl_schedule
                 baseline_metrics[name] = bl_metrics
             except Exception as exc:
@@ -472,7 +525,7 @@ class BacktestEngine:
                 eval_jobs=eval_jobs,
                 forecast_price_data=forecast_price_data,
                 forecast_carbon_data=forecast_carbon_data,
-                eval_price_data=eval_price_data,
+                eval_price_data=settle_price_data,
                 eval_carbon_data=eval_carbon_data,
             )
 
@@ -489,6 +542,7 @@ class BacktestEngine:
         eval_price_data: dict[str, dict[datetime, float]],
         base_forecast: dict[str, dict[datetime, float]],
         forecast_carbon_data: dict[str, dict[datetime, float]],
+        spread_risk_model=None,
     ) -> list[ScheduleDecision]:
         """Receding-horizon optimization mirroring production DAM publication.
 
@@ -523,6 +577,12 @@ class BacktestEngine:
                     if plan_time <= h < horizon_end:
                         pv[h] = price
                 view[region] = pv
+            # Plan against a risk-adjusted RT estimate: even the known DA prices
+            # within the horizon are converted toward expected RT (+ spike
+            # penalty), since the customer ultimately pays RT. Scoring is still
+            # done on actual RT outside this function.
+            if spread_risk_model is not None:
+                view = spread_risk_model.adjust_price_map(view)
             return view
 
         # Walk replan waves. At each wave we (1) MID-FLIGHT RE-PLAN the remaining

@@ -67,6 +67,40 @@ def _make_jobs(n=4, start_offset_days=TRAIN_DAYS, regions=("us-west",)):
     return jobs
 
 
+class TestSettlementPriceSplit:
+    """DA-plan / RT-settle: optimizer plans on price_df, scores on settle_price_df."""
+
+    def test_settlement_prices_drive_scoring(self):
+        plan_df = _make_price_df(base_price=50.0)
+        # Settlement is uniformly 3x the planning price. The optimizer plans
+        # identically in both runs (same plan_df), so the schedule is identical
+        # and only the scored cost differs — it should scale ~3x.
+        settle_df = plan_df.copy()
+        settle_df["price_per_mwh"] = settle_df["price_per_mwh"] * 3.0
+        carbon_df = _make_carbon_df()
+        jobs = _make_jobs(n=4)
+
+        engine = BacktestEngine(train_days=TRAIN_DAYS, eval_days=EVAL_DAYS, baselines=["fifo"])
+        rounds_plan = engine.run(jobs, plan_df, carbon_df)
+        rounds_settle = engine.run(jobs, plan_df, carbon_df, settle_price_df=settle_df)
+
+        cost_plan = rounds_plan[0].optimizer_metrics.total_energy_cost_usd
+        cost_settle = rounds_settle[0].optimizer_metrics.total_energy_cost_usd
+        assert cost_plan > 0
+        assert cost_settle == pytest.approx(cost_plan * 3.0, rel=1e-6)
+
+    def test_no_settlement_df_is_backward_compatible(self):
+        plan_df = _make_price_df(base_price=50.0)
+        carbon_df = _make_carbon_df()
+        jobs = _make_jobs(n=4)
+
+        engine = BacktestEngine(train_days=TRAIN_DAYS, eval_days=EVAL_DAYS, baselines=["fifo"])
+        a = engine.run(jobs, plan_df, carbon_df)
+        b = engine.run(jobs, plan_df, carbon_df, settle_price_df=None)
+        assert (a[0].optimizer_metrics.total_energy_cost_usd
+                == pytest.approx(b[0].optimizer_metrics.total_energy_cost_usd))
+
+
 class TestBacktestEngine:
     def test_engine_produces_rounds(self):
         price_df = _make_price_df()

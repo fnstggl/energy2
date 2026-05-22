@@ -11,7 +11,7 @@ import csv
 import json
 import random
 import uuid
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import Optional
 import logging
@@ -117,6 +117,19 @@ class JobLogIngester:
         self.data_dir = data_dir or Path(__file__).parent.parent / "data"
         self.db = get_db()
 
+    @staticmethod
+    def _parse_dt(value: str) -> datetime:
+        """Parse an ISO timestamp, normalizing naive values to UTC-aware.
+
+        The backtest engine and price index are UTC-aware throughout; a naive
+        datetime loaded from a file silently produces degenerate (empty)
+        optimizer schedules, so we attach UTC when no offset is present.
+        """
+        dt = datetime.fromisoformat(value)
+        if dt.tzinfo is None:
+            dt = dt.replace(tzinfo=timezone.utc)
+        return dt
+
     def load_from_csv(self, filepath: Path) -> list[Job]:
         """Load jobs from a CSV file.
 
@@ -137,15 +150,18 @@ class JobLogIngester:
                 if isinstance(region_options, str):
                     region_options = [r.strip() for r in region_options.split(",")]
 
+                mch = row.get("migration_cost_hours", "")
                 job = Job(
                     job_id=row["job_id"],
-                    submit_time=datetime.fromisoformat(row["submit_time"]),
+                    submit_time=self._parse_dt(row["submit_time"]),
                     runtime_hours=float(row["runtime_hours"]),
-                    deadline=datetime.fromisoformat(row["deadline"]),
+                    deadline=self._parse_dt(row["deadline"]),
                     power_kw=float(row["power_kw"]),
-                    earliest_start=datetime.fromisoformat(row["earliest_start"]),
+                    earliest_start=self._parse_dt(row["earliest_start"]),
                     region_options=region_options,
                     priority=int(row.get("priority", 1)),
+                    workload_type=row.get("workload_type") or "scheduled_batch",
+                    migration_cost_hours=float(mch) if mch not in ("", None) else None,
                 )
                 jobs.append(job)
         logger.info(f"Loaded {len(jobs)} jobs from {filepath}")
@@ -167,13 +183,15 @@ class JobLogIngester:
         for record in data:
             job = Job(
                 job_id=record["job_id"],
-                submit_time=datetime.fromisoformat(record["submit_time"]),
+                submit_time=self._parse_dt(record["submit_time"]),
                 runtime_hours=float(record["runtime_hours"]),
-                deadline=datetime.fromisoformat(record["deadline"]),
+                deadline=self._parse_dt(record["deadline"]),
                 power_kw=float(record["power_kw"]),
-                earliest_start=datetime.fromisoformat(record["earliest_start"]),
+                earliest_start=self._parse_dt(record["earliest_start"]),
                 region_options=record.get("region_options", ["us-west"]),
                 priority=record.get("priority", 1),
+                workload_type=record.get("workload_type", "scheduled_batch"),
+                migration_cost_hours=record.get("migration_cost_hours"),
             )
             jobs.append(job)
         logger.info(f"Loaded {len(jobs)} jobs from {filepath}")
@@ -312,7 +330,8 @@ class JobLogIngester:
                 f,
                 fieldnames=[
                     "job_id", "submit_time", "runtime_hours", "deadline",
-                    "power_kw", "earliest_start", "region_options", "priority"
+                    "power_kw", "earliest_start", "region_options", "priority",
+                    "workload_type", "migration_cost_hours",
                 ]
             )
             writer.writeheader()
@@ -326,6 +345,11 @@ class JobLogIngester:
                     "earliest_start": job.earliest_start.isoformat(),
                     "region_options": ",".join(job.region_options),
                     "priority": job.priority,
+                    "workload_type": job.workload_type,
+                    "migration_cost_hours": (
+                        "" if job.migration_cost_hours is None
+                        else job.migration_cost_hours
+                    ),
                 })
         logger.info(f"Saved {len(jobs)} jobs to {filepath}")
 
@@ -347,6 +371,8 @@ class JobLogIngester:
                 "earliest_start": job.earliest_start.isoformat(),
                 "region_options": job.region_options,
                 "priority": job.priority,
+                "workload_type": job.workload_type,
+                "migration_cost_hours": job.migration_cost_hours,
             }
             for job in jobs
         ]
