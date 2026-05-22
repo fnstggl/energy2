@@ -13,19 +13,21 @@ Without live ERCOT credentials, US-South data must be refreshed manually.
 
 ## Env vars
 ```
-ERCOT_SUBSCRIPTION_KEY=<your-subscription-key>
+ERCOT_API_KEY=<your-subscription-key>
 ERCOT_USERNAME=<your-username>
 ERCOT_PASSWORD=<your-password>
+ERCOT_ID_TOKEN=<bearer-token>   # optional: skip ROPC auth if you already have a token
 ```
 
 ## .env.example entry
 ```
 # ERCOT API credentials
-# Register at https://www.ercot.com/services/api
-# Free for market participants and researchers
-ERCOT_SUBSCRIPTION_KEY=
+# Register at https://developer.ercot.com/
+# Free for developer access
+ERCOT_API_KEY=
 ERCOT_USERNAME=
 ERCOT_PASSWORD=
+# ERCOT_ID_TOKEN=   # optional: pre-fetched bearer token (skips username/password login)
 ```
 
 ## Docs URL
