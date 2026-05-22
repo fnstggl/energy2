@@ -66,6 +66,7 @@ WORKLOAD_TYPES = [
 
 # Each region combo is (label, regions_list, da_price_file, rt_price_file_or_None)
 REGION_COMBOS = [
+    # --- Q1 2026: single-region baselines ---
     {
         "name": "us-west-only",
         "regions": ["us-west"],
@@ -85,6 +86,16 @@ REGION_COMBOS = [
         "date_end": "2026-03-10",
     },
     {
+        "name": "us-south-only",
+        "regions": ["us-south"],
+        "da_price_file": "data/ercot_us_south_dam.csv",
+        "rt_price_file": "data/ercot_us_south_rt.csv",
+        # ERCOT data: 2026-01-01 → 2026-03-14 (1728 hourly rows)
+        "date_start": "2026-01-01",
+        "date_end": "2026-03-10",
+    },
+    # --- Q1 2026: 2-region CAISO+PJM with DA plan + RT settle ---
+    {
         "name": "caiso_pjm_da_rt",
         "regions": ["us-west", "us-east"],
         "da_price_file": "data/plan_da_caiso_pjm.csv",
@@ -92,6 +103,26 @@ REGION_COMBOS = [
         # Merged DA+RT data: 2026-01-01 → 2026-03-15
         "date_start": "2026-01-01",
         "date_end": "2026-03-10",
+    },
+    # --- Q1 2026: 3-region CAISO+PJM+ERCOT (anti-correlation test) ---
+    {
+        "name": "caiso_pjm_ercot_da_rt",
+        "regions": ["us-west", "us-east", "us-south"],
+        "da_price_file": "data/q12026_3region_dam.csv",
+        "rt_price_file": "data/q12026_3region_rt.csv",
+        # 3-region merged: 2026-01-01 → 2026-03-14
+        "date_start": "2026-01-01",
+        "date_end": "2026-03-10",
+    },
+    # --- Summer 2025: 3-region (seasonal diversification test) ---
+    {
+        "name": "summer2025_3region",
+        "regions": ["us-west", "us-east", "us-south"],
+        "da_price_file": "data/summer2025/3region_dam.csv",
+        "rt_price_file": "data/summer2025/3region_rt.csv",
+        # 3-region summer data: 2025-06-01 → 2025-08-30
+        "date_start": "2025-06-01",
+        "date_end": "2025-08-25",
     },
 ]
 
@@ -102,6 +133,15 @@ QUICK_REGION_COMBOS = [
         "da_price_file": "data/plan_da_caiso_pjm.csv",
         "rt_price_file": "data/settle_rt_caiso_pjm.csv",
         # Quick: 5 weeks of data — gives ≥2 folds with 10d train + 5d eval
+        "date_start": "2026-01-15",
+        "date_end": "2026-02-28",
+    },
+    {
+        "name": "caiso_pjm_ercot_da_rt",
+        "regions": ["us-west", "us-east", "us-south"],
+        "da_price_file": "data/q12026_3region_dam.csv",
+        "rt_price_file": "data/q12026_3region_rt.csv",
+        # Quick 3-region: 5 weeks gives ≥2 folds
         "date_start": "2026-01-15",
         "date_end": "2026-02-28",
     },
@@ -129,6 +169,15 @@ MAX_MISSING_PRICE_PCT = 5.0      # max % of hours using fallback price
 # Core benchmark function
 # ---------------------------------------------------------------------------
 
+def _get_ml_forecaster_cls():
+    """Import ML forecaster class; returns None if unavailable."""
+    try:
+        from aurelius.forecasting.price_model import PriceQuantileForecaster, PriceModelConfig
+        return PriceQuantileForecaster, PriceModelConfig
+    except ImportError:
+        return None, None
+
+
 def run_single_benchmark(
     *,
     region_combo: dict,
@@ -138,9 +187,14 @@ def run_single_benchmark(
     num_jobs: int = 50,
     method: str = "greedy_migrate",
     oracle: bool = False,
+    forecaster: str = "seasonal_naive",
     repo_root: Path,
 ) -> dict:
     """Run one (region_combo × workload_type) benchmark cell.
+
+    Args:
+        forecaster: "seasonal_naive" (default, no leakage risk) or
+                    "ml_quantile" (LightGBM quantile, re-fit per fold).
 
     Returns a result dict with savings vs each baseline.
     """
@@ -180,12 +234,28 @@ def run_single_benchmark(
     )
 
     config = OptimizationConfig()
+
+    # Wire ML forecaster if requested; fall back gracefully if unavailable
+    price_forecaster_cls = None
+    price_forecaster_config = None
+    effective_forecaster = forecaster
+    if forecaster == "ml_quantile":
+        PriceQuantileForecaster, PriceModelConfig = _get_ml_forecaster_cls()
+        if PriceQuantileForecaster is not None:
+            price_forecaster_cls = PriceQuantileForecaster
+            price_forecaster_config = PriceModelConfig(seed=42, n_estimators=100)
+        else:
+            print("  WARNING: ml_quantile unavailable, falling back to seasonal_naive")
+            effective_forecaster = "seasonal_naive"
+
     engine = BacktestEngine(
         method=method,
         train_days=train_days,
         eval_days=eval_days,
         config=config,
         rt_risk_lambda=1.0 if settle_df is not None else None,
+        price_forecaster_cls=price_forecaster_cls,
+        price_forecaster_config=price_forecaster_config,
     )
     if oracle:
         engine.oracle_forecast = True
@@ -232,13 +302,29 @@ def run_single_benchmark(
     estimated_total_hours = max(1, total_eval_jobs * 12)
     missing_pct = min(100.0, (missing_hours / (estimated_total_hours + missing_hours)) * 100)
 
-    return {
+    # Collect per-fold forecast quality if ML mode was used
+    forecast_quality_summary = None
+    if effective_forecaster == "ml_quantile":
+        fq_records = [r.forecast_quality.to_dict() for r in rounds if r.forecast_quality is not None]
+        if fq_records:
+            import math
+            valid_mapes = [f["mape"] for f in fq_records if f.get("mape") is not None and not math.isnan(f["mape"])]
+            valid_covgs = [f["p90_coverage"] for f in fq_records if f.get("p90_coverage") is not None and not math.isnan(f["p90_coverage"])]
+            forecast_quality_summary = {
+                "forecaster": effective_forecaster,
+                "folds_with_quality": len(fq_records),
+                "mean_mape": round(sum(valid_mapes) / len(valid_mapes), 4) if valid_mapes else None,
+                "mean_p90_coverage": round(sum(valid_covgs) / len(valid_covgs), 4) if valid_covgs else None,
+            }
+
+    result = {
         "region_combo": region_combo["name"],
         "regions": regions,
         "workload_type": workload_type,
         "folds": len(rounds),
         "num_eval_jobs": sum(len(r.eval_jobs) for r in rounds),
         "method": method,
+        "forecaster": effective_forecaster,
         "oracle": oracle,
         "settle_model": rt_file is not None and settle_df is not None,
         "missing_price_hours": missing_hours,
@@ -249,6 +335,9 @@ def run_single_benchmark(
         "train_days": train_days,
         "eval_days": eval_days,
     }
+    if forecast_quality_summary:
+        result["forecast_quality"] = forecast_quality_summary
+    return result
 
 
 # ---------------------------------------------------------------------------
@@ -328,6 +417,11 @@ def parse_args() -> argparse.Namespace:
                    choices=["greedy", "greedy_migrate", "local_search", "local_search_migrate",
                             "greedy_migrate_dp", "local_search_migrate_dp"],
                    help="Optimizer method")
+    p.add_argument("--forecaster", default="seasonal_naive",
+                   choices=["seasonal_naive", "ml_quantile"],
+                   help="Forecasting method: 'seasonal_naive' (default, no ML) or "
+                        "'ml_quantile' (LightGBM, re-fit per fold). "
+                        "NEVER mix oracle with ml_quantile for savings claims.")
     return p.parse_args()
 
 
@@ -364,11 +458,12 @@ def main() -> int:
     print(f"\n{'='*70}")
     print(f"AURELIUS BENCHMARK SUITE  ({run_ts})")
     print(f"{'='*70}")
-    print(f"Workloads: {workloads}")
-    print(f"Regions:   {[c['name'] for c in region_combos]}")
-    print(f"Method:    {args.method}")
-    print(f"Quick:     {args.quick}")
-    print(f"Oracle:    {args.oracle}")
+    print(f"Workloads:  {workloads}")
+    print(f"Regions:    {[c['name'] for c in region_combos]}")
+    print(f"Method:     {args.method}")
+    print(f"Forecaster: {args.forecaster}")
+    print(f"Quick:      {args.quick}")
+    print(f"Oracle:     {args.oracle}")
     print(f"{'='*70}\n")
 
     # Quick mode uses shorter windows to fit in the reduced date range
@@ -379,7 +474,7 @@ def main() -> int:
     for combo in region_combos:
         for wtype in workloads:
             cell_n += 1
-            label = f"[{cell_n}/{total_cells}] {wtype} @ {combo['name']}"
+            label = f"[{cell_n}/{total_cells}] {wtype} @ {combo['name']} [{args.forecaster}]"
             print(f"Running {label} ...", flush=True)
             try:
                 result = run_single_benchmark(
@@ -390,6 +485,7 @@ def main() -> int:
                     num_jobs=effective_num_jobs,
                     method=args.method,
                     oracle=False,
+                    forecaster=args.forecaster,
                     repo_root=repo_root,
                 )
                 result["run_ts"] = run_ts
@@ -433,6 +529,7 @@ def main() -> int:
                         num_jobs=effective_num_jobs,
                         method=args.method,
                         oracle=True,
+                        forecaster="seasonal_naive",  # oracle always uses naive (ceiling test, not ML test)
                         repo_root=repo_root,
                     )
                     r["run_ts"] = run_ts

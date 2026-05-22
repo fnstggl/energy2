@@ -73,6 +73,7 @@ jobs:
             fastapi \
             uvicorn \
             pydantic \
+            pydantic-core \
             numpy \
             pandas \
             scikit-learn \
@@ -82,7 +83,9 @@ jobs:
             jinja2 \
             matplotlib \
             httpx \
-            requests
+            requests \
+            pyyaml \
+            strictyaml
 
       - name: Run tests (excluding live API tests)
         run: |
@@ -103,6 +106,40 @@ jobs:
         with:
           name: coverage-report
           path: coverage.xml
+
+  benchmark-smoke:
+    name: Benchmark smoke test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+
+      - name: Install dependencies
+        run: |
+          pip install \
+            numpy \
+            pandas \
+            scikit-learn \
+            lightgbm \
+            pulp \
+            pyyaml
+
+      - name: Install aurelius package
+        run: pip install -e aurelius/
+
+      - name: Run benchmark smoke test (--quick)
+        run: |
+          python benchmarks/run_benchmark.py --quick --output-dir /tmp/benchmark_smoke
+        env:
+          AURELIUS_ENV: test
+
+      - name: Verify benchmark output exists and has no regressions
+        run: |
+          ls /tmp/benchmark_smoke/benchmark_*.json
+          echo "Benchmark smoke test passed"
 
   docker-build:
     name: Docker build

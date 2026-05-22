@@ -50,15 +50,16 @@ regions:
     da_price_file: "data/ercot_us_south_dam.csv"
     rt_price_file: "data/ercot_us_south_rt.csv"
     date_range:
-      start: "2026-01-28"
-      end: "2026-04-30"
+      start: "2026-01-01"
+      end: "2026-03-14"
     live_provider: "ercot"
     live_auth_required: true
-    live_env_var: "ERCOT_SUBSCRIPTION_KEY"
+    live_env_var: "ERCOT_API_KEY"
     notes: >
-      ERCOT Houston Hub day-ahead SPP. Real data starting Jan 28 2026.
-      Live ingest requires ERCOT_SUBSCRIPTION_KEY and ERCOT_USERNAME.
-      See API-NEEDED/ERCOT.md.
+      ERCOT Houston Hub day-ahead SPP. Real data from 2026-01-01.
+      Live ingest requires ERCOT_API_KEY, ERCOT_USERNAME, ERCOT_PASSWORD.
+      Credentials are confirmed available in environment.
+      Summer season data also available: data/summer2025/ercot_us_south_dam.csv
 
 # ---------------------------------------------------------------------------
 # Multi-region combinations for joint backtest runs
@@ -69,22 +70,49 @@ multi_region_combinations:
     da_price_file: "data/plan_da_caiso_pjm.csv"
     rt_price_file: "data/settle_rt_caiso_pjm.csv"
     date_range:
-      start: "2026-01-15"
-      end: "2026-04-30"
+      start: "2026-01-01"
+      end: "2026-03-14"
     notes: >
       CAISO + PJM combined DA plan / RT settle dataset.
       Use for DA-plan/RT-settle (RT-exposed customer) backtest.
       Anti-correlation between CAISO and PJM price spikes is the
       primary source of multi-region savings.
 
+  - name: "caiso_pjm_ercot"
+    regions: ["us-west", "us-east", "us-south"]
+    da_price_file: "data/q12026_3region_dam.csv"
+    rt_price_file: "data/q12026_3region_rt.csv"
+    date_range:
+      start: "2026-01-01"
+      end: "2026-03-14"
+    notes: >
+      3-region CAISO + PJM + ERCOT Q1 2026.
+      Oracle diagnostics show 23.4% savings ceiling for training workloads.
+      Seasonal naive with 30d train achieves 22.6% — minimal forecasting gap.
+      WARNING: Short training windows (<14d) produce unreliable results on
+      volatile ERCOT winter prices. Use >= 30d training for valid savings claims.
+
+  - name: "summer2025_3region"
+    regions: ["us-west", "us-east", "us-south"]
+    da_price_file: "data/summer2025/3region_dam.csv"
+    rt_price_file: "data/summer2025/3region_rt.csv"
+    date_range:
+      start: "2025-06-01"
+      end: "2025-08-30"
+    notes: >
+      3-region CAISO + PJM + ERCOT summer 2025 (Jun-Aug).
+      Different season to Q1 2026 — tests seasonal generalization.
+      ERCOT summer spike risk (Texas heat waves) is captured here.
+
   - name: "all_us"
     regions: ["us-west", "us-east", "us-south"]
+    da_price_file: "data/q12026_3region_dam.csv"
+    rt_price_file: "data/q12026_3region_rt.csv"
     date_range:
-      start: "2026-01-28"
-      end: "2026-04-30"
+      start: "2026-01-01"
+      end: "2026-03-14"
     notes: >
-      All three US regions. ERCOT coverage limits start to Jan 28.
-      Run individual CSV files per region with --regions flag.
+      All three US regions (alias for caiso_pjm_ercot). Full Q1 2026.
 
 # ---------------------------------------------------------------------------
 # Planned regions (data not yet available — see API-NEEDED/)

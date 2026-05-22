@@ -408,6 +408,7 @@ class TestCompareScript:
 class TestBenchmarkFileStructure:
     BENCHMARKS_DIR = REPO_ROOT / "benchmarks"
     API_NEEDED_DIR = REPO_ROOT / "API-NEEDED"
+    REPO_ROOT = REPO_ROOT
 
     def test_benchmark_config_exists(self):
         assert (self.BENCHMARKS_DIR / "benchmark_config.yaml").exists()
@@ -436,26 +437,35 @@ class TestBenchmarkFileStructure:
     def test_run_oracle_diagnostics_script_exists(self):
         assert (self.BENCHMARKS_DIR / "run_oracle_diagnostics.sh").exists()
 
-    def test_api_needed_pjm_exists(self):
-        assert (self.API_NEEDED_DIR / "PJM.md").exists()
-
-    def test_api_needed_ercot_exists(self):
-        assert (self.API_NEEDED_DIR / "ERCOT.md").exists()
-
+    # Providers that are still genuinely needed (no credentials in env)
     def test_api_needed_entsoe_exists(self):
         assert (self.API_NEEDED_DIR / "ENTSOE.md").exists()
 
     def test_api_needed_electricitymaps_exists(self):
         assert (self.API_NEEDED_DIR / "ELECTRICITYMAPS.md").exists()
 
-    def test_api_needed_watttime_exists(self):
-        assert (self.API_NEEDED_DIR / "WATTTIME.md").exists()
-
-    def test_api_needed_open_meteo_exists(self):
-        assert (self.API_NEEDED_DIR / "OPEN_METEO.md").exists()
-
     def test_api_needed_prometheus_dcgm_exists(self):
         assert (self.API_NEEDED_DIR / "PROMETHEUS_DCGM.md").exists()
+
+    # Providers that were previously API-NEEDED but credentials are now available:
+    # PJM (env: PJM_API_KEY found), ERCOT (env: ERCOT_API_KEY found),
+    # WattTime (env: WATTTIME_USERNAME/PASSWORD found),
+    # Open-Meteo (no API key required — free public API).
+    # These API-NEEDED files were intentionally removed when credentials were confirmed.
+    def test_api_needed_pjm_no_longer_needed(self):
+        assert not (self.API_NEEDED_DIR / "PJM.md").exists(), (
+            "PJM.md should not exist in API-NEEDED — PJM credentials are now confirmed available"
+        )
+
+    def test_api_needed_ercot_no_longer_needed(self):
+        assert not (self.API_NEEDED_DIR / "ERCOT.md").exists(), (
+            "ERCOT.md should not exist in API-NEEDED — ERCOT credentials are now confirmed available"
+        )
+
+    def test_api_needed_watttime_no_longer_needed(self):
+        assert not (self.API_NEEDED_DIR / "WATTTIME.md").exists(), (
+            "WATTTIME.md should not exist in API-NEEDED — WattTime credentials are now confirmed available"
+        )
 
     def test_workload_matrix_has_all_types(self):
         """workload_matrix.yaml must list all 7 canonical workload types."""
@@ -476,3 +486,67 @@ class TestBenchmarkFileStructure:
         primary = [b for b in data["baselines"] if b.get("primary")]
         assert len(primary) == 1, f"Expected 1 primary baseline, got {len(primary)}"
         assert primary[0]["name"] == PRIMARY_BASELINE
+
+    def test_q12026_3region_dam_csv_exists(self):
+        """3-region Q1 2026 DA merged CSV must exist for benchmark."""
+        data_dir = self.REPO_ROOT / "data"
+        assert (data_dir / "q12026_3region_dam.csv").exists(), (
+            "data/q12026_3region_dam.csv missing — run: "
+            "python scripts/merge_price_csvs.py --inputs data/caiso_us_west_dam.csv "
+            "data/pjm_us_east_dam.csv data/ercot_us_south_dam.csv "
+            "--output data/q12026_3region_dam.csv"
+        )
+
+    def test_q12026_3region_rt_csv_exists(self):
+        """3-region Q1 2026 RT merged CSV must exist for benchmark."""
+        data_dir = self.REPO_ROOT / "data"
+        assert (data_dir / "q12026_3region_rt.csv").exists(), (
+            "data/q12026_3region_rt.csv missing"
+        )
+
+    def test_summer2025_3region_dam_csv_exists(self):
+        """3-region summer 2025 DA merged CSV must exist for benchmark."""
+        data_dir = self.REPO_ROOT / "data" / "summer2025"
+        assert (data_dir / "3region_dam.csv").exists(), (
+            "data/summer2025/3region_dam.csv missing"
+        )
+
+    def test_summer2025_3region_rt_csv_exists(self):
+        """3-region summer 2025 RT merged CSV must exist for benchmark."""
+        data_dir = self.REPO_ROOT / "data" / "summer2025"
+        assert (data_dir / "3region_rt.csv").exists(), (
+            "data/summer2025/3region_rt.csv missing"
+        )
+
+    def test_3region_dam_has_all_regions(self):
+        """3-region Q1 2026 DA CSV must have us-west, us-east, us-south."""
+        import pandas as pd
+        data_dir = self.REPO_ROOT / "data"
+        path = data_dir / "q12026_3region_dam.csv"
+        if not path.exists():
+            pytest.skip("3-region CSV not yet generated")
+        df = pd.read_csv(path)
+        regions = set(df["region"].unique())
+        assert "us-west" in regions, "us-west missing from 3-region DA CSV"
+        assert "us-east" in regions, "us-east missing from 3-region DA CSV"
+        assert "us-south" in regions, "us-south missing from 3-region DA CSV"
+
+    def test_region_matrix_has_ercot(self):
+        """region_matrix.yaml must define us-south (ERCOT)."""
+        import yaml
+        path = self.BENCHMARKS_DIR / "region_matrix.yaml"
+        with open(path) as f:
+            data = yaml.safe_load(f)
+        region_ids = [r["region_id"] for r in data["regions"]]
+        assert "us-south" in region_ids, "us-south (ERCOT) missing from region_matrix.yaml"
+
+    def test_region_matrix_has_3region_combo(self):
+        """region_matrix.yaml must define the 3-region CAISO+PJM+ERCOT combination."""
+        import yaml
+        path = self.BENCHMARKS_DIR / "region_matrix.yaml"
+        with open(path) as f:
+            data = yaml.safe_load(f)
+        combo_names = [c["name"] for c in data.get("multi_region_combinations", [])]
+        assert "caiso_pjm_ercot" in combo_names, (
+            "caiso_pjm_ercot combination missing from region_matrix.yaml"
+        )
