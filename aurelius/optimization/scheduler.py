@@ -86,6 +86,7 @@ class JobScheduler:
         method: str = "greedy",
         time_limit_seconds: float = 60.0,
         queue_data: Optional[dict[str, dict[datetime, float]]] = None,
+        gpu_health_data: Optional[dict[str, dict[datetime, float]]] = None,
     ) -> SchedulerResult:
         """Solve the scheduling problem.
 
@@ -96,9 +97,10 @@ class JobScheduler:
             risk_data: {region: {timestamp: risk_penalty}}
             method: Solving method ("greedy", "local_search", "milp")
             time_limit_seconds: Maximum solving time
-            queue_data: {region: {timestamp: est_wait_hours}}. When provided
-                and config.queue_delay_cost_per_gpu_hour > 0, the optimizer
-                penalizes placements in congested regions.
+            queue_data: {region: {timestamp: est_wait_hours}}
+            gpu_health_data: {region: {timestamp: avg_health_penalty 0..1}}.
+                When provided and config.gpu_health_cost_per_hour > 0, routes
+                jobs away from degraded/hot/throttled regions.
 
         Returns:
             SchedulerResult with optimal schedule
@@ -107,38 +109,45 @@ class JobScheduler:
         start_time = time.time()
 
         if method == "greedy":
-            result = self._solve_greedy(jobs, price_data, carbon_data, risk_data, queue_data)
+            result = self._solve_greedy(
+                jobs, price_data, carbon_data, risk_data, queue_data, gpu_health_data
+            )
         elif method == "local_search":
             result = self._solve_local_search(
-                jobs, price_data, carbon_data, risk_data, time_limit_seconds, queue_data
+                jobs, price_data, carbon_data, risk_data, time_limit_seconds,
+                queue_data, gpu_health_data
             )
         elif method == "greedy_migrate":
-            result = self._solve_greedy(jobs, price_data, carbon_data, risk_data, queue_data)
+            result = self._solve_greedy(
+                jobs, price_data, carbon_data, risk_data, queue_data, gpu_health_data
+            )
             result = self._apply_migration_optimization(result, jobs, price_data)
         elif method == "greedy_migrate_dp":
-            result = self._solve_greedy(jobs, price_data, carbon_data, risk_data, queue_data)
-            result = self._apply_migration_optimization(
-                result, jobs, price_data, mode="dp",
+            result = self._solve_greedy(
+                jobs, price_data, carbon_data, risk_data, queue_data, gpu_health_data
             )
+            result = self._apply_migration_optimization(result, jobs, price_data, mode="dp")
         elif method == "local_search_migrate":
             result = self._solve_local_search(
-                jobs, price_data, carbon_data, risk_data, time_limit_seconds, queue_data
+                jobs, price_data, carbon_data, risk_data, time_limit_seconds,
+                queue_data, gpu_health_data
             )
             result = self._apply_migration_optimization(result, jobs, price_data)
         elif method == "local_search_migrate_dp":
             result = self._solve_local_search(
-                jobs, price_data, carbon_data, risk_data, time_limit_seconds, queue_data
+                jobs, price_data, carbon_data, risk_data, time_limit_seconds,
+                queue_data, gpu_health_data
             )
-            result = self._apply_migration_optimization(
-                result, jobs, price_data, mode="dp",
-            )
+            result = self._apply_migration_optimization(result, jobs, price_data, mode="dp")
         elif method == "milp":
             result = self._solve_milp(
                 jobs, price_data, carbon_data, risk_data, time_limit_seconds
             )
         else:
             logger.warning(f"Unknown method {method}, falling back to greedy")
-            result = self._solve_greedy(jobs, price_data, carbon_data, risk_data, queue_data)
+            result = self._solve_greedy(
+                jobs, price_data, carbon_data, risk_data, queue_data, gpu_health_data
+            )
 
         elapsed_ms = (time.time() - start_time) * 1000
         result.solver_time_ms = elapsed_ms
@@ -152,28 +161,20 @@ class JobScheduler:
         carbon_data: dict[str, dict[datetime, float]],
         risk_data: Optional[dict[str, dict[datetime, float]]] = None,
         queue_data: Optional[dict[str, dict[datetime, float]]] = None,
+        gpu_health_data: Optional[dict[str, dict[datetime, float]]] = None,
     ) -> SchedulerResult:
-        """Greedy scheduling algorithm.
-
-        Process jobs in order (by priority then deadline).
-        For each job, evaluate all feasible (time, region, power) combinations
-        and pick the one with lowest objective.
-        """
-        # Sort jobs: higher priority first, earlier deadline first
-        sorted_jobs = sorted(
-            jobs,
-            key=lambda j: (-j.priority, j.deadline)
-        )
+        """Greedy scheduling: evaluate all feasible (time, region, power) combos."""
+        sorted_jobs = sorted(jobs, key=lambda j: (-j.priority, j.deadline))
 
         schedule = []
         for job in sorted_jobs:
             best_decision = self._find_best_slot(
-                job, schedule, jobs, price_data, carbon_data, risk_data, queue_data
+                job, schedule, jobs, price_data, carbon_data, risk_data,
+                queue_data, gpu_health_data
             )
             if best_decision:
                 schedule.append(best_decision)
             else:
-                # Fallback: schedule ASAP in first available region
                 region = job.region_options[0]
                 schedule.append(ScheduleDecision(
                     job_id=job.job_id,
@@ -185,7 +186,7 @@ class JobScheduler:
                 logger.warning(f"No optimal slot found for {job.job_id}, using fallback")
 
         objective = self.objective_fn.calculate(
-            jobs, schedule, price_data, carbon_data, risk_data, queue_data
+            jobs, schedule, price_data, carbon_data, risk_data, queue_data, gpu_health_data
         )
         violations = len(self.constraints.check_schedule_constraints(jobs, schedule))
 
@@ -205,32 +206,20 @@ class JobScheduler:
         carbon_data: dict[str, dict[datetime, float]],
         risk_data: Optional[dict[str, dict[datetime, float]]] = None,
         queue_data: Optional[dict[str, dict[datetime, float]]] = None,
+        gpu_health_data: Optional[dict[str, dict[datetime, float]]] = None,
     ) -> Optional[ScheduleDecision]:
-        """Find the best slot for a job given current schedule.
-
-        Evaluates combinations of:
-        - Start times (hourly granularity within feasible window)
-        - Regions (from job's region_options)
-        - Power fractions (discrete levels)
-
-        When queue_data is provided, congested regions are penalised via the
-        objective function so the optimizer naturally routes away from them.
-        """
+        """Find the best slot for a job: evaluates time × region × power combos."""
         best_decision = None
         best_objective = float('inf')
 
-        # Generate candidate start times
         power_levels = [1.0, 0.75, 0.5] if self.config.min_power_fraction <= 0.5 else [1.0]
         power_levels = [p for p in power_levels if p >= self.config.min_power_fraction]
 
         for power_fraction in power_levels:
             earliest, latest = self.constraints.get_feasible_start_range(job, power_fraction)
-
-            # Hourly granularity
             current_start = earliest.replace(minute=0, second=0, microsecond=0)
             while current_start <= latest:
                 for region in job.region_options:
-                    # Check power cap feasibility
                     runtime = job.adjusted_runtime(power_fraction)
                     decision = ScheduleDecision(
                         job_id=job.job_id,
@@ -239,29 +228,19 @@ class JobScheduler:
                         power_fraction=power_fraction,
                         actual_runtime_hours=runtime,
                     )
-
-                    # Check constraints
-                    violations = self.constraints.check_job_constraints(job, decision)
-                    if violations:
+                    if self.constraints.check_job_constraints(job, decision):
                         continue
-
-                    # Enforce power cap before computing objective
                     if self.constraints.would_violate_power_cap(
                         job, decision, current_schedule, all_jobs
                     ):
                         continue
-
-                    # Calculate objective including queue delay cost
                     obj = self.objective_fn.calculate(
-                        [job],
-                        [decision],
-                        price_data, carbon_data, risk_data, queue_data
+                        [job], [decision],
+                        price_data, carbon_data, risk_data, queue_data, gpu_health_data
                     )
-
                     if obj.total < best_objective:
                         best_objective = obj.total
                         best_decision = decision
-
                 current_start += timedelta(hours=1)
 
         return best_decision
@@ -274,25 +253,20 @@ class JobScheduler:
         risk_data: Optional[dict[str, dict[datetime, float]]] = None,
         time_limit_seconds: float = 60.0,
         queue_data: Optional[dict[str, dict[datetime, float]]] = None,
+        gpu_health_data: Optional[dict[str, dict[datetime, float]]] = None,
     ) -> SchedulerResult:
-        """Local search improvement over greedy solution.
-
-        1. Start with greedy solution
-        2. Try moving each job to better slots
-        3. Accept improvements
-        4. Repeat until no improvement or time limit
-        """
+        """Local search improvement over greedy solution."""
         import time
         start_time = time.time()
 
-        # Get initial greedy solution
-        greedy_result = self._solve_greedy(jobs, price_data, carbon_data, risk_data, queue_data)
+        greedy_result = self._solve_greedy(
+            jobs, price_data, carbon_data, risk_data, queue_data, gpu_health_data
+        )
         best_schedule = greedy_result.schedule.copy()
         best_objective = greedy_result.objective.total
 
         iterations = 0
         improved = True
-
         job_by_id = {j.job_id: j for j in jobs}
 
         while improved and (time.time() - start_time) < time_limit_seconds:
@@ -301,28 +275,26 @@ class JobScheduler:
 
             for i, decision in enumerate(best_schedule):
                 job = job_by_id[decision.job_id]
-
-                # Try different slots for this job
                 other_decisions = best_schedule[:i] + best_schedule[i+1:]
                 new_decision = self._find_best_slot(
-                    job, other_decisions, jobs, price_data, carbon_data, risk_data, queue_data
+                    job, other_decisions, jobs, price_data, carbon_data, risk_data,
+                    queue_data, gpu_health_data
                 )
-
                 if new_decision:
                     test_schedule = other_decisions + [new_decision]
                     obj = self.objective_fn.calculate(
-                        jobs, test_schedule, price_data, carbon_data, risk_data, queue_data
+                        jobs, test_schedule, price_data, carbon_data, risk_data,
+                        queue_data, gpu_health_data
                     )
-
-                    if obj.total < best_objective * 0.999:  # 0.1% improvement threshold
+                    if obj.total < best_objective * 0.999:
                         best_schedule = test_schedule
                         best_objective = obj.total
                         improved = True
-                        break  # Restart from beginning
+                        break
 
-        # Recalculate final objective
         final_objective = self.objective_fn.calculate(
-            jobs, best_schedule, price_data, carbon_data, risk_data, queue_data
+            jobs, best_schedule, price_data, carbon_data, risk_data,
+            queue_data, gpu_health_data
         )
         violations = len(self.constraints.check_schedule_constraints(jobs, best_schedule))
 

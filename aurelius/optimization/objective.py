@@ -56,6 +56,7 @@ class ObjectiveComponents:
         sla_penalty_cost: Total SLA violation penalty cost in dollars
         data_transfer_cost: Total inter-region data transfer cost in dollars
         queue_delay_cost: Total opportunity cost of GPU-hours lost to queue wait
+        gpu_health_cost: Total penalty for placing jobs on degraded/hot/throttled GPUs
         total: Weighted sum of all components
         energy_kwh: Total energy consumed in kWh (before PUE)
         carbon_kg: Total carbon emissions in kg CO2
@@ -66,6 +67,7 @@ class ObjectiveComponents:
     sla_penalty_cost: float
     data_transfer_cost: float
     queue_delay_cost: float
+    gpu_health_cost: float
     total: float
     energy_kwh: float
     carbon_kg: float
@@ -99,6 +101,7 @@ class ObjectiveFunction:
         carbon_data: dict[str, dict[datetime, float]],
         risk_data: Optional[dict[str, dict[datetime, float]]] = None,
         queue_data: Optional[dict[str, dict[datetime, float]]] = None,
+        gpu_health_data: Optional[dict[str, dict[datetime, float]]] = None,
     ) -> ObjectiveComponents:
         """Calculate the full objective for a schedule.
 
@@ -112,6 +115,10 @@ class ObjectiveFunction:
                 When provided and config.queue_delay_cost_per_gpu_hour > 0,
                 the estimated GPU-hours lost to queue waiting are added to the
                 objective so the optimizer routes away from congested regions.
+            gpu_health_data: {region: {timestamp: avg_health_penalty 0..1}} (optional).
+                When provided and config.gpu_health_cost_per_hour > 0, the
+                average GPU health degradation (utilization, thermal, throttle,
+                ECC errors) is added as a penalty, routing jobs to healthier nodes.
 
         Returns:
             ObjectiveComponents with breakdown
@@ -127,6 +134,7 @@ class ObjectiveFunction:
         total_sla_penalty_cost = 0.0
         total_data_transfer_cost = 0.0
         total_queue_delay_cost = 0.0
+        total_gpu_health_cost = 0.0
 
         for decision in schedule:
             job = job_by_id.get(decision.job_id)
@@ -200,7 +208,23 @@ class ObjectiveFunction:
                 queue_cost = wait_h * self.config.queue_delay_cost_per_gpu_hour * gpu_count
                 total_queue_delay_cost += queue_cost
 
-        # Weighted total: alpha*energy + beta*carbon + gamma*risk + delta*SLA + data_transfer + queue
+            # GPU health cost: penalty for running on degraded/hot/throttled GPUs.
+            # health_penalty 0.0=healthy, 1.0=severely degraded.
+            # Applies per-GPU-hour; uses last known state ≤ start_time.
+            if gpu_health_data is not None and self.config.gpu_health_cost_per_hour > 0.0:
+                gpu_count = max(1, getattr(job, "gpu_count", 1))
+                region_health = gpu_health_data.get(decision.region, {})
+                health_penalty = _lookup_last_known(region_health, decision.start_time)
+                gpu_health_cost = (
+                    health_penalty
+                    * self.config.gpu_health_cost_per_hour
+                    * decision.actual_runtime_hours
+                    * gpu_count
+                )
+                total_gpu_health_cost += gpu_health_cost
+
+        # Weighted total: alpha*energy + beta*carbon + gamma*risk + delta*SLA
+        #                 + data_transfer + queue + gpu_health
         total = (
             self.config.alpha * total_energy_cost
             + self.config.beta * total_carbon_cost
@@ -208,6 +232,7 @@ class ObjectiveFunction:
             + self.config.delta * total_sla_penalty_cost
             + total_data_transfer_cost
             + total_queue_delay_cost
+            + total_gpu_health_cost
         )
 
         return ObjectiveComponents(
@@ -217,6 +242,7 @@ class ObjectiveFunction:
             sla_penalty_cost=round(total_sla_penalty_cost, 2),
             data_transfer_cost=round(total_data_transfer_cost, 4),
             queue_delay_cost=round(total_queue_delay_cost, 4),
+            gpu_health_cost=round(total_gpu_health_cost, 4),
             total=round(total, 4),
             energy_kwh=round(total_energy_kwh, 2),
             carbon_kg=round(total_carbon_kg, 2),
@@ -232,24 +258,9 @@ class ObjectiveFunction:
         carbon_data: dict[str, dict[datetime, float]],
         risk_data: Optional[dict[str, dict[datetime, float]]] = None,
         queue_data: Optional[dict[str, dict[datetime, float]]] = None,
+        gpu_health_data: Optional[dict[str, dict[datetime, float]]] = None,
     ) -> ObjectiveComponents:
-        """Calculate objective for a single job placement.
-
-        Useful for evaluating individual scheduling options.
-
-        Args:
-            job: The job to evaluate
-            start_time: Proposed start time
-            region: Proposed region
-            power_fraction: Power throttle level
-            price_data: Price lookup
-            carbon_data: Carbon lookup
-            risk_data: Risk lookup (optional)
-            queue_data: Queue wait-hours lookup (optional)
-
-        Returns:
-            ObjectiveComponents for this job placement
-        """
+        """Calculate objective for a single job placement."""
         runtime = job.adjusted_runtime(power_fraction)
         decision = ScheduleDecision(
             job_id=job.job_id,
@@ -265,6 +276,7 @@ class ObjectiveFunction:
             carbon_data,
             risk_data,
             queue_data,
+            gpu_health_data,
         )
 
     def compare_options(
@@ -275,29 +287,16 @@ class ObjectiveFunction:
         carbon_data: dict[str, dict[datetime, float]],
         risk_data: Optional[dict[str, dict[datetime, float]]] = None,
         queue_data: Optional[dict[str, dict[datetime, float]]] = None,
+        gpu_health_data: Optional[dict[str, dict[datetime, float]]] = None,
     ) -> list[tuple[tuple[datetime, str, float], ObjectiveComponents]]:
-        """Compare multiple scheduling options for a job.
-
-        Args:
-            job: The job to evaluate
-            options: List of (start_time, region, power_fraction) tuples
-            price_data: Price lookup
-            carbon_data: Carbon lookup
-            risk_data: Risk lookup (optional)
-            queue_data: Queue wait-hours lookup (optional)
-
-        Returns:
-            List of (option, objective) tuples sorted by objective (best first)
-        """
+        """Compare multiple scheduling options for a job."""
         results = []
         for start_time, region, power_fraction in options:
             obj = self.calculate_job_cost(
                 job, start_time, region, power_fraction,
-                price_data, carbon_data, risk_data, queue_data
+                price_data, carbon_data, risk_data, queue_data, gpu_health_data,
             )
             results.append(((start_time, region, power_fraction), obj))
-
-        # Sort by total objective (lower is better)
         results.sort(key=lambda x: x[1].total)
         return results
 
