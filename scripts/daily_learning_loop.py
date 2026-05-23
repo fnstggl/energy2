@@ -1,26 +1,32 @@
 #!/usr/bin/env python3
-"""Aurelius Phase 8 — Daily Learning Loop.
+"""Aurelius — Daily Learning Loop.
 
-Orchestrates the continuous self-improvement cycle:
+Orchestrates the continuous self-improvement cycle (single-host locked):
 1. Pull latest price data from configured providers (CAISO, PJM, ERCOT)
-2. Append new data to the rolling historical store
-3. Run leakage-free backtest evaluation on recent data
-4. Train a candidate ML forecasting model on the full available window
-5. Compare candidate model against active model on a held-out evaluation window
-6. Promote the candidate only if it improves savings vs current_price_only
-7. Run a benchmark smoke test against the standard workload matrix
-8. Generate a daily learning loop report
-9. Update docs/AURELIUS_PROGRESS.md with results (dry-run safe)
+2. Append new data to the rolling historical store (CSV + Postgres)
+3. Model update: train a candidate on a train split, compare it against the
+   ACTIVE model (loaded from the registry + artifact store) on a leakage-free
+   holdout window, and promote only if it genuinely wins. Promotion decisions
+   and model versions are persisted; rollback is supported (--rollback).
+4. Run a benchmark smoke test against the standard workload matrix
+5. Read realized-outcome feedback back from the store (predicted vs realized)
+6. Generate a daily learning loop report
+
+Persistence is gated by DATABASE_URL (Postgres/SQLite via SQLAlchemy); model
+binaries live in the artifact store (ARTIFACT_STORE_URI: file://, s3://). All
+writes are no-op safe when those are unset.
 
 Usage:
     # Dry run (no files written, no models promoted):
     python scripts/daily_learning_loop.py --dry-run
 
-    # Live run (writes to data/store/ and reports/):
-    python scripts/daily_learning_loop.py
+    # Live run for a specific pilot (writes to store + registry):
+    DATABASE_URL=postgresql://... python scripts/daily_learning_loop.py \
+        --customer-id acme --pilot-id pilot-q1
 
-    # Specify data directory:
-    python scripts/daily_learning_loop.py --data-dir /path/to/data
+    # Roll the active model back to the previous version:
+    DATABASE_URL=postgresql://... python scripts/daily_learning_loop.py \
+        --rollback --customer-id acme --pilot-id pilot-q1
 
     # Skip live fetching (use only cached data):
     python scripts/daily_learning_loop.py --no-fetch
@@ -53,15 +59,17 @@ from typing import Optional
 
 import pandas as pd
 
+# Project root so imports work when running as a script (must precede any
+# aurelius.* import below — running `python scripts/...` only puts the script
+# directory on sys.path, not the repo root).
+_ROOT = Path(__file__).parent.parent
+sys.path.insert(0, str(_ROOT))
+
 # TimeSeriesStore is optional — graceful no-op when DATABASE_URL is not set
 try:
     from aurelius.database import TimeSeriesStore as _TimeSeriesStore
 except ImportError:
     _TimeSeriesStore = None  # type: ignore[assignment,misc]
-
-# Project root so imports work when running as a script
-_ROOT = Path(__file__).parent.parent
-sys.path.insert(0, str(_ROOT))
 
 logging.basicConfig(
     level=logging.INFO,
@@ -75,9 +83,7 @@ logger = logging.getLogger("aurelius.daily_loop")
 REGIONS = ["us-west", "us-east", "us-south"]
 REGION_COMBO = "caiso_pjm_ercot_da_rt"
 
-# Minimum days of historical data required to run the evaluation
-MIN_EVAL_DAYS = 14
-MIN_TRAIN_DAYS = 30
+# Length of the leakage-free holdout window used to compare candidate vs active
 EVAL_WINDOW_DAYS = 7
 
 
@@ -222,166 +228,39 @@ def append_to_store(
 
 
 # ---------------------------------------------------------------------------
-# Step 3: Run evaluation on recent data
+# Savings aggregation helper
 # ---------------------------------------------------------------------------
 
-def run_evaluation(
-    price_df: pd.DataFrame,
-    regions: list[str],
-    train_days: int,
-    eval_days: int,
-) -> Optional[dict]:
-    """Run a mini walk-forward backtest to evaluate current model performance.
+def _mean_savings_vs_cpo(rounds: list) -> Optional[float]:
+    """Compute mean fractional savings vs current_price_only across folds.
 
-    Returns a dict with savings vs current_price_only, or None if insufficient data.
+    Aggregates optimizer vs current_price_only baseline energy cost over all
+    folds in a BacktestEngine.run() result. Returns a fraction (e.g. 0.25 for
+    25%), or None when no comparable folds are present.
     """
-    if price_df.empty:
-        logger.warning("No price data available for evaluation.")
+    cpo = "current_price_only"
+    opt_costs = [
+        r.optimizer_metrics.total_energy_cost_usd
+        for r in rounds
+        if r.optimizer_metrics is not None
+    ]
+    bl_costs = [
+        r.baseline_metrics[cpo].total_energy_cost_usd
+        for r in rounds
+        if cpo in r.baseline_metrics
+    ]
+    if not opt_costs or not bl_costs:
         return None
-
-    price_df = price_df[price_df["region"].isin(regions)].copy()
-    price_df["timestamp"] = pd.to_datetime(price_df["timestamp"], utc=True)
-
-    available_days = (price_df["timestamp"].max() - price_df["timestamp"].min()).days
-    if available_days < train_days + eval_days:
-        logger.warning(
-            f"Insufficient data for evaluation: {available_days} days available, "
-            f"need {train_days + eval_days} days."
-        )
+    mean_opt = sum(opt_costs) / len(opt_costs)
+    mean_bl = sum(bl_costs) / len(bl_costs)
+    if mean_bl <= 0:
         return None
-
-    try:
-        import warnings
-
-        from aurelius.backtesting.engine import BacktestEngine
-        from aurelius.forecasting.price_model import PriceModelConfig, PriceQuantileForecaster
-        from aurelius.ingestion.job_logs import JobLogIngester
-        from aurelius.models import OptimizationConfig
-
-        warnings.filterwarnings("ignore", category=UserWarning)
-
-        engine = BacktestEngine(
-            price_df=price_df,
-            regions=regions,
-            train_days=train_days,
-            eval_days=eval_days,
-            n_folds=3,
-            method="greedy",
-            config=OptimizationConfig(),
-            forecaster_cls=PriceQuantileForecaster,
-            forecaster_config=PriceModelConfig(
-                seed=42, n_estimators=100, num_leaves=31
-            ),
-        )
-        ingester = JobLogIngester()
-        jobs = ingester.generate_synthetic(
-            num_jobs=50,
-            start_time=price_df["timestamp"].min().to_pydatetime(),
-            duration_hours=int(available_days * 24),
-            regions=regions,
-            seed=42,
-            workload_mix="realistic",
-        )
-
-        result = engine.run(jobs)
-
-        savings_mean = None
-        if result.savings_vs_current_price:
-            savings_mean = sum(result.savings_vs_current_price.values()) / len(
-                result.savings_vs_current_price
-            )
-
-        return {
-            "status": "ok",
-            "savings_vs_cpo_mean": savings_mean,
-            "savings_by_workload": result.savings_vs_current_price or {},
-            "n_folds": result.n_folds,
-            "n_jobs_evaluated": len(result.jobs_evaluated) if hasattr(result, "jobs_evaluated") else None,
-            "evaluated_at": datetime.now(tz=timezone.utc).isoformat(),
-        }
-    except Exception as exc:
-        logger.error(f"Evaluation failed: {exc}")
-        logger.debug(traceback.format_exc())
-        return {"status": "error", "error": str(exc)}
+    return (mean_bl - mean_opt) / mean_bl
 
 
 # ---------------------------------------------------------------------------
-# Step 4: Train candidate model
-# ---------------------------------------------------------------------------
-
-def train_candidate_model(
-    price_df: pd.DataFrame,
-    regions: list[str],
-    models_dir: Path,
-    dry_run: bool,
-) -> Optional[dict]:
-    """Train a new ML forecasting model on all available data.
-
-    Returns model metadata dict, or None if training failed.
-    """
-    if price_df.empty or len(price_df) < 200:
-        logger.warning("Insufficient data for model training.")
-        return None
-
-    try:
-        import pickle
-        import warnings
-
-        from aurelius.forecasting.price_model import PriceModelConfig, PriceQuantileForecaster
-
-        warnings.filterwarnings("ignore", category=UserWarning)
-
-        price_df = price_df[price_df["region"].isin(regions)].copy()
-        price_df["timestamp"] = pd.to_datetime(price_df["timestamp"], utc=True)
-
-        price_records = []
-        for _, row in price_df.iterrows():
-            from aurelius.models import EnergyPrice
-            price_records.append(EnergyPrice(
-                timestamp=row["timestamp"].to_pydatetime(),
-                region=row["region"],
-                price_per_mwh=float(row["price_per_mwh"]),
-            ))
-
-        config = PriceModelConfig(
-            seed=42, n_estimators=200, num_leaves=63, learning_rate=0.05
-        )
-        forecaster = PriceQuantileForecaster(config=config)
-        forecaster.fit(price_records)
-
-        metadata = {
-            "model_version": "ml_quantile_v2",
-            "trained_at": datetime.now(tz=timezone.utc).isoformat(),
-            "n_records": len(price_records),
-            "regions": regions,
-            "config": {
-                "n_estimators": config.n_estimators,
-                "num_leaves": config.num_leaves,
-                "learning_rate": config.learning_rate,
-            },
-        }
-
-        if not dry_run:
-            models_dir.mkdir(parents=True, exist_ok=True)
-            model_path = models_dir / "candidate_forecaster.pkl"
-            meta_path = models_dir / "candidate_metadata.json"
-            with model_path.open("wb") as f:
-                pickle.dump(forecaster, f)
-            meta_path.write_text(json.dumps(metadata, indent=2))
-            logger.info(f"Candidate model saved to {model_path}")
-        else:
-            logger.info(f"[DRY RUN] Would save candidate model trained on {len(price_records)} records")
-
-        return metadata
-
-    except Exception as exc:
-        logger.error(f"Model training failed: {exc}")
-        logger.debug(traceback.format_exc())
-        return None
-
-
-# ---------------------------------------------------------------------------
-# Step 5: Compare candidate vs active model
+# Legacy scalar comparison (retained for backward-compat tests; main() uses
+# the registry-backed candidate-vs-active comparison in aurelius.learning)
 # ---------------------------------------------------------------------------
 
 def compare_models(
@@ -432,38 +311,7 @@ def compare_models(
 
 
 # ---------------------------------------------------------------------------
-# Step 6: Promote candidate to active
-# ---------------------------------------------------------------------------
-
-def promote_candidate(models_dir: Path, eval_result: dict, dry_run: bool) -> None:
-    """Overwrite active model with candidate after confirming it's an improvement."""
-    candidate_model = models_dir / "candidate_forecaster.pkl"
-    active_model = models_dir / "active_forecaster.pkl"
-    candidate_meta = models_dir / "candidate_metadata.json"
-    active_meta = models_dir / "active_metadata.json"
-
-    if not candidate_model.exists():
-        logger.warning("Candidate model file not found — cannot promote")
-        return
-
-    if dry_run:
-        logger.info("[DRY RUN] Would promote candidate to active model")
-        return
-
-    import shutil
-    shutil.copy2(str(candidate_model), str(active_model))
-
-    if candidate_meta.exists():
-        meta = json.loads(candidate_meta.read_text())
-        meta["last_eval_savings_vs_cpo"] = eval_result.get("savings_vs_cpo_mean")
-        meta["promoted_at"] = datetime.now(tz=timezone.utc).isoformat()
-        active_meta.write_text(json.dumps(meta, indent=2))
-
-    logger.info(f"Promoted candidate model to active: {active_model}")
-
-
-# ---------------------------------------------------------------------------
-# Step 7: Benchmark smoke test
+# Benchmark smoke test
 # ---------------------------------------------------------------------------
 
 def run_benchmark_smoke_test(data_dir: Path) -> dict:
@@ -484,6 +332,7 @@ def run_benchmark_smoke_test(data_dir: Path) -> dict:
 
         from aurelius.backtesting.engine import BacktestEngine
         from aurelius.forecasting.price_model import PriceModelConfig, PriceQuantileForecaster
+        from aurelius.ingestion.grid_apis.base import empty_carbon_df
         from aurelius.ingestion.grid_apis.csv_importer import CSVPriceImporter
         from aurelius.ingestion.job_logs import JobLogIngester
         from aurelius.models import OptimizationConfig
@@ -495,39 +344,34 @@ def run_benchmark_smoke_test(data_dir: Path) -> dict:
         price_df = price_df[price_df["region"].isin(regions)]
 
         engine = BacktestEngine(
-            price_df=price_df,
-            regions=regions,
+            method="greedy",
             train_days=30,
             eval_days=7,
-            n_folds=3,
-            method="greedy",
             config=OptimizationConfig(),
-            forecaster_cls=PriceQuantileForecaster,
-            forecaster_config=PriceModelConfig(seed=42, n_estimators=50, num_leaves=31),
+            price_forecaster_cls=PriceQuantileForecaster,
+            price_forecaster_config=PriceModelConfig(seed=42, n_estimators=50, num_leaves=31),
+            context_hours=336,
         )
+        ts_min = pd.to_datetime(price_df["timestamp"].min(), utc=True)
+        ts_max = pd.to_datetime(price_df["timestamp"].max(), utc=True)
+        span_hours = int((ts_max - ts_min).total_seconds() / 3600)
         ingester = JobLogIngester()
         jobs = ingester.generate_synthetic(
             num_jobs=30,
-            start_time=pd.to_datetime(price_df["timestamp"].min(), utc=True).to_pydatetime(),
-            duration_hours=int(len(price_df["timestamp"].unique()) / len(regions)),
+            start_time=ts_min.to_pydatetime(),
+            duration_hours=span_hours,
             regions=regions,
             seed=42,
             workload_mix="realistic",
         )
 
-        result = engine.run(jobs)
-
-        savings_mean = None
-        if result.savings_vs_current_price:
-            savings_mean = (
-                sum(result.savings_vs_current_price.values())
-                / len(result.savings_vs_current_price)
-            )
+        rounds = engine.run(jobs, price_df, carbon_df=empty_carbon_df())
+        savings_mean = _mean_savings_vs_cpo(rounds)
 
         return {
             "status": "ok",
             "savings_vs_cpo_mean": savings_mean,
-            "n_folds": result.n_folds,
+            "n_folds": len(rounds),
         }
     except Exception as exc:
         logger.error(f"Benchmark smoke test failed: {exc}")
@@ -535,32 +379,47 @@ def run_benchmark_smoke_test(data_dir: Path) -> dict:
 
 
 # ---------------------------------------------------------------------------
-# Step 8: Generate report
+# Report generation
 # ---------------------------------------------------------------------------
 
 def generate_report(
     loop_start: datetime,
     fetch_results: dict,
-    eval_result: Optional[dict],
-    model_metadata: Optional[dict],
-    comparison: dict,
     smoke_test: dict,
     reports_dir: Path,
     dry_run: bool,
+    eval_result: Optional[dict] = None,
+    model_metadata: Optional[dict] = None,
+    comparison: Optional[dict] = None,
+    outcomes_summary: Optional[dict] = None,
+    model_update: Optional[dict] = None,
+    run_id: Optional[str] = None,
 ) -> dict:
-    """Compose the daily learning loop report and save it."""
+    """Compose the daily learning loop report and save it.
+
+    `model_update` is the registry-backed candidate-vs-active result (the
+    trustworthy path used by main()). `eval_result`/`model_metadata`/`comparison`
+    are retained for backward compatibility with callers/tests.
+    """
+    comparison = comparison or {}
+    promoted = (
+        model_update.get("promoted", False) if model_update else comparison.get("promote", False)
+    )
     report = {
+        "run_id": run_id,
         "run_date": loop_start.isoformat(),
         "dry_run": dry_run,
         "data_fetch": {
             "regions_fetched": list(fetch_results.keys()),
             "rows_fetched": {r: len(df) for r, df in fetch_results.items()},
         },
+        "model_update": model_update or {"status": "skipped"},
         "evaluation": eval_result or {"status": "skipped"},
         "model_training": model_metadata or {"status": "skipped"},
         "model_comparison": comparison,
-        "promoted": comparison.get("promote", False),
+        "promoted": promoted,
         "benchmark_smoke_test": smoke_test,
+        "realized_outcomes_feedback": outcomes_summary or {"status": "skipped"},
         "generated_at": datetime.now(tz=timezone.utc).isoformat(),
     }
 
@@ -605,6 +464,54 @@ def _persist_prices_to_db(
     if total:
         logger.info(f"DB: total {total} price rows upserted")
     store.close()
+
+
+def read_realized_outcomes_summary(db_url: Optional[str] = None) -> dict:
+    """Read historical realized outcomes from the store and summarise feedback.
+
+    This is the loop's read-back of the data moat: realized pilot/shadow
+    outcomes (predicted vs realized savings) recorded by shadow mode. Returns
+    a summary dict; no-op friendly when the store is disabled.
+    """
+    if _TimeSeriesStore is None:
+        return {"status": "store_unavailable"}
+    url = db_url or os.environ.get("DATABASE_URL", "")
+    if not url:
+        return {"status": "disabled"}
+    store = _TimeSeriesStore(url)
+    if not store.enabled:
+        return {"status": "disabled"}
+    try:
+        rows = store.get_realized_outcomes(limit=5000)
+    finally:
+        store.close()
+
+    if not rows:
+        return {"status": "ok", "n_outcomes": 0}
+
+    realized = [r["realized_savings_pct"] for r in rows if r.get("realized_savings_pct") is not None]
+    deltas = [
+        r["realized_savings_pct"] - r["predicted_savings_pct"]
+        for r in rows
+        if r.get("realized_savings_pct") is not None and r.get("predicted_savings_pct") is not None
+    ]
+    summary = {
+        "status": "ok",
+        "n_outcomes": len(rows),
+        "mean_realized_savings_pct": (sum(realized) / len(realized)) if realized else None,
+        "mean_forecast_error_pp": (
+            sum(abs(d) for d in deltas) / len(deltas) if deltas else None
+        ),
+        "customers": sorted({r.get("customer_id", "unknown") for r in rows}),
+    }
+    logger.info(
+        "Realized-outcome feedback: %d outcomes, mean realized savings=%s, "
+        "mean |forecast error|=%s pp",
+        summary["n_outcomes"],
+        f"{summary['mean_realized_savings_pct']:.1f}%" if summary["mean_realized_savings_pct"] is not None else "n/a",
+        f"{summary['mean_forecast_error_pp']:.1f}" if summary["mean_forecast_error_pp"] is not None else "n/a",
+    )
+    return summary
 
 
 def _persist_benchmark_to_db(
@@ -672,105 +579,210 @@ def main() -> None:
         "--skip-benchmark", action="store_true",
         help="Skip the benchmark smoke test (saves ~2 minutes)",
     )
+    parser.add_argument(
+        "--customer-id", default="global",
+        help="Customer scope for the model registry (default: global)",
+    )
+    parser.add_argument(
+        "--pilot-id", default="unknown",
+        help="Pilot identifier for the model registry (default: unknown)",
+    )
+    parser.add_argument(
+        "--rollback", action="store_true",
+        help="Roll the active model back to the previous version, then exit",
+    )
+    parser.add_argument(
+        "--no-lock", action="store_true",
+        help="Skip the single-host run lock (NOT recommended for cron/Railway)",
+    )
     args = parser.parse_args()
 
+    # --- Rollback path (operator action; exits immediately) ---
+    if args.rollback:
+        _run_rollback(scope=args.customer_id, pilot_id=args.pilot_id, dry_run=args.dry_run)
+        return
+
+    # --- Single-host lock: prevent overlapping cron/Railway runs ---
+    lock = None
+    if not args.no_lock:
+        from aurelius.learning.locking import FileLock, LockNotAcquiredError
+        lock = FileLock(str(args.data_dir / ".learning_loop.lock"))
+        try:
+            lock.acquire()
+        except LockNotAcquiredError as exc:
+            logger.warning("Another learning-loop run is in progress — exiting. (%s)", exc)
+            return
+
+    try:
+        _run_loop(args)
+    finally:
+        if lock is not None:
+            lock.release()
+
+
+def _run_rollback(scope: str, pilot_id: str, dry_run: bool) -> None:
+    """Roll the active price model back to the previous version."""
+    if _TimeSeriesStore is None or not os.environ.get("DATABASE_URL"):
+        logger.error("Rollback requires DATABASE_URL (a persistent model registry).")
+        sys.exit(1)
+    store = _TimeSeriesStore()
+    if not store.enabled:
+        logger.error("Model registry unavailable — cannot roll back.")
+        sys.exit(1)
+    try:
+        if dry_run:
+            active = store.get_active_model("price", scope, pilot_id)
+            logger.info("[DRY RUN] Would roll back active model %s",
+                        active["model_id"] if active else "(none)")
+            return
+        restored = store.rollback_active("price", scope, pilot_id)
+        if restored is None:
+            logger.warning("Nothing to roll back to (no previous archived model).")
+            return
+        store.record_promotion_decision(
+            decision="rollback", model_type="price", scope=scope, pilot_id=pilot_id,
+            model_id=restored["model_id"], reason="operator_rollback",
+        )
+        logger.info("Rolled back. Active model is now %s", restored["model_id"])
+    finally:
+        store.close()
+
+
+def _run_loop(args) -> None:
+    import uuid
+
     loop_start = datetime.now(tz=timezone.utc)
+    run_id = uuid.uuid4().hex
     logger.info("=== Aurelius Daily Learning Loop ===")
-    logger.info(f"Start: {loop_start.isoformat()}")
-    logger.info(f"Dry run: {args.dry_run}")
+    logger.info(f"Start: {loop_start.isoformat()}  run_id={run_id}")
+    logger.info(f"Dry run: {args.dry_run}  scope={args.customer_id} pilot={args.pilot_id}")
 
     store_path = args.data_dir / "store" / "price_history.csv"
 
-    # Step 1: Fetch latest prices
-    if args.no_fetch:
-        logger.info("Skipping live price fetch (--no-fetch)")
-        fetch_results = {}
-    else:
-        logger.info("Step 1: Fetching latest prices...")
-        fetch_results = fetch_latest_prices(REGIONS, args.data_dir, args.dry_run)
+    # Open the registry/lifecycle store once (no-op when DATABASE_URL unset).
+    store = None
+    if _TimeSeriesStore is not None and os.environ.get("DATABASE_URL"):
+        store = _TimeSeriesStore()
+        if store.enabled and not args.dry_run:
+            store.start_learning_run(run_id, scope=args.customer_id, pilot_id=args.pilot_id)
 
-    # Step 2: Append to store + optional DB persistence
-    logger.info("Step 2: Updating historical store...")
-    if fetch_results and not args.dry_run:
-        _persist_prices_to_db(fetch_results)
-    if store_path.exists() or fetch_results:
-        store_df = append_to_store(fetch_results, store_path, args.dry_run)
-    else:
-        # Fall back to bundled Q1 2026 data if store is empty
-        fallback_path = args.data_dir / "q12026_3region_dam.csv"
-        if fallback_path.exists():
-            logger.info(f"Using bundled data from {fallback_path}")
-            from aurelius.ingestion.grid_apis.csv_importer import CSVPriceImporter
-            store_df = CSVPriceImporter(str(fallback_path)).load_all()
+    run_state = "completed"
+    try:
+        # Step 1: Fetch latest prices
+        if args.no_fetch:
+            logger.info("Skipping live price fetch (--no-fetch)")
+            fetch_results = {}
         else:
-            logger.warning("No price data available. Skipping evaluation and training.")
-            store_df = pd.DataFrame()
+            logger.info("Step 1: Fetching latest prices...")
+            fetch_results = fetch_latest_prices(REGIONS, args.data_dir, args.dry_run)
 
-    # Step 3: Evaluate on recent data
-    logger.info("Step 3: Running evaluation...")
-    eval_result = run_evaluation(store_df, REGIONS, MIN_TRAIN_DAYS, EVAL_WINDOW_DAYS)
-    if eval_result and eval_result.get("status") == "ok":
-        savings = eval_result.get("savings_vs_cpo_mean")
-        if savings is not None:
-            logger.info(f"Evaluation savings vs CPO: {savings*100:.1f}%")
+        # Step 2: Append to store + optional DB persistence
+        logger.info("Step 2: Updating historical store...")
+        if fetch_results and not args.dry_run:
+            _persist_prices_to_db(fetch_results)
+        if store_path.exists() or fetch_results:
+            store_df = append_to_store(fetch_results, store_path, args.dry_run)
+        else:
+            fallback_path = args.data_dir / "q12026_3region_dam.csv"
+            if fallback_path.exists():
+                logger.info(f"Using bundled data from {fallback_path}")
+                from aurelius.ingestion.grid_apis.csv_importer import CSVPriceImporter
+                store_df = CSVPriceImporter(str(fallback_path)).load_all()
+            else:
+                logger.warning("No price data available. Skipping model update.")
+                store_df = pd.DataFrame()
 
-    # Step 4: Train candidate model
-    logger.info("Step 4: Training candidate model...")
-    model_metadata = train_candidate_model(store_df, REGIONS, args.models_dir, args.dry_run)
+        # Step 3: Model update — train candidate, compare vs ACTIVE on a held-out
+        # window, promote only if genuinely better (registry + artifact store).
+        logger.info("Step 3: Model update (candidate vs active)...")
+        model_update = _run_model_update_step(store_df, store, run_id, args)
+        logger.info(
+            "Model update: status=%s promoted=%s reason=%s",
+            model_update.get("status"), model_update.get("promoted"),
+            model_update.get("reason"),
+        )
 
-    # Step 5: Compare models
-    logger.info("Step 5: Comparing candidate vs active model...")
-    comparison = compare_models(eval_result, args.models_dir)
-    logger.info(
-        f"Comparison: promote={comparison['promote']}, reason={comparison['reason']}"
-    )
+        # Step 4: Benchmark smoke test
+        if args.skip_benchmark:
+            smoke_test = {"status": "skipped", "reason": "--skip-benchmark"}
+            logger.info("Step 4: Benchmark smoke test skipped")
+        else:
+            logger.info("Step 4: Running benchmark smoke test...")
+            smoke_test = run_benchmark_smoke_test(args.data_dir)
+            logger.info(f"Smoke test: {smoke_test.get('status')}")
+            if smoke_test.get("savings_vs_cpo_mean") is not None:
+                logger.info(f"  Smoke test savings: {smoke_test['savings_vs_cpo_mean']*100:.1f}%")
 
-    # Step 6: Promote if better
-    if comparison.get("promote") and model_metadata:
-        logger.info("Step 6: Promoting candidate model...")
-        promote_candidate(args.models_dir, eval_result or {}, args.dry_run)
-    else:
-        logger.info(f"Step 6: No promotion ({comparison.get('reason')})")
+        if not args.dry_run:
+            _persist_benchmark_to_db(smoke_test, run_id=run_id)
 
-    # Step 7: Benchmark smoke test
-    if args.skip_benchmark:
-        smoke_test = {"status": "skipped", "reason": "--skip-benchmark"}
-        logger.info("Step 7: Benchmark smoke test skipped")
-    else:
-        logger.info("Step 7: Running benchmark smoke test...")
-        smoke_test = run_benchmark_smoke_test(args.data_dir)
+        # Step 5: Read realized-outcome feedback from the store (data moat).
+        logger.info("Step 5: Reading realized-outcome feedback from store...")
+        outcomes_summary = read_realized_outcomes_summary()
+
+        # Step 6: Generate report
+        logger.info("Step 6: Generating report...")
+        generate_report(
+            loop_start=loop_start,
+            fetch_results=fetch_results,
+            smoke_test=smoke_test,
+            reports_dir=args.reports_dir,
+            dry_run=args.dry_run,
+            outcomes_summary=outcomes_summary,
+            model_update=model_update,
+            run_id=run_id,
+        )
+
+        elapsed = (datetime.now(tz=timezone.utc) - loop_start).total_seconds()
+        logger.info(f"=== Learning Loop Complete in {elapsed:.1f}s ===")
+        logger.info(f"Model update: {model_update.get('status')} "
+                    f"(promoted={model_update.get('promoted')})")
         logger.info(f"Smoke test: {smoke_test.get('status')}")
-        if smoke_test.get("savings_vs_cpo_mean") is not None:
-            logger.info(f"  Smoke test savings: {smoke_test['savings_vs_cpo_mean']*100:.1f}%")
 
-    # Optional: persist benchmark result to DB
-    run_id_str = loop_start.strftime("%Y%m%dT%H%M%SZ")
-    if not args.dry_run:
-        _persist_benchmark_to_db(smoke_test, run_id=run_id_str)
+        if smoke_test.get("status") == "error":
+            run_state = "failed"
+    except Exception:
+        run_state = "failed"
+        raise
+    finally:
+        if store is not None and store.enabled and not args.dry_run:
+            store.finish_learning_run(run_id, state=run_state)
+            store.close()
 
-    # Step 8: Generate report
-    logger.info("Step 8: Generating report...")
-    report = generate_report(
-        loop_start=loop_start,
-        fetch_results=fetch_results,
-        eval_result=eval_result,
-        model_metadata=model_metadata,
-        comparison=comparison,
-        smoke_test=smoke_test,
-        reports_dir=args.reports_dir,
-        dry_run=args.dry_run,
-    )
-
-    elapsed = (datetime.now(tz=timezone.utc) - loop_start).total_seconds()
-    logger.info(f"=== Learning Loop Complete in {elapsed:.1f}s ===")
-    logger.info(f"Evaluation: {eval_result.get('status') if eval_result else 'skipped'}")
-    logger.info(f"Promotion: {comparison.get('promote')} ({comparison.get('reason')})")
-    logger.info(f"Smoke test: {smoke_test.get('status')}")
-
-    # Exit 1 if smoke test failed (for CI integration)
-    if smoke_test.get("status") == "error":
+    if run_state == "failed":
         logger.error("Benchmark smoke test failed — see logs above")
         sys.exit(1)
+
+
+def _run_model_update_step(store_df, store, run_id, args) -> dict:
+    """Run the registry-backed candidate-vs-active model update."""
+    if store_df.empty:
+        return {"status": "skipped", "reason": "no_price_data"}
+    try:
+        import warnings
+
+        from aurelius.forecasting.price_model import PriceModelConfig, PriceQuantileForecaster
+        from aurelius.learning.promotion import run_model_update
+        from aurelius.storage import get_artifact_store
+
+        warnings.filterwarnings("ignore", category=UserWarning)
+        return run_model_update(
+            price_df=store_df,
+            regions=REGIONS,
+            forecaster_cls=PriceQuantileForecaster,
+            forecaster_config=PriceModelConfig(seed=42, n_estimators=200, num_leaves=63),
+            store=store,
+            artifact_store=get_artifact_store(),
+            eval_days=EVAL_WINDOW_DAYS,
+            scope=args.customer_id,
+            pilot_id=args.pilot_id,
+            run_id=run_id,
+            dry_run=args.dry_run,
+        )
+    except Exception as exc:
+        logger.error(f"Model update failed: {exc}")
+        logger.debug(traceback.format_exc())
+        return {"status": "error", "error": str(exc)}
 
 
 if __name__ == "__main__":

@@ -426,6 +426,153 @@ class TestBenchmarkRuns:
 
 
 # ---------------------------------------------------------------------------
+# Data-moat event tables: decisions, realized outcomes, telemetry
+# ---------------------------------------------------------------------------
+
+def _decision(run_id="run1", job_id="j1", realized=False):
+    """Build a shadow-style DecisionRecord."""
+    from aurelius.shadow.models import DecisionRecord
+
+    dt = datetime(2026, 1, 13, tzinfo=timezone.utc)
+    rec = DecisionRecord(
+        run_id=run_id,
+        job_id=job_id,
+        workload_type="training",
+        decision_time=dt,
+        scheduled_region="us-west",
+        scheduled_start=dt,
+        scheduled_end=dt + timedelta(hours=4),
+        scheduled_runtime_h=4.0,
+        forecast_da_price_p50=30.0,
+        forecast_da_price_p90=36.0,
+        predicted_energy_cost=10.0,
+        baseline_region="us-east",
+        baseline_start=dt,
+        baseline_energy_cost=15.0,
+        predicted_savings_pct=33.3,
+        power_kw=100.0,
+        gpu_count=8,
+    )
+    if realized:
+        rec.realized_rt_price = 32.0
+        rec.realized_energy_cost = 11.0
+        rec.realized_baseline_cost = 15.0
+        rec.realized_savings_pct = 26.7
+        rec.sla_met = True
+    return rec
+
+
+class TestDecisionEvents:
+    def test_record_and_count(self, store):
+        n = store.record_decisions([_decision()], customer_id="acme", pilot_id="p1")
+        assert n == 1
+        assert store.row_counts()["decision_events"] == 1
+
+    def test_dedup_run_job(self, store):
+        store.record_decisions([_decision()], customer_id="acme", pilot_id="p1")
+        n2 = store.record_decisions([_decision()], customer_id="acme", pilot_id="p1")
+        assert n2 == 0
+        assert store.row_counts()["decision_events"] == 1
+
+    def test_disabled_returns_zero(self, disabled_store):
+        assert disabled_store.record_decisions([_decision()]) == 0
+
+    def test_empty_returns_zero(self, store):
+        assert store.record_decisions([]) == 0
+
+    def test_customer_isolation(self, store):
+        store.record_decisions([_decision(job_id="a")], customer_id="acme", pilot_id="p1")
+        store.record_decisions([_decision(job_id="b")], customer_id="globex", pilot_id="p2")
+        assert len(store.get_decisions(customer_id="acme")) == 1
+        assert len(store.get_decisions(customer_id="globex")) == 1
+
+    def test_data_source_hash_stored(self, store):
+        store.record_decisions(
+            [_decision()], customer_id="acme", pilot_id="p1", data_source_hash="deadbeef"
+        )
+        rows = store.get_decisions(run_id="run1")
+        assert rows[0]["data_source_hash"] == "deadbeef"
+
+    def test_get_filter_by_run_id(self, store):
+        store.record_decisions([_decision(run_id="rA")], customer_id="acme", pilot_id="p1")
+        store.record_decisions([_decision(run_id="rB", job_id="j2")], customer_id="acme", pilot_id="p1")
+        assert len(store.get_decisions(run_id="rA")) == 1
+
+    def test_accepts_plain_dict(self, store):
+        d = _decision().to_dict()
+        assert store.record_decisions([d], customer_id="acme", pilot_id="p1") == 1
+
+
+class TestRealizedOutcomes:
+    def test_record_only_realized(self, store):
+        recs = [_decision(job_id="a", realized=True), _decision(job_id="b", realized=False)]
+        n = store.record_realized_outcomes(recs, customer_id="acme", pilot_id="p1")
+        assert n == 1  # unrealized one is skipped
+        assert store.row_counts()["realized_outcomes"] == 1
+
+    def test_roundtrip_values(self, store):
+        store.record_realized_outcomes([_decision(realized=True)], customer_id="acme", pilot_id="p1")
+        rows = store.get_realized_outcomes(customer_id="acme")
+        assert abs(rows[0]["realized_savings_pct"] - 26.7) < 0.01
+        assert rows[0]["sla_met"] == 1
+
+    def test_dedup(self, store):
+        store.record_realized_outcomes([_decision(realized=True)], customer_id="acme", pilot_id="p1")
+        n2 = store.record_realized_outcomes([_decision(realized=True)], customer_id="acme", pilot_id="p1")
+        assert n2 == 0
+
+    def test_disabled_returns_zero(self, disabled_store):
+        assert disabled_store.record_realized_outcomes([_decision(realized=True)]) == 0
+
+    def test_get_empty_when_disabled(self, disabled_store):
+        assert disabled_store.get_realized_outcomes() == []
+
+
+class TestTelemetrySnapshots:
+    def _queue_df(self, n=3):
+        t0 = datetime(2026, 1, 1, tzinfo=timezone.utc)
+        return pd.DataFrame({
+            "timestamp": [t0 + timedelta(hours=i) for i in range(n)],
+            "region": ["us-west"] * n,
+            "node_id": [f"node-{i}" for i in range(n)],
+            "queue_depth": [10 + i for i in range(n)],
+            "est_wait_h": [1.0 + i for i in range(n)],
+        })
+
+    def test_record_queue(self, store):
+        n = store.record_telemetry("queue", self._queue_df(3), source="k8s",
+                                   customer_id="acme", pilot_id="p1")
+        assert n == 3
+        assert store.row_counts()["telemetry_snapshots"] == 3
+
+    def test_payload_captures_extra_columns(self, store):
+        store.record_telemetry("queue", self._queue_df(1), source="k8s",
+                               customer_id="acme", pilot_id="p1")
+        # Read raw via a fresh query through SQLAlchemy
+        import json as _json
+
+        from aurelius.database.store import _TELEMETRY_SNAPSHOTS
+        with store._engine.connect() as conn:
+            from sqlalchemy import select as _select
+            row = conn.execute(_select(_TELEMETRY_SNAPSHOTS)).mappings().first()
+        payload = _json.loads(row["payload_json"])
+        assert "queue_depth" in payload
+        assert "est_wait_h" in payload
+
+    def test_dedup(self, store):
+        df = self._queue_df(3)
+        store.record_telemetry("queue", df, source="k8s", customer_id="acme", pilot_id="p1")
+        n2 = store.record_telemetry("queue", df, source="k8s", customer_id="acme", pilot_id="p1")
+        assert n2 == 0
+
+    def test_disabled_returns_zero(self, disabled_store):
+        assert disabled_store.record_telemetry("queue", self._queue_df(), source="k8s") == 0
+
+    def test_empty_df_returns_zero(self, store):
+        assert store.record_telemetry("queue", pd.DataFrame(), source="k8s") == 0
+
+
+# ---------------------------------------------------------------------------
 # TestRowCounts
 # ---------------------------------------------------------------------------
 
@@ -439,6 +586,12 @@ class TestRowCounts:
         assert counts["energy_prices"] == 10
         assert counts["carbon_intensity"] == 7
         assert counts["benchmark_runs"] == 1
+
+    def test_counts_include_event_tables(self, store):
+        counts = store.row_counts()
+        assert "decision_events" in counts
+        assert "realized_outcomes" in counts
+        assert "telemetry_snapshots" in counts
 
     def test_counts_when_disabled(self, disabled_store):
         counts = disabled_store.row_counts()

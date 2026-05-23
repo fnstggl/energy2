@@ -893,3 +893,55 @@ class TestShadowEndToEnd:
             mean_real = sum(r.realized_savings_pct for r in realized) / len(realized)
             # Realized savings can differ from predicted but should be in same ballpark
             assert -50.0 < mean_real < 80.0
+
+
+class TestShadowSafetyGate:
+    """The safety gate runs inside the shadow decision path and annotates records."""
+
+    REGIONS = ["us-west", "us-east"]
+    DECISION_TIME = _utc(2026, 2, 1, 6)
+
+    def _price_df(self) -> pd.DataFrame:
+        start = self.DECISION_TIME - timedelta(days=35)
+        return _make_price_df(
+            regions=self.REGIONS, start=start, n_hours=42 * 24, base_price=50.0,
+            price_offset={"us-west": 0.0, "us-east": -10.0},
+        )
+
+    def _jobs(self, n: int = 5):
+        return [
+            _make_job(job_id=f"job-{i}",
+                      submit_time=self.DECISION_TIME + timedelta(hours=i),
+                      runtime_hours=8.0, regions=self.REGIONS, workload_type="training")
+            for i in range(n)
+        ]
+
+    def test_gate_annotates_every_record(self):
+        runner = LiveShadowRunner(regions=self.REGIONS, train_days=30)
+        records = runner.run(price_df=self._price_df(), jobs=self._jobs(),
+                             decision_time=self.DECISION_TIME)
+        assert records
+        for r in records:
+            assert r.gate_status in ("passed", "filtered")
+            assert r.gate_reason  # non-empty reason / reason code
+
+    def test_gate_can_be_disabled(self):
+        runner = LiveShadowRunner(regions=self.REGIONS, train_days=30,
+                                  enable_safety_gate=False)
+        records = runner.run(price_df=self._price_df(), jobs=self._jobs(),
+                             decision_time=self.DECISION_TIME)
+        assert records
+        assert all(r.gate_status is None for r in records)
+
+    def test_strict_gate_filters_some(self):
+        from aurelius.safety.quantile_gate import QuantileGateConfig
+        strict = QuantileGateConfig(enabled=True, metric="energy_cost",
+                                    min_expected_savings_pct=99.0,
+                                    max_downside_risk_pct=0.0)
+        runner = LiveShadowRunner(regions=self.REGIONS, train_days=30,
+                                  safety_gate_config=strict)
+        records = runner.run(price_df=self._price_df(), jobs=self._jobs(),
+                             decision_time=self.DECISION_TIME)
+        assert records
+        # An unrealistically strict gate must filter (block) at least one decision.
+        assert any(r.gate_status == "filtered" for r in records)

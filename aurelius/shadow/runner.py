@@ -74,6 +74,8 @@ class LiveShadowRunner:
         run_id: Optional[str] = None,
         forecaster_version: str = "ml_quantile",
         optimizer_version: str = "greedy_migrate",
+        safety_gate_config: Optional[Any] = None,
+        enable_safety_gate: bool = True,
     ) -> None:
         """
         Args:
@@ -102,6 +104,17 @@ class LiveShadowRunner:
         self.forecaster_version = forecaster_version
         self.optimizer_version = optimizer_version
         self.scheduler = JobScheduler(self.config)
+
+        from aurelius.safety.quantile_gate import QuantileGateConfig, QuantileSafetyGate
+
+        self.enable_safety_gate = enable_safety_gate
+        self._safety_gate = QuantileSafetyGate()
+        self._safety_gate_config = safety_gate_config or QuantileGateConfig(
+            enabled=enable_safety_gate,
+            metric="energy_cost",
+            min_expected_savings_pct=0.0,
+            max_downside_risk_pct=10.0,
+        )
 
     # ------------------------------------------------------------------
     # Public API
@@ -217,6 +230,9 @@ class LiveShadowRunner:
             decision_time=decision_time,
         )
 
+        # --- Safety gate runs in the decision path (fail-closed) ---
+        self._apply_safety_gate(records)
+
         logger.info(
             f"LiveShadowRunner run_id={self.run_id}: "
             f"{len(records)} records, decision_time={decision_time.isoformat()}, "
@@ -328,28 +344,29 @@ class LiveShadowRunner:
             # Build context from the tail of training data
             context_start = decision_time - timedelta(hours=self.context_hours)
             context_mask = (
-                (train_df["timestamp"] >= pd.Timestamp(context_start, tz="UTC"))
+                (train_df["timestamp"] >= _to_utc_ts(context_start))
             )
             context_df = train_df[context_mask]
             context_records = _df_to_price_records(context_df)
             if not context_records:
                 context_records = train_records[-min(self.context_hours, len(train_records)):]
 
-            forecast_start = decision_time
-            forecast_end = decision_time + timedelta(hours=len(forecast_hours))
-
-            predictions = forecaster.predict(
-                recent_context=context_records,
-                forecast_start=forecast_start,
-                forecast_end=forecast_end,
-            )
+            forecast_timestamps = [
+                (decision_time + timedelta(hours=h)).replace(
+                    minute=0, second=0, microsecond=0
+                )
+                for h in forecast_hours
+            ]
 
             forecast: dict[str, dict[datetime, float]] = {}
-            for pred in predictions:
-                ts = pred.timestamp.replace(minute=0, second=0, microsecond=0)
-                if ts.tzinfo is None:
-                    ts = ts.replace(tzinfo=timezone.utc)
-                forecast.setdefault(pred.region, {})[ts] = float(pred.p50)
+            for region in effective_regions:
+                region_context = [r for r in context_records if r.region == region]
+                preds = forecaster.predict(region, forecast_timestamps, region_context)
+                for pred in preds:
+                    ts = pred.timestamp.replace(minute=0, second=0, microsecond=0)
+                    if ts.tzinfo is None:
+                        ts = ts.replace(tzinfo=timezone.utc)
+                    forecast.setdefault(pred.region, {})[ts] = float(pred.p50)
 
             # Fill any gaps with naive fallback
             if len(forecast) < len(effective_regions):
@@ -465,6 +482,42 @@ class LiveShadowRunner:
             records.append(record)
 
         return records
+
+    def _apply_safety_gate(self, records: list[DecisionRecord]) -> None:
+        """Evaluate each decision through the quantile safety gate (fail-closed).
+
+        Annotates every record with gate_status ("passed"/"filtered") and
+        gate_reason. A "filtered" decision is unsafe to route — downstream
+        execution must honor gate_status and must not route it silently.
+        """
+        if not self.enable_safety_gate:
+            return
+        n_filtered = 0
+        for rec in records:
+            p50 = rec.predicted_energy_cost
+            baseline = rec.baseline_energy_cost
+            # Scale the p50 cost to a p90 cost using the price quantile ratio.
+            if rec.forecast_da_price_p50 and rec.forecast_da_price_p50 > 0:
+                ratio = rec.forecast_da_price_p90 / rec.forecast_da_price_p50
+            else:
+                ratio = 1.2
+            p90 = p50 * ratio
+            forecast = {"energy_cost": {"p50": p50, "p90": p90, "baseline": baseline}}
+            result = self._safety_gate._evaluate_metric(
+                job_id=rec.job_id,
+                forecast=forecast,
+                metric="energy_cost",
+                config=self._safety_gate_config,
+            )
+            rec.gate_status = "passed" if result.passed else "filtered"
+            rec.gate_reason = result.reason
+            if not result.passed:
+                n_filtered += 1
+        if n_filtered:
+            logger.warning(
+                "Safety gate filtered %d/%d decisions (unsafe to route silently)",
+                n_filtered, len(records),
+            )
 
     @staticmethod
     def _compute_cost(

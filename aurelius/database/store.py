@@ -5,9 +5,21 @@ Falls back to a no-op mode when DATABASE_URL is not set — all write methods
 return 0 / empty results without crashing.
 
 Tables managed by this module (created on first connection):
-  energy_prices      — hourly DA/RT price rows per region + source
-  carbon_intensity   — hourly marginal emissions per region + source
-  benchmark_runs     — archived benchmark result rows (one row per workload cell)
+  energy_prices        — hourly DA/RT price rows per region + source
+  carbon_intensity     — hourly marginal emissions per region + source
+  benchmark_runs       — archived benchmark result rows (one row per workload cell)
+  decision_events      — optimizer scheduling decisions (append-only, scoped by
+                         customer_id + pilot_id + run_id; reproducible via
+                         data_source_hash)
+  realized_outcomes    — realized RT prices/costs/savings per decision (the
+                         predicted-vs-realized feedback the learning loop reads)
+  telemetry_snapshots  — queue / GPU-DCGM telemetry snapshots (generic payload)
+  model_registry       — trained model versions (status, artifact_uri, dataset
+                         hash, eval metrics, lineage); binaries live in the
+                         artifact store, the DB holds only the artifact_uri
+  promotion_decisions  — append-only promote/reject/rollback audit log
+  learning_runs        — learning-loop run lifecycle (UUID + state) for
+                         idempotency and an auditable run history
 
 Environment variables:
   DATABASE_URL       — SQLAlchemy-compatible URL (required for any DB use)
@@ -91,6 +103,147 @@ _BENCHMARK_RUNS = Table(
     Column("folds", Integer, nullable=False),
     Column("miss_pct", Float, nullable=False, default=0.0),
     Column("meta_json", Text, nullable=True),
+)
+
+# ---------------------------------------------------------------------------
+# Data-moat event tables (append-only). These capture the structured
+# operational record that future models / offline policy learning depend on.
+# Every row is scoped by customer_id + pilot_id + run_id so pilots are
+# isolated and a historical decision can be reproduced exactly.
+# ---------------------------------------------------------------------------
+
+# One optimizer scheduling decision (the prediction made at decision time).
+_DECISION_EVENTS = Table(
+    "decision_events",
+    _META,
+    Column("id", Integer, primary_key=True, autoincrement=True),
+    Column("customer_id", String(64), nullable=False, default="unknown"),
+    Column("pilot_id", String(64), nullable=False, default="unknown"),
+    Column("run_id", String(64), nullable=False),
+    Column("job_id", String(128), nullable=False),
+    Column("workload_type", String(64), nullable=False),
+    Column("decision_time", DateTime(timezone=True), nullable=False),
+    Column("scheduled_region", String(64), nullable=False),
+    Column("scheduled_start", DateTime(timezone=True), nullable=True),
+    Column("scheduled_runtime_h", Float, nullable=True),
+    Column("forecast_da_price_p50", Float, nullable=True),
+    Column("forecast_da_price_p90", Float, nullable=True),
+    Column("predicted_energy_cost", Float, nullable=True),
+    Column("baseline_region", String(64), nullable=True),
+    Column("baseline_energy_cost", Float, nullable=True),
+    Column("predicted_savings_pct", Float, nullable=True),
+    Column("sla_class", String(32), nullable=True),
+    Column("gate_status", String(16), nullable=True),       # passed / filtered / null
+    Column("gate_reason", Text, nullable=True),             # safety-gate reason code
+    Column("forecaster_version", String(64), nullable=True),
+    Column("optimizer_version", String(64), nullable=True),
+    Column("data_source", String(64), nullable=True),
+    Column("data_source_hash", String(64), nullable=True),  # reproducibility hash
+    Column("recorded_at", DateTime(timezone=True), nullable=False),
+    Column("meta_json", Text, nullable=True),
+    UniqueConstraint("run_id", "job_id", name="uq_decision_events_run_job"),
+)
+
+# The realized outcome for a decision (filled in after the job window passes).
+_REALIZED_OUTCOMES = Table(
+    "realized_outcomes",
+    _META,
+    Column("id", Integer, primary_key=True, autoincrement=True),
+    Column("customer_id", String(64), nullable=False, default="unknown"),
+    Column("pilot_id", String(64), nullable=False, default="unknown"),
+    Column("run_id", String(64), nullable=False),
+    Column("job_id", String(128), nullable=False),
+    Column("workload_type", String(64), nullable=True),
+    Column("predicted_savings_pct", Float, nullable=True),
+    Column("realized_rt_price", Float, nullable=True),
+    Column("realized_energy_cost", Float, nullable=True),
+    Column("realized_baseline_cost", Float, nullable=True),
+    Column("realized_savings_pct", Float, nullable=True),
+    Column("sla_met", Integer, nullable=True),              # 1/0/null
+    Column("realization_note", Text, nullable=True),
+    Column("recorded_at", DateTime(timezone=True), nullable=False),
+    UniqueConstraint("run_id", "job_id", name="uq_realized_outcomes_run_job"),
+)
+
+# Generic telemetry snapshot table (queue depth, GPU/DCGM health, etc.).
+# kind discriminates the payload; payload_json carries the kind-specific fields.
+_TELEMETRY_SNAPSHOTS = Table(
+    "telemetry_snapshots",
+    _META,
+    Column("id", Integer, primary_key=True, autoincrement=True),
+    Column("customer_id", String(64), nullable=False, default="unknown"),
+    Column("pilot_id", String(64), nullable=False, default="unknown"),
+    Column("kind", String(32), nullable=False),             # 'queue' | 'gpu_dcgm'
+    Column("timestamp", DateTime(timezone=True), nullable=False),
+    Column("region", String(64), nullable=True),
+    Column("node_id", String(128), nullable=False, default=""),
+    Column("source", String(64), nullable=False, default="unknown"),
+    Column("payload_json", Text, nullable=True),
+    Column("recorded_at", DateTime(timezone=True), nullable=False),
+    UniqueConstraint(
+        "kind", "source", "region", "node_id", "timestamp",
+        name="uq_telemetry_kind_src_region_node_ts",
+    ),
+)
+
+# ---------------------------------------------------------------------------
+# Model registry + learning-loop lifecycle (metadata only — large binaries live
+# in the artifact store; the DB holds the artifact_uri and reproducibility hash).
+# ---------------------------------------------------------------------------
+
+# One row per trained model version. status transitions:
+#   candidate -> active -> archived (and rolled_back when reverted).
+_MODEL_REGISTRY = Table(
+    "model_registry",
+    _META,
+    Column("id", Integer, primary_key=True, autoincrement=True),
+    Column("model_id", String(64), nullable=False, unique=True),
+    Column("model_type", String(32), nullable=False, default="price"),
+    Column("scope", String(64), nullable=False, default="global"),   # customer_id or 'global'
+    Column("pilot_id", String(64), nullable=False, default="unknown"),
+    Column("version", String(64), nullable=False),
+    Column("status", String(16), nullable=False, default="candidate"),
+    Column("artifact_uri", Text, nullable=True),
+    Column("training_dataset_hash", String(64), nullable=True),
+    Column("training_rows", Integer, nullable=True),
+    Column("eval_metrics_json", Text, nullable=True),
+    Column("parent_model_id", String(64), nullable=True),            # lineage
+    Column("run_id", String(64), nullable=True),
+    Column("created_at", DateTime(timezone=True), nullable=False),
+    Column("promoted_at", DateTime(timezone=True), nullable=True),
+)
+
+# Append-only audit log of every promote / reject / rollback decision.
+_PROMOTION_DECISIONS = Table(
+    "promotion_decisions",
+    _META,
+    Column("id", Integer, primary_key=True, autoincrement=True),
+    Column("run_id", String(64), nullable=True),
+    Column("model_id", String(64), nullable=True),
+    Column("model_type", String(32), nullable=False, default="price"),
+    Column("scope", String(64), nullable=False, default="global"),
+    Column("pilot_id", String(64), nullable=False, default="unknown"),
+    Column("decision", String(16), nullable=False),                  # promote / reject / rollback
+    Column("primary_metric", String(16), nullable=True),
+    Column("candidate_value", Float, nullable=True),
+    Column("active_value", Float, nullable=True),
+    Column("reason", Text, nullable=True),
+    Column("decided_at", DateTime(timezone=True), nullable=False),
+)
+
+# Lifecycle record for each learning-loop run (UUID + state), for idempotency
+# and an auditable run history.
+_LEARNING_RUNS = Table(
+    "learning_runs",
+    _META,
+    Column("id", Integer, primary_key=True, autoincrement=True),
+    Column("run_id", String(64), nullable=False, unique=True),
+    Column("scope", String(64), nullable=False, default="global"),
+    Column("pilot_id", String(64), nullable=False, default="unknown"),
+    Column("state", String(16), nullable=False, default="started"),  # started/completed/failed
+    Column("started_at", DateTime(timezone=True), nullable=False),
+    Column("finished_at", DateTime(timezone=True), nullable=True),
+    Column("summary_json", Text, nullable=True),
 )
 
 
@@ -525,6 +678,518 @@ class TimeSeriesStore:
         return out
 
     # ------------------------------------------------------------------
+    # Decision events (data-moat: optimizer decisions)
+    # ------------------------------------------------------------------
+
+    def record_decisions(
+        self,
+        records: list,
+        customer_id: str = "unknown",
+        pilot_id: str = "unknown",
+        data_source_hash: Optional[str] = None,
+    ) -> int:
+        """Append optimizer scheduling decisions to durable storage.
+
+        Args:
+            records: list of shadow DecisionRecord (or dicts / objects exposing
+                     the same fields). Duplicate (run_id, job_id) rows are
+                     silently skipped (append-only, idempotent on replays).
+            customer_id: Pilot customer identifier (isolates pilots).
+            pilot_id:    Pilot/engagement identifier.
+            data_source_hash: Optional hash of the input price/data files for
+                     exact reproduction of a historical decision.
+
+        Returns:
+            Number of rows actually inserted (0 when disabled or empty).
+        """
+        if not self._enabled or not records:
+            return 0
+
+        now = datetime.now(timezone.utc)
+        rows = []
+        for rec in records:
+            d = _as_dict(rec)
+            rows.append(
+                {
+                    "customer_id": customer_id,
+                    "pilot_id": pilot_id,
+                    "run_id": str(d.get("run_id", "")),
+                    "job_id": str(d.get("job_id", "")),
+                    "workload_type": str(d.get("workload_type", "unknown")),
+                    "decision_time": _coerce_ts(d.get("decision_time")) or now,
+                    "scheduled_region": str(d.get("scheduled_region", "")),
+                    "scheduled_start": _coerce_ts(d.get("scheduled_start")),
+                    "scheduled_runtime_h": _opt_float(d.get("scheduled_runtime_h")),
+                    "forecast_da_price_p50": _opt_float(d.get("forecast_da_price_p50")),
+                    "forecast_da_price_p90": _opt_float(d.get("forecast_da_price_p90")),
+                    "predicted_energy_cost": _opt_float(d.get("predicted_energy_cost")),
+                    "baseline_region": _opt_str(d.get("baseline_region")),
+                    "baseline_energy_cost": _opt_float(d.get("baseline_energy_cost")),
+                    "predicted_savings_pct": _opt_float(d.get("predicted_savings_pct")),
+                    "sla_class": _opt_str(d.get("sla_class")),
+                    "gate_status": _opt_str(d.get("gate_status")),
+                    "gate_reason": _opt_str(d.get("gate_reason")),
+                    "forecaster_version": _opt_str(d.get("forecaster_version")),
+                    "optimizer_version": _opt_str(d.get("optimizer_version")),
+                    "data_source": _opt_str(d.get("data_source")),
+                    "data_source_hash": data_source_hash,
+                    "recorded_at": now,
+                    "meta_json": None,
+                }
+            )
+
+        assert self._engine is not None
+        return _upsert_ignore(self._engine, _DECISION_EVENTS, rows)
+
+    def get_decisions(
+        self,
+        run_id: Optional[str] = None,
+        customer_id: Optional[str] = None,
+        pilot_id: Optional[str] = None,
+        limit: int = 1000,
+    ) -> list[dict]:
+        """Return recorded decisions (newest first), optionally filtered."""
+        if not self._enabled:
+            return []
+        assert self._engine is not None
+        t = _DECISION_EVENTS
+        conds = []
+        if run_id is not None:
+            conds.append(t.c.run_id == run_id)
+        if customer_id is not None:
+            conds.append(t.c.customer_id == customer_id)
+        if pilot_id is not None:
+            conds.append(t.c.pilot_id == pilot_id)
+        stmt = select(t).order_by(t.c.recorded_at.desc()).limit(limit)
+        if conds:
+            stmt = stmt.where(and_(*conds))
+        with self._engine.connect() as conn:
+            rows = conn.execute(stmt).mappings().fetchall()
+        return [dict(r) for r in rows]
+
+    # ------------------------------------------------------------------
+    # Realized outcomes (data-moat: predicted vs realized feedback)
+    # ------------------------------------------------------------------
+
+    def record_realized_outcomes(
+        self,
+        records: list,
+        customer_id: str = "unknown",
+        pilot_id: str = "unknown",
+    ) -> int:
+        """Append realized outcomes for decisions whose windows have passed.
+
+        Only records with a non-None realized_savings_pct are persisted.
+        Duplicate (run_id, job_id) rows are skipped (append-only).
+
+        Returns:
+            Number of rows inserted (0 when disabled or none realized).
+        """
+        if not self._enabled or not records:
+            return 0
+
+        now = datetime.now(timezone.utc)
+        rows = []
+        for rec in records:
+            d = _as_dict(rec)
+            if d.get("realized_savings_pct") is None:
+                continue
+            sla_met = d.get("sla_met")
+            rows.append(
+                {
+                    "customer_id": customer_id,
+                    "pilot_id": pilot_id,
+                    "run_id": str(d.get("run_id", "")),
+                    "job_id": str(d.get("job_id", "")),
+                    "workload_type": _opt_str(d.get("workload_type")),
+                    "predicted_savings_pct": _opt_float(d.get("predicted_savings_pct")),
+                    "realized_rt_price": _opt_float(d.get("realized_rt_price")),
+                    "realized_energy_cost": _opt_float(d.get("realized_energy_cost")),
+                    "realized_baseline_cost": _opt_float(d.get("realized_baseline_cost")),
+                    "realized_savings_pct": _opt_float(d.get("realized_savings_pct")),
+                    "sla_met": None if sla_met is None else int(bool(sla_met)),
+                    "realization_note": _opt_str(d.get("realization_note")),
+                    "recorded_at": now,
+                }
+            )
+
+        if not rows:
+            return 0
+        assert self._engine is not None
+        return _upsert_ignore(self._engine, _REALIZED_OUTCOMES, rows)
+
+    def get_realized_outcomes(
+        self,
+        customer_id: Optional[str] = None,
+        pilot_id: Optional[str] = None,
+        run_id: Optional[str] = None,
+        limit: int = 5000,
+    ) -> list[dict]:
+        """Return realized outcomes (newest first), optionally filtered.
+
+        The daily learning loop reads from here to track realized savings and
+        forecast error over time rather than re-deriving them from JSONL files.
+        """
+        if not self._enabled:
+            return []
+        assert self._engine is not None
+        t = _REALIZED_OUTCOMES
+        conds = []
+        if customer_id is not None:
+            conds.append(t.c.customer_id == customer_id)
+        if pilot_id is not None:
+            conds.append(t.c.pilot_id == pilot_id)
+        if run_id is not None:
+            conds.append(t.c.run_id == run_id)
+        stmt = select(t).order_by(t.c.recorded_at.desc()).limit(limit)
+        if conds:
+            stmt = stmt.where(and_(*conds))
+        with self._engine.connect() as conn:
+            rows = conn.execute(stmt).mappings().fetchall()
+        return [dict(r) for r in rows]
+
+    # ------------------------------------------------------------------
+    # Telemetry snapshots (data-moat: queue + GPU/DCGM)
+    # ------------------------------------------------------------------
+
+    def record_telemetry(
+        self,
+        kind: str,
+        df: pd.DataFrame,
+        source: str,
+        customer_id: str = "unknown",
+        pilot_id: str = "unknown",
+    ) -> int:
+        """Append telemetry snapshots (queue depth, GPU/DCGM health, etc.).
+
+        Args:
+            kind:   'queue' or 'gpu_dcgm' (free-form discriminator).
+            df:     DataFrame with at least a 'timestamp' column. Optional
+                    'region' and 'node_id' columns are promoted to columns;
+                    all remaining columns are stored in payload_json.
+            source: Telemetry source label (e.g. 'prometheus_dcgm').
+
+        Returns:
+            Number of rows inserted (0 when disabled or empty).
+        """
+        if not self._enabled or df is None or df.empty:
+            return 0
+
+        now = datetime.now(timezone.utc)
+        promoted = {"timestamp", "region", "node_id"}
+        rows = []
+        for _, row in df.iterrows():
+            ts = _coerce_ts(row.get("timestamp"))
+            if ts is None:
+                continue
+            payload = {
+                k: (None if pd.isna(v) else v)
+                for k, v in row.items()
+                if k not in promoted
+            }
+            rows.append(
+                {
+                    "customer_id": customer_id,
+                    "pilot_id": pilot_id,
+                    "kind": str(kind),
+                    "timestamp": ts,
+                    "region": _opt_str(row.get("region")),
+                    "node_id": str(row.get("node_id", "") or ""),
+                    "source": str(source),
+                    "payload_json": json.dumps(payload, default=str),
+                    "recorded_at": now,
+                }
+            )
+
+        assert self._engine is not None
+        return _upsert_ignore(self._engine, _TELEMETRY_SNAPSHOTS, rows)
+
+    # ------------------------------------------------------------------
+    # Model registry + rollback
+    # ------------------------------------------------------------------
+
+    def register_model(
+        self,
+        model_id: str,
+        version: str,
+        artifact_uri: str,
+        model_type: str = "price",
+        scope: str = "global",
+        pilot_id: str = "unknown",
+        status: str = "candidate",
+        training_dataset_hash: Optional[str] = None,
+        training_rows: Optional[int] = None,
+        eval_metrics: Optional[dict] = None,
+        parent_model_id: Optional[str] = None,
+        run_id: Optional[str] = None,
+    ) -> bool:
+        """Register a newly trained model version (status defaults to candidate).
+
+        Returns True when a row was written, False when disabled.
+        """
+        if not self._enabled:
+            return False
+        now = datetime.now(timezone.utc)
+        row = {
+            "model_id": model_id,
+            "model_type": model_type,
+            "scope": scope,
+            "pilot_id": pilot_id,
+            "version": version,
+            "status": status,
+            "artifact_uri": artifact_uri,
+            "training_dataset_hash": training_dataset_hash,
+            "training_rows": training_rows,
+            "eval_metrics_json": json.dumps(eval_metrics) if eval_metrics else None,
+            "parent_model_id": parent_model_id,
+            "run_id": run_id,
+            "created_at": now,
+            "promoted_at": now if status == "active" else None,
+        }
+        assert self._engine is not None
+        with self._engine.begin() as conn:
+            conn.execute(_MODEL_REGISTRY.insert(), [row])
+        return True
+
+    def get_active_model(
+        self,
+        model_type: str = "price",
+        scope: str = "global",
+        pilot_id: str = "unknown",
+    ) -> Optional[dict]:
+        """Return the active model row for (model_type, scope, pilot_id), or None."""
+        if not self._enabled:
+            return None
+        assert self._engine is not None
+        t = _MODEL_REGISTRY
+        stmt = (
+            select(t)
+            .where(and_(
+                t.c.model_type == model_type,
+                t.c.scope == scope,
+                t.c.pilot_id == pilot_id,
+                t.c.status == "active",
+            ))
+            .order_by(t.c.promoted_at.desc())
+            .limit(1)
+        )
+        with self._engine.connect() as conn:
+            row = conn.execute(stmt).mappings().first()
+        return _model_row_to_dict(row) if row else None
+
+    def get_model(self, model_id: str) -> Optional[dict]:
+        if not self._enabled:
+            return None
+        assert self._engine is not None
+        t = _MODEL_REGISTRY
+        with self._engine.connect() as conn:
+            row = conn.execute(select(t).where(t.c.model_id == model_id)).mappings().first()
+        return _model_row_to_dict(row) if row else None
+
+    def list_models(
+        self,
+        model_type: str = "price",
+        scope: str = "global",
+        pilot_id: str = "unknown",
+        limit: int = 50,
+    ) -> list[dict]:
+        """Return model versions newest-first (lineage / history)."""
+        if not self._enabled:
+            return []
+        assert self._engine is not None
+        t = _MODEL_REGISTRY
+        stmt = (
+            select(t)
+            .where(and_(t.c.model_type == model_type, t.c.scope == scope, t.c.pilot_id == pilot_id))
+            .order_by(t.c.created_at.desc())
+            .limit(limit)
+        )
+        with self._engine.connect() as conn:
+            rows = conn.execute(stmt).mappings().fetchall()
+        return [_model_row_to_dict(r) for r in rows]
+
+    def promote_model(self, model_id: str) -> bool:
+        """Promote a candidate to active, archiving the prior active (atomic).
+
+        Returns True on success, False when disabled or model not found.
+        """
+        if not self._enabled:
+            return False
+        assert self._engine is not None
+        from sqlalchemy import update
+
+        t = _MODEL_REGISTRY
+        now = datetime.now(timezone.utc)
+        with self._engine.begin() as conn:
+            target = conn.execute(select(t).where(t.c.model_id == model_id)).mappings().first()
+            if target is None:
+                return False
+            # Archive the current active for the same (type, scope, pilot).
+            conn.execute(
+                update(t)
+                .where(and_(
+                    t.c.model_type == target["model_type"],
+                    t.c.scope == target["scope"],
+                    t.c.pilot_id == target["pilot_id"],
+                    t.c.status == "active",
+                ))
+                .values(status="archived")
+            )
+            conn.execute(
+                update(t).where(t.c.model_id == model_id).values(status="active", promoted_at=now)
+            )
+        return True
+
+    def rollback_active(
+        self,
+        model_type: str = "price",
+        scope: str = "global",
+        pilot_id: str = "unknown",
+    ) -> Optional[dict]:
+        """Roll back: mark current active as rolled_back, restore the most recent
+        previously-active (archived) model to active.
+
+        Returns the restored model dict, or None when there is nothing to roll
+        back to.
+        """
+        if not self._enabled:
+            return None
+        assert self._engine is not None
+        from sqlalchemy import update
+
+        t = _MODEL_REGISTRY
+        now = datetime.now(timezone.utc)
+        with self._engine.begin() as conn:
+            current = conn.execute(
+                select(t).where(and_(
+                    t.c.model_type == model_type, t.c.scope == scope,
+                    t.c.pilot_id == pilot_id, t.c.status == "active",
+                ))
+            ).mappings().first()
+            # Most recent archived model that is not the current active.
+            prev_stmt = (
+                select(t)
+                .where(and_(
+                    t.c.model_type == model_type, t.c.scope == scope,
+                    t.c.pilot_id == pilot_id, t.c.status == "archived",
+                ))
+                .order_by(t.c.promoted_at.desc())
+                .limit(1)
+            )
+            prev = conn.execute(prev_stmt).mappings().first()
+            if prev is None:
+                return None
+            if current is not None:
+                conn.execute(
+                    update(t).where(t.c.model_id == current["model_id"]).values(status="rolled_back")
+                )
+            conn.execute(
+                update(t).where(t.c.model_id == prev["model_id"]).values(status="active", promoted_at=now)
+            )
+            restored = conn.execute(select(t).where(t.c.model_id == prev["model_id"])).mappings().first()
+        return _model_row_to_dict(restored) if restored else None
+
+    def record_promotion_decision(
+        self,
+        decision: str,
+        model_type: str = "price",
+        scope: str = "global",
+        pilot_id: str = "unknown",
+        model_id: Optional[str] = None,
+        run_id: Optional[str] = None,
+        primary_metric: Optional[str] = None,
+        candidate_value: Optional[float] = None,
+        active_value: Optional[float] = None,
+        reason: Optional[str] = None,
+    ) -> bool:
+        """Append a promote / reject / rollback decision to the audit log."""
+        if not self._enabled:
+            return False
+        assert self._engine is not None
+        row = {
+            "run_id": run_id,
+            "model_id": model_id,
+            "model_type": model_type,
+            "scope": scope,
+            "pilot_id": pilot_id,
+            "decision": decision,
+            "primary_metric": primary_metric,
+            "candidate_value": _opt_float(candidate_value),
+            "active_value": _opt_float(active_value),
+            "reason": reason,
+            "decided_at": datetime.now(timezone.utc),
+        }
+        with self._engine.begin() as conn:
+            conn.execute(_PROMOTION_DECISIONS.insert(), [row])
+        return True
+
+    def get_promotion_decisions(
+        self,
+        scope: Optional[str] = None,
+        pilot_id: Optional[str] = None,
+        limit: int = 100,
+    ) -> list[dict]:
+        if not self._enabled:
+            return []
+        assert self._engine is not None
+        t = _PROMOTION_DECISIONS
+        conds = []
+        if scope is not None:
+            conds.append(t.c.scope == scope)
+        if pilot_id is not None:
+            conds.append(t.c.pilot_id == pilot_id)
+        stmt = select(t).order_by(t.c.decided_at.desc()).limit(limit)
+        if conds:
+            stmt = stmt.where(and_(*conds))
+        with self._engine.connect() as conn:
+            rows = conn.execute(stmt).mappings().fetchall()
+        return [dict(r) for r in rows]
+
+    # ------------------------------------------------------------------
+    # Learning-run lifecycle
+    # ------------------------------------------------------------------
+
+    def start_learning_run(
+        self, run_id: str, scope: str = "global", pilot_id: str = "unknown"
+    ) -> bool:
+        """Record the start of a learning-loop run. Returns False when disabled."""
+        if not self._enabled:
+            return False
+        assert self._engine is not None
+        row = {
+            "run_id": run_id,
+            "scope": scope,
+            "pilot_id": pilot_id,
+            "state": "started",
+            "started_at": datetime.now(timezone.utc),
+            "finished_at": None,
+            "summary_json": None,
+        }
+        with self._engine.begin() as conn:
+            conn.execute(_LEARNING_RUNS.insert(), [row])
+        return True
+
+    def finish_learning_run(
+        self, run_id: str, state: str = "completed", summary: Optional[dict] = None
+    ) -> bool:
+        if not self._enabled:
+            return False
+        assert self._engine is not None
+        from sqlalchemy import update
+
+        with self._engine.begin() as conn:
+            conn.execute(
+                update(_LEARNING_RUNS)
+                .where(_LEARNING_RUNS.c.run_id == run_id)
+                .values(
+                    state=state,
+                    finished_at=datetime.now(timezone.utc),
+                    summary_json=json.dumps(summary, default=str) if summary else None,
+                )
+            )
+        return True
+
+    # ------------------------------------------------------------------
     # Diagnostics
     # ------------------------------------------------------------------
 
@@ -536,7 +1201,17 @@ class TimeSeriesStore:
         assert self._engine is not None
         counts: dict[str, int] = {}
         with self._engine.connect() as conn:
-            for tbl in [_ENERGY_PRICES, _CARBON_INTENSITY, _BENCHMARK_RUNS]:
+            for tbl in [
+                _ENERGY_PRICES,
+                _CARBON_INTENSITY,
+                _BENCHMARK_RUNS,
+                _DECISION_EVENTS,
+                _REALIZED_OUTCOMES,
+                _TELEMETRY_SNAPSHOTS,
+                _MODEL_REGISTRY,
+                _PROMOTION_DECISIONS,
+                _LEARNING_RUNS,
+            ]:
                 stmt = select(func.count()).select_from(tbl)
                 counts[tbl.name] = conn.execute(stmt).scalar() or 0
         return counts
@@ -556,6 +1231,57 @@ def _to_utc(dt: datetime) -> datetime:
     if dt.tzinfo is None:
         return dt.replace(tzinfo=timezone.utc)
     return dt.astimezone(timezone.utc)
+
+
+def _as_dict(rec) -> dict:
+    """Normalize a record (dataclass with to_dict, plain object, or dict) to a dict."""
+    if isinstance(rec, dict):
+        return rec
+    if hasattr(rec, "to_dict"):
+        return rec.to_dict()
+    return {k: v for k, v in vars(rec).items()}
+
+
+def _coerce_ts(value) -> Optional[datetime]:
+    """Coerce a value (datetime / ISO string / pandas Timestamp) to a UTC datetime."""
+    if value is None:
+        return None
+    if isinstance(value, str):
+        try:
+            value = datetime.fromisoformat(value)
+        except ValueError:
+            return None
+    if not isinstance(value, datetime):
+        try:
+            value = pd.Timestamp(value).to_pydatetime()
+        except (ValueError, TypeError):
+            return None
+    if value.tzinfo is None:
+        value = value.replace(tzinfo=timezone.utc)
+    return value.astimezone(timezone.utc)
+
+
+def _opt_float(value) -> Optional[float]:
+    if value is None:
+        return None
+    try:
+        return float(value)
+    except (ValueError, TypeError):
+        return None
+
+
+def _opt_str(value) -> Optional[str]:
+    if value is None:
+        return None
+    return str(value)
+
+
+def _model_row_to_dict(row) -> dict:
+    """Convert a model_registry mapping row to a dict, decoding eval_metrics_json."""
+    d = dict(row)
+    raw = d.pop("eval_metrics_json", None)
+    d["eval_metrics"] = json.loads(raw) if raw else None
+    return d
 
 
 def _empty_price_df() -> pd.DataFrame:

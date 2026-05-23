@@ -75,6 +75,10 @@ class DecisionRecord:
     optimizer_version: str = "greedy_migrate"
     data_source: str = "csv"
 
+    # --- Safety gate (evaluated in the decision path) ---
+    gate_status: Optional[str] = None    # "passed" | "filtered" | None (not evaluated)
+    gate_reason: Optional[str] = None     # human-readable reason / reason code
+
     # --- Realized fields (None until RealizedSavingsCalculator fills them) ---
     realized_rt_price: Optional[float] = None   # $/MWh actual RT at scheduled_start
     realized_energy_cost: Optional[float] = None  # power * realized_rt / 1000 * h
