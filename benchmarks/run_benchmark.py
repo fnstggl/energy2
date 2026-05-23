@@ -281,6 +281,8 @@ def run_single_benchmark(
     weather_file: Optional[str] = None,
     queue_file: Optional[str] = None,
     queue_delay_cost_per_gpu_hour: float = 0.0,
+    gpu_file: Optional[str] = None,
+    gpu_health_cost_per_hour: float = 0.0,
     repo_root: Path,
 ) -> dict:
     """Run one (region_combo × workload_type) benchmark cell.
@@ -479,6 +481,38 @@ def run_single_benchmark(
         )
         print(f"  Queue-aware routing: cost_per_gpu_hour=${queue_delay_cost_per_gpu_hour:.2f}")
 
+    # Load GPU telemetry CSV if provided
+    gpu_df_loaded: Optional[pd.DataFrame] = None
+    if gpu_file and gpu_file != "none":
+        try:
+            _gpath = repo_root / gpu_file
+            gpu_df_loaded = pd.read_csv(str(_gpath))
+            gpu_df_loaded["timestamp"] = pd.to_datetime(gpu_df_loaded["timestamp"], utc=True)
+            print(f"  GPU telemetry: {gpu_df_loaded['region'].nunique()} regions, "
+                  f"{len(gpu_df_loaded)} rows from {gpu_file}")
+        except Exception as exc:
+            print(f"  WARNING: failed to load GPU telemetry file {gpu_file}: {exc}")
+
+    # Apply GPU health cost to optimizer config when GPU data is provided
+    if gpu_df_loaded is not None and gpu_health_cost_per_hour > 0.0:
+        config = OptimizationConfig(
+            alpha=config.alpha,
+            beta=config.beta,
+            gamma=config.gamma,
+            delta=config.delta,
+            min_power_fraction=config.min_power_fraction,
+            max_power_fraction=config.max_power_fraction,
+            region_power_caps=config.region_power_caps,
+            default_region=config.default_region,
+            carbon_objective=config.carbon_objective,
+            carbon_threshold_gco2_per_kwh=config.carbon_threshold_gco2_per_kwh,
+            data_transfer_cost_per_gb=config.data_transfer_cost_per_gb,
+            sla_risk_thresholds=config.sla_risk_thresholds,
+            queue_delay_cost_per_gpu_hour=config.queue_delay_cost_per_gpu_hour,
+            gpu_health_cost_per_hour=gpu_health_cost_per_hour,
+        )
+        print(f"  GPU-health-aware routing: cost_per_hour=${gpu_health_cost_per_hour:.2f}")
+
     engine = BacktestEngine(
         method=method,
         train_days=train_days,
@@ -490,6 +524,7 @@ def run_single_benchmark(
         context_hours=336,  # 2 weeks for lag_168h to work across the full eval horizon
         weather_df=weather_df_loaded if not weather_df_loaded.empty else None,
         queue_df=queue_df_loaded,
+        gpu_df=gpu_df_loaded,
     )
     if oracle:
         engine.oracle_forecast = True
@@ -677,6 +712,20 @@ def parse_args() -> argparse.Namespace:
     p.add_argument("--queue-delay-cost", type=float, default=0.0,
                    help="Opportunity cost per GPU-hour lost to queue waiting ($/GPU-hour). "
                         "Requires --queue-file. Typical value for H100: 2.0–4.0.")
+    p.add_argument("--gpu-file", default=None,
+                   help="Path to GPU telemetry CSV (relative to repo root). "
+                        "Canonical schema: timestamp,region,node_id,gpu_index,gpu_uuid,"
+                        "gpu_type,gpu_util_pct,mem_used_mb,mem_total_mb,power_usage_w,"
+                        "gpu_temp_c,ecc_sbe_count,ecc_dbe_count,xid_error_count,"
+                        "power_throttle_us,thermal_throttle_us,clock_throttle_reasons. "
+                        "Enables GPU-health-aware placement (Tier 3). "
+                        "Use DCGMProvider.generate_fixture() for synthetic demo data or "
+                        "DCGMProvider.from_prometheus_live() for production data. "
+                        "NOTE: SYNTHETIC fixture data must NOT be used for savings claims.")
+    p.add_argument("--gpu-health-cost", type=float, default=0.0,
+                   help="Penalty per degraded-GPU-hour ($/GPU-hour). "
+                        "Requires --gpu-file. Set to 0 to disable GPU-health routing. "
+                        "Typical value for H100: 1.0–3.0.")
     return p.parse_args()
 
 
@@ -745,6 +794,8 @@ def main() -> int:
                     weather_file=getattr(args, "weather_file", None),
                     queue_file=getattr(args, "queue_file", None),
                     queue_delay_cost_per_gpu_hour=getattr(args, "queue_delay_cost", 0.0),
+                    gpu_file=getattr(args, "gpu_file", None),
+                    gpu_health_cost_per_hour=getattr(args, "gpu_health_cost", 0.0),
                     repo_root=repo_root,
                 )
                 result["run_ts"] = run_ts

@@ -416,6 +416,7 @@ class OptimizationConfig:
         "background_maintenance": 0.10,
     })
     queue_delay_cost_per_gpu_hour: float = 0.0
+    gpu_health_cost_per_hour: float = 0.0
 
     def to_dict(self) -> dict:
         return {
@@ -431,4 +432,73 @@ class OptimizationConfig:
             "carbon_threshold_gco2_per_kwh": self.carbon_threshold_gco2_per_kwh,
             "data_transfer_cost_per_gb": self.data_transfer_cost_per_gb,
             "queue_delay_cost_per_gpu_hour": self.queue_delay_cost_per_gpu_hour,
+            "gpu_health_cost_per_hour": self.gpu_health_cost_per_hour,
         }
+
+
+@dataclass
+class GPUMetrics:
+    """Point-in-time metrics for a single physical GPU, sourced from DCGM/Prometheus.
+
+    Attributes:
+        timestamp: UTC time this snapshot was collected (floor to minute)
+        region: Aurelius region identifier (e.g. "us-west")
+        node_id: Host or node name (e.g. "gpu-node-01")
+        gpu_index: GPU index on the node (0-based)
+        gpu_uuid: Canonical GPU UUID from nvidia-smi / DCGM
+        gpu_type: GPU model string (e.g. "a100", "h100", "l40s")
+        gpu_util_pct: GPU compute utilization 0–100
+        mem_used_mb: Framebuffer memory in use (MB)
+        mem_total_mb: Total framebuffer capacity (MB)
+        power_usage_w: Instantaneous power draw (W)
+        gpu_temp_c: GPU core temperature (°C)
+        ecc_sbe_count: Volatile single-bit ECC errors (correctable)
+        ecc_dbe_count: Volatile double-bit ECC errors (uncorrectable — retire GPU)
+        xid_error_count: XID error count since last reset
+        power_throttle_us: Cumulative power throttle duration (μs)
+        thermal_throttle_us: Cumulative thermal throttle duration (μs)
+        clock_throttle_reasons: DCGM clock-throttle bitmask (0 = no throttle)
+    """
+    timestamp: datetime
+    region: str
+    node_id: str
+    gpu_index: int
+    gpu_uuid: str
+    gpu_type: str
+    gpu_util_pct: float
+    mem_used_mb: float
+    mem_total_mb: float
+    power_usage_w: float
+    gpu_temp_c: float
+    ecc_sbe_count: int = 0
+    ecc_dbe_count: int = 0
+    xid_error_count: int = 0
+    power_throttle_us: float = 0.0
+    thermal_throttle_us: float = 0.0
+    clock_throttle_reasons: int = 0
+
+
+@dataclass
+class GPUHealthScore:
+    """Derived health score for a single GPU at a point in time.
+
+    health_penalty is 0.0 (healthy) to 1.0 (severely degraded).
+    Only GPUs with is_schedulable=True should receive new workloads.
+
+    IMPORTANT: DCGM provides observability only. Actual GPU-level placement
+    requires scheduler adapter support (Kubernetes node selectors, Slurm GRES,
+    Ray resource labels, etc.). Aurelius computes region-level aggregates for
+    routing decisions and per-GPU scores for node-level selection when the
+    customer's scheduler allows it.
+    """
+    gpu_uuid: str
+    node_id: str
+    region: str
+    timestamp: datetime
+    health_penalty: float
+    utilization_penalty: float
+    thermal_penalty: float
+    throttle_penalty: float
+    ecc_penalty: float
+    is_schedulable: bool
+    reason_codes: list[str]

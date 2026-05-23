@@ -1339,11 +1339,149 @@ LAST VERIFIED TEST STATUS (v5.0 branch):
   All pre-existing tests preserved: YES
   v2.0 baseline preserved: 24.7% mean (CONFIRMED)
 
+===============================================================================
+ROADMAP PHASE 4 — GPU TELEMETRY / DCGM (TIER 3 OPTIMIZATION)
+===============================================================================
+
+Status: COMPLETE (2026-05-23)
+Branch: claude/youthful-feynman-pWnxF
+
+Summary:
+  Full GPU telemetry ingestion and health-scoring infrastructure implemented,
+  tested (75 new tests), and integrated end-to-end with the optimizer, scheduler,
+  and backtesting engine. Enables Tier 3 GPU/node-level placement intelligence
+  without requiring a live cluster. Backward-compatible: zero config = unchanged.
+
+What was implemented:
+
+  1. Data models (aurelius/models.py):
+     - GPUMetrics dataclass: 17 fields covering util, temperature, power, ECC,
+       XID errors, throttle durations, clock throttle reasons
+     - GPUHealthScore dataclass: composite health penalty (0=healthy, 1=degraded),
+       component penalties (utilization, thermal, throttle, ECC), is_schedulable,
+       reason_codes
+     - OptimizationConfig: gpu_health_cost_per_hour field (default 0.0), included
+       in to_dict()
+
+  2. DCGMProvider (aurelius/ingestion/dcgm_provider.py):
+     - score_gpu_health(): pure scoring function, tested for all edge cases
+       (healthy, overheated, ECC DBE, ECC SBE, power throttle, XID errors)
+     - aggregate_region_health(): mean penalty over schedulable GPUs; returns 1.0
+       if all GPUs are unschedulable (hard failures retire the region)
+     - parse_prometheus_text(): parses dcgm-exporter Prometheus text format into
+       GPUMetrics (multi-node, multi-GPU, correct mem_total = used + free)
+     - DCGMProvider.from_prom_fixture(): load from .prom fixture (no cluster needed)
+     - DCGMProvider.from_csv(): load from canonical CSV with 17-column schema
+     - DCGMProvider.from_dataframe(): construct from pandas DataFrame
+     - DCGMProvider.from_prometheus_live(): optional live Prometheus/dcgm-exporter
+       query (requires PROMETHEUS_URL or DCGM_EXPORTER_URL env var); graceful
+       empty return when env vars absent (no crash)
+     - DCGMProvider.get_health_penalty(): leakage-safe "last known ≤ T" lookup
+     - DCGMProvider.to_dict_lookup(): {region: {timestamp: penalty}} — mirrors
+       price_data / queue_data for drop-in objective use
+     - DCGMProvider.get_gpu_scores(): node-level GPUHealthScore list for future
+       scheduler adapters that support per-GPU placement
+     - DCGMProvider.generate_fixture(): reproducible synthetic fixture (business-
+       hours utilization cycles, thermal spikes, ECC noise, seed-deterministic)
+     - DCGMProvider.save_csv(): round-trip export
+
+  3. Objective function (aurelius/optimization/objective.py):
+     - ObjectiveComponents: gpu_health_cost field added
+     - ObjectiveFunction.calculate(): gpu_health_data parameter (optional)
+       gpu_health_cost = penalty * gpu_health_cost_per_hour * runtime_h * gpu_count
+     - calculate_job_cost() / compare_options(): gpu_health_data propagated
+     - Backward-compatible: missing arg → gpu_health_cost=0.0
+
+  4. Scheduler (aurelius/optimization/scheduler.py):
+     - solve() / _solve_greedy() / _find_best_slot() / _solve_local_search():
+       gpu_health_data parameter threaded through
+     - Optimizer naturally routes away from degraded regions when
+       gpu_health_cost_per_hour > 0.0, without requiring GPU-level control
+
+  5. Backtesting engine (aurelius/backtesting/engine.py):
+     - __init__(): gpu_df parameter (optional DataFrame)
+     - _run_fold(): builds gpu_health_data per fold with leakage-safe split
+       (only snapshots with timestamp < eval_start used)
+     - Passes gpu_health_data to scheduler.solve() per fold
+
+  6. Benchmark runner (benchmarks/run_benchmark.py):
+     - --gpu-file: path to GPU telemetry CSV (relative to repo root)
+     - --gpu-health-cost: $/GPU-hour opportunity cost (default 0.0)
+     - Auto-loads and logs GPU signal stats
+     - Rebuilds OptimizationConfig with gpu_health_cost when provided
+
+  7. Fixture files:
+     - data/fixtures/dcgm_metrics_healthy.prom: 4 GPUs, A100, gpu-node-01
+       (healthy: util 38-61%, temp 48-63°C, no ECC/XID/throttle errors)
+     - data/fixtures/dcgm_metrics_degraded.prom: 4 GPUs, H100, hot-node-01 +
+       ecc-node-01 (degraded: high temp 85-92°C, ECC DBE on gpu-3, XID error,
+       power throttling 200k-820k μs)
+     - data/gpu_q12026_3region.csv: 25,920 rows (Q1 2026, 3 regions, 1 node,
+       4 GPUs/node, 2160h = 90 days). 4.4MB. SYNTHETIC — not for savings claims.
+
+  8. Env vars (documented in .env.example):
+     - PROMETHEUS_URL, DCGM_EXPORTER_URL
+     - PROMETHEUS_BEARER_TOKEN, PROMETHEUS_USERNAME, PROMETHEUS_PASSWORD
+     - PROMETHEUS_TLS_VERIFY
+
+IMPORTANT — DCGM observability vs. control clarification:
+  DCGM/Prometheus provides OBSERVABILITY only. Exact GPU-level placement requires
+  scheduler adapter support (Kubernetes node selectors, Slurm GRES constraints,
+  Ray resource labels, AWS Batch placement). Without a scheduler adapter, the
+  optimizer uses region-level health aggregates for routing (routes away from
+  degraded regions). With a scheduler adapter, get_gpu_scores() provides per-GPU
+  scores for node-level selection. Control level must be documented per deployment.
+
+Adversarial findings (all verified correct):
+  ✓ No GPU health data / zero config → zero gpu_health_cost (backward compat)
+  ✓ Future GPU data not used in past folds (g_ts < split.eval_start)
+  ✓ Degraded region (penalty=0.9) loses to healthy region even when cheaper
+    (test_high_health_cost_overrides_price_advantage: $0.50 energy savings vs
+    $36 GPU health cost → correctly routes to healthy region)
+  ✓ from_prometheus_live() returns empty provider without PROMETHEUS_URL (no crash)
+  ✓ ECC DBE > 0 → is_schedulable=False (GPU retired from placement)
+  ✓ XID errors > 0 → is_schedulable=False (hardware fault)
+  ✓ Health penalty strictly bounded 0.0 ≤ p ≤ 1.0 (100+ test cases)
+  ✓ Leakage-safe lookup: query before data → 0.0 (healthy assumption)
+  ✓ CSV round-trip: save + reload produces identical health lookups
+
+Tests: 75 new tests in tests/test_dcgm_provider.py (75 passed, 1 skipped)
+  - TestGPUMetricsModel (3): construction, fields, optional
+  - TestGPUHealthScoreModel (15): all scoring edge cases
+  - TestAggregateRegionHealth (5): empty, all-healthy, all-unschedulable, mixed, weighted
+  - TestPrometheusTextParser (8): healthy fixture, degraded fixture, labels, mem_total
+  - TestDCGMProviderFromPromFixture (4): load, health penalty validation
+  - TestDCGMProviderFromCSV (3): valid, missing columns, multi-row
+  - TestDCGMProviderGenerateFixture (8): counts, determinism, patterns
+  - TestDCGMProviderLookup (10): leakage safety, dict structure, scores
+  - TestDCGMProviderCSVRoundTrip (1): save and reload
+  - TestOptimizationConfigGPUHealth (4): defaults, to_dict, backward compat
+  - TestObjectiveFunctionGPUHealth (5): zero config, calculation, total inclusion
+  - TestSchedulerGPUHealthRouting (4): routes-to-healthy, zero-cost, backward, price override
+  - TestBacktestEngineGPUHealthIntegration (4): none, stores, run-without, leakage-safe-fold
+  - TestLivePrometheusSkipped (1): empty when no env, optional live test
+
+Full test suite: 908 passed → 983 passed (after merge), 1 skipped, 0 regressions
+
+Production limitation (must document per deployment):
+  GPU telemetry is SYNTHETIC fixture data in this implementation.
+  Live GPU telemetry requires the customer to operate:
+    - NVIDIA GPUs with up-to-date drivers
+    - DCGM running on GPU nodes
+    - dcgm-exporter exposing /metrics
+    - Prometheus scraping dcgm-exporter
+    - Aurelius PROMETHEUS_URL or DCGM_EXPORTER_URL pointing to the endpoint
+  The fixture fixtures are clearly labeled SYNTHETIC and blocked from benchmark claims.
+
 Next exact task:
-  Option A: Extended Training Window Benchmark (60-day windows)
-    Tests whether rank features improve over v2.0 with more data.
-    If yes, v5.0 becomes default. Required: Summer 2025 90-day dataset or
-    configurable train_days parameter in benchmark runner.
-  Option B: ROADMAP PHASE 4 — GPU Telemetry & DCGM
-    Implement fixture-backed Prometheus metrics, DCGM data model, Tier 3
-    optimizer interface. Foundation infrastructure (no live cluster needed).
+  OPTION A: Pilot Readiness Audit (docs/PILOT_READINESS_AUDIT.md)
+    Full top-to-bottom production readiness audit:
+    - What works today vs requires customer infra
+    - First pilot deployment checklist
+    - ROI methodology document
+    - Data needed from customer
+    Priority: HIGH (needed for first enterprise contract)
+  OPTION B: Extended Training Window Benchmark
+    Test 60-90 day training windows with ml_quantile_v5 or per-region forecaster.
+    Likely unlocks 20%+ savings on training workload (currently 15.0%).
+    Priority: MEDIUM (improves sales story)

@@ -231,6 +231,7 @@ class BacktestEngine:
         rt_risk_lambda: Optional[float] = None,
         weather_df: Optional[Any] = None,  # pd.DataFrame with canonical weather schema
         queue_df: Optional[Any] = None,    # pd.DataFrame with canonical queue schema
+        gpu_df: Optional[Any] = None,      # pd.DataFrame with canonical GPU metric schema
     ) -> None:
         self.method = method
         self.config = config or OptimizationConfig()
@@ -295,6 +296,13 @@ class BacktestEngine:
         # only rows with timestamp ≤ eval window are used for each fold.
         # None = queue-unaware mode (no change to existing behaviour).
         self.queue_df = queue_df
+
+        # Optional GPU telemetry DataFrame for GPU-health-aware placement.
+        # Schema: canonical GPUMetrics columns (see aurelius/ingestion/dcgm_provider.py).
+        # Converted to {region: {timestamp: avg_health_penalty}} per fold.
+        # Leakage-safe: only snapshots with timestamp < eval_start are used.
+        # None = GPU-health-unaware mode.
+        self.gpu_df = gpu_df
 
     @property
     def uses_ml_forecaster(self) -> bool:
@@ -482,12 +490,23 @@ class BacktestEngine:
         ):
             from aurelius.ingestion.queue_provider import QueueProvider
             q_ts = pd.to_datetime(self.queue_df["timestamp"], utc=True)
-            # Use all queue rows up to (but not including) eval_start
             q_mask = q_ts < split.eval_start
             if q_mask.any():
                 queue_provider = QueueProvider.from_dataframe(self.queue_df[q_mask])
                 queue_data = queue_provider.to_dict_lookup()
-            # If no rows exist before eval_start, leave queue_data as None
+
+        # --- Build GPU health signal for the optimizer (leakage-safe) ---
+        # Only use GPU snapshots recorded BEFORE eval_start.
+        gpu_health_data: Optional[dict[str, dict[datetime, float]]] = None
+        if self.gpu_df is not None and not (
+            hasattr(self.gpu_df, "empty") and self.gpu_df.empty
+        ):
+            from aurelius.ingestion.dcgm_provider import DCGMProvider
+            g_ts = pd.to_datetime(self.gpu_df["timestamp"], utc=True)
+            g_mask = g_ts < split.eval_start
+            if g_mask.any():
+                gpu_provider = DCGMProvider.from_dataframe(self.gpu_df[g_mask])
+                gpu_health_data = gpu_provider.to_dict_lookup()
 
         # --- Run optimizer ---
         try:
@@ -500,7 +519,6 @@ class BacktestEngine:
                     forecast_carbon_data, spread_risk_model,
                 )
             else:
-                # Plan against risk-adjusted RT estimate (optimizer only).
                 opt_prices = (
                     spread_risk_model.adjust_price_map(forecast_price_data)
                     if spread_risk_model is not None else forecast_price_data
@@ -509,6 +527,7 @@ class BacktestEngine:
                     eval_jobs, opt_prices, forecast_carbon_data,
                     method=self.method,
                     queue_data=queue_data,
+                    gpu_health_data=gpu_health_data,
                 )
                 opt_schedule = opt_result.schedule
         except Exception as exc:
