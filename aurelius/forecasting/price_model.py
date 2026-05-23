@@ -863,9 +863,24 @@ class PerRegionForecaster:
     def metadata(self) -> Optional[ModelMetadata]:
         if not self._fitted or not self._region_forecasters:
             return None
-        # Return metadata from the first sub-model as a representative sample
+        # Aggregate metadata across all per-region sub-models
+        total_samples = sum(
+            (fc.metadata.training_samples if fc.metadata else 0)
+            for fc in self._region_forecasters.values()
+        )
         first = next(iter(self._region_forecasters.values()))
-        return first.metadata
+        from datetime import timezone as _tz
+        trained_at = (first.metadata.trained_at if first.metadata
+                      else datetime.now(tz=_tz.utc))
+        features_version = (first.metadata.features_version if first.metadata else "v4.0")
+        return ModelMetadata(
+            model_type="per_region_forecaster",
+            trained_at=trained_at,
+            features_version=features_version,
+            training_samples=total_samples,
+            regions=sorted(self._region_forecasters.keys()),
+            seed=self.config.base_config.seed,
+        )
 
     def forecasts_to_dict(
         self,
