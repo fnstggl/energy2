@@ -16,7 +16,7 @@ from __future__ import annotations
 import logging
 from typing import Union
 
-from aurelius.models import EnergyPrice, CarbonIntensity
+from aurelius.models import CarbonIntensity, EnergyPrice
 
 logger = logging.getLogger(__name__)
 

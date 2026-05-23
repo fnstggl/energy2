@@ -24,14 +24,13 @@ import pytest
 from aurelius.backtesting.engine import BacktestEngine, BacktestRound
 from aurelius.backtesting.evaluator import RealizedMetrics
 from aurelius.models import Job, ScheduleDecision
+from aurelius.reporting.html_report import render_html_report
 from aurelius.reporting.savings_report import (
     SavingsReport,
     _bootstrap_ci,
     _latency_violations,
     _queue_delay_hours,
 )
-from aurelius.reporting.html_report import render_html_report
-
 
 # ---------------------------------------------------------------------------
 # Test fixtures and helpers
@@ -590,6 +589,7 @@ class TestAPIAuthMiddleware:
     def test_health_check_no_auth_needed(self):
         """GET /health must work without an API key even when AURELIUS_API_KEY is set."""
         from fastapi.testclient import TestClient
+
         from aurelius.api.app import app
 
         with patch.dict(os.environ, {"AURELIUS_API_KEY": "secret-key-123"}):
@@ -601,6 +601,7 @@ class TestAPIAuthMiddleware:
     def test_simulations_requires_auth_when_key_configured(self):
         """GET /simulations returns 401 when key is set and header is missing."""
         from fastapi.testclient import TestClient
+
         from aurelius.api.app import app
 
         with patch.dict(os.environ, {"AURELIUS_API_KEY": "correct-key"}):
@@ -611,6 +612,7 @@ class TestAPIAuthMiddleware:
     def test_simulations_correct_key_accepted(self):
         """GET /simulations passes when correct X-API-Key is provided."""
         from fastapi.testclient import TestClient
+
         from aurelius.api.app import app
 
         with patch.dict(os.environ, {"AURELIUS_API_KEY": "my-secret"}):
@@ -622,6 +624,7 @@ class TestAPIAuthMiddleware:
     def test_simulations_wrong_key_rejected(self):
         """GET /simulations returns 401 when wrong key is provided."""
         from fastapi.testclient import TestClient
+
         from aurelius.api.app import app
 
         with patch.dict(os.environ, {"AURELIUS_API_KEY": "correct-key"}):
@@ -634,6 +637,7 @@ class TestAPIAuthMiddleware:
     def test_simulate_endpoint_requires_auth(self):
         """POST /simulate returns 401 when key configured and header missing."""
         from fastapi.testclient import TestClient
+
         from aurelius.api.app import app
 
         with patch.dict(os.environ, {"AURELIUS_API_KEY": "secret"}):
@@ -644,6 +648,7 @@ class TestAPIAuthMiddleware:
     def test_no_auth_when_api_key_not_set(self):
         """Without AURELIUS_API_KEY set, requests pass through without 401."""
         from fastapi.testclient import TestClient
+
         from aurelius.api.app import app
 
         env = {k: v for k, v in os.environ.items() if k != "AURELIUS_API_KEY"}
@@ -656,6 +661,7 @@ class TestAPIAuthMiddleware:
     def test_get_simulation_by_id_requires_auth(self):
         """GET /simulations/{id} returns 401 when key configured and missing."""
         from fastapi.testclient import TestClient
+
         from aurelius.api.app import app
 
         with patch.dict(os.environ, {"AURELIUS_API_KEY": "secret"}):
@@ -676,14 +682,14 @@ class TestLeakageAuditIntegration:
         assert_no_leakage(train, eval_)  # must not raise
 
     def test_assert_no_leakage_raises_on_overlap(self):
-        from aurelius.validation.leakage_audit import assert_no_leakage, DataLeakageError
+        from aurelius.validation.leakage_audit import DataLeakageError, assert_no_leakage
         train = pd.DataFrame({"timestamp": pd.date_range("2024-01-01", periods=24, freq="h")})
         eval_ = pd.DataFrame({"timestamp": pd.date_range("2024-01-01 12:00", periods=24, freq="h")})
         with pytest.raises(DataLeakageError):
             assert_no_leakage(train, eval_)
 
     def test_assert_no_leakage_raises_when_train_equals_eval_start(self):
-        from aurelius.validation.leakage_audit import assert_no_leakage, DataLeakageError
+        from aurelius.validation.leakage_audit import DataLeakageError, assert_no_leakage
         ts = pd.Timestamp("2024-01-02")
         train = pd.DataFrame({"timestamp": [ts]})
         eval_ = pd.DataFrame({"timestamp": [ts]})

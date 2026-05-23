@@ -15,10 +15,9 @@ from __future__ import annotations
 from datetime import datetime, timezone
 from typing import Optional
 
-import pytest
+import pandas as pd
 
 from aurelius.models import EnergyPrice
-
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -56,8 +55,9 @@ def _make_weather_df(
     n_hours: int = 336,
 ) -> "pd.DataFrame":
     """Generate a minimal synthetic weather DataFrame."""
-    import pandas as pd
     from datetime import timedelta
+
+    import pandas as pd
 
     rows = []
     start = datetime(2026, 1, 1, 0, 0, tzinfo=timezone.utc)
@@ -96,9 +96,7 @@ class TestPerRegionForecasterConfig:
         assert "us-south" in cfg.weather_regions
 
     def test_region_configs_override(self):
-        from aurelius.forecasting.price_model import (
-            PerRegionForecasterConfig, PriceModelConfig
-        )
+        from aurelius.forecasting.price_model import PerRegionForecasterConfig, PriceModelConfig
         ercot_cfg = PriceModelConfig(n_estimators=300, num_leaves=127)
         cfg = PerRegionForecasterConfig(
             region_configs={"us-south": ercot_cfg}
@@ -108,9 +106,7 @@ class TestPerRegionForecasterConfig:
 
     def test_accepts_bare_price_model_config(self):
         """PerRegionForecaster should wrap a bare PriceModelConfig."""
-        from aurelius.forecasting.price_model import (
-            PerRegionForecaster, PriceModelConfig
-        )
+        from aurelius.forecasting.price_model import PerRegionForecaster, PriceModelConfig
         cfg = PriceModelConfig(seed=99, n_estimators=50)
         fc = PerRegionForecaster(config=cfg)
         assert isinstance(fc.config.base_config, PriceModelConfig)
@@ -130,7 +126,9 @@ class TestPerRegionForecasterConfig:
 class TestPerRegionForecasterFit:
     def test_fit_produces_one_model_per_region(self):
         from aurelius.forecasting.price_model import (
-            PerRegionForecaster, PerRegionForecasterConfig, PriceModelConfig
+            PerRegionForecaster,
+            PerRegionForecasterConfig,
+            PriceModelConfig,
         )
         cfg = PerRegionForecasterConfig(
             base_config=PriceModelConfig(seed=42, n_estimators=20)
@@ -143,7 +141,9 @@ class TestPerRegionForecasterFit:
 
     def test_fit_single_region(self):
         from aurelius.forecasting.price_model import (
-            PerRegionForecaster, PerRegionForecasterConfig, PriceModelConfig
+            PerRegionForecaster,
+            PerRegionForecasterConfig,
+            PriceModelConfig,
         )
         cfg = PerRegionForecasterConfig(
             base_config=PriceModelConfig(seed=42, n_estimators=20)
@@ -157,7 +157,9 @@ class TestPerRegionForecasterFit:
     def test_each_region_fitted_independently(self):
         """Each sub-forecaster should be fitted on its own region's data."""
         from aurelius.forecasting.price_model import (
-            PerRegionForecaster, PerRegionForecasterConfig, PriceModelConfig
+            PerRegionForecaster,
+            PerRegionForecasterConfig,
+            PriceModelConfig,
         )
         cfg = PerRegionForecasterConfig(
             base_config=PriceModelConfig(seed=42, n_estimators=20)
@@ -175,7 +177,9 @@ class TestPerRegionForecasterFit:
     def test_weather_applied_only_to_weather_regions(self):
         """Weather features should be on for us-south, off for us-west/us-east."""
         from aurelius.forecasting.price_model import (
-            PerRegionForecaster, PerRegionForecasterConfig, PriceModelConfig
+            PerRegionForecaster,
+            PerRegionForecasterConfig,
+            PriceModelConfig,
         )
         cfg = PerRegionForecasterConfig(
             base_config=PriceModelConfig(seed=42, n_estimators=20),
@@ -200,7 +204,9 @@ class TestPerRegionForecasterFit:
     def test_weather_only_for_regions_with_data(self):
         """If weather_df only has us-south data, us-west/us-east stay price-only."""
         from aurelius.forecasting.price_model import (
-            PerRegionForecaster, PerRegionForecasterConfig, PriceModelConfig
+            PerRegionForecaster,
+            PerRegionForecasterConfig,
+            PriceModelConfig,
         )
         cfg = PerRegionForecasterConfig(
             base_config=PriceModelConfig(seed=42, n_estimators=20),
@@ -215,7 +221,9 @@ class TestPerRegionForecasterFit:
 
     def test_no_weather_df_all_price_only(self):
         from aurelius.forecasting.price_model import (
-            PerRegionForecaster, PerRegionForecasterConfig, PriceModelConfig
+            PerRegionForecaster,
+            PerRegionForecasterConfig,
+            PriceModelConfig,
         )
         cfg = PerRegionForecasterConfig(
             base_config=PriceModelConfig(seed=42, n_estimators=20),
@@ -232,7 +240,9 @@ class TestPerRegionForecasterFit:
     def test_region_config_override_applied(self):
         """ERCOT should use its custom config (more estimators/leaves)."""
         from aurelius.forecasting.price_model import (
-            PerRegionForecaster, PerRegionForecasterConfig, PriceModelConfig
+            PerRegionForecaster,
+            PerRegionForecasterConfig,
+            PriceModelConfig,
         )
         base_cfg = PriceModelConfig(seed=42, n_estimators=20)
         ercot_cfg = PriceModelConfig(seed=42, n_estimators=30, num_leaves=31)
@@ -257,9 +267,10 @@ class TestPerRegionForecasterFit:
 class TestPerRegionForecasterPredict:
     def test_predict_returns_correct_count(self):
         from aurelius.forecasting.price_model import (
-            PerRegionForecaster, PerRegionForecasterConfig, PriceModelConfig
+            PerRegionForecaster,
+            PerRegionForecasterConfig,
+            PriceModelConfig,
         )
-        from datetime import timedelta
         cfg = PerRegionForecasterConfig(
             base_config=PriceModelConfig(seed=42, n_estimators=20)
         )
@@ -272,7 +283,9 @@ class TestPerRegionForecasterPredict:
 
     def test_predict_unknown_region_returns_fallback(self):
         from aurelius.forecasting.price_model import (
-            PerRegionForecaster, PerRegionForecasterConfig, PriceModelConfig
+            PerRegionForecaster,
+            PerRegionForecasterConfig,
+            PriceModelConfig,
         )
         cfg = PerRegionForecasterConfig(
             base_config=PriceModelConfig(seed=42, n_estimators=20)
@@ -294,10 +307,13 @@ class TestPerRegionForecasterPredict:
         assert all(f.model_type == "per_region_fallback" for f in preds)
 
     def test_predict_p90_gte_p50(self):
-        from aurelius.forecasting.price_model import (
-            PerRegionForecaster, PerRegionForecasterConfig, PriceModelConfig
-        )
         from datetime import timedelta
+
+        from aurelius.forecasting.price_model import (
+            PerRegionForecaster,
+            PerRegionForecasterConfig,
+            PriceModelConfig,
+        )
         cfg = PerRegionForecasterConfig(
             base_config=PriceModelConfig(seed=42, n_estimators=20)
         )
@@ -313,7 +329,9 @@ class TestPerRegionForecasterPredict:
     def test_weather_not_used_for_price_only_regions(self):
         """Predictions for us-west should not use weather even if weather_df supplied."""
         from aurelius.forecasting.price_model import (
-            PerRegionForecaster, PerRegionForecasterConfig, PriceModelConfig
+            PerRegionForecaster,
+            PerRegionForecasterConfig,
+            PriceModelConfig,
         )
         cfg = PerRegionForecasterConfig(
             base_config=PriceModelConfig(seed=42, n_estimators=20),
@@ -342,7 +360,9 @@ class TestPerRegionForecasterPredict:
 class TestPerRegionForecasterDeterminism:
     def test_same_seed_same_predictions(self):
         from aurelius.forecasting.price_model import (
-            PerRegionForecaster, PerRegionForecasterConfig, PriceModelConfig
+            PerRegionForecaster,
+            PerRegionForecasterConfig,
+            PriceModelConfig,
         )
         prices = _make_prices(["us-west", "us-east"], n_hours=240)
         future_ts = [datetime(2026, 2, 1, h, 0, tzinfo=timezone.utc) for h in range(24)]
@@ -364,7 +384,9 @@ class TestPerRegionForecasterDeterminism:
     def test_different_configs_different_models(self):
         """Models with different num_leaves should have different internal structure."""
         from aurelius.forecasting.price_model import (
-            PerRegionForecaster, PerRegionForecasterConfig, PriceModelConfig
+            PerRegionForecaster,
+            PerRegionForecasterConfig,
+            PriceModelConfig,
         )
         prices = _make_prices(["us-west"], n_hours=240)
 
@@ -390,10 +412,13 @@ class TestPerRegionForecasterDeterminism:
 class TestPerRegionForecasterLeakage:
     def test_fit_does_not_see_future_prices(self):
         """Fit only uses training records; eval records never passed to fit."""
-        from aurelius.forecasting.price_model import (
-            PerRegionForecaster, PerRegionForecasterConfig, PriceModelConfig
-        )
         from datetime import timedelta
+
+        from aurelius.forecasting.price_model import (
+            PerRegionForecaster,
+            PerRegionForecasterConfig,
+            PriceModelConfig,
+        )
 
         train_start = datetime(2026, 1, 1, 0, 0, tzinfo=timezone.utc)
         eval_start = train_start + timedelta(days=30)
@@ -419,11 +444,15 @@ class TestPerRegionForecasterLeakage:
 
     def test_weather_leakage_safe(self):
         """Weather data for training window must not include eval-window rows."""
-        from aurelius.forecasting.price_model import (
-            PerRegionForecaster, PerRegionForecasterConfig, PriceModelConfig
-        )
-        import pandas as pd
         from datetime import timedelta
+
+        import pandas as pd
+
+        from aurelius.forecasting.price_model import (
+            PerRegionForecaster,
+            PerRegionForecasterConfig,
+            PriceModelConfig,
+        )
 
         train_start = datetime(2026, 1, 1, 0, 0, tzinfo=timezone.utc)
         eval_start = train_start + timedelta(days=30)
@@ -471,7 +500,9 @@ class TestPerRegionForecasterLeakage:
 class TestPerRegionForecasterMetadata:
     def test_metadata_after_fit(self):
         from aurelius.forecasting.price_model import (
-            PerRegionForecaster, PerRegionForecasterConfig, PriceModelConfig
+            PerRegionForecaster,
+            PerRegionForecasterConfig,
+            PriceModelConfig,
         )
         cfg = PerRegionForecasterConfig(
             base_config=PriceModelConfig(seed=42, n_estimators=20)
@@ -492,7 +523,9 @@ class TestPerRegionForecasterMetadata:
 
     def test_known_regions_after_fit(self):
         from aurelius.forecasting.price_model import (
-            PerRegionForecaster, PerRegionForecasterConfig, PriceModelConfig
+            PerRegionForecaster,
+            PerRegionForecasterConfig,
+            PriceModelConfig,
         )
         cfg = PerRegionForecasterConfig(
             base_config=PriceModelConfig(seed=42, n_estimators=20)
@@ -512,13 +545,17 @@ class TestPerRegionForecasterBacktestIntegration:
 
     def test_backtest_engine_runs_with_perregion(self):
         """BacktestEngine should accept PerRegionForecaster without errors."""
+        from datetime import timedelta
+
         import pandas as pd
+
         from aurelius.backtesting.engine import BacktestEngine
         from aurelius.forecasting.price_model import (
-            PerRegionForecaster, PerRegionForecasterConfig, PriceModelConfig
+            PerRegionForecaster,
+            PerRegionForecasterConfig,
+            PriceModelConfig,
         )
         from aurelius.ingestion.job_logs import JobLogIngester
-        from datetime import timedelta
 
         # Build minimal price DataFrame (2 regions, 45 days)
         start = datetime(2026, 1, 1, 0, 0, tzinfo=timezone.utc)
@@ -575,12 +612,16 @@ class TestPerRegionForecasterBacktestIntegration:
         fail vs joint model. We verify savings are positive (not negative)
         for the primary benchmark signal (current_price_only).
         """
-        import pandas as pd
         import math
+
+        import pandas as pd
+
         from aurelius.backtesting.engine import BacktestEngine
         from aurelius.forecasting.price_model import (
-            PerRegionForecaster, PerRegionForecasterConfig,
-            PriceQuantileForecaster, PriceModelConfig
+            PerRegionForecaster,
+            PerRegionForecasterConfig,
+            PriceModelConfig,
+            PriceQuantileForecaster,
         )
         from aurelius.ingestion.job_logs import JobLogIngester
 

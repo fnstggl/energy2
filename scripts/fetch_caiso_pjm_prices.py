@@ -47,8 +47,8 @@ import pandas as pd
 
 from aurelius.ingestion.grid_apis.base import normalize_price_df
 from aurelius.ingestion.grid_apis.caiso import CAISOPriceProvider, CAISORealtimePriceProvider
-from aurelius.ingestion.grid_apis.pjm import PJMPriceProvider, PJMRealtimePriceProvider
 from aurelius.ingestion.grid_apis.ercot import ERCOTPriceProvider, ERCOTRealtimePriceProvider
+from aurelius.ingestion.grid_apis.pjm import PJMPriceProvider, PJMRealtimePriceProvider
 
 
 def _ercot_creds_present() -> bool:

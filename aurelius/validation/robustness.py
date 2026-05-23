@@ -10,15 +10,15 @@ Usage:
 """
 
 import json
+import logging
 import statistics
-from dataclasses import dataclass, field, asdict
+from dataclasses import asdict, dataclass
 from datetime import datetime
 from pathlib import Path
 from typing import Optional
-import logging
 
-from ..simulation.replay import SimulationReplay, SimulationConfig
 from ..models import OptimizationConfig
+from ..simulation.replay import SimulationConfig, SimulationReplay
 
 logger = logging.getLogger(__name__)
 

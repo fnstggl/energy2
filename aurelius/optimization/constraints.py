@@ -7,12 +7,12 @@ Constraints ensure schedules are feasible:
 4. Runtime constraints: throttling affects runtime
 """
 
+import logging
+from dataclasses import dataclass
 from datetime import datetime, timedelta
 from typing import Optional
-from dataclasses import dataclass
-import logging
 
-from ..models import Job, ScheduleDecision, OptimizationConfig
+from ..models import Job, OptimizationConfig, ScheduleDecision
 
 logger = logging.getLogger(__name__)
 

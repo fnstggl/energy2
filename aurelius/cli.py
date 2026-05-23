@@ -22,10 +22,10 @@ Examples:
 
 import argparse
 import json
+import logging
 import sys
 from datetime import datetime
 from pathlib import Path
-import logging
 
 logging.basicConfig(
     level=logging.INFO,
@@ -36,8 +36,8 @@ logger = logging.getLogger("aurelius")
 
 def cmd_simulate(args):
     """Run a simulation."""
-    from .simulation.replay import SimulationReplay, SimulationConfig
     from .models import OptimizationConfig
+    from .simulation.replay import SimulationConfig, SimulationReplay
 
     # Parse regions
     regions = [r.strip() for r in args.regions.split(",")]
@@ -140,9 +140,9 @@ def cmd_simulate(args):
 
 def cmd_generate_data(args):
     """Generate synthetic data files."""
+    from .forecasting.baseline import generate_carbon_scenario
     from .ingestion.energy_prices import EnergyPriceIngester
     from .ingestion.job_logs import JobLogIngester
-    from .forecasting.baseline import generate_carbon_scenario
 
     output_dir = Path(args.output)
     output_dir.mkdir(parents=True, exist_ok=True)
@@ -201,7 +201,7 @@ def cmd_generate_data(args):
 def _load_price_df(args, regions):
     """Resolve --price-provider / --price-file into a canonical price DataFrame."""
     import pandas as pd
-    from .ingestion.grid_apis.market_registry import UnsupportedMarketPriceError
+
 
     provider = args.price_provider
     start_ts = pd.Timestamp(args.start, tz="UTC") if args.start else None
@@ -237,8 +237,8 @@ def _load_price_df(args, regions):
         return pd.concat(dfs, ignore_index=True)
 
     if provider == "pjm":
-        from .ingestion.grid_apis.pjm import PJMPriceProvider
         from .ingestion.grid_apis.base import ProviderConfigError
+        from .ingestion.grid_apis.pjm import PJMPriceProvider
         for region in regions:
             if region not in ("us-east",):
                 print(f"ERROR: PJM provider only supports us-east (got '{region}')", file=sys.stderr)
@@ -306,8 +306,8 @@ def _load_price_df(args, regions):
         return pd.concat(dfs, ignore_index=True)
 
     if provider == "entsoe":
-        from .ingestion.grid_apis.entsoe import ENTSOEPriceProvider
         from .ingestion.grid_apis.base import ProviderConfigError
+        from .ingestion.grid_apis.entsoe import ENTSOEPriceProvider
         start_dt = start_ts.to_pydatetime() if start_ts else None
         end_dt = end_ts.to_pydatetime() if end_ts else None
         if not start_dt or not end_dt:
@@ -339,6 +339,7 @@ def _load_price_df(args, regions):
 def _load_carbon_df(args, regions):
     """Resolve --carbon-provider / --carbon-file into a canonical carbon DataFrame."""
     import pandas as pd
+
     from .ingestion.grid_apis.base import empty_carbon_df
 
     provider = args.carbon_provider
@@ -358,8 +359,8 @@ def _load_carbon_df(args, regions):
         return df
 
     if provider == "electricitymaps":
-        from .ingestion.grid_apis.electricitymaps import ElectricityMapsCarbonProvider
         from .ingestion.grid_apis.base import ProviderConfigError
+        from .ingestion.grid_apis.electricitymaps import ElectricityMapsCarbonProvider
         start_ts = pd.Timestamp(args.start, tz="UTC") if args.start else None
         end_ts = pd.Timestamp(args.end, tz="UTC") if args.end else None
         if not start_ts or not end_ts:
@@ -376,8 +377,8 @@ def _load_carbon_df(args, regions):
         return pd.concat(dfs, ignore_index=True)
 
     if provider == "watttime":
-        from .ingestion.grid_apis.watttime import WattTimeCarbonProvider
         from .ingestion.grid_apis.base import ProviderConfigError
+        from .ingestion.grid_apis.watttime import WattTimeCarbonProvider
         start_ts = pd.Timestamp(args.start, tz="UTC") if args.start else None
         end_ts = pd.Timestamp(args.end, tz="UTC") if args.end else None
         if not start_ts or not end_ts:
@@ -400,6 +401,7 @@ def _load_carbon_df(args, regions):
 def cmd_backtest(args):
     """Run walk-forward backtest with real or CSV price/carbon data."""
     import pandas as pd
+
     from .backtesting.engine import BacktestEngine
     from .ingestion.job_logs import JobLogIngester
     from .models import OptimizationConfig
@@ -593,11 +595,13 @@ def cmd_backtest(args):
 
 def cmd_shadow_run(args):
     """Run shadow mode: make optimizer decisions without executing workloads."""
-    import pandas as pd
     from pathlib import Path
-    from .shadow import LiveShadowRunner, DecisionRecorder
-    from .models import OptimizationConfig
+
+    import pandas as pd
+
     from .ingestion.job_logs import JobLogIngester
+    from .models import OptimizationConfig
+    from .shadow import DecisionRecorder, LiveShadowRunner
 
     regions = [r.strip() for r in args.regions.split(",")]
     output_dir = Path(args.output_dir) if args.output_dir else Path("reports/shadow")
@@ -654,7 +658,7 @@ def cmd_shadow_run(args):
     price_forecaster_cls = None
     price_forecaster_config = None
     if args.forecaster == "ml_quantile":
-        from .forecasting.price_model import PriceQuantileForecaster, PriceModelConfig
+        from .forecasting.price_model import PriceModelConfig, PriceQuantileForecaster
         price_forecaster_cls = PriceQuantileForecaster
         price_forecaster_config = PriceModelConfig(seed=42, n_estimators=200, num_leaves=63)
 
@@ -688,25 +692,26 @@ def cmd_shadow_run(args):
 
     # Print summary
     pred_savings = sum(r.predicted_savings_pct for r in records) / len(records)
-    print(f"\nSHADOW RUN COMPLETE")
+    print("\nSHADOW RUN COMPLETE")
     print(f"  Run ID:              {runner.run_id}")
     print(f"  Jobs decided:        {len(records)}")
     print(f"  Mean predicted saving (vs CPO): {pred_savings:.1f}%")
     print(f"  Decisions saved to:  {decisions_path}")
-    print(f"\nNext steps:")
-    print(f"  1. Wait until scheduled jobs have run (7-14 days for RT prices to settle).")
-    print(f"  2. Run: python -m aurelius.cli shadow realize \\")
+    print("\nNext steps:")
+    print("  1. Wait until scheduled jobs have run (7-14 days for RT prices to settle).")
+    print("  2. Run: python -m aurelius.cli shadow realize \\")
     print(f"       --decisions-file {decisions_path} \\")
-    print(f"       --rt-price-file <rt_settlement.csv>")
-    print(f"  3. Run: python -m aurelius.cli shadow report \\")
-    print(f"       --decisions-file <realized.jsonl>")
+    print("       --rt-price-file <rt_settlement.csv>")
+    print("  3. Run: python -m aurelius.cli shadow report \\")
+    print("       --decisions-file <realized.jsonl>")
 
 
 def cmd_shadow_realize(args):
     """Fill in realized RT prices for a pending shadow decisions file."""
     from pathlib import Path
-    from .shadow import DecisionRecorder, RealizedSavingsCalculator
+
     from .ingestion.grid_apis.csv_importer import CSVPriceImporter
+    from .shadow import DecisionRecorder, RealizedSavingsCalculator
 
     decisions_path = Path(args.decisions_file)
     recorder = DecisionRecorder()
@@ -734,7 +739,7 @@ def cmd_shadow_realize(args):
         out_path = decisions_path.parent / f"{stem}.jsonl"
 
     recorder.save_updated(realized_records, path=out_path)
-    print(f"\nREALIZATION COMPLETE")
+    print("\nREALIZATION COMPLETE")
     print(f"  Records processed:  {len(realized_records)}")
     print(f"  Records realized:   {n_realized}")
     print(f"  Records pending:    {n_pending} (RT data not available)")
@@ -753,6 +758,7 @@ def cmd_shadow_realize(args):
 def cmd_shadow_report(args):
     """Generate a shadow mode comparison report."""
     from pathlib import Path
+
     from .shadow import DecisionRecorder, ShadowReport
 
     decisions_path = Path(args.decisions_file)
@@ -768,7 +774,7 @@ def cmd_shadow_report(args):
     paths = report.save(output_dir)
 
     print(report.to_text())
-    print(f"\nReport saved to:")
+    print("\nReport saved to:")
     print(f"  JSON: {paths['json']}")
     print(f"  TXT:  {paths['txt']}")
 
@@ -963,7 +969,7 @@ def main():
     )
 
     # Show schema command
-    schema_parser = subparsers.add_parser("show-schema", help="Show database schema")
+    subparsers.add_parser("show-schema", help="Show database schema")
 
     # Robustness test command
     robust_parser = subparsers.add_parser(

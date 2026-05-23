@@ -11,11 +11,11 @@ import pytest
 
 from aurelius.ingestion.grid_apis.base import PRICE_COLUMNS, ProviderConfigError
 from aurelius.ingestion.grid_apis.ercot import (
+    _TOKEN_CACHE,
     ERCOTPriceProvider,
     ERCOTRealtimePriceProvider,
     _localize_central_to_utc,
     _parse_hour_ending,
-    _TOKEN_CACHE,
 )
 
 UTC = timezone.utc

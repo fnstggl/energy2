@@ -30,12 +30,6 @@ from typing import Optional
 
 import pandas as pd
 
-from .base import (
-    CarbonProvider,
-    ProviderConfigError,
-    empty_carbon_df,
-    normalize_carbon_df,
-)
 from ..market_data_provider import (
     CarbonPoint,
     MarketDataProvider,
@@ -46,6 +40,12 @@ from ..market_data_provider import (
     Signal,
 )
 from ..region_registry import electricitymaps_zone_map
+from .base import (
+    CarbonProvider,
+    ProviderConfigError,
+    empty_carbon_df,
+    normalize_carbon_df,
+)
 
 logger = logging.getLogger(__name__)
 

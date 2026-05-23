@@ -109,7 +109,7 @@ def fetch_and_save(
             print(f"    ERROR fetching {region}: {exc}")
 
     if not all_dfs:
-        print(f"ERROR: no data fetched for any region — output not written")
+        print("ERROR: no data fetched for any region — output not written")
         return False
 
     combined = pd.concat(all_dfs, ignore_index=True)

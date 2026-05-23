@@ -19,7 +19,6 @@ import json
 from dataclasses import dataclass, field
 from typing import Optional
 
-
 BENCHMARK_METADATA = {
     "forecaster": "ml_quantile v2.0",
     "optimizer": "greedy_migrate",

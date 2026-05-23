@@ -31,18 +31,15 @@ from ..models import CarbonIntensity
 from .quantile_model import (
     DEFAULT_SEED,
     MIN_RECENT_HOURS,
-    ModelMetadata,
-    QuantileForecast,
     QUANTILE_P50,
     QUANTILE_P90,
+    ModelMetadata,
     build_feature_matrix,
     build_feature_matrix_for_predict,
     check_recent_data_sufficient,
     predict_with_fallback,
     set_deterministic_seed,
-    time_series_cv_split,
     train_lightgbm_quantile,
-    validate_quantiles,
 )
 
 logger = logging.getLogger(__name__)

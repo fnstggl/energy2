@@ -1,7 +1,7 @@
 """Live integration test for ENTSO-E provider – skipped without ENTSOE_API_KEY."""
 
 import os
-from datetime import datetime, timezone, timedelta
+from datetime import datetime, timedelta, timezone
 
 import pytest
 
@@ -12,8 +12,8 @@ pytestmark = pytest.mark.skipif(
 
 
 def test_entsoe_fetch_eu_west():
-    from aurelius.ingestion.grid_apis.entsoe import ENTSOEPriceProvider
     from aurelius.ingestion.grid_apis.base import PRICE_COLUMNS
+    from aurelius.ingestion.grid_apis.entsoe import ENTSOEPriceProvider
 
     provider = ENTSOEPriceProvider()
     end = datetime.now(timezone.utc).replace(minute=0, second=0, microsecond=0)

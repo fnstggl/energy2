@@ -4,7 +4,6 @@ import pandas as pd
 import pytest
 
 from aurelius.backtesting.splitter import TemporalSplitter
-from aurelius.validation.leakage_audit import DataLeakageError
 
 # Use small windows so tests need only a few days of data
 TRAIN_DAYS = 3

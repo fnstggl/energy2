@@ -32,7 +32,6 @@ Notes:
 from __future__ import annotations
 
 import argparse
-import io
 import sys
 import time
 from pathlib import Path
@@ -88,7 +87,8 @@ def _fetch_iem(station: str, start: str, end: str) -> pd.DataFrame:
         Timestamps are UTC datetime objects floored to the hour.
         Empty on error.
     """
-    import urllib.request, urllib.parse
+    import urllib.parse
+    import urllib.request
 
     s = pd.Timestamp(start)
     e = pd.Timestamp(end)
@@ -116,7 +116,7 @@ def _fetch_iem(station: str, start: str, end: str) -> pd.DataFrame:
         print(f"    IEM fetch failed for {station}: {exc}")
         return pd.DataFrame()
 
-    lines = [l for l in raw.strip().split("\n") if not l.startswith("#") and "," in l]
+    lines = [ln for ln in raw.strip().split("\n") if not ln.startswith("#") and "," in ln]
     if len(lines) <= 1:
         return pd.DataFrame()
 
@@ -155,7 +155,8 @@ def _fetch_openmeteo(lat: float, lon: float, start: str, end: str) -> pd.DataFra
 
     Returns DataFrame with columns: timestamp, tmpf, dwpf, sknt (same schema).
     """
-    import urllib.request, urllib.parse
+    import urllib.parse
+    import urllib.request
 
     params = {
         "latitude":   lat,

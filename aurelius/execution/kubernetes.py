@@ -31,9 +31,9 @@ from typing import Optional
 
 from ..models import ScheduleDecision
 from .base import (
-    Executor,
     ExecutionConfig,
     ExecutionResult,
+    Executor,
     log_execution_audit,
 )
 
@@ -641,8 +641,8 @@ class KubernetesJobExecutor(Executor):
 
 def _run_tests():
     """Inline tests for KubernetesJobExecutor."""
-    from datetime import timedelta
     import os
+    from datetime import timedelta
 
     print("=" * 60)
     print("KubernetesJobExecutor Inline Tests")

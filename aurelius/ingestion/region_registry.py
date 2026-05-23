@@ -28,7 +28,7 @@ these are factual identifiers, not copyrightable code.
 
 from __future__ import annotations
 
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from typing import Optional
 
 

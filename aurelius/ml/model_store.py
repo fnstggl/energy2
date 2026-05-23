@@ -106,7 +106,7 @@ class ModelStore:
 
         if not getattr(forecaster, "is_fitted", False):
             raise RuntimeError(
-                f"Forecaster is not fitted; cannot save unfitted model to store"
+                "Forecaster is not fitted; cannot save unfitted model to store"
             )
 
         version_id = version_id or ("v_" + datetime.utcnow().strftime(_TIMESTAMP_FMT))

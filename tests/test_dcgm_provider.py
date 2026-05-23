@@ -24,18 +24,18 @@ import os
 import tempfile
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
-from unittest.mock import MagicMock, patch
+from unittest.mock import patch
 
 import pytest
 
 from aurelius.ingestion.dcgm_provider import (
+    _TEMP_CRITICAL,
+    _TEMP_SAFE,
+    _UTIL_WARN,
     DCGMProvider,
     aggregate_region_health,
     parse_prometheus_text,
     score_gpu_health,
-    _TEMP_CRITICAL,
-    _TEMP_SAFE,
-    _UTIL_WARN,
 )
 from aurelius.models import (
     GPUHealthScore,
@@ -689,8 +689,8 @@ class TestObjectiveFunctionGPUHealth:
         return price, carbon
 
     def test_no_gpu_health_data_zero_cost(self):
-        from aurelius.optimization.objective import ObjectiveFunction
         from aurelius.models import ScheduleDecision
+        from aurelius.optimization.objective import ObjectiveFunction
 
         cfg = OptimizationConfig(gpu_health_cost_per_hour=2.0)
         fn = ObjectiveFunction(cfg)
@@ -705,8 +705,8 @@ class TestObjectiveFunctionGPUHealth:
         assert result.gpu_health_cost == 0.0
 
     def test_zero_config_zero_cost(self):
-        from aurelius.optimization.objective import ObjectiveFunction
         from aurelius.models import ScheduleDecision
+        from aurelius.optimization.objective import ObjectiveFunction
 
         cfg = OptimizationConfig(gpu_health_cost_per_hour=0.0)
         fn = ObjectiveFunction(cfg)
@@ -722,8 +722,8 @@ class TestObjectiveFunctionGPUHealth:
         assert result.gpu_health_cost == 0.0
 
     def test_gpu_health_cost_calculation(self):
-        from aurelius.optimization.objective import ObjectiveFunction
         from aurelius.models import ScheduleDecision
+        from aurelius.optimization.objective import ObjectiveFunction
 
         cfg = OptimizationConfig(gpu_health_cost_per_hour=1.0)
         fn = ObjectiveFunction(cfg)
@@ -740,8 +740,8 @@ class TestObjectiveFunctionGPUHealth:
         assert abs(result.gpu_health_cost - 16.0) < 0.01
 
     def test_gpu_health_cost_included_in_total(self):
-        from aurelius.optimization.objective import ObjectiveFunction
         from aurelius.models import ScheduleDecision
+        from aurelius.optimization.objective import ObjectiveFunction
 
         cfg = OptimizationConfig(gpu_health_cost_per_hour=2.0)
         fn = ObjectiveFunction(cfg)
@@ -761,8 +761,8 @@ class TestObjectiveFunctionGPUHealth:
         assert with_gpu.gpu_health_cost > 0.0
 
     def test_backward_compat_no_gpu_health_arg(self):
-        from aurelius.optimization.objective import ObjectiveFunction
         from aurelius.models import ScheduleDecision
+        from aurelius.optimization.objective import ObjectiveFunction
 
         fn = ObjectiveFunction()
         job = self._make_job()
@@ -894,6 +894,7 @@ class TestBacktestEngineGPUHealthIntegration:
 
     def test_engine_stores_gpu_df(self):
         import pandas as pd
+
         from aurelius.backtesting.engine import BacktestEngine
         fake_df = pd.DataFrame({"timestamp": [], "region": []})
         engine = BacktestEngine(gpu_df=fake_df)
@@ -902,6 +903,7 @@ class TestBacktestEngineGPUHealthIntegration:
     def test_engine_run_without_gpu_df(self):
         """Engine must run without crashing when gpu_df is absent."""
         import pandas as pd
+
         from aurelius.backtesting.engine import BacktestEngine
 
         engine = BacktestEngine(
@@ -934,6 +936,7 @@ class TestBacktestEngineGPUHealthIntegration:
     def test_engine_gpu_fold_leakage_safe(self):
         """GPU data after fold eval_start must not be used in that fold."""
         import pandas as pd
+
         from aurelius.backtesting.engine import BacktestEngine
         from aurelius.ingestion.dcgm_provider import DCGMProvider
 

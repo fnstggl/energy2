@@ -1,11 +1,7 @@
 """Shared fixtures for the Aurelius test suite."""
 
-import os
-import io
 from datetime import datetime, timedelta, timezone
-from typing import Generator
 
-import pandas as pd
 import pytest
 
 from aurelius.models import Job, OptimizationConfig, ScheduleDecision

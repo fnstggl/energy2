@@ -15,6 +15,7 @@ from datetime import datetime, timedelta, timezone
 
 import pytest
 
+from aurelius.backtesting.evaluator import evaluate_schedule
 from aurelius.models import (
     Job,
     OptimizationConfig,
@@ -22,8 +23,6 @@ from aurelius.models import (
     ScheduleSegment,
 )
 from aurelius.optimization.scheduler import JobScheduler
-from aurelius.backtesting.evaluator import evaluate_schedule
-
 
 # Anchor times — far enough apart to allow long jobs
 START = datetime(2026, 1, 1, 0, 0, tzinfo=timezone.utc)
@@ -388,12 +387,13 @@ class TestReplanRemainder:
     """Mid-flight re-planning of an in-flight job's remaining migration path."""
 
     def _scheduler(self):
-        from aurelius.optimization.scheduler import JobScheduler
         from aurelius.models import OptimizationConfig
+        from aurelius.optimization.scheduler import JobScheduler
         return JobScheduler(OptimizationConfig())
 
     def test_replan_adds_migration_when_future_region_gets_cheap(self):
-        from datetime import datetime, timezone, timedelta
+        from datetime import datetime, timedelta, timezone
+
         from aurelius.models import Job, ScheduleDecision
         UTC = timezone.utc
         T0 = datetime(2026, 1, 1, 0, 0, tzinfo=UTC)
@@ -425,7 +425,8 @@ class TestReplanRemainder:
         assert out.all_segments[0].end_time <= t_now
 
     def test_replan_noop_when_nothing_better(self):
-        from datetime import datetime, timezone, timedelta
+        from datetime import datetime, timedelta, timezone
+
         from aurelius.models import Job, ScheduleDecision
         UTC = timezone.utc
         T0 = datetime(2026, 1, 1, 0, 0, tzinfo=UTC)

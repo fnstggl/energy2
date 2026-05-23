@@ -10,11 +10,10 @@ Coverage:
 """
 
 import json
-import os
 import sys
 from datetime import datetime, timezone
 from pathlib import Path
-from unittest.mock import MagicMock, patch
+from unittest.mock import patch
 
 import pandas as pd
 import pytest
@@ -27,7 +26,6 @@ from scripts.daily_learning_loop import (
     generate_report,
     run_benchmark_smoke_test,
 )
-
 
 # ---------------------------------------------------------------------------
 # Fixtures
@@ -195,7 +193,7 @@ class TestGenerateReport:
 
     def test_report_written_to_disk(self, reports_dir):
         args = self._base_report_args(reports_dir)
-        report = generate_report(**args, dry_run=False)
+        generate_report(**args, dry_run=False)
         report_files = list(reports_dir.glob("learning_loop_*.json"))
         assert len(report_files) == 1
         saved = json.loads(report_files[0].read_text())

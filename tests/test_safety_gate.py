@@ -1,10 +1,9 @@
 """Tests for QuantileSafetyGate – fail-closed behaviour."""
 
-import pytest
 from dataclasses import dataclass
 from typing import Optional
 
-from aurelius.safety.quantile_gate import QuantileSafetyGate, QuantileGateConfig
+from aurelius.safety.quantile_gate import QuantileGateConfig, QuantileSafetyGate
 
 
 @dataclass

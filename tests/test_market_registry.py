@@ -3,6 +3,7 @@
 import pytest
 
 from aurelius.ingestion.grid_apis.market_registry import (
+    _REAL_TIME_REGISTRY,
     MARKET_REGISTRY,
     MarketRegistryEntry,
     UnsupportedMarketPriceError,
@@ -10,9 +11,7 @@ from aurelius.ingestion.grid_apis.market_registry import (
     get_price_provider_for_region,
     get_registry_entry,
     list_supported_regions,
-    _REAL_TIME_REGISTRY,
 )
-
 
 # ---------------------------------------------------------------------------
 # Day-ahead registry entries
@@ -243,8 +242,10 @@ class TestAssertPriceTypeNotDemand:
 class TestEIANotAPrice:
     def test_eia_price_provider_raises_unsupported(self):
         """EIAPriceProvider must raise UnsupportedMarketPriceError, not return demand data."""
-        import pandas as pd
         from datetime import datetime, timezone
+
+        import pandas as pd
+
         from aurelius.ingestion.grid_apis.eia import EIAPriceProvider
 
         provider = EIAPriceProvider(api_key="any-key")
@@ -254,8 +255,10 @@ class TestEIANotAPrice:
 
     def test_eia_never_returns_demand_as_price(self):
         """Ensure fetch_prices never silently returns a DataFrame (demand as price)."""
-        import pandas as pd
         from datetime import datetime, timezone
+
+        import pandas as pd
+
         from aurelius.ingestion.grid_apis.eia import EIAPriceProvider
 
         provider = EIAPriceProvider()

@@ -9,12 +9,9 @@
 
 from __future__ import annotations
 
-import json
 import sys
-import tempfile
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
-from typing import Any
 
 import pandas as pd
 import pytest
@@ -124,7 +121,6 @@ class TestMissingDataFileSkip:
 class TestBuildCombinedDatasetMerge:
     def test_merge_dedup_keeps_latest(self, tmp_path):
         """Duplicate (timestamp, region) rows → keep last occurrence."""
-        from aurelius.ingestion.grid_apis.base import PRICE_COLUMNS
 
         ts = pd.Timestamp("2025-06-01 00:00:00", tz="UTC")
         row_common = {
@@ -189,6 +185,7 @@ class TestPerRegionForecasterWith90DayData:
     def long_price_data(self):
         """Synthetic 90-day, 3-region price dataset for per-region testing."""
         import numpy as np
+
         from aurelius.models import EnergyPrice
 
         rng = np.random.default_rng(42)
@@ -199,7 +196,7 @@ class TestPerRegionForecasterWith90DayData:
             for hour in range(90 * 24):  # 90 days
                 ts = base_ts + timedelta(hours=hour)
                 hour_of_day = ts.hour
-                day_of_week = ts.weekday()
+                _day_of_week = ts.weekday()
                 seasonal_factor = 1.0 + 0.3 * (hour / (90 * 24))
                 hour_factor = 0.8 + 0.4 * (hour_of_day / 24)
                 noise = rng.normal(0, 5)
@@ -213,7 +210,11 @@ class TestPerRegionForecasterWith90DayData:
 
     def test_per_region_forecaster_fits_on_90d_data(self, long_price_data):
         """Per-region forecaster should fit without error on 90-day windows."""
-        from aurelius.forecasting.price_model import PerRegionForecaster, PerRegionForecasterConfig, PriceModelConfig
+        from aurelius.forecasting.price_model import (
+            PerRegionForecaster,
+            PerRegionForecasterConfig,
+            PriceModelConfig,
+        )
 
         config = PerRegionForecasterConfig(
             base_config=PriceModelConfig(seed=42, n_estimators=20, num_leaves=15),
@@ -232,7 +233,11 @@ class TestPerRegionForecasterWith90DayData:
 
     def test_per_region_predicts_all_regions(self, long_price_data):
         """Per-region forecaster must produce predictions for all 3 regions."""
-        from aurelius.forecasting.price_model import PerRegionForecaster, PerRegionForecasterConfig, PriceModelConfig
+        from aurelius.forecasting.price_model import (
+            PerRegionForecaster,
+            PerRegionForecasterConfig,
+            PriceModelConfig,
+        )
 
         config = PerRegionForecasterConfig(
             base_config=PriceModelConfig(seed=42, n_estimators=20, num_leaves=15),
@@ -243,7 +248,7 @@ class TestPerRegionForecasterWith90DayData:
                       if p.timestamp < datetime(2025, 11, 20, tzinfo=timezone.utc)]
         fc.fit(train_data)
 
-        predict_ts = datetime(2025, 11, 21, tzinfo=timezone.utc)
+        _predict_ts = datetime(2025, 11, 21, tzinfo=timezone.utc)
         for region in ("us-west", "us-east", "us-south"):
             fc_obj = fc._region_forecasters.get(region)
             assert fc_obj is not None, f"No forecaster for {region}"
@@ -251,7 +256,11 @@ class TestPerRegionForecasterWith90DayData:
 
     def test_per_region_p90_above_p50(self, long_price_data):
         """p90 forecasts must be ≥ p50 forecasts (correct quantile ordering)."""
-        from aurelius.forecasting.price_model import PerRegionForecaster, PerRegionForecasterConfig, PriceModelConfig
+        from aurelius.forecasting.price_model import (
+            PerRegionForecaster,
+            PerRegionForecasterConfig,
+            PriceModelConfig,
+        )
 
         config = PerRegionForecasterConfig(
             base_config=PriceModelConfig(seed=42, n_estimators=20, num_leaves=15),
@@ -277,7 +286,11 @@ class TestPerRegionForecasterWith90DayData:
 
     def test_per_region_isolated_models_no_cross_contamination(self, long_price_data):
         """Verify that changing us-west data does not affect us-east training size."""
-        from aurelius.forecasting.price_model import PerRegionForecaster, PerRegionForecasterConfig, PriceModelConfig
+        from aurelius.forecasting.price_model import (
+            PerRegionForecaster,
+            PerRegionForecasterConfig,
+            PriceModelConfig,
+        )
 
         config = PerRegionForecasterConfig(
             base_config=PriceModelConfig(seed=42, n_estimators=20, num_leaves=15),
@@ -367,7 +380,7 @@ class TestCombinedDatasetCoverage:
 class TestExtendedDataFlag:
     def test_extended_combos_not_in_standard_region_combos(self):
         """Extended combos are in EXTENDED_REGION_COMBOS, not REGION_COMBOS."""
-        from benchmarks.run_benchmark import REGION_COMBOS, EXTENDED_REGION_COMBOS
+        from benchmarks.run_benchmark import EXTENDED_REGION_COMBOS, REGION_COMBOS
         standard_names = {c["name"] for c in REGION_COMBOS}
         extended_names = {c["name"] for c in EXTENDED_REGION_COMBOS}
         overlap = standard_names & extended_names
@@ -375,7 +388,7 @@ class TestExtendedDataFlag:
 
     def test_region_combo_lookup_includes_extended(self):
         """--region-combo can reference extended combos."""
-        from benchmarks.run_benchmark import REGION_COMBOS, EXTENDED_REGION_COMBOS
+        from benchmarks.run_benchmark import EXTENDED_REGION_COMBOS, REGION_COMBOS
         all_combos = REGION_COMBOS + EXTENDED_REGION_COMBOS
         combo_names = {c["name"] for c in all_combos}
         assert "combined_2025_2026_3region" in combo_names
@@ -407,7 +420,12 @@ class TestPerRegionVsJointWith90DayData:
     def test_per_region_forecaster_produces_coherent_price_forecasts(self):
         """Per-region forecaster should produce reasonable price forecasts."""
         import numpy as np
-        from aurelius.forecasting.price_model import PerRegionForecaster, PerRegionForecasterConfig, PriceModelConfig
+
+        from aurelius.forecasting.price_model import (
+            PerRegionForecaster,
+            PerRegionForecasterConfig,
+            PriceModelConfig,
+        )
         from aurelius.models import EnergyPrice
 
         # 90 days of training data per region
@@ -450,7 +468,12 @@ class TestPerRegionVsJointWith90DayData:
     def test_per_region_metadata_reflects_90d_training(self):
         """Metadata should reflect per-region model was trained on 90-day window."""
         import numpy as np
-        from aurelius.forecasting.price_model import PerRegionForecaster, PerRegionForecasterConfig, PriceModelConfig
+
+        from aurelius.forecasting.price_model import (
+            PerRegionForecaster,
+            PerRegionForecasterConfig,
+            PriceModelConfig,
+        )
         from aurelius.models import EnergyPrice
 
         base_ts = datetime(2025, 9, 1, tzinfo=timezone.utc)

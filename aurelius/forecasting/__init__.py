@@ -59,34 +59,47 @@ VALIDATION vs INTEGRATION:
 """
 
 # Legacy forecasters (still available for backwards compatibility)
-from .price_model import PriceForecaster, PriceForecast
-from .carbon_model import CarbonForecaster, CarbonForecast
-
 # Simple baseline forecasters
-from .baseline import BaselineForecaster, generate_price_scenario, generate_carbon_scenario
+# Baseline regression
+from .baseline import (
+    BaselineForecaster,
+    BaselineRegressionConfig,
+    BaselineRegressor,
+    generate_carbon_scenario,
+    generate_price_scenario,
+)
+from .carbon_model import (
+    CarbonForecast,
+    CarbonForecaster,
+    CarbonModelConfig,
+    CarbonQuantileForecast,
+    CarbonQuantileForecaster,
+)
 
 # Quantile forecasting
-from .price_model import PriceQuantileForecaster, PriceQuantileForecast, PriceModelConfig
-from .carbon_model import CarbonQuantileForecaster, CarbonQuantileForecast, CarbonModelConfig
-
-# Baseline regression
-from .baseline import BaselineRegressor, BaselineRegressionConfig
-
-# Forecast packaging (advisory output only)
-from .uncertainty import DecisionForecast, ForecastPackager
+from .price_model import (
+    PriceForecast,
+    PriceForecaster,
+    PriceModelConfig,
+    PriceQuantileForecast,
+    PriceQuantileForecaster,
+)
 
 # Quantile model utilities
 from .quantile_model import (
-    QuantileForecast,
-    ModelMetadata,
-    validate_quantiles,
-    set_deterministic_seed,
-    build_feature_matrix,
-    train_lightgbm_quantile,
     DEFAULT_SEED,
     QUANTILE_P50,
     QUANTILE_P90,
+    ModelMetadata,
+    QuantileForecast,
+    build_feature_matrix,
+    set_deterministic_seed,
+    train_lightgbm_quantile,
+    validate_quantiles,
 )
+
+# Forecast packaging (advisory output only)
+from .uncertainty import DecisionForecast, ForecastPackager
 
 __all__ = [
     # Legacy forecasters

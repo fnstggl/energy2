@@ -384,7 +384,7 @@ def _run_validation():
     )
     converted = DecisionForecast.from_legacy_forecasts(legacy_price, legacy_carbon)
     print(f"  Legacy mean=50, std=10 -> {converted.energy_cost}")
-    print(f"  Expected p90 ≈ 50 + 1.28*10 = 62.8")
+    print("  Expected p90 ≈ 50 + 1.28*10 = 62.8")
     assert converted.energy_cost["p90"] >= converted.energy_cost["p50"]
     print("  Legacy conversion works: PASS")
 

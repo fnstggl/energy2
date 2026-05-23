@@ -107,7 +107,8 @@ class QueueProvider:
     @classmethod
     def from_dataframe(cls, df: pd.DataFrame) -> "QueueProvider":
         """Construct from a DataFrame with the canonical queue schema."""
-        import tempfile, os
+        import os
+        import tempfile
         with tempfile.NamedTemporaryFile(suffix=".csv", delete=False, mode="w") as f:
             df.to_csv(f, index=False)
             tmp = f.name

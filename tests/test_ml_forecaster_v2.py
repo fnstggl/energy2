@@ -11,24 +11,21 @@ Phase 2 acceptance tests:
 
 from __future__ import annotations
 
-import math
 from datetime import datetime, timedelta
 
 import numpy as np
-import pandas as pd
 import pytest
 
-from aurelius.forecasting.quantile_model import (
-    compute_volatility_regime_features,
-    build_feature_matrix,
-    build_feature_matrix_for_predict,
-)
 from aurelius.forecasting.price_model import (
     PriceModelConfig,
     PriceQuantileForecaster,
 )
+from aurelius.forecasting.quantile_model import (
+    build_feature_matrix,
+    build_feature_matrix_for_predict,
+    compute_volatility_regime_features,
+)
 from aurelius.models import EnergyPrice
-
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -334,6 +331,7 @@ class TestCarbonCSVLoading:
     def test_watttime_carbon_q12026_has_correct_schema(self):
         """If the real WattTime carbon file was fetched, verify its schema."""
         from pathlib import Path
+
         from aurelius.ingestion.grid_apis.csv_importer import CSVCarbonImporter
 
         carbon_path = Path(__file__).parent.parent / "data" / "watttime_carbon_q12026.csv"
@@ -375,7 +373,7 @@ class TestMLForecasterBenchmarkAcceptance:
         hour_means = defaultdict(list)
         for ep in train_prices:
             hour_means[ep.timestamp.hour].append(ep.price_per_mwh)
-        hour_mean_lookup = {h: np.mean(v) for h, v in hour_means.items()}
+        _hour_mean_lookup = {h: np.mean(v) for h, v in hour_means.items()}
         total = 0.0
         for ep in eval_prices:
             # For each eval hour, naive runs any job whose earliest_start <= this hour

@@ -4,17 +4,14 @@ The ``load_from_customer_csv`` and ``load_from_file`` methods implement the
 simplified customer-facing CSV schema described in docs/PILOT_READINESS_AUDIT.md.
 """
 
-import io
 import textwrap
-from datetime import datetime, timezone, timedelta
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
-import pandas as pd
 import pytest
 
 from aurelius.ingestion.job_logs import JobLogIngester
 from aurelius.models import Job
-
 
 UTC = timezone.utc
 

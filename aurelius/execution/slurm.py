@@ -29,9 +29,9 @@ from typing import Optional
 
 from ..models import ScheduleDecision
 from .base import (
-    Executor,
     ExecutionConfig,
     ExecutionResult,
+    Executor,
     log_execution_audit,
 )
 
@@ -583,8 +583,8 @@ class SlurmExecutor(Executor):
 
 def _run_tests():
     """Inline tests for SlurmExecutor."""
-    from datetime import timedelta
     import os
+    from datetime import timedelta
 
     print("=" * 60)
     print("SlurmExecutor Inline Tests")

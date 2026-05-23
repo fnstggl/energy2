@@ -9,11 +9,10 @@ import pytest
 from aurelius.ingestion.grid_apis.base import (
     CARBON_COLUMNS,
     ProviderConfigError,
-    empty_carbon_df,
 )
 from aurelius.ingestion.grid_apis.watttime import (
-    WattTimeCarbonProvider,
     _LBS_PER_MWH_TO_GCO2_PER_KWH,
+    WattTimeCarbonProvider,
 )
 
 UTC = timezone.utc

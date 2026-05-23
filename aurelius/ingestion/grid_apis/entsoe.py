@@ -17,7 +17,7 @@ Override with bidding_zone_map= constructor argument.
 import logging
 import os
 import time
-from datetime import datetime, timedelta, timezone
+from datetime import datetime, timezone
 from typing import Optional
 
 import pandas as pd
@@ -85,8 +85,9 @@ class ENTSOEPriceProvider(PriceProvider):
             return empty_price_df()
 
         try:
+            from xml.etree import ElementTree as ET  # noqa: F401
+
             import requests
-            from xml.etree import ElementTree as ET
         except ImportError:
             raise ProviderConfigError("'requests' package is required: pip install requests")
 

@@ -44,10 +44,10 @@ from typing import Any, Optional, Type
 
 import pandas as pd
 
+from aurelius.backtesting.baselines import ALL_BASELINES
 from aurelius.backtesting.evaluator import RealizedMetrics, evaluate_schedule
 from aurelius.backtesting.splitter import TemporalSplit, TemporalSplitter
-from aurelius.backtesting.baselines import ALL_BASELINES
-from aurelius.models import EnergyPrice, CarbonIntensity, Job, OptimizationConfig, ScheduleDecision
+from aurelius.models import CarbonIntensity, EnergyPrice, Job, OptimizationConfig, ScheduleDecision
 from aurelius.optimization.scheduler import JobScheduler
 
 logger = logging.getLogger(__name__)
@@ -233,6 +233,7 @@ class BacktestEngine:
         queue_df: Optional[Any] = None,    # pd.DataFrame with canonical queue schema
         gpu_df: Optional[Any] = None,      # pd.DataFrame with canonical GPU metric schema
         apply_recovery_correction: bool = False,  # enable regime-aware forecast correction
+        recovery_excluded_workload_types: frozenset = frozenset(),  # skip correction for these
     ) -> None:
         self.method = method
         self.config = config or OptimizationConfig()
@@ -311,6 +312,10 @@ class BacktestEngine:
         # Only activates when recent_mean / training_mean < 0.40 per region.
         # Has no effect when price_forecaster_cls is None (seasonal-naive path).
         self.apply_recovery_correction = apply_recovery_correction
+        # Workload types for which recovery correction is suppressed even when
+        # apply_recovery_correction=True. Training workloads regress (-2.7pp) because
+        # the exponential decay pattern distorts long-horizon (96-200h) scheduling.
+        self.recovery_excluded_workload_types: frozenset = frozenset(recovery_excluded_workload_types)
 
     @property
     def uses_ml_forecaster(self) -> bool:
@@ -469,11 +474,21 @@ class BacktestEngine:
             forecast_carbon_data = {r: dict(ts_map) for r, ts_map in eval_carbon_data.items()}
             forecast_quality = ForecastQuality(forecast_method="oracle")
         elif self.uses_ml_forecaster:
+            # Suppress recovery correction for workload types that regress with it.
+            # Training jobs (96-200h) regress because the exponential decay distorts
+            # long-horizon start-time decisions. Check if ALL fold jobs are excluded.
+            fold_wl_types = {j.workload_type for j in eval_jobs}
+            skip_recovery = (
+                self.apply_recovery_correction
+                and bool(self.recovery_excluded_workload_types)
+                and fold_wl_types.issubset(self.recovery_excluded_workload_types)
+            )
             forecast_price_data, forecast_carbon_data, forecast_quality = (
                 self._build_ml_forecast(
                     split, train_price_data, train_carbon_data,
                     eval_price_data, eval_carbon_data, forecast_end,
                     weather_df=self.weather_df,
+                    skip_recovery_correction=skip_recovery,
                 )
             )
         else:
@@ -721,6 +736,7 @@ class BacktestEngine:
         eval_carbon_data: dict,
         forecast_end: Optional[pd.Timestamp] = None,
         weather_df: Optional[Any] = None,
+        skip_recovery_correction: bool = False,
     ) -> tuple[dict, dict, ForecastQuality]:
         """Fit ML forecasters on training data and predict the eval window.
 
@@ -854,7 +870,9 @@ class BacktestEngine:
         # Apply regime-aware recovery correction (opt-in, ML mode only).
         # Reduces forecast bias when a region is in post-spike recovery:
         # recent_mean / training_mean < 0.40 triggers per-region correction.
-        if self.apply_recovery_correction and forecast_price_data:
+        # skip_recovery_correction=True when all fold jobs are in the exclusion set
+        # (e.g. "training" workloads that regress due to long-horizon decay distortion).
+        if self.apply_recovery_correction and not skip_recovery_correction and forecast_price_data:
             from aurelius.forecasting.regime import RegimeDetector
             detector = RegimeDetector()
             forecast_price_data = detector.apply_corrections_to_forecast(
@@ -919,8 +937,8 @@ class BacktestEngine:
         The forecaster is NOT re-fitted here and eval actuals are NOT passed
         to the forecaster — this function is read-only with respect to the model.
         """
+
         from aurelius.ml.forecast_evaluator import ForecastEvaluator, ForecastPoint
-        import math
 
         all_actuals = []
         all_p50 = []
@@ -991,12 +1009,11 @@ class BacktestEngine:
         from the optimizer's price/carbon signal; realized values come from
         eval-window actuals (ground truth for that fold).
         """
+        from aurelius.execution.base import ExecutionConfig, ExecutionResult
         from aurelius.execution.post_execution import (
             ForecastSnapshot,
-            PostExecutionRecord,
             RealizedOutcome,
         )
-        from aurelius.execution.base import ExecutionConfig, ExecutionResult
 
         job_map: dict[str, Job] = {j.job_id: j for j in eval_jobs}
 

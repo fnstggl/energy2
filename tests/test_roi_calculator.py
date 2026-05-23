@@ -12,25 +12,20 @@ Adversarial checklist:
 
 import json
 import math
-import sys
-from io import StringIO
 from unittest.mock import patch
 
 import pytest
 
+from aurelius.roi import ROICalculator as ROICalculatorFromPkg
 from aurelius.roi.calculator import (
-    ROICalculator,
-    ROIInput,
-    ROIResult,
-    WorkloadROIBreakdown,
+    BENCHMARK_METADATA,
     BENCHMARK_SAVINGS_RATES,
     DEFAULT_WORKLOAD_MIX,
     MEAN_SAVINGS_P50,
-    MIN_FLEXIBLE_FRACTION,
-    BENCHMARK_METADATA,
+    ROICalculator,
+    ROIInput,
+    ROIResult,
 )
-from aurelius.roi import ROICalculator as ROICalculatorFromPkg
-
 
 # ---------------------------------------------------------------------------
 # TestBenchmarkSavingsRates
@@ -469,9 +464,10 @@ class TestROIPackageImports:
 
     def test_all_exports_available(self):
         from aurelius.roi import (
-            ROICalculator, ROIInput, ROIResult, WorkloadROIBreakdown,
-            BENCHMARK_SAVINGS_RATES, DEFAULT_WORKLOAD_MIX,
-            MEAN_SAVINGS_P50, BENCHMARK_METADATA,
+            BENCHMARK_SAVINGS_RATES,
+            DEFAULT_WORKLOAD_MIX,
+            MEAN_SAVINGS_P50,
+            ROICalculator,
         )
         assert ROICalculator is not None
         assert isinstance(BENCHMARK_SAVINGS_RATES, dict)

@@ -1,19 +1,20 @@
 """Tests for all 7 deterministic baseline scheduling policies."""
 
-import pytest
-from datetime import datetime, timezone, timedelta
+from datetime import datetime, timedelta, timezone
 
-from aurelius.models import Job, ScheduleDecision, OptimizationConfig
+import pytest
+
 from aurelius.backtesting.baselines import (
-    fifo_policy,
-    peak_blind_asap_policy,
-    latency_first_policy,
-    closest_region_policy,
-    fixed_primary_region_policy,
-    current_price_only_policy,
-    round_robin_policy,
     ALL_BASELINES,
+    closest_region_policy,
+    current_price_only_policy,
+    fifo_policy,
+    fixed_primary_region_policy,
+    latency_first_policy,
+    peak_blind_asap_policy,
+    round_robin_policy,
 )
+from aurelius.models import Job, OptimizationConfig, ScheduleDecision
 
 UTC = timezone.utc
 T0 = datetime(2024, 3, 1, 0, 0, tzinfo=UTC)

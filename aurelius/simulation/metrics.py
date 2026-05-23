@@ -8,12 +8,11 @@ This module computes key performance indicators:
 - Efficiency metrics
 """
 
-from datetime import datetime, timedelta
-from typing import Optional
-from dataclasses import dataclass
 import logging
+from dataclasses import dataclass
+from datetime import datetime, timedelta
 
-from ..models import Job, ScheduleDecision, SimulationResult
+from ..models import Job, ScheduleDecision
 
 logger = logging.getLogger(__name__)
 

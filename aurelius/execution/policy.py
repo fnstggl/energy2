@@ -18,16 +18,16 @@ This is authorization gating for production deployments.
 
 from __future__ import annotations
 
-from dataclasses import dataclass
-from datetime import date, datetime
-from pathlib import Path
-from typing import Any, Literal, Optional
 import base64
 import hashlib
 import hmac
 import json
 import logging
 import os
+from dataclasses import dataclass
+from datetime import date, datetime
+from pathlib import Path
+from typing import Any, Literal, Optional
 
 logger = logging.getLogger(__name__)
 
@@ -148,9 +148,9 @@ def _verify_ed25519(policy_bytes: bytes, signature_b64: str) -> bool:
         True if signature is valid, False otherwise
     """
     try:
+        from cryptography.exceptions import InvalidSignature
         from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PublicKey
         from cryptography.hazmat.primitives.serialization import load_der_public_key
-        from cryptography.exceptions import InvalidSignature
 
         # Decode the public key
         public_key_bytes = base64.b64decode(_ED25519_PUBLIC_KEY_B64)
@@ -834,7 +834,7 @@ if __name__ == "__main__":
     bytes1 = canonical_json_bytes(policy1)
     bytes2 = canonical_json_bytes(policy2)
     assert bytes1 == bytes2, "Canonical JSON should be deterministic"
-    print(f"  PASSED: Identical canonical bytes for reordered dicts")
+    print("  PASSED: Identical canonical bytes for reordered dicts")
 
     # Test 2: dry_run allowed with no policy file
     print("\n[Test 2] dry_run allowed with no policy file")
@@ -978,7 +978,7 @@ if __name__ == "__main__":
     sig_b64 = _generate_hmac_v0_signature(policy_dict)
     sig_info = SignatureInfo(alg="hmac_sha256_v0", key_id="test", sig_b64=sig_b64)
     assert verify_signature(policy_dict, sig_info) is True
-    print(f"  PASSED: HMAC v0 signature verified")
+    print("  PASSED: HMAC v0 signature verified")
 
     # Test 13: HMAC v0 rejects tampered policy
     print("\n[Test 13] HMAC v0 rejects tampered policy")
@@ -987,7 +987,7 @@ if __name__ == "__main__":
     policy_dict["policy_id"] = "tampered"  # Tamper after signing
     sig_info = SignatureInfo(alg="hmac_sha256_v0", key_id="test", sig_b64=sig_b64)
     assert verify_signature(policy_dict, sig_info) is False
-    print(f"  PASSED: Tampered policy rejected")
+    print("  PASSED: Tampered policy rejected")
 
     # Test 14: Quantile config validation - more conservative allowed
     print("\n[Test 14] Quantile config - more conservative allowed")
@@ -1013,7 +1013,7 @@ if __name__ == "__main__":
     )
     valid, reason = validate_quantile_config(quantile_config, policy)
     assert valid is True
-    print(f"  PASSED: More conservative config allowed")
+    print("  PASSED: More conservative config allowed")
 
     # Test 15: Quantile config validation - less conservative blocked
     print("\n[Test 15] Quantile config - less conservative blocked")
@@ -1052,7 +1052,7 @@ if __name__ == "__main__":
     valid, reason = validate_quantile_config(quantile_config, policy_both)
     assert valid is False
     assert "metric" in reason
-    print(f"  PASSED: policy=both rejects config=energy_cost")
+    print("  PASSED: policy=both rejects config=energy_cost")
 
     # Test 17: issued_at is informational only (old date should not block)
     print("\n[Test 17] issued_at is informational only")
@@ -1066,7 +1066,7 @@ if __name__ == "__main__":
         quantile_config = MockQuantileGateConfig()
         result = authorize_execution(config, quantile_config)
         assert result.allowed is True
-        print(f"  PASSED: Old issued_at does not block execution")
+        print("  PASSED: Old issued_at does not block execution")
     del os.environ["AURELIUS_POLICY_BUNDLE_PATH"]
 
     # Test 18: valid_until boundary (exactly today is valid)
@@ -1080,7 +1080,7 @@ if __name__ == "__main__":
         quantile_config = MockQuantileGateConfig()
         result = authorize_execution(config, quantile_config)
         assert result.allowed is True
-        print(f"  PASSED: valid_until = today is still valid")
+        print("  PASSED: valid_until = today is still valid")
     del os.environ["AURELIUS_POLICY_BUNDLE_PATH"]
 
     print("\n" + "=" * 60)

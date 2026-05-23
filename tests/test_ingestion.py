@@ -1,25 +1,23 @@
 """Tests for the ingestion layer: CSV importers and provider key guards."""
 
-import io
-from datetime import datetime, timezone
-from pathlib import Path
+from datetime import timezone
 
 import pandas as pd
 import pytest
 
 from aurelius.ingestion.grid_apis.base import (
-    PRICE_COLUMNS,
     CARBON_COLUMNS,
-    empty_price_df,
+    PRICE_COLUMNS,
+    ProviderConfigError,
     empty_carbon_df,
-    normalize_price_df,
+    empty_price_df,
     normalize_carbon_df,
+    normalize_price_df,
 )
-from aurelius.ingestion.grid_apis.csv_importer import CSVPriceImporter, CSVCarbonImporter
+from aurelius.ingestion.grid_apis.csv_importer import CSVCarbonImporter, CSVPriceImporter
 from aurelius.ingestion.grid_apis.eia import EIAPriceProvider
-from aurelius.ingestion.grid_apis.entsoe import ENTSOEPriceProvider
 from aurelius.ingestion.grid_apis.electricitymaps import ElectricityMapsCarbonProvider
-from aurelius.ingestion.grid_apis.base import ProviderConfigError
+from aurelius.ingestion.grid_apis.entsoe import ENTSOEPriceProvider
 from aurelius.ingestion.grid_apis.market_registry import UnsupportedMarketPriceError
 
 UTC = timezone.utc
@@ -214,6 +212,7 @@ def test_csv_round_trip_preserves_migration_and_workload(tmp_path):
 
 def test_load_json_normalizes_naive_datetimes_to_utc(tmp_path):
     import json
+
     from aurelius.ingestion.job_logs import JobLogIngester
     naive = [{
         "job_id": "j1", "submit_time": "2026-01-15T00:00:00",

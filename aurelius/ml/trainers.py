@@ -11,16 +11,16 @@ These trainers:
 CRITICAL: ML outputs are advisory estimates only.
 """
 
+import logging
+import math
 from collections import defaultdict
 from dataclasses import dataclass
 from typing import Any, Optional
-import math
-import logging
 
 import numpy as np
 
-from .dataset import TrainingRecord
 from .artifacts import generate_timestamp_utc
+from .dataset import TrainingRecord
 
 logger = logging.getLogger(__name__)
 

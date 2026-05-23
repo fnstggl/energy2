@@ -19,8 +19,7 @@ DESIGN INTENT:
 
 import json
 import logging
-from dataclasses import dataclass, field
-from datetime import datetime
+from dataclasses import dataclass
 from typing import Any, Literal, Optional
 
 logger = logging.getLogger(__name__)
@@ -336,7 +335,7 @@ def _run_validation():
     decisions = [MockDecision(job_id="job1", forecast=None)]
     result = gate.filter(decisions, config)
     assert len(result) == 1, "Missing forecast should pass"
-    print(f"  Missing forecast treated as passing: PASS")
+    print("  Missing forecast treated as passing: PASS")
 
     # Test 3: Valid forecast - passes thresholds
     print("\nTest 3: VALID FORECAST - PASSES")
@@ -357,7 +356,7 @@ def _run_validation():
     ]
     result = gate.filter(decisions, config)
     assert len(result) == 1, "Should pass with 10% expected savings and 5% downside"
-    print(f"  Expected 10% savings, 5% downside: PASS")
+    print("  Expected 10% savings, 5% downside: PASS")
 
     # Test 4: Valid forecast - fails expected savings
     print("\nTest 4: VALID FORECAST - FAILS EXPECTED")
@@ -378,7 +377,7 @@ def _run_validation():
     ]
     result = gate.filter(decisions, config)
     assert len(result) == 0, "Should fail with only 10% savings (need 15%)"
-    print(f"  10% savings < 15% required: filtered correctly: PASS")
+    print("  10% savings < 15% required: filtered correctly: PASS")
 
     # Test 5: Valid forecast - fails downside risk
     print("\nTest 5: VALID FORECAST - FAILS DOWNSIDE")
@@ -399,7 +398,7 @@ def _run_validation():
     ]
     result = gate.filter(decisions, config)
     assert len(result) == 0, "Should fail with 15% downside (max 5%)"
-    print(f"  15% downside > 5% max: filtered correctly: PASS")
+    print("  15% downside > 5% max: filtered correctly: PASS")
 
     # Test 6: Both metrics required
     print("\nTest 6: BOTH METRICS REQUIRED")
@@ -421,7 +420,7 @@ def _run_validation():
     ]
     result = gate.filter(decisions, config)
     assert len(result) == 0, "Should fail when one metric fails"
-    print(f"  Energy passes, carbon fails: filtered correctly: PASS")
+    print("  Energy passes, carbon fails: filtered correctly: PASS")
 
     # Test 7: Invalid baseline treated as passing
     print("\nTest 7: INVALID BASELINE")
@@ -441,7 +440,7 @@ def _run_validation():
     ]
     result = gate.filter(decisions, config)
     assert len(result) == 1, "Invalid baseline should pass"
-    print(f"  Zero baseline treated as passing: PASS")
+    print("  Zero baseline treated as passing: PASS")
 
     # Test 8: Order preserved
     print("\nTest 8: ORDER PRESERVED")
@@ -469,7 +468,7 @@ def _run_validation():
     assert len(result) == 2, "Should filter job2"
     assert result[0].job_id == "job1", "Order should be preserved"
     assert result[1].job_id == "job3", "Order should be preserved"
-    print(f"  Filtered job2, preserved order [job1, job3]: PASS")
+    print("  Filtered job2, preserved order [job1, job3]: PASS")
 
     # Test 9: Quantile 0.95 uses p90 as proxy
     print("\nTest 9: QUANTILE 0.95 USES P90 PROXY")
@@ -488,7 +487,7 @@ def _run_validation():
     ]
     result = gate.filter(decisions, config)
     assert len(result) == 1, "Should still work with 0.95 using p90 proxy"
-    print(f"  Quantile 0.95 uses p90 proxy: PASS")
+    print("  Quantile 0.95 uses p90 proxy: PASS")
 
     # Test 10: Determinism
     print("\nTest 10: DETERMINISM")
@@ -517,7 +516,7 @@ def _run_validation():
     result2 = gate.filter(decisions, config)
     assert len(result1) == len(result2), "Should be deterministic"
     assert all(r1.job_id == r2.job_id for r1, r2 in zip(result1, result2))
-    print(f"  Same input produces same output: PASS")
+    print("  Same input produces same output: PASS")
 
     print("\n" + "=" * 60)
     print("ALL VALIDATIONS PASSED")

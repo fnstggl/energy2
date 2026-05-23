@@ -14,8 +14,9 @@ Providers tested:
 Node: TH_NP15_GEN-APND (NP15 trading hub, Northern California)
 """
 
+from datetime import datetime, timezone
+
 import pytest
-from datetime import datetime, timedelta, timezone
 
 
 def test_caiso_day_ahead_fetch_us_west():
@@ -83,10 +84,10 @@ def test_caiso_real_time_fetch_us_west():
     If CAISO returns empty (e.g., weekend / holiday lag), the test skips
     rather than failing — the schema check is still performed.
     """
-    from datetime import timedelta
+    import pandas as pd
+
     from aurelius.ingestion.grid_apis.base import PRICE_COLUMNS
     from aurelius.ingestion.grid_apis.caiso import CAISORealtimePriceProvider
-    import pandas as pd
 
     provider = CAISORealtimePriceProvider()
 

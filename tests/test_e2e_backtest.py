@@ -10,7 +10,6 @@ Proves:
 """
 
 from datetime import datetime, timedelta, timezone
-from typing import Optional
 
 import pandas as pd
 import pytest
@@ -22,7 +21,7 @@ from aurelius.backtesting.engine import (
 )
 from aurelius.backtesting.evaluator import evaluate_schedule
 from aurelius.backtesting.splitter import TemporalSplitter
-from aurelius.ingestion.grid_apis.base import PRICE_COLUMNS, empty_price_df, normalize_price_df
+from aurelius.ingestion.grid_apis.base import normalize_price_df
 from aurelius.models import Job, OptimizationConfig, ScheduleDecision
 from aurelius.validation.leakage_audit import DataLeakageError, assert_no_leakage
 
@@ -232,7 +231,7 @@ class TestEvaluatorUsesRealizedData:
             actual_runtime_hours=1.0,
         )]
         # Actual price at hour 2 = $99/MWh
-        actual_price_data = {"us-west": {
+        _actual_price_data = {"us-west": {
             (BASE_TIME + timedelta(hours=2)).replace(tzinfo=None): 99.0
         }}
         # Use tz-aware key

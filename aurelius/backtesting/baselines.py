@@ -16,9 +16,9 @@ from __future__ import annotations
 
 import itertools
 from datetime import datetime, timedelta
-from typing import Callable, Optional
+from typing import Callable
 
-from aurelius.models import Job, ScheduleDecision, OptimizationConfig
+from aurelius.models import Job, OptimizationConfig, ScheduleDecision
 
 BaselinePolicy = Callable[
     [list[Job], dict, dict, OptimizationConfig],

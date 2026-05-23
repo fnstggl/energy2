@@ -17,11 +17,11 @@ When constraints cannot be satisfied, the evaluator returns a fallback
 recommendation to use baseline execution.
 """
 
-from dataclasses import dataclass
-from datetime import datetime
-from typing import Any, Literal, Optional
 import json
 import logging
+from dataclasses import dataclass
+from datetime import datetime
+from typing import Literal, Optional
 
 from ..models import ScheduleDecision
 from .base import ExecutionConfig
@@ -520,7 +520,7 @@ if __name__ == "__main__":
     evals = evaluator.evaluate([decision8a], [baseline8], config_threshold)
     # 3 minutes = 0.05 hours, threshold is 0.05 hours, should pass
     assert evals[0].passed is True
-    print(f"  PASSED: boundary at exactly threshold passes")
+    print("  PASSED: boundary at exactly threshold passes")
 
     # Test 9: Just over threshold
     decision8b = ScheduleDecision(
@@ -540,7 +540,7 @@ if __name__ == "__main__":
 
     evals = evaluator.evaluate([decision8b], [baseline8b], config_threshold)
     assert evals[0].passed is False
-    print(f"  PASSED: just over threshold fails")
+    print("  PASSED: just over threshold fails")
 
     # Test 10: Region change allowed in latency_safe (only start time and power matter)
     print("\n[Test 10] latency_safe - region change allowed if timing/power OK")
@@ -561,7 +561,7 @@ if __name__ == "__main__":
 
     evals = evaluator.evaluate([decision10], [baseline10], config_latency)
     assert evals[0].passed is True
-    print(f"  PASSED: region change allowed (start/power constraints satisfied)")
+    print("  PASSED: region change allowed (start/power constraints satisfied)")
 
     print("\n" + "=" * 60)
     print("All 10 tests passed!")

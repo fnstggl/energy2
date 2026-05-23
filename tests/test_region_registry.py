@@ -3,8 +3,8 @@
 import pytest
 
 from aurelius.ingestion.region_registry import (
-    Confidence,
     REGION_REGISTRY,
+    Confidence,
     UnknownRegionError,
     electricitymaps_zone_map,
     get_carbon_zone,

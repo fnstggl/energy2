@@ -9,15 +9,15 @@ This module handles:
 
 import csv
 import json
-import random
+import logging
 import math
+import random
 from datetime import datetime, timedelta
 from pathlib import Path
 from typing import Optional
-import logging
 
-from ..models import EnergyPrice
 from ..database import get_db
+from ..models import EnergyPrice
 
 logger = logging.getLogger(__name__)
 

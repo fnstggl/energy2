@@ -9,15 +9,15 @@ This module handles:
 
 import csv
 import json
+import logging
 import random
 import uuid
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import Optional
-import logging
 
-from ..models import Job
 from ..database import get_db
+from ..models import Job
 
 logger = logging.getLogger(__name__)
 
@@ -319,7 +319,6 @@ class JobLogIngester:
             if "allowed_regions" in df.columns and pd.notna(row.get("allowed_regions")):
                 allowed_str = str(row["allowed_regions"]).strip()
                 # Support "|" or ";" as multi-value separators (commas are CSV delimiters)
-                sep = "|" if "|" in allowed_str else (";" if ";" in allowed_str else "|")
                 parts = [r.strip() for r in allowed_str.replace(";", "|").split("|") if r.strip()]
                 allowed = parts if parts else list(default_regions)
             else:

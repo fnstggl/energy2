@@ -1,8 +1,9 @@
 """Tests for the BacktestEngine – ensures optimizer only sees training data."""
 
+from datetime import timedelta, timezone
+
 import pandas as pd
 import pytest
-from datetime import datetime, timezone, timedelta
 
 from aurelius.backtesting.engine import BacktestEngine
 from aurelius.backtesting.evaluator import evaluate_schedule

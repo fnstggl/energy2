@@ -61,11 +61,11 @@ _repo_root = Path(__file__).parent.parent
 if str(_repo_root) not in sys.path:
     sys.path.insert(0, str(_repo_root))
 
-from aurelius.models import EnergyPrice, CarbonIntensity
-from aurelius.forecasting.price_model import PriceQuantileForecaster, PriceModelConfig
-from aurelius.forecasting.carbon_model import CarbonQuantileForecaster, CarbonModelConfig
+from aurelius.forecasting.carbon_model import CarbonModelConfig, CarbonQuantileForecaster
+from aurelius.forecasting.price_model import PriceModelConfig, PriceQuantileForecaster
 from aurelius.ml.forecast_evaluator import ForecastEvaluator, compare_models
 from aurelius.ml.model_store import ModelStore
+from aurelius.models import CarbonIntensity, EnergyPrice
 
 logger = logging.getLogger(__name__)
 

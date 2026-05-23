@@ -1,7 +1,7 @@
 """Live integration test for EIA provider – skipped without EIA_API_KEY."""
 
 import os
-from datetime import datetime, timezone, timedelta
+from datetime import datetime, timedelta, timezone
 
 import pytest
 
@@ -12,8 +12,8 @@ pytestmark = pytest.mark.skipif(
 
 
 def test_eia_fetch_us_west():
-    from aurelius.ingestion.grid_apis.eia import EIAPriceProvider
     from aurelius.ingestion.grid_apis.base import PRICE_COLUMNS
+    from aurelius.ingestion.grid_apis.eia import EIAPriceProvider
 
     provider = EIAPriceProvider()
     end = datetime.now(timezone.utc).replace(minute=0, second=0, microsecond=0)
@@ -29,8 +29,9 @@ def test_eia_fetch_us_west():
 
 
 def test_eia_unknown_region_returns_empty():
-    from aurelius.ingestion.grid_apis.eia import EIAPriceProvider
     from datetime import datetime, timezone
+
+    from aurelius.ingestion.grid_apis.eia import EIAPriceProvider
 
     provider = EIAPriceProvider()
     end = datetime.now(timezone.utc)

@@ -13,22 +13,19 @@ from __future__ import annotations
 
 import csv
 import io
-import tempfile
 from datetime import datetime, timedelta, timezone
-from pathlib import Path
 
 import pandas as pd
 import pytest
 
+from aurelius.ingestion.queue_provider import QueueProvider
 from aurelius.models import (
     Job,
     OptimizationConfig,
     QueueState,
     ScheduleDecision,
 )
-from aurelius.ingestion.queue_provider import QueueProvider
 from aurelius.optimization.objective import ObjectiveFunction, _lookup_last_known
-
 
 # ---------------------------------------------------------------------------
 # Helpers

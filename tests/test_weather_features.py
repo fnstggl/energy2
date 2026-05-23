@@ -21,19 +21,17 @@ import pytest
 _REPO_ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(_REPO_ROOT))
 
-from aurelius.forecasting.quantile_model import (
-    WEATHER_FEATURE_COLS,
-    add_weather_features,
-    build_feature_matrix,
-    build_feature_matrix_for_predict,
-    build_weather_lookup,
-)
 from aurelius.forecasting.price_model import (
     PriceModelConfig,
     PriceQuantileForecaster,
 )
+from aurelius.forecasting.quantile_model import (
+    WEATHER_FEATURE_COLS,
+    build_feature_matrix,
+    build_feature_matrix_for_predict,
+    build_weather_lookup,
+)
 from aurelius.models import EnergyPrice
-
 
 # ---------------------------------------------------------------------------
 # Fixtures
@@ -390,12 +388,10 @@ class TestWeatherLeakageSafety:
     def test_train_weather_never_includes_eval_timestamps(self):
         """Engine._build_ml_forecast() should split weather on eval_start."""
         import pandas as pd
-        from aurelius.backtesting.engine import BacktestEngine, _df_to_price_data
-        from aurelius.backtesting.splitter import TemporalSplit
 
         # Build a dummy split
         train_start = pd.Timestamp("2026-01-01", tz="UTC")
-        train_end   = pd.Timestamp("2026-01-08", tz="UTC")
+        _train_end  = pd.Timestamp("2026-01-08", tz="UTC")
         eval_start  = pd.Timestamp("2026-01-08", tz="UTC")
         eval_end    = pd.Timestamp("2026-01-15", tz="UTC")
 
@@ -434,9 +430,9 @@ class TestBacktestEngineWeatherIntegration:
 
     def test_engine_with_weather_produces_folds(self):
         from aurelius.backtesting.engine import BacktestEngine
+        from aurelius.ingestion.grid_apis.csv_importer import CSVPriceImporter
         from aurelius.ingestion.job_logs import JobLogIngester
         from aurelius.models import OptimizationConfig
-        from aurelius.ingestion.grid_apis.csv_importer import CSVPriceImporter
 
         repo_root = _REPO_ROOT
         da_file = repo_root / "data" / "ercot_us_south_dam.csv"
@@ -475,7 +471,7 @@ class TestBacktestEngineWeatherIntegration:
             workload_filter="training",
         )
 
-        from aurelius.forecasting.price_model import PriceQuantileForecaster, PriceModelConfig
+        from aurelius.forecasting.price_model import PriceModelConfig, PriceQuantileForecaster
         config = PriceModelConfig(seed=42, n_estimators=30, include_weather_features=True)
 
         engine = BacktestEngine(

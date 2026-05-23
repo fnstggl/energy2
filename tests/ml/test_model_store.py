@@ -4,16 +4,13 @@ Each test verifies actual save/load correctness, not just that code runs.
 Uses real (small) fitted forecasters to verify joblib round-trip integrity.
 """
 
-import json
-import tempfile
-from datetime import datetime, timezone, timedelta
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
 import pytest
 
 from aurelius.ml.model_store import ModelStore
-from aurelius.models import EnergyPrice, CarbonIntensity
-
+from aurelius.models import CarbonIntensity, EnergyPrice
 
 # ---------------------------------------------------------------------------
 # Fixtures
@@ -28,7 +25,7 @@ def tmp_store(tmp_path):
 @pytest.fixture
 def fitted_price_forecaster():
     """A small fitted PriceQuantileForecaster for testing."""
-    from aurelius.forecasting.price_model import PriceQuantileForecaster, PriceModelConfig
+    from aurelius.forecasting.price_model import PriceModelConfig, PriceQuantileForecaster
     base = datetime(2024, 1, 1, 0, tzinfo=timezone.utc)
     prices = [
         EnergyPrice(timestamp=base + timedelta(hours=h), region="us-west", price_per_mwh=50.0 + h % 24)
@@ -43,7 +40,7 @@ def fitted_price_forecaster():
 @pytest.fixture
 def fitted_carbon_forecaster():
     """A small fitted CarbonQuantileForecaster for testing."""
-    from aurelius.forecasting.carbon_model import CarbonQuantileForecaster, CarbonModelConfig
+    from aurelius.forecasting.carbon_model import CarbonModelConfig, CarbonQuantileForecaster
     base = datetime(2024, 1, 1, 0, tzinfo=timezone.utc)
     records = [
         CarbonIntensity(
@@ -181,7 +178,7 @@ class TestModelStoreLoad:
 
     def test_load_version_specific(self, tmp_store, fitted_price_forecaster):
         from aurelius.forecasting.price_model import PriceQuantileForecaster
-        version_id = tmp_store.save(
+        tmp_store.save(
             fitted_price_forecaster, model_type="price", version_id="v_specific"
         )
         loaded = tmp_store.load_version("price", "v_specific", cls=PriceQuantileForecaster)
@@ -332,7 +329,7 @@ class TestRetrainScript:
 
     def test_temporal_split_leakage_invariant(self, tmp_path):
         """Core leakage-free invariant: max(train_ts) < min(holdout_ts)."""
-        from scripts.retrain_forecaster import temporal_split, load_price_csv
+        from scripts.retrain_forecaster import load_price_csv, temporal_split
         csv_path = tmp_path / "prices.csv"
         self._write_price_csv(csv_path, n_records=200)
         records = load_price_csv(csv_path)

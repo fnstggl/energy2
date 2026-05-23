@@ -10,16 +10,14 @@ Verifies:
 from __future__ import annotations
 
 import math
-from datetime import datetime, timedelta, timezone
-from unittest.mock import MagicMock, patch
+from datetime import timedelta, timezone
 
 import numpy as np
 import pandas as pd
-import pytest
 
 from aurelius.backtesting.engine import BacktestEngine, ForecastQuality, _df_to_price_records
 from aurelius.forecasting.price_model import PriceModelConfig, PriceQuantileForecaster
-from aurelius.models import CarbonIntensity, EnergyPrice, Job, OptimizationConfig
+from aurelius.models import EnergyPrice, Job
 
 UTC = timezone.utc
 BASE_TS = pd.Timestamp("2024-03-01", tz="UTC")
@@ -229,7 +227,7 @@ class TestMLLeakageInvariant:
             price_forecaster_config=_fast_forecaster_config(),
             context_hours=48,
         )
-        rounds = engine.run(jobs, price_df, carbon_df)
+        _rounds = engine.run(jobs, price_df, carbon_df)
 
         assert len(predict_calls) > 0
 
@@ -430,7 +428,7 @@ class TestMLVsNaivePriceSignals:
         jobs = _make_jobs()
 
         ml_price_signals: list[float] = []
-        naive_price_signals: list[float] = []
+        _naive_price_signals: list[float] = []
 
         # --- ML mode: spy on optimizer.solve to capture forecast_price_data ---
         class SpyForecaster(PriceQuantileForecaster):

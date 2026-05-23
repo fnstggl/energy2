@@ -15,7 +15,6 @@ import pytest
 from aurelius.ingestion.grid_apis.base import (
     PRICE_COLUMNS,
     ProviderConfigError,
-    empty_price_df,
 )
 from aurelius.ingestion.grid_apis.caiso import (
     CAISOPriceProvider,
@@ -23,11 +22,11 @@ from aurelius.ingestion.grid_apis.caiso import (
     _extract_lmp_rows,
     _parse_zip_response,
 )
+from aurelius.ingestion.grid_apis.market_registry import assert_price_type_not_demand
 from aurelius.ingestion.grid_apis.pjm import (
     PJMPriceProvider,
     PJMRealtimePriceProvider,
 )
-from aurelius.ingestion.grid_apis.market_registry import assert_price_type_not_demand
 
 UTC = timezone.utc
 T0 = datetime(2024, 3, 1, 0, 0, tzinfo=UTC)
@@ -43,7 +42,7 @@ _NP15_NODE = "TH_NP15_GEN-APND"
 
 def _make_caiso_csv(num_hours=24, include_non_lmp=True) -> str:
     """Build a minimal CAISO OASIS PRC_LMP CSV string (hourly day-ahead)."""
-    rows = [f"INTERVALSTARTTIME_GMT,LMP_TYPE,MW,NODE"]
+    rows = ["INTERVALSTARTTIME_GMT,LMP_TYPE,MW,NODE"]
     base = pd.Timestamp("2024-03-01T00:00:00+00:00")
     for i in range(num_hours):
         ts = (base + pd.Timedelta(hours=i)).strftime("%Y-%m-%dT%H:%M:%S+00:00")
@@ -56,7 +55,7 @@ def _make_caiso_csv(num_hours=24, include_non_lmp=True) -> str:
 
 def _make_caiso_rtm_csv(num_intervals=12, include_non_lmp=True) -> str:
     """Build a minimal CAISO OASIS PRC_INTVL_LMP CSV string (5-min real-time)."""
-    rows = [f"INTERVALSTARTTIME_GMT,LMP_TYPE,MW,NODE"]
+    rows = ["INTERVALSTARTTIME_GMT,LMP_TYPE,MW,NODE"]
     base = pd.Timestamp("2024-03-01T00:00:00+00:00")
     for i in range(num_intervals):
         ts = (base + pd.Timedelta(minutes=5 * i)).strftime("%Y-%m-%dT%H:%M:%S+00:00")
@@ -215,7 +214,7 @@ class TestCAISOFetchPrices:
 
     @patch("aurelius.ingestion.grid_apis.caiso.requests")
     def test_empty_response_returns_empty_df(self, mock_requests):
-        empty_csv = f"INTERVALSTARTTIME_GMT,LMP_TYPE,MW,NODE\n"
+        empty_csv = "INTERVALSTARTTIME_GMT,LMP_TYPE,MW,NODE\n"
         mock_requests.get.return_value = _make_mock_response(_make_caiso_zip(empty_csv))
 
         provider = CAISOPriceProvider()

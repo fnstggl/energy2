@@ -8,9 +8,8 @@ used to score each backtesting fold.
 from __future__ import annotations
 
 import logging
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from datetime import timedelta
-from typing import Optional
 
 from aurelius.models import Job, ScheduleDecision
 

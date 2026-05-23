@@ -8,11 +8,10 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from datetime import timedelta
-from typing import Iterator
 
 import pandas as pd
 
-from aurelius.validation.leakage_audit import assert_no_leakage, DataLeakageError
+from aurelius.validation.leakage_audit import assert_no_leakage
 
 
 @dataclass

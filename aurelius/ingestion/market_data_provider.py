@@ -27,9 +27,8 @@ sources and zone naming — see docs/ELECTRICITYMAPS_CONTRIB_AUDIT.md.
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
-from dataclasses import dataclass, field, asdict
+from dataclasses import dataclass, field
 from datetime import datetime, timezone
-from typing import Optional
 
 import pandas as pd
 

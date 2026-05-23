@@ -56,12 +56,12 @@ API usage:
 __version__ = "1.0.0"
 
 from .models import (
-    Job,
-    EnergyPrice,
     CarbonIntensity,
+    EnergyPrice,
+    Job,
+    OptimizationConfig,
     ScheduleDecision,
     SimulationResult,
-    OptimizationConfig,
 )
 
 __all__ = [

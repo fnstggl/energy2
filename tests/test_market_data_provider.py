@@ -4,6 +4,7 @@ from datetime import datetime, timezone
 
 import pytest
 
+from aurelius.ingestion.grid_apis.base import CARBON_COLUMNS, PRICE_COLUMNS
 from aurelius.ingestion.market_data_provider import (
     BenchmarkDataError,
     CarbonPoint,
@@ -17,7 +18,6 @@ from aurelius.ingestion.market_data_provider import (
     points_to_carbon_df,
     points_to_price_df,
 )
-from aurelius.ingestion.grid_apis.base import PRICE_COLUMNS, CARBON_COLUMNS
 
 UTC = timezone.utc
 T0 = datetime(2025, 1, 1, 0, 0, tzinfo=UTC)

@@ -1,11 +1,10 @@
 """Tests for the job scheduler: power cap enforcement in greedy and local_search."""
 
-import pytest
-from datetime import datetime, timezone, timedelta
+from datetime import datetime, timedelta, timezone
 
 from aurelius.models import Job, OptimizationConfig, ScheduleDecision
-from aurelius.optimization.scheduler import JobScheduler
 from aurelius.optimization.constraints import ConstraintBuilder
+from aurelius.optimization.scheduler import JobScheduler
 
 UTC = timezone.utc
 T0 = datetime(2024, 5, 1, 0, 0, tzinfo=UTC)

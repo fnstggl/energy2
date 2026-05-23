@@ -2,13 +2,10 @@
 
 import json
 import math
-import tempfile
-from pathlib import Path
 
 import pytest
 
 from aurelius.monitoring.drift_detector import DriftDetector, DriftReport
-
 
 # ---------------------------------------------------------------------------
 # DriftDetector unit tests
@@ -160,7 +157,6 @@ class TestDriftDetectorCheck:
         assert report.model_name == "carbon_model"
 
     def test_nan_in_error_field_skipped(self):
-        import math as _math
         d = DriftDetector(min_records=3)
         bad = {"energy_cost_p50_error": float("nan"), "forecast_energy_cost_p50": 100.0}
         valid = [_make_record(100.0, 110.0)] * 10

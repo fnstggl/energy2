@@ -432,7 +432,10 @@ def run_single_benchmark(
         else:
             print("  WARNING: ml_quantile unavailable, falling back to seasonal_naive")
             effective_forecaster = "seasonal_naive"
-        # ml_quantile_recovery = v2.0 + regime-aware recovery correction
+        # ml_quantile_recovery = v2.0 + regime-aware recovery correction.
+        # Training workloads are excluded: the exponential decay distorts long-horizon
+        # (96-200h) start-time decisions, causing a -2.7pp regression. Recovery
+        # correction helps flexible/maintenance workloads but hurts training.
         if forecaster == "ml_quantile_recovery" and price_forecaster_cls is not None:
             apply_recovery_correction = True
     elif forecaster == "ml_quantile_v5":
@@ -561,6 +564,7 @@ def run_single_benchmark(
         queue_df=queue_df_loaded,
         gpu_df=gpu_df_loaded,
         apply_recovery_correction=apply_recovery_correction,
+        recovery_excluded_workload_types=frozenset({"training"}) if apply_recovery_correction else frozenset(),
     )
     if oracle:
         engine.oracle_forecast = True

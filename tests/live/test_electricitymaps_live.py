@@ -1,7 +1,7 @@
 """Live integration test for ElectricityMaps – skipped without ELECTRICITYMAPS_API_KEY."""
 
 import os
-from datetime import datetime, timezone, timedelta
+from datetime import datetime, timedelta, timezone
 
 import pytest
 
@@ -12,8 +12,8 @@ pytestmark = pytest.mark.skipif(
 
 
 def test_electricitymaps_fetch_us_west():
-    from aurelius.ingestion.grid_apis.electricitymaps import ElectricityMapsCarbonProvider
     from aurelius.ingestion.grid_apis.base import CARBON_COLUMNS
+    from aurelius.ingestion.grid_apis.electricitymaps import ElectricityMapsCarbonProvider
 
     provider = ElectricityMapsCarbonProvider()
     end = datetime.now(timezone.utc).replace(minute=0, second=0, microsecond=0)

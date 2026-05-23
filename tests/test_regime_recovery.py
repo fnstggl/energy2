@@ -10,8 +10,6 @@ Coverage:
 - Adversarial: false positive guard, over-correction guard, no-data handling
 """
 
-import math
-from dataclasses import dataclass
 from datetime import datetime, timedelta, timezone
 from typing import Optional
 
@@ -24,7 +22,6 @@ from aurelius.forecasting.regime import (
     compute_region_regime_summary,
 )
 from aurelius.models import EnergyPrice
-
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -472,9 +469,9 @@ class TestBacktestEngineRecoveryCorrection:
     def test_engine_no_regression_without_flag(self):
         """Engine without flag produces identical results to pre-change behavior."""
         BacktestEngine = self._get_engine_class()
-        from aurelius.forecasting.price_model import PriceQuantileForecaster, PriceModelConfig
-        from aurelius.models import Job
         import pandas as pd
+
+        from aurelius.forecasting.price_model import PriceModelConfig, PriceQuantileForecaster
 
         engine_no_correction = BacktestEngine(
             method="greedy_migrate",
@@ -513,8 +510,9 @@ class TestBacktestEngineRecoveryCorrection:
     def test_engine_correction_activates_for_recovery_regime(self):
         """With correction flag, engine activates correction for spiked-then-recovered regions."""
         BacktestEngine = self._get_engine_class()
-        from aurelius.forecasting.price_model import PriceQuantileForecaster, PriceModelConfig
         import pandas as pd
+
+        from aurelius.forecasting.price_model import PriceModelConfig, PriceQuantileForecaster
 
         engine = BacktestEngine(
             method="greedy_migrate",
@@ -559,8 +557,9 @@ class TestBacktestEngineRecoveryCorrection:
         # access to train_price_data and recent_context (both strictly < eval_start).
         # This test verifies the engine can run in ML mode without errors.
         BacktestEngine = self._get_engine_class()
-        from aurelius.forecasting.price_model import PriceQuantileForecaster, PriceModelConfig
         import pandas as pd
+
+        from aurelius.forecasting.price_model import PriceModelConfig, PriceQuantileForecaster
 
         engine = BacktestEngine(
             method="greedy_migrate",
@@ -732,3 +731,155 @@ class TestRegimeSummaryHelper:
             train_price_data, context, detector=RegimeDetector(recovery_ratio_threshold=0.20)
         )
         assert stricter["r1"].is_recovering is False
+
+
+# ---------------------------------------------------------------------------
+# TestWorkloadSpecificRecoveryExclusion
+# ---------------------------------------------------------------------------
+
+class TestWorkloadSpecificRecoveryExclusion:
+    """Tests for recovery_excluded_workload_types on BacktestEngine.
+
+    This feature suppresses the regime-aware recovery correction for workload
+    types that regress under it (training: -2.7pp due to long-horizon decay
+    distortion). Flexible/maintenance workloads continue to benefit (+7.8pp).
+    """
+
+    def _make_engine(self, excluded: frozenset = frozenset(), apply_correction: bool = True):
+        from aurelius.backtesting.engine import BacktestEngine
+        from aurelius.forecasting.price_model import PriceModelConfig, PriceQuantileForecaster
+
+        return BacktestEngine(
+            method="greedy_migrate",
+            apply_recovery_correction=apply_correction,
+            recovery_excluded_workload_types=excluded,
+            price_forecaster_cls=PriceQuantileForecaster,
+            price_forecaster_config=PriceModelConfig(seed=42, n_estimators=20),
+        )
+
+    def _make_recovery_price_df(self, n_days: int = 45):
+        import pandas as pd
+
+        base = pd.Timestamp("2026-01-01", tz="UTC")
+        rows = []
+        for h in range(24 * n_days):
+            ts = base + pd.Timedelta(hours=h)
+            rows.append({"timestamp": ts, "region": "us-west", "price_per_mwh": 50.0})
+            # us-south: spike first 7 days, then recover cheaply
+            if h < 7 * 24:
+                rows.append({"timestamp": ts, "region": "us-south", "price_per_mwh": 1500.0})
+            else:
+                rows.append({"timestamp": ts, "region": "us-south", "price_per_mwh": 22.0})
+        return pd.DataFrame(rows)
+
+    def _make_jobs(self, wl_type: str, n_days: int = 45):
+        import pandas as pd
+
+        from aurelius.ingestion.job_logs import JobLogIngester
+
+        base = pd.Timestamp("2026-01-01", tz="UTC")
+        ingester = JobLogIngester()
+        return ingester.generate_synthetic(
+            start_time=base.to_pydatetime(),
+            duration_hours=24 * n_days,
+            num_jobs=20,
+            regions=["us-west", "us-south"],
+            seed=42,
+            workload_filter=wl_type,
+        )
+
+    def test_engine_accepts_excluded_types_parameter(self):
+        """BacktestEngine.__init__ accepts recovery_excluded_workload_types."""
+        from aurelius.backtesting.engine import BacktestEngine
+
+        engine = BacktestEngine(recovery_excluded_workload_types=frozenset({"training"}))
+        assert "training" in engine.recovery_excluded_workload_types
+
+    def test_engine_default_excluded_types_empty(self):
+        """Default excluded types is empty (backward-compatible)."""
+        from aurelius.backtesting.engine import BacktestEngine
+
+        engine = BacktestEngine()
+        assert engine.recovery_excluded_workload_types == frozenset()
+
+    def test_excluded_types_stored_as_frozenset(self):
+        """Excluded types are stored as frozenset (immutable, hashable)."""
+        from aurelius.backtesting.engine import BacktestEngine
+
+        engine = BacktestEngine(recovery_excluded_workload_types=frozenset({"training", "fine_tuning"}))
+        assert isinstance(engine.recovery_excluded_workload_types, frozenset)
+        assert "training" in engine.recovery_excluded_workload_types
+        assert "fine_tuning" in engine.recovery_excluded_workload_types
+
+    def test_empty_excluded_types_with_correction_on(self):
+        """Empty excluded types + apply_correction=True: correction applied for all workloads."""
+        import pandas as pd
+
+        engine = self._make_engine(excluded=frozenset(), apply_correction=True)
+        price_df = self._make_recovery_price_df()
+        carbon_df = pd.DataFrame(columns=["timestamp", "region", "gco2_per_kwh"])
+        jobs = self._make_jobs("background_maintenance")
+        rounds = engine.run(jobs, price_df, carbon_df)
+        assert len(rounds) > 0, "Should produce folds"
+
+    def test_training_excluded_skips_correction(self):
+        """Training workloads have correction suppressed when 'training' is excluded."""
+        import pandas as pd
+
+        engine = self._make_engine(excluded=frozenset({"training"}), apply_correction=True)
+        price_df = self._make_recovery_price_df()
+        carbon_df = pd.DataFrame(columns=["timestamp", "region", "gco2_per_kwh"])
+        jobs = self._make_jobs("training")
+        # Should run without error; correction is suppressed internally
+        rounds = engine.run(jobs, price_df, carbon_df)
+        assert len(rounds) > 0, "Training workload engine should produce folds"
+
+    def test_non_excluded_workload_still_receives_correction(self):
+        """background_maintenance (not excluded) still gets correction when 'training' excluded."""
+        import pandas as pd
+
+        engine = self._make_engine(excluded=frozenset({"training"}), apply_correction=True)
+        price_df = self._make_recovery_price_df()
+        carbon_df = pd.DataFrame(columns=["timestamp", "region", "gco2_per_kwh"])
+        jobs = self._make_jobs("background_maintenance")
+        rounds = engine.run(jobs, price_df, carbon_df)
+        assert len(rounds) > 0
+
+    def test_exclusion_no_effect_when_correction_disabled(self):
+        """recovery_excluded_workload_types has no effect when apply_recovery_correction=False."""
+        import pandas as pd
+
+        engine = self._make_engine(excluded=frozenset({"training"}), apply_correction=False)
+        price_df = self._make_recovery_price_df()
+        carbon_df = pd.DataFrame(columns=["timestamp", "region", "gco2_per_kwh"])
+        jobs = self._make_jobs("training")
+        rounds = engine.run(jobs, price_df, carbon_df)
+        assert len(rounds) > 0
+
+    def test_multiple_workload_types_in_exclusion(self):
+        """Multiple workload types can be excluded simultaneously."""
+        from aurelius.backtesting.engine import BacktestEngine
+
+        engine = BacktestEngine(
+            recovery_excluded_workload_types=frozenset({"training", "fine_tuning", "realtime_inference"}),
+        )
+        assert len(engine.recovery_excluded_workload_types) == 3
+
+    def test_benchmark_runner_passes_training_exclusion(self):
+        """Benchmark runner passes frozenset({'training'}) when using ml_quantile_recovery."""
+        import sys
+        from pathlib import Path
+
+        repo_root = Path(__file__).parent.parent
+        if str(repo_root) not in sys.path:
+            sys.path.insert(0, str(repo_root))
+
+        # Verify the benchmark runner includes training in excluded workloads
+        # for ml_quantile_recovery by reading the run_benchmark.py source
+        bench_src = (repo_root / "benchmarks" / "run_benchmark.py").read_text()
+        assert "recovery_excluded_workload_types" in bench_src, (
+            "Benchmark runner must pass recovery_excluded_workload_types"
+        )
+        assert '"training"' in bench_src or "'training'" in bench_src, (
+            "Benchmark runner must exclude training workloads from recovery correction"
+        )

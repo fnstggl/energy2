@@ -8,24 +8,23 @@ This module orchestrates complete simulation runs:
 5. Store results
 """
 
-from datetime import datetime, timedelta
-from typing import Optional
-from dataclasses import dataclass, field
-import uuid
-import logging
 import json
+import logging
+import uuid
+from dataclasses import dataclass, field
+from datetime import datetime
 from pathlib import Path
+from typing import Optional
 
-from ..models import Job, SimulationResult, OptimizationConfig
+from ..database import get_db
+from ..forecasting.baseline import generate_carbon_scenario, generate_price_scenario
+from ..forecasting.carbon_model import CarbonForecaster
+from ..forecasting.price_model import PriceForecaster
+from ..forecasting.uncertainty import UncertaintyEstimator
 from ..ingestion.energy_prices import EnergyPriceIngester
 from ..ingestion.job_logs import JobLogIngester
-from ..forecasting.price_model import PriceForecaster
-from ..forecasting.carbon_model import CarbonForecaster
-from ..forecasting.uncertainty import UncertaintyEstimator
-from ..forecasting.baseline import generate_price_scenario, generate_carbon_scenario
-from ..database import get_db
-from .compare import ScenarioComparator, ComparisonResult
-from .metrics import MetricsCalculator
+from ..models import Job, OptimizationConfig
+from .compare import ScenarioComparator
 
 logger = logging.getLogger(__name__)
 

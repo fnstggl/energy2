@@ -11,15 +11,14 @@ Uses a combination of:
 3. Optional MILP for optimal solutions (with PuLP)
 """
 
+import logging
+from dataclasses import dataclass
 from datetime import datetime, timedelta
 from typing import Optional
-from dataclasses import dataclass, field
-import logging
-import math
 
-from ..models import Job, ScheduleDecision, ScheduleSegment, OptimizationConfig
-from .objective import ObjectiveFunction, ObjectiveComponents
+from ..models import Job, OptimizationConfig, ScheduleDecision, ScheduleSegment
 from .constraints import ConstraintBuilder
+from .objective import ObjectiveComponents, ObjectiveFunction
 
 logger = logging.getLogger(__name__)
 
@@ -343,7 +342,6 @@ class JobScheduler:
                 current += timedelta(hours=1)
 
         times = sorted(all_times)
-        regions = list(set(r for j in jobs for r in j.region_options))
 
         # Decision variables: x[job_id, time_idx, region] = binary
         x = {}
@@ -752,7 +750,7 @@ class JobScheduler:
         seg_start_wall = 0.0
         seg_region_idx = initial_r_idx
         # Track current state as we walk
-        cur_u, cur_r_idx, cur_k = 0, initial_r_idx, 0
+        cur_u, _, cur_k = 0, initial_r_idx, 0
 
         for (next_u, next_r_idx, next_k, action) in forward_path:
             if action == "migrate":
@@ -767,7 +765,7 @@ class JobScheduler:
                 seg_start_wall = wall_at_migration
                 seg_region_idx = next_r_idx
             # Advance state (both stay and migrate end at (next_u, next_r_idx, next_k))
-            cur_u, cur_r_idx, cur_k = next_u, next_r_idx, next_k
+            cur_u, _, cur_k = next_u, next_r_idx, next_k
 
         # Final segment: from current seg_start_wall to terminal wallclock
         final_wall = H + best_k * m

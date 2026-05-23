@@ -245,11 +245,12 @@ def run_evaluation(
         return None
 
     try:
+        import warnings
+
         from aurelius.backtesting.engine import BacktestEngine
+        from aurelius.forecasting.price_model import PriceModelConfig, PriceQuantileForecaster
         from aurelius.ingestion.job_logs import JobLogIngester
         from aurelius.models import OptimizationConfig
-        from aurelius.forecasting.price_model import PriceQuantileForecaster, PriceModelConfig
-        import warnings
 
         warnings.filterwarnings("ignore", category=UserWarning)
 
@@ -317,9 +318,10 @@ def train_candidate_model(
         return None
 
     try:
-        from aurelius.forecasting.price_model import PriceQuantileForecaster, PriceModelConfig
-        import warnings
         import pickle
+        import warnings
+
+        from aurelius.forecasting.price_model import PriceModelConfig, PriceQuantileForecaster
 
         warnings.filterwarnings("ignore", category=UserWarning)
 
@@ -472,12 +474,13 @@ def run_benchmark_smoke_test(data_dir: Path) -> dict:
         return {"status": "skipped", "reason": "data_file_not_found"}
 
     try:
-        from aurelius.backtesting.engine import BacktestEngine
-        from aurelius.ingestion.job_logs import JobLogIngester
-        from aurelius.ingestion.grid_apis.csv_importer import CSVPriceImporter
-        from aurelius.models import OptimizationConfig
-        from aurelius.forecasting.price_model import PriceQuantileForecaster, PriceModelConfig
         import warnings
+
+        from aurelius.backtesting.engine import BacktestEngine
+        from aurelius.forecasting.price_model import PriceModelConfig, PriceQuantileForecaster
+        from aurelius.ingestion.grid_apis.csv_importer import CSVPriceImporter
+        from aurelius.ingestion.job_logs import JobLogIngester
+        from aurelius.models import OptimizationConfig
 
         warnings.filterwarnings("ignore", category=UserWarning)
 
@@ -602,7 +605,7 @@ def main() -> None:
     args = parser.parse_args()
 
     loop_start = datetime.now(tz=timezone.utc)
-    logger.info(f"=== Aurelius Daily Learning Loop ===")
+    logger.info("=== Aurelius Daily Learning Loop ===")
     logger.info(f"Start: {loop_start.isoformat()}")
     logger.info(f"Dry run: {args.dry_run}")
 

@@ -8,10 +8,10 @@ This module handles all database operations including:
 No authentication layer - uses anon key only.
 """
 
+import logging
 import os
 from datetime import datetime
 from typing import Optional
-import logging
 
 logger = logging.getLogger(__name__)
 

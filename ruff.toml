@@ -1,0 +1,17 @@
+# Root-level ruff config for the full Aurelius repo.
+# Applies to aurelius/, scripts/, and tests/.
+
+line-length = 100
+
+[lint]
+select = ["E", "F", "I", "N", "W"]
+ignore = [
+    "E501",   # line too long (enforced by formatter, not linter)
+    "E402",   # module-level import not at top (intentional sys.path manipulation in scripts)
+    "N806",   # variable in function should be lowercase (X/X_train in ML code)
+    "N803",   # argument name should be lowercase (X/X_train convention in ML code)
+    "N814",   # camelcase imported as constant (aliased imports in CLI)
+]
+
+[lint.per-file-ignores]
+"scripts/*" = ["F841"]   # unused local vars in standalone scripts are common

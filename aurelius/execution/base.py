@@ -9,13 +9,13 @@ must implement. The execution layer is intentionally thin - it only
 translates Aurelius scheduling decisions into infrastructure actions.
 """
 
-from abc import ABC, abstractmethod
-from dataclasses import dataclass, field
-from datetime import datetime
-from typing import Literal, Optional
 import json
 import logging
 import os
+from abc import ABC, abstractmethod
+from dataclasses import dataclass
+from datetime import datetime
+from typing import Literal, Optional
 
 from ..models import ScheduleDecision
 

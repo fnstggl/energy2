@@ -234,7 +234,7 @@ class ShadowReport:
             real = f"{self.mean_realized_savings_pct:.1f}%"
             lines.append(f"Mean realized  savings vs CPO:  {real:>10}")
         else:
-            lines.append(f"Mean realized  savings vs CPO:  PENDING (no realized records yet)")
+            lines.append("Mean realized  savings vs CPO:  PENDING (no realized records yet)")
 
         if self.mean_savings_delta_pp is not None:
             delta_sign = "+" if self.mean_savings_delta_pp >= 0 else ""

@@ -10,23 +10,21 @@ Covers:
 
 import json
 import os
-import tempfile
 from datetime import datetime, timezone
 from pathlib import Path
-from unittest.mock import MagicMock, patch
+from unittest.mock import MagicMock
 
 import pandas as pd
 import pytest
 
+from aurelius.execution.base import ExecutionConfig, ExecutionResult
 from aurelius.execution.post_execution import (
     ForecastSnapshot,
     PostExecutionRecorder,
     RealizedOutcome,
     lookup_realized_price,
 )
-from aurelius.execution.base import ExecutionConfig, ExecutionResult
-from aurelius.models import Job, ScheduleDecision, OptimizationConfig
-
+from aurelius.models import Job, ScheduleDecision
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -222,9 +220,10 @@ class TestBacktestEngineRecorderPath:
         assert engine._recorder is None
 
     def test_recorder_writes_jsonl_during_backtest(self, tmp_path):
+        from datetime import timedelta
+
         from aurelius.backtesting.engine import BacktestEngine
         from aurelius.models import Job
-        from datetime import timedelta
 
         pe_path = tmp_path / "pe.jsonl"
         engine = BacktestEngine(
@@ -267,7 +266,7 @@ class TestBacktestEngineRecorderPath:
 
         # JSONL file must exist and have records
         assert pe_path.exists(), "Recorder JSONL should be written"
-        lines = [l for l in pe_path.read_text().splitlines() if l.strip()]
+        lines = [ln for ln in pe_path.read_text().splitlines() if ln.strip()]
         assert len(lines) >= 1, "At least one PostExecutionRecord should be written"
 
         # Each record must be valid JSON with required fields
@@ -280,8 +279,9 @@ class TestBacktestEngineRecorderPath:
             assert rec["execution_mode"] == "dry_run"
 
     def test_backtest_without_recorder_still_works(self):
-        from aurelius.backtesting.engine import BacktestEngine
         from datetime import timedelta
+
+        from aurelius.backtesting.engine import BacktestEngine
 
         engine = BacktestEngine(method="greedy", train_days=7, eval_days=3)
 
@@ -363,7 +363,7 @@ class TestShadowRunnerPostExecutionPath:
         assert result is not None
 
         assert pe_path.exists()
-        lines = [l for l in pe_path.read_text().splitlines() if l.strip()]
+        lines = [ln for ln in pe_path.read_text().splitlines() if ln.strip()]
         assert len(lines) >= 1
 
         rec = json.loads(lines[0])
@@ -409,9 +409,10 @@ class TestShadowRunnerPostExecutionPath:
 class TestLearningLoopDataAccumulation:
     def test_backtest_pe_jsonl_grows_across_runs(self, tmp_path):
         """Each backtest run with recorder_path appends new records."""
+        from datetime import timedelta
+
         from aurelius.backtesting.engine import BacktestEngine
         from aurelius.models import Job
-        from datetime import timedelta
 
         pe_path = tmp_path / "pe.jsonl"
         base = datetime(2024, 1, 1, tzinfo=timezone.utc)
@@ -439,12 +440,12 @@ class TestLearningLoopDataAccumulation:
         # First run
         engine1 = BacktestEngine(method="greedy", train_days=7, eval_days=3, recorder_path=pe_path)
         engine1.run(jobs=jobs, price_df=price_df, carbon_df=carbon_df)
-        count1 = sum(1 for l in pe_path.read_text().splitlines() if l.strip())
+        count1 = sum(1 for ln in pe_path.read_text().splitlines() if ln.strip())
 
         # Second run — JSONL should grow (append mode)
         engine2 = BacktestEngine(method="greedy", train_days=7, eval_days=3, recorder_path=pe_path)
         engine2.run(jobs=jobs, price_df=price_df, carbon_df=carbon_df)
-        count2 = sum(1 for l in pe_path.read_text().splitlines() if l.strip())
+        count2 = sum(1 for ln in pe_path.read_text().splitlines() if ln.strip())
 
         assert count2 >= count1, "Second run should not shrink the JSONL"
 
@@ -636,7 +637,7 @@ class TestPriceModelBiasCorrection:
 
     def test_bias_correction_applied_to_predictions(self, tmp_path):
         """Predictions are adjusted by the stored bias for that region/hour."""
-        from aurelius.forecasting.price_model import PriceQuantileForecaster, PriceModelConfig
+        from aurelius.forecasting.price_model import PriceModelConfig, PriceQuantileForecaster
         from aurelius.models import EnergyPrice
 
         # Artifact with +10 bias for us-east hour=8 (primary schema)

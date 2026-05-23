@@ -31,12 +31,10 @@ from .carbon_model import CarbonForecast
 from .price_model import PriceForecast
 from .quantile_model import (
     DEFAULT_SEED,
-    MIN_RECENT_HOURS,
     ModelMetadata,
     build_feature_matrix,
     build_feature_matrix_for_predict,
     check_recent_data_sufficient,
-    extract_temporal_features,
     set_deterministic_seed,
 )
 
@@ -705,7 +703,7 @@ def _run_validation():
     preds2 = reg2.predict(pred_ts, pred_regions)
 
     assert np.allclose(preds1, preds2), "Same seed should produce identical predictions"
-    print(f"  Same seed produces identical predictions: PASS")
+    print("  Same seed produces identical predictions: PASS")
 
     # Test 4: Metadata (v1.1)
     print("\nTest 4: METADATA (v1.1)")

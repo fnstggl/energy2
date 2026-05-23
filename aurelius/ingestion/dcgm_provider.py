@@ -45,7 +45,6 @@ import random
 import re
 from dataclasses import dataclass, field
 from datetime import datetime, timedelta, timezone
-from io import StringIO
 from typing import Optional
 
 from aurelius.models import GPUHealthScore, GPUMetrics
@@ -107,7 +106,6 @@ def score_gpu_health(metrics: GPUMetrics) -> GPUHealthScore:
     reason_codes: list[str] = []
 
     # Utilization penalty: how "busy" is the GPU (linear above warn threshold)
-    util_frac = metrics.gpu_util_pct / 100.0
     if metrics.gpu_util_pct > _UTIL_WARN:
         util_penalty = (metrics.gpu_util_pct - _UTIL_WARN) / (100.0 - _UTIL_WARN)
         reason_codes.append(f"high_util:{metrics.gpu_util_pct:.0f}%")

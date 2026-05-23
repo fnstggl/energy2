@@ -7,10 +7,9 @@ Price schema columns:  PRICE_COLUMNS
 Carbon schema columns: CARBON_COLUMNS
 """
 
+import logging
 from abc import ABC, abstractmethod
 from datetime import datetime, timezone
-from typing import Optional
-import logging
 
 import pandas as pd
 

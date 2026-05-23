@@ -12,20 +12,17 @@ Tests cover:
 from __future__ import annotations
 
 import json
-import tempfile
 from datetime import datetime, timedelta, timezone
-from pathlib import Path
 
 import pandas as pd
 import pytest
 
+from aurelius.models import Job
 from aurelius.shadow.models import DecisionRecord, make_run_id
-from aurelius.shadow.recorder import DecisionRecorder
-from aurelius.shadow.runner import LiveShadowRunner
 from aurelius.shadow.realizer import RealizedSavingsCalculator
+from aurelius.shadow.recorder import DecisionRecorder
 from aurelius.shadow.report import ShadowReport
-from aurelius.models import Job, OptimizationConfig
-
+from aurelius.shadow.runner import LiveShadowRunner
 
 # ============================================================================
 # Fixtures
@@ -463,7 +460,6 @@ class TestLiveShadowRunner:
         assert len(east_decisions) >= 1
 
     def test_with_carbon_df(self):
-        from aurelius.models import CarbonIntensity
         import pandas as pd
         carbon_rows = []
         for h in range(35 * 24):
@@ -499,7 +495,7 @@ class TestLiveShadowRunner:
         assert len(wt_set) > 0
 
     def test_ml_forecaster_runs_without_crash(self):
-        from aurelius.forecasting.price_model import PriceQuantileForecaster, PriceModelConfig
+        from aurelius.forecasting.price_model import PriceModelConfig, PriceQuantileForecaster
         runner = LiveShadowRunner(
             regions=self.REGIONS,
             train_days=30,
@@ -551,7 +547,7 @@ class TestRealizedSavingsCalculator:
         record.power_kw = 100.0
 
         calc = RealizedSavingsCalculator(self._rt_df(price_us_west=40.0, price_us_east=35.0))
-        realized = calc.realize([record])
+        calc.realize([record])
         assert record.is_realized
         assert record.realized_rt_price is not None
         assert record.realized_rt_price == pytest.approx(35.0, abs=1.0)

@@ -23,12 +23,19 @@ RUN pip install --no-cache-dir --prefix=/install \
     pulp>=2.7.0 \
     jinja2>=3.1.0 \
     joblib>=1.3.0 \
-    requests>=2.31.0
+    requests>=2.31.0 \
+    pyyaml>=6.0 \
+    strictyaml>=1.6.0
 
 # ── Runtime stage ────────────────────────────────────────────────────────────
 FROM python:3.11-slim AS runtime
 
 WORKDIR /app
+
+# Runtime system deps: libgomp1 required by LightGBM on Linux
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    libgomp1 \
+    && rm -rf /var/lib/apt/lists/*
 
 # Copy installed packages from builder
 COPY --from=builder /install /usr/local

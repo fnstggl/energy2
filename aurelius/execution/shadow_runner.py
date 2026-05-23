@@ -19,7 +19,7 @@ from pathlib import Path
 from typing import Optional
 
 from ..models import Job, OptimizationConfig, ScheduleDecision
-from ..optimization.objective import ObjectiveFunction
+from ..optimization.objective import ObjectiveComponents, ObjectiveFunction
 
 logger = logging.getLogger(__name__)
 
@@ -342,19 +342,19 @@ class ShadowRunner:
         self,
         decision: ScheduleDecision,
         baseline_decision: Optional[ScheduleDecision],
-        aurelius_obj: "ObjectiveResult",
-        baseline_obj: "ObjectiveResult",
+        aurelius_obj: "ObjectiveComponents",
+        baseline_obj: "ObjectiveComponents",
     ) -> None:
         """Write a PostExecutionRecord for learning-loop consumption.
 
         Uses realized costs from the shadow run. Never raises.
         """
         try:
+            from .base import ExecutionConfig, ExecutionResult
             from .post_execution import (
                 ForecastSnapshot,
                 RealizedOutcome,
             )
-            from .base import ExecutionConfig, ExecutionResult
 
             # Build forecast snapshot from decision.forecast if available
             forecast_data = getattr(decision, "forecast", None) or {}

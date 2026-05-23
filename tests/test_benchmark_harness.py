@@ -12,9 +12,7 @@ Verifies:
 
 from __future__ import annotations
 
-import json
 import sys
-import tempfile
 from pathlib import Path
 
 import pandas as pd
@@ -25,21 +23,19 @@ _REPO_ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(_REPO_ROOT))
 sys.path.insert(0, str(_REPO_ROOT / "aurelius"))
 
-from benchmarks.run_benchmark import (
-    run_single_benchmark,
-    leakage_audit,
-    compare_against_baseline,
-    WORKLOAD_TYPES,
-    SAVINGS_FLOORS,
-    PRIMARY_BASELINE,
-    MAX_MISSING_PRICE_PCT,
-    REGRESSION_THRESHOLD_PCT,
-)
 from benchmarks.compare_against_previous import (
     compare,
     missing_baselines,
 )
-
+from benchmarks.run_benchmark import (
+    MAX_MISSING_PRICE_PCT,
+    PRIMARY_BASELINE,
+    REGRESSION_THRESHOLD_PCT,
+    WORKLOAD_TYPES,
+    compare_against_baseline,
+    leakage_audit,
+    run_single_benchmark,
+)
 
 # ---------------------------------------------------------------------------
 # Fixtures
@@ -371,7 +367,6 @@ class TestRegressionChecker:
 class TestCompareScript:
     def test_compare_detects_regression(self, tmp_path):
         """End-to-end: compare_against_previous returns exit code 1 on regression."""
-        from benchmarks.compare_against_previous import compare, missing_baselines
 
         baseline = [
             {"workload_type": "training", "region_combo": "caiso_pjm_da_rt",
@@ -386,7 +381,6 @@ class TestCompareScript:
         assert len(improvements) == 0
 
     def test_compare_detects_improvement(self, tmp_path):
-        from benchmarks.compare_against_previous import compare
 
         baseline = [
             {"workload_type": "training", "region_combo": "caiso_pjm_da_rt",
@@ -520,7 +514,6 @@ class TestBenchmarkFileStructure:
 
     def test_3region_dam_has_all_regions(self):
         """3-region Q1 2026 DA CSV must have us-west, us-east, us-south."""
-        import pandas as pd
         data_dir = self.REPO_ROOT / "data"
         path = data_dir / "q12026_3region_dam.csv"
         if not path.exists():

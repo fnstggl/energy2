@@ -99,8 +99,8 @@ def run_day_ahead(start_str: str, end_str: str) -> None:
     end = datetime.fromisoformat(end_str).replace(tzinfo=timezone.utc)
 
     print(f"\n[CAISO DAM] Fetching day-ahead LMP for us-west, {start_str} → {end_str}")
-    print(f"  Endpoint: https://oasis.caiso.com/oasisapi/SingleZip"
-          f"  queryname=PRC_LMP, market_run_id=DAM, node=TH_NP15_GEN-APND, resultformat=6")
+    print("  Endpoint: https://oasis.caiso.com/oasisapi/SingleZip"
+          "  queryname=PRC_LMP, market_run_id=DAM, node=TH_NP15_GEN-APND, resultformat=6")
 
     provider = CAISOPriceProvider()
     df = provider.fetch_prices("us-west", start, end)
@@ -132,8 +132,8 @@ def run_real_time(hours: int) -> None:
 
     print(f"\n[CAISO RTM] Fetching real-time LMP for us-west, last {hours}h "
           f"({start.isoformat()} → {end.isoformat()})")
-    print(f"  Endpoint: https://oasis.caiso.com/oasisapi/SingleZip"
-          f"  queryname=PRC_INTVL_LMP, market_run_id=RTM, node=TH_NP15_GEN-APND, resultformat=6")
+    print("  Endpoint: https://oasis.caiso.com/oasisapi/SingleZip"
+          "  queryname=PRC_INTVL_LMP, market_run_id=RTM, node=TH_NP15_GEN-APND, resultformat=6")
 
     provider = CAISORealtimePriceProvider()
     df = provider.fetch_prices("us-west", start, end)
@@ -169,6 +169,7 @@ def run_diagnose() -> None:
     import io
     import time
     import zipfile
+
     import requests
 
     _OASIS_URL = "https://oasis.caiso.com/oasisapi/SingleZip"
@@ -222,7 +223,7 @@ def run_diagnose() -> None:
                         print(f"  ... [truncated, {len(data)} total chars]")
                 zf.close()
             except zipfile.BadZipFile:
-                print(f"  Not a valid ZIP. Raw content (first 2000 bytes):")
+                print("  Not a valid ZIP. Raw content (first 2000 bytes):")
                 print(resp.content[:2000].decode("utf-8", errors="replace"))
         except Exception as exc:
             print(f"  ERROR: {exc}")

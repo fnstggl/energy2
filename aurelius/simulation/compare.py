@@ -7,15 +7,14 @@ This module compares baseline vs optimized scheduling outcomes:
 - Timeline visualization data
 """
 
+import logging
+from dataclasses import dataclass
 from datetime import datetime, timedelta
 from typing import Optional
-from dataclasses import dataclass
-import logging
 
-from ..models import Job, ScheduleDecision, SimulationResult, OptimizationConfig
+from ..models import Job, OptimizationConfig, ScheduleDecision, SimulationResult
 from ..optimization.scheduler import JobScheduler
-from ..optimization.objective import ObjectiveFunction
-from .metrics import MetricsCalculator, ScheduleMetrics, DualBaselineComparison
+from .metrics import MetricsCalculator, ScheduleMetrics
 
 logger = logging.getLogger(__name__)
 

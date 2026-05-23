@@ -34,18 +34,17 @@ from datetime import datetime, timedelta
 
 import numpy as np
 
+from aurelius.forecasting.price_model import (
+    PriceModelConfig,
+    PriceQuantileForecaster,
+)
 from aurelius.forecasting.quantile_model import (
     PRICE_RANK_FEATURE_COLS,
     build_feature_matrix,
     build_feature_matrix_for_predict,
     compute_price_rank_features,
 )
-from aurelius.forecasting.price_model import (
-    PriceModelConfig,
-    PriceQuantileForecaster,
-)
 from aurelius.models import EnergyPrice
-
 
 # ---------------------------------------------------------------------------
 # Helpers

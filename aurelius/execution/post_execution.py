@@ -16,15 +16,15 @@ IMPORTANT:
 - Failure-tolerant (never blocks execution)
 """
 
-from dataclasses import dataclass, field
-from datetime import datetime
-from typing import Any, Literal, Optional
 import hashlib
 import json
 import logging
+from dataclasses import dataclass, field
+from datetime import datetime
+from typing import Any, Literal, Optional
 
-from ..models import ScheduleDecision
 from ..data.persistence import JSONLWriter, get_default_post_execution_path
+from ..models import ScheduleDecision
 from .base import ExecutionConfig, ExecutionResult
 
 logger = logging.getLogger(__name__)
@@ -579,8 +579,8 @@ class PostExecutionRecorder:
 
 # Inline tests
 if __name__ == "__main__":
-    from datetime import timedelta
     import tempfile
+    from datetime import timedelta
 
     print("=" * 60)
     print("PostExecutionRecorder Inline Tests")
@@ -624,7 +624,7 @@ if __name__ == "__main__":
     empty_realized = RealizedOutcome()
     errors = compute_forecast_errors(empty_forecast, empty_realized)
     assert all(v is None for v in errors.values())
-    print(f"  PASSED: All errors are None when data missing")
+    print("  PASSED: All errors are None when data missing")
 
     # Test 4: compute_realized_savings
     print("\n[Test 4] Realized savings computation")
@@ -637,7 +637,7 @@ if __name__ == "__main__":
     no_baseline = ForecastSnapshot(energy_cost_p50=100.0)
     savings = compute_realized_savings(no_baseline, realized)
     assert savings is None
-    print(f"  PASSED: savings=None when baseline missing")
+    print("  PASSED: savings=None when baseline missing")
 
     # Test 6: label_decision_outcome - good_decision
     print("\n[Test 6] Decision labeling - good_decision")
@@ -742,7 +742,7 @@ if __name__ == "__main__":
         records = writer.read_all()
         assert len(records) == 1
         assert records[0]["job_id"] == "job-test-001"
-        print(f"  PASSED: record persisted to JSONL")
+        print("  PASSED: record persisted to JSONL")
 
     # Test 12: Recording with minimal data (all optional)
     print("\n[Test 12] Recording with minimal data")
@@ -778,7 +778,7 @@ if __name__ == "__main__":
         assert record is not None
         assert record.decision_outcome_label == "neutral"
         assert record.realized_savings is None
-        print(f"  PASSED: minimal record created")
+        print("  PASSED: minimal record created")
 
     # Test 13: p90 coverage edge case (exactly at p90)
     print("\n[Test 13] p90 coverage - exactly at threshold")
@@ -791,7 +791,7 @@ if __name__ == "__main__":
     )
     errors = compute_forecast_errors(forecast_exact, realized_exact)
     assert errors["energy_cost_p90_covered"] is True  # 110 <= 110
-    print(f"  PASSED: exactly at p90 is covered")
+    print("  PASSED: exactly at p90 is covered")
 
     # Test 14: p90 coverage - exceeded
     print("\n[Test 14] p90 coverage - exceeded")
@@ -800,7 +800,7 @@ if __name__ == "__main__":
     )
     errors = compute_forecast_errors(forecast_exact, realized_exceeded)
     assert errors["energy_cost_p90_covered"] is False
-    print(f"  PASSED: above p90 is not covered")
+    print("  PASSED: above p90 is not covered")
 
     # Test 15: Negative realized savings (bad decision)
     print("\n[Test 15] Negative savings labeling")
@@ -810,7 +810,7 @@ if __name__ == "__main__":
         was_skipped_by_safety_or_latency=False,
     )
     assert label == "neutral"  # Not good, but not a conservative_skip
-    print(f"  PASSED: negative savings -> neutral")
+    print("  PASSED: negative savings -> neutral")
 
     print("\n" + "=" * 60)
     print("All 15 tests passed!")

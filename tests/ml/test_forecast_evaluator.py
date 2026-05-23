@@ -8,23 +8,22 @@ Every test verifies that metrics are:
 """
 
 import math
+from datetime import datetime, timedelta, timezone
+
 import pytest
-from datetime import datetime, timezone, timedelta
 
 from aurelius.ml.forecast_evaluator import (
+    EvaluationResult,
     ForecastEvaluator,
     ForecastPoint,
-    EvaluationResult,
-    ModelComparisonResult,
-    compare_models,
-    _compute_mape,
-    _compute_rmse,
+    _compute_downside_risk,
     _compute_mae,
+    _compute_mape,
     _compute_p50_bias,
     _compute_p90_coverage,
-    _compute_downside_risk,
+    _compute_rmse,
+    compare_models,
 )
-
 
 # ---------------------------------------------------------------------------
 # Fixtures
@@ -436,6 +435,7 @@ class TestEvaluateFromModel:
     def _make_price_records(self, n_train=200, n_holdout=48, seed=42):
         """Generate synthetic EnergyPrice records."""
         import math as _math
+
         from aurelius.models import EnergyPrice
         rng_state = seed
         def _rng():
@@ -453,7 +453,7 @@ class TestEvaluateFromModel:
         return records[:n_train], records[n_train:]
 
     def test_evaluate_from_model_price_forecaster(self):
-        from aurelius.forecasting.price_model import PriceQuantileForecaster, PriceModelConfig
+        from aurelius.forecasting.price_model import PriceModelConfig, PriceQuantileForecaster
         train_records, holdout_records = self._make_price_records(n_train=200, n_holdout=48)
 
         forecaster = PriceQuantileForecaster(PriceModelConfig(seed=42, n_estimators=20))
@@ -477,10 +477,10 @@ class TestEvaluateFromModel:
         assert 0.0 <= result.calibration_error <= 1.0
 
     def test_evaluate_from_model_carbon_forecaster(self):
-        from aurelius.models import CarbonIntensity
-        from aurelius.forecasting.carbon_model import CarbonQuantileForecaster, CarbonModelConfig
-
         import math as _math
+
+        from aurelius.forecasting.carbon_model import CarbonModelConfig, CarbonQuantileForecaster
+        from aurelius.models import CarbonIntensity
         base_ts = datetime(2024, 2, 1, 0, tzinfo=timezone.utc)
         train = [
             CarbonIntensity(

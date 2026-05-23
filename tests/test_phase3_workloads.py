@@ -12,26 +12,23 @@ Covers:
 from __future__ import annotations
 
 import csv
-import io
-import tempfile
 from datetime import datetime, timedelta
 from pathlib import Path
 
 import pytest
 
+from aurelius.execution.shadow_runner import ShadowResult, ShadowRunner
+from aurelius.ingestion.workload_traces import load_workload_csv
 from aurelius.models import (
-    Job,
-    OptimizationConfig,
-    ScheduleDecision,
     WORKLOAD_DEFAULT_INTERRUPTIBLE,
     WORKLOAD_DEFAULT_MAX_DELAY_HOURS,
     WORKLOAD_DEFAULT_SLA_CLASS,
+    Job,
+    OptimizationConfig,
+    ScheduleDecision,
 )
+from aurelius.optimization.objective import ObjectiveFunction
 from aurelius.simulation.workload_simulator import WorkloadSimulator
-from aurelius.ingestion.workload_traces import load_workload_csv
-from aurelius.optimization.objective import ObjectiveFunction, ObjectiveComponents
-from aurelius.execution.shadow_runner import ShadowRunner, ShadowResult
-
 
 # ── Fixtures ──────────────────────────────────────────────────────────────────
 

@@ -65,8 +65,8 @@ def _validate_df(df: pd.DataFrame) -> None:
 
 
 def run_day_ahead(start_str: str, end_str: str) -> None:
-    from aurelius.ingestion.grid_apis.pjm import PJMPriceProvider
     from aurelius.ingestion.grid_apis.base import ProviderConfigError
+    from aurelius.ingestion.grid_apis.pjm import PJMPriceProvider
 
     if not os.environ.get("PJM_API_KEY", "").strip():
         print("ERROR: PJM_API_KEY env var is not set.", file=sys.stderr)
@@ -78,7 +78,7 @@ def run_day_ahead(start_str: str, end_str: str) -> None:
     end = datetime.fromisoformat(end_str).replace(tzinfo=timezone.utc)
 
     print(f"\n[PJM DAM] Fetching day-ahead LMP for us-east, {start_str} → {end_str}")
-    print(f"  Endpoint: https://api.pjm.com/api/v1/da_hrl_lmps  pnode_id=1 (Western Hub)")
+    print("  Endpoint: https://api.pjm.com/api/v1/da_hrl_lmps  pnode_id=1 (Western Hub)")
 
     provider = PJMPriceProvider()
     try:
