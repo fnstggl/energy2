@@ -363,7 +363,7 @@ def run_single_benchmark(
     # - ml_quantile_weather: joint model with all-region weather features
     # - ml_quantile_perregion: per-region model; weather applied selectively
     #   (ERCOT/us-south gets weather; CAISO/PJM remain price-only)
-    # - plain ml_quantile: price-only v2.0, no weather (preserve baseline)
+    # - plain ml_quantile / ml_quantile_recovery: price-only v2.0, no weather
     weather_df_loaded: pd.DataFrame = pd.DataFrame()
     use_weather = forecaster in ("ml_quantile_weather", "ml_quantile_perregion")
     if use_weather:
@@ -412,8 +412,9 @@ def run_single_benchmark(
     # Wire ML forecaster if requested; fall back gracefully if unavailable
     price_forecaster_cls = None
     price_forecaster_config = None
+    apply_recovery_correction = False
     effective_forecaster = forecaster
-    if forecaster in ("ml_quantile", "ml_quantile_weather"):
+    if forecaster in ("ml_quantile", "ml_quantile_weather", "ml_quantile_recovery"):
         PriceQuantileForecaster, PriceModelConfig = _get_ml_forecaster_cls()
         if PriceQuantileForecaster is not None:
             price_forecaster_cls = PriceQuantileForecaster
@@ -431,6 +432,9 @@ def run_single_benchmark(
         else:
             print("  WARNING: ml_quantile unavailable, falling back to seasonal_naive")
             effective_forecaster = "seasonal_naive"
+        # ml_quantile_recovery = v2.0 + regime-aware recovery correction
+        if forecaster == "ml_quantile_recovery" and price_forecaster_cls is not None:
+            apply_recovery_correction = True
     elif forecaster == "ml_quantile_v5":
         # v5.0: price rank/percentile features + lag_336h (bi-weekly lag)
         PriceQuantileForecaster, PriceModelConfig = _get_ml_forecaster_cls()
@@ -556,6 +560,7 @@ def run_single_benchmark(
         weather_df=weather_df_loaded if not weather_df_loaded.empty else None,
         queue_df=queue_df_loaded,
         gpu_df=gpu_df_loaded,
+        apply_recovery_correction=apply_recovery_correction,
     )
     if oracle:
         engine.oracle_forecast = True
@@ -604,7 +609,8 @@ def run_single_benchmark(
 
     # Collect per-fold forecast quality if ML mode was used
     forecast_quality_summary = None
-    if effective_forecaster in ("ml_quantile", "ml_quantile_perregion", "ml_quantile_v5"):
+    if effective_forecaster in ("ml_quantile", "ml_quantile_perregion", "ml_quantile_v5",
+                                 "ml_quantile_recovery"):
         fq_records = [r.forecast_quality.to_dict() for r in rounds if r.forecast_quality is not None]
         if fq_records:
             import math
@@ -724,14 +730,16 @@ def parse_args() -> argparse.Namespace:
                    help="Optimizer method")
     p.add_argument("--forecaster", default="seasonal_naive",
                    choices=["seasonal_naive", "ml_quantile", "ml_quantile_weather",
-                            "ml_quantile_perregion", "ml_quantile_v5"],
+                            "ml_quantile_perregion", "ml_quantile_v5", "ml_quantile_recovery"],
                    help="Forecasting method: 'seasonal_naive' (default, no ML), "
                         "'ml_quantile' (LightGBM v2.0 — volatility features, preserved baseline), "
                         "'ml_quantile_weather' (joint model + weather features), "
                         "'ml_quantile_perregion' (one model per region; ERCOT gets weather, "
                         "CAISO/PJM price-only — eliminates cross-region feature stealing), "
                         "'ml_quantile_v5' (v5.0 — adds price rank features + lag_336h for "
-                        "better cheap-regime routing). "
+                        "better cheap-regime routing), "
+                        "'ml_quantile_recovery' (v2.0 + regime-aware recovery correction: "
+                        "reduces forecast bias when recent prices << training mean). "
                         "NEVER mix oracle with ml_quantile for savings claims.")
     p.add_argument("--carbon-file", default=None,
                    help="Path to carbon CSV (relative to repo root). If omitted, auto-detects "

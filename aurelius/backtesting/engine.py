@@ -232,6 +232,7 @@ class BacktestEngine:
         weather_df: Optional[Any] = None,  # pd.DataFrame with canonical weather schema
         queue_df: Optional[Any] = None,    # pd.DataFrame with canonical queue schema
         gpu_df: Optional[Any] = None,      # pd.DataFrame with canonical GPU metric schema
+        apply_recovery_correction: bool = False,  # enable regime-aware forecast correction
     ) -> None:
         self.method = method
         self.config = config or OptimizationConfig()
@@ -303,6 +304,13 @@ class BacktestEngine:
         # Leakage-safe: only snapshots with timestamp < eval_start are used.
         # None = GPU-health-unaware mode.
         self.gpu_df = gpu_df
+
+        # When True, apply regime-aware forecast correction after ML prediction.
+        # Detects post-spike recovery (recent prices << training mean) and reduces
+        # the forecast bias toward recently observed prices with exponential decay.
+        # Only activates when recent_mean / training_mean < 0.40 per region.
+        # Has no effect when price_forecaster_cls is None (seasonal-naive path).
+        self.apply_recovery_correction = apply_recovery_correction
 
     @property
     def uses_ml_forecaster(self) -> bool:
@@ -842,6 +850,16 @@ class BacktestEngine:
                     split.eval_start, split.eval_end
                 )
                 forecast_price_data[region] = naive.get(region, {})
+
+        # Apply regime-aware recovery correction (opt-in, ML mode only).
+        # Reduces forecast bias when a region is in post-spike recovery:
+        # recent_mean / training_mean < 0.40 triggers per-region correction.
+        if self.apply_recovery_correction and forecast_price_data:
+            from aurelius.forecasting.regime import RegimeDetector
+            detector = RegimeDetector()
+            forecast_price_data = detector.apply_corrections_to_forecast(
+                forecast_price_data, train_price_data, recent_context
+            )
 
         # Carbon forecasting (if class provided; otherwise fallback to naive)
         forecast_carbon_data: dict[str, dict[datetime, float]] = {}
