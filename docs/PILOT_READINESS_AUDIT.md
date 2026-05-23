@@ -23,10 +23,11 @@ phase. Each item is rated:
 
 **Status: PASS**
 
-- 917 tests passing, 0 failing, 5 skipped
-- Skipped: 4 live API tests (require real credentials, skipped cleanly) + 1 live Prometheus test
-- No regressions introduced by any recent phase
-- Run command: `python -m pytest tests/ --tb=short`
+- 1236 tests passing, 0 failing, 1 skipped (re-measured 2026-05-23, live tests excluded)
+- (Prior doc claimed "917 tests" — that figure was stale and understated.)
+- Live API tests under `tests/live/` are excluded by default (require real credentials)
+- No regressions introduced by the audit fixes (+19 new DB store tests)
+- Run command: `python -m pytest tests/ --tb=short --ignore=tests/live`
 
 ---
 
@@ -793,6 +794,43 @@ correct p10<p50<p90 ordering, CLI error handling, JSON serialization.
 **Week 5-6:** Compare predicted decisions vs realized prices; compute savings
 **Month 2:** Deploy with actual workload routing (starting with flexible workloads)
 **Month 3:** Full multi-workload production rollout with safety gate active
+
+---
+
+## 21. Data Collection / Continuous Learning Status
+
+**Status: PARTIAL — collection backbone implemented; learning loop not yet closed.**
+
+See `docs/DATA_MOAT_ARCHITECTURE.md` and `docs/FULL_SYSTEM_AUDIT.md` for detail.
+
+What now exists (added 2026-05-23):
+- Append-only, customer-isolated event tables in the SQLAlchemy `TimeSeriesStore`
+  (Postgres/SQLite, no-op when `DATABASE_URL` unset):
+  - `decision_events` — every optimizer decision (scoped by customer_id/pilot_id/
+    run_id; carries forecaster/optimizer version + `data_source_hash` for
+    reproducibility; has gate_status/gate_reason columns).
+  - `realized_outcomes` — realized RT price/cost/savings + SLA met per decision.
+  - `telemetry_snapshots` — generic queue / GPU-DCGM snapshot table.
+- `shadow run` / `shadow realize` persist to the store when `DATABASE_URL` is set
+  (`--customer-id` / `--pilot-id`); JSONL remains the always-on record.
+- The daily learning loop reads realized outcomes back from the store
+  (mean realized savings, mean |forecast error| pp).
+
+Honest gaps (do NOT claim "data moat complete"):
+- **Realized outcomes do not yet drive model selection** — the loop reports them
+  but promotion still uses an unsound in-engine-vs-stored-scalar comparison.
+- Safety-gate decisions are not recorded (gate not wired into the decision path).
+- No live queue/GPU telemetry writer; no object storage for model artifacts/raw
+  pulls; no retention policy or schema migrations (Alembic) yet.
+- Real customer/pilot data must never be committed to the repo — only schemas,
+  migrations, fixtures, sample traces, and docs.
+
+Verification:
+```bash
+DATABASE_URL=sqlite:///./aurelius.db python -c \
+  "from aurelius.database import TimeSeriesStore; s=TimeSeriesStore(); print(s.row_counts()); s.close()"
+python -m pytest tests/test_database_store.py -q   # 71 tests, SQLite-backed
+```
 
 ---
 

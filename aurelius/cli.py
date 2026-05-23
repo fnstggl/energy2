@@ -26,6 +26,7 @@ import logging
 import sys
 from datetime import datetime
 from pathlib import Path
+from typing import Optional
 
 logging.basicConfig(
     level=logging.INFO,
@@ -593,6 +594,57 @@ def cmd_backtest(args):
         print(f"Results saved to: {output_path}")
 
 
+def _file_hash(path: str) -> Optional[str]:
+    """Return a short sha256 of a file's contents (for decision reproducibility)."""
+    import hashlib
+    from pathlib import Path
+
+    try:
+        data = Path(path).read_bytes()
+    except OSError:
+        return None
+    return hashlib.sha256(data).hexdigest()[:16]
+
+
+def _persist_shadow_decisions_to_db(records, customer_id, pilot_id, data_source):
+    """Persist shadow decisions to the TimeSeriesStore. No-op when DB disabled."""
+    try:
+        from .database import TimeSeriesStore
+    except ImportError:
+        return ""
+    store = TimeSeriesStore()
+    if not store.enabled:
+        return ""
+    try:
+        n = store.record_decisions(
+            records,
+            customer_id=customer_id,
+            pilot_id=pilot_id,
+            data_source_hash=_file_hash(data_source),
+        )
+        return f"DB: persisted {n} decisions (customer={customer_id}, pilot={pilot_id})"
+    finally:
+        store.close()
+
+
+def _persist_shadow_realized_to_db(records, customer_id, pilot_id):
+    """Persist realized outcomes to the TimeSeriesStore. No-op when DB disabled."""
+    try:
+        from .database import TimeSeriesStore
+    except ImportError:
+        return ""
+    store = TimeSeriesStore()
+    if not store.enabled:
+        return ""
+    try:
+        n = store.record_realized_outcomes(
+            records, customer_id=customer_id, pilot_id=pilot_id
+        )
+        return f"DB: persisted {n} realized outcomes (customer={customer_id}, pilot={pilot_id})"
+    finally:
+        store.close()
+
+
 def cmd_shadow_run(args):
     """Run shadow mode: make optimizer decisions without executing workloads."""
     from pathlib import Path
@@ -631,7 +683,7 @@ def cmd_shadow_run(args):
 
     # Load or generate jobs
     if args.jobs_file:
-        ingester = JobLogIngester(regions=regions)
+        ingester = JobLogIngester()
         jobs = ingester.load_from_file(args.jobs_file)
         if not jobs:
             print(f"ERROR: No jobs loaded from {args.jobs_file}", file=sys.stderr)
@@ -690,6 +742,14 @@ def cmd_shadow_run(args):
     recorder = DecisionRecorder(output_path=decisions_path)
     recorder.save(records)
 
+    # Durable persistence (no-op unless DATABASE_URL is set)
+    db_msg = _persist_shadow_decisions_to_db(
+        records,
+        customer_id=getattr(args, "customer_id", "unknown"),
+        pilot_id=getattr(args, "pilot_id", "unknown"),
+        data_source=args.price_file,
+    )
+
     # Print summary
     pred_savings = sum(r.predicted_savings_pct for r in records) / len(records)
     print("\nSHADOW RUN COMPLETE")
@@ -697,6 +757,8 @@ def cmd_shadow_run(args):
     print(f"  Jobs decided:        {len(records)}")
     print(f"  Mean predicted saving (vs CPO): {pred_savings:.1f}%")
     print(f"  Decisions saved to:  {decisions_path}")
+    if db_msg:
+        print(f"  {db_msg}")
     print("\nNext steps:")
     print("  1. Wait until scheduled jobs have run (7-14 days for RT prices to settle).")
     print("  2. Run: python -m aurelius.cli shadow realize \\")
@@ -739,11 +801,20 @@ def cmd_shadow_realize(args):
         out_path = decisions_path.parent / f"{stem}.jsonl"
 
     recorder.save_updated(realized_records, path=out_path)
+
+    db_msg = _persist_shadow_realized_to_db(
+        realized_records,
+        customer_id=getattr(args, "customer_id", "unknown"),
+        pilot_id=getattr(args, "pilot_id", "unknown"),
+    )
+
     print("\nREALIZATION COMPLETE")
     print(f"  Records processed:  {len(realized_records)}")
     print(f"  Records realized:   {n_realized}")
     print(f"  Records pending:    {n_pending} (RT data not available)")
     print(f"  Output saved to:    {out_path}")
+    if db_msg:
+        print(f"  {db_msg}")
     if n_realized > 0:
         realized = [r for r in realized_records if r.is_realized]
         mean_real = sum(r.realized_savings_pct for r in realized) / len(realized)
@@ -1328,6 +1399,14 @@ def main():
         "--output-dir", default=None,
         help="Directory for decisions JSONL output (default: reports/shadow/)",
     )
+    sr_parser.add_argument(
+        "--customer-id", default="unknown",
+        help="Customer identifier for DB persistence / pilot isolation (default: unknown)",
+    )
+    sr_parser.add_argument(
+        "--pilot-id", default="unknown",
+        help="Pilot/engagement identifier for DB persistence (default: unknown)",
+    )
 
     # shadow realize
     srz_parser = shadow_subparsers.add_parser(
@@ -1348,6 +1427,14 @@ def main():
     srz_parser.add_argument(
         "--output-file", default=None,
         help="Output JSONL path (default: realized_<timestamp>.jsonl in same dir)",
+    )
+    srz_parser.add_argument(
+        "--customer-id", default="unknown",
+        help="Customer identifier for DB persistence / pilot isolation (default: unknown)",
+    )
+    srz_parser.add_argument(
+        "--pilot-id", default="unknown",
+        help="Pilot/engagement identifier for DB persistence (default: unknown)",
     )
 
     # shadow report

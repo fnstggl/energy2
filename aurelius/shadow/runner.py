@@ -328,28 +328,29 @@ class LiveShadowRunner:
             # Build context from the tail of training data
             context_start = decision_time - timedelta(hours=self.context_hours)
             context_mask = (
-                (train_df["timestamp"] >= pd.Timestamp(context_start, tz="UTC"))
+                (train_df["timestamp"] >= _to_utc_ts(context_start))
             )
             context_df = train_df[context_mask]
             context_records = _df_to_price_records(context_df)
             if not context_records:
                 context_records = train_records[-min(self.context_hours, len(train_records)):]
 
-            forecast_start = decision_time
-            forecast_end = decision_time + timedelta(hours=len(forecast_hours))
-
-            predictions = forecaster.predict(
-                recent_context=context_records,
-                forecast_start=forecast_start,
-                forecast_end=forecast_end,
-            )
+            forecast_timestamps = [
+                (decision_time + timedelta(hours=h)).replace(
+                    minute=0, second=0, microsecond=0
+                )
+                for h in forecast_hours
+            ]
 
             forecast: dict[str, dict[datetime, float]] = {}
-            for pred in predictions:
-                ts = pred.timestamp.replace(minute=0, second=0, microsecond=0)
-                if ts.tzinfo is None:
-                    ts = ts.replace(tzinfo=timezone.utc)
-                forecast.setdefault(pred.region, {})[ts] = float(pred.p50)
+            for region in effective_regions:
+                region_context = [r for r in context_records if r.region == region]
+                preds = forecaster.predict(region, forecast_timestamps, region_context)
+                for pred in preds:
+                    ts = pred.timestamp.replace(minute=0, second=0, microsecond=0)
+                    if ts.tzinfo is None:
+                        ts = ts.replace(tzinfo=timezone.utc)
+                    forecast.setdefault(pred.region, {})[ts] = float(pred.p50)
 
             # Fill any gaps with naive fallback
             if len(forecast) < len(effective_regions):

@@ -53,15 +53,17 @@ from typing import Optional
 
 import pandas as pd
 
+# Project root so imports work when running as a script (must precede any
+# aurelius.* import below — running `python scripts/...` only puts the script
+# directory on sys.path, not the repo root).
+_ROOT = Path(__file__).parent.parent
+sys.path.insert(0, str(_ROOT))
+
 # TimeSeriesStore is optional — graceful no-op when DATABASE_URL is not set
 try:
     from aurelius.database import TimeSeriesStore as _TimeSeriesStore
 except ImportError:
     _TimeSeriesStore = None  # type: ignore[assignment,misc]
-
-# Project root so imports work when running as a script
-_ROOT = Path(__file__).parent.parent
-sys.path.insert(0, str(_ROOT))
 
 logging.basicConfig(
     level=logging.INFO,
@@ -225,6 +227,33 @@ def append_to_store(
 # Step 3: Run evaluation on recent data
 # ---------------------------------------------------------------------------
 
+def _mean_savings_vs_cpo(rounds: list) -> Optional[float]:
+    """Compute mean fractional savings vs current_price_only across folds.
+
+    Aggregates optimizer vs current_price_only baseline energy cost over all
+    folds in a BacktestEngine.run() result. Returns a fraction (e.g. 0.25 for
+    25%), or None when no comparable folds are present.
+    """
+    cpo = "current_price_only"
+    opt_costs = [
+        r.optimizer_metrics.total_energy_cost_usd
+        for r in rounds
+        if r.optimizer_metrics is not None
+    ]
+    bl_costs = [
+        r.baseline_metrics[cpo].total_energy_cost_usd
+        for r in rounds
+        if cpo in r.baseline_metrics
+    ]
+    if not opt_costs or not bl_costs:
+        return None
+    mean_opt = sum(opt_costs) / len(opt_costs)
+    mean_bl = sum(bl_costs) / len(bl_costs)
+    if mean_bl <= 0:
+        return None
+    return (mean_bl - mean_opt) / mean_bl
+
+
 def run_evaluation(
     price_df: pd.DataFrame,
     regions: list[str],
@@ -255,23 +284,22 @@ def run_evaluation(
 
         from aurelius.backtesting.engine import BacktestEngine
         from aurelius.forecasting.price_model import PriceModelConfig, PriceQuantileForecaster
+        from aurelius.ingestion.grid_apis.base import empty_carbon_df
         from aurelius.ingestion.job_logs import JobLogIngester
         from aurelius.models import OptimizationConfig
 
         warnings.filterwarnings("ignore", category=UserWarning)
 
         engine = BacktestEngine(
-            price_df=price_df,
-            regions=regions,
+            method="greedy",
             train_days=train_days,
             eval_days=eval_days,
-            n_folds=3,
-            method="greedy",
             config=OptimizationConfig(),
-            forecaster_cls=PriceQuantileForecaster,
-            forecaster_config=PriceModelConfig(
+            price_forecaster_cls=PriceQuantileForecaster,
+            price_forecaster_config=PriceModelConfig(
                 seed=42, n_estimators=100, num_leaves=31
             ),
+            context_hours=336,
         )
         ingester = JobLogIngester()
         jobs = ingester.generate_synthetic(
@@ -283,20 +311,14 @@ def run_evaluation(
             workload_mix="realistic",
         )
 
-        result = engine.run(jobs)
-
-        savings_mean = None
-        if result.savings_vs_current_price:
-            savings_mean = sum(result.savings_vs_current_price.values()) / len(
-                result.savings_vs_current_price
-            )
+        rounds = engine.run(jobs, price_df, carbon_df=empty_carbon_df())
+        savings_mean = _mean_savings_vs_cpo(rounds)
 
         return {
             "status": "ok",
             "savings_vs_cpo_mean": savings_mean,
-            "savings_by_workload": result.savings_vs_current_price or {},
-            "n_folds": result.n_folds,
-            "n_jobs_evaluated": len(result.jobs_evaluated) if hasattr(result, "jobs_evaluated") else None,
+            "n_folds": len(rounds),
+            "n_jobs_evaluated": sum(len(r.eval_jobs) for r in rounds),
             "evaluated_at": datetime.now(tz=timezone.utc).isoformat(),
         }
     except Exception as exc:
@@ -484,6 +506,7 @@ def run_benchmark_smoke_test(data_dir: Path) -> dict:
 
         from aurelius.backtesting.engine import BacktestEngine
         from aurelius.forecasting.price_model import PriceModelConfig, PriceQuantileForecaster
+        from aurelius.ingestion.grid_apis.base import empty_carbon_df
         from aurelius.ingestion.grid_apis.csv_importer import CSVPriceImporter
         from aurelius.ingestion.job_logs import JobLogIngester
         from aurelius.models import OptimizationConfig
@@ -495,39 +518,34 @@ def run_benchmark_smoke_test(data_dir: Path) -> dict:
         price_df = price_df[price_df["region"].isin(regions)]
 
         engine = BacktestEngine(
-            price_df=price_df,
-            regions=regions,
+            method="greedy",
             train_days=30,
             eval_days=7,
-            n_folds=3,
-            method="greedy",
             config=OptimizationConfig(),
-            forecaster_cls=PriceQuantileForecaster,
-            forecaster_config=PriceModelConfig(seed=42, n_estimators=50, num_leaves=31),
+            price_forecaster_cls=PriceQuantileForecaster,
+            price_forecaster_config=PriceModelConfig(seed=42, n_estimators=50, num_leaves=31),
+            context_hours=336,
         )
+        ts_min = pd.to_datetime(price_df["timestamp"].min(), utc=True)
+        ts_max = pd.to_datetime(price_df["timestamp"].max(), utc=True)
+        span_hours = int((ts_max - ts_min).total_seconds() / 3600)
         ingester = JobLogIngester()
         jobs = ingester.generate_synthetic(
             num_jobs=30,
-            start_time=pd.to_datetime(price_df["timestamp"].min(), utc=True).to_pydatetime(),
-            duration_hours=int(len(price_df["timestamp"].unique()) / len(regions)),
+            start_time=ts_min.to_pydatetime(),
+            duration_hours=span_hours,
             regions=regions,
             seed=42,
             workload_mix="realistic",
         )
 
-        result = engine.run(jobs)
-
-        savings_mean = None
-        if result.savings_vs_current_price:
-            savings_mean = (
-                sum(result.savings_vs_current_price.values())
-                / len(result.savings_vs_current_price)
-            )
+        rounds = engine.run(jobs, price_df, carbon_df=empty_carbon_df())
+        savings_mean = _mean_savings_vs_cpo(rounds)
 
         return {
             "status": "ok",
             "savings_vs_cpo_mean": savings_mean,
-            "n_folds": result.n_folds,
+            "n_folds": len(rounds),
         }
     except Exception as exc:
         logger.error(f"Benchmark smoke test failed: {exc}")
@@ -547,6 +565,7 @@ def generate_report(
     smoke_test: dict,
     reports_dir: Path,
     dry_run: bool,
+    outcomes_summary: Optional[dict] = None,
 ) -> dict:
     """Compose the daily learning loop report and save it."""
     report = {
@@ -561,6 +580,7 @@ def generate_report(
         "model_comparison": comparison,
         "promoted": comparison.get("promote", False),
         "benchmark_smoke_test": smoke_test,
+        "realized_outcomes_feedback": outcomes_summary or {"status": "skipped"},
         "generated_at": datetime.now(tz=timezone.utc).isoformat(),
     }
 
@@ -605,6 +625,54 @@ def _persist_prices_to_db(
     if total:
         logger.info(f"DB: total {total} price rows upserted")
     store.close()
+
+
+def read_realized_outcomes_summary(db_url: Optional[str] = None) -> dict:
+    """Read historical realized outcomes from the store and summarise feedback.
+
+    This is the loop's read-back of the data moat: realized pilot/shadow
+    outcomes (predicted vs realized savings) recorded by shadow mode. Returns
+    a summary dict; no-op friendly when the store is disabled.
+    """
+    if _TimeSeriesStore is None:
+        return {"status": "store_unavailable"}
+    url = db_url or os.environ.get("DATABASE_URL", "")
+    if not url:
+        return {"status": "disabled"}
+    store = _TimeSeriesStore(url)
+    if not store.enabled:
+        return {"status": "disabled"}
+    try:
+        rows = store.get_realized_outcomes(limit=5000)
+    finally:
+        store.close()
+
+    if not rows:
+        return {"status": "ok", "n_outcomes": 0}
+
+    realized = [r["realized_savings_pct"] for r in rows if r.get("realized_savings_pct") is not None]
+    deltas = [
+        r["realized_savings_pct"] - r["predicted_savings_pct"]
+        for r in rows
+        if r.get("realized_savings_pct") is not None and r.get("predicted_savings_pct") is not None
+    ]
+    summary = {
+        "status": "ok",
+        "n_outcomes": len(rows),
+        "mean_realized_savings_pct": (sum(realized) / len(realized)) if realized else None,
+        "mean_forecast_error_pp": (
+            sum(abs(d) for d in deltas) / len(deltas) if deltas else None
+        ),
+        "customers": sorted({r.get("customer_id", "unknown") for r in rows}),
+    }
+    logger.info(
+        "Realized-outcome feedback: %d outcomes, mean realized savings=%s, "
+        "mean |forecast error|=%s pp",
+        summary["n_outcomes"],
+        f"{summary['mean_realized_savings_pct']:.1f}%" if summary["mean_realized_savings_pct"] is not None else "n/a",
+        f"{summary['mean_forecast_error_pp']:.1f}" if summary["mean_forecast_error_pp"] is not None else "n/a",
+    )
+    return summary
 
 
 def _persist_benchmark_to_db(
@@ -748,6 +816,11 @@ def main() -> None:
     if not args.dry_run:
         _persist_benchmark_to_db(smoke_test, run_id=run_id_str)
 
+    # Step 7b: Read historical realized outcomes back from the store (data moat
+    # feedback). No-op when DATABASE_URL is unset.
+    logger.info("Step 7b: Reading realized-outcome feedback from store...")
+    outcomes_summary = read_realized_outcomes_summary()
+
     # Step 8: Generate report
     logger.info("Step 8: Generating report...")
     report = generate_report(
@@ -759,6 +832,7 @@ def main() -> None:
         smoke_test=smoke_test,
         reports_dir=args.reports_dir,
         dry_run=args.dry_run,
+        outcomes_summary=outcomes_summary,
     )
 
     elapsed = (datetime.now(tz=timezone.utc) - loop_start).total_seconds()
