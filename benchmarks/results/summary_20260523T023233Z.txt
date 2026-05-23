@@ -1,0 +1,7 @@
+Aurelius Benchmark Summary — 20260523T023233Z
+Primary baseline: current_price_only
+Method: greedy_migrate
+
+llm_batch_inference@caiso_pjm_ercot_da_rt: 33.0% vs current_price_only  (folds=7)
+
+Mean: 33.0%  Min: 33.0%  Max: 33.0%

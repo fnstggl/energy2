@@ -1,0 +1,7 @@
+Aurelius Benchmark Summary — 20260523T023148Z
+Primary baseline: current_price_only
+Method: greedy_migrate
+
+training@caiso_pjm_ercot_da_rt: -5.8% vs current_price_only  (folds=7)
+
+Mean: -5.8%  Min: -5.8%  Max: -5.8%
