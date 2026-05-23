@@ -1595,11 +1595,154 @@ Why:
   Aurelius in a pilot environment
 
 What enterprise blocker remains:
-  Live shadow mode — the buyer needs to see that the optimizer makes correct
-  decisions against their LIVE data, not just historical data. Without this,
-  the sales cycle requires trust in historical backtesting alone.
+  Live shadow mode — RESOLVED in this run (see Phase 7 below).
 
-What should be built next to remove that blocker:
-  ROADMAP PHASE 7 — PRODUCTION SHADOW VALIDATION
-  Implement LiveShadowRunner, DecisionRecorder, and RealizedSavingsCalculator.
-  This closes the last Tier 1 pilot readiness gap.
+What should be built next to remove remaining blockers:
+  1. ENTSO-E connector (EU expansion — requires ENTSOE_API_KEY)
+  2. ROI methodology document (formal $/saved/month calculator for buyer)
+  3. Database persistence (Postgres/TimescaleDB for multi-instance deployment)
+
+===============================================================================
+ROADMAP PHASE 7 — PRODUCTION SHADOW VALIDATION
+===============================================================================
+
+Status: COMPLETE (2026-05-23)
+Branch: claude/youthful-feynman-IcXs0
+
+Summary:
+  Full production shadow mode implemented and tested (59 new tests). Closes
+  the last Tier 1 pilot readiness gap identified in PILOT_READINESS_AUDIT.md.
+  The complete 3-step workflow enables live pilot validation without executing
+  any real workloads.
+
+What was implemented:
+
+  1. aurelius/shadow/__init__.py — module exports
+
+  2. aurelius/shadow/models.py — DecisionRecord:
+     - One record per scheduled job in a shadow run
+     - Predicted fields (decision_time, scheduled_region, start, forecast_price,
+       predicted_cost, baseline_cost, predicted_savings_pct) filled at decision time
+     - Realized fields (realized_rt_price, realized_energy_cost, realized_savings_pct)
+       all None at decision time, filled later by RealizedSavingsCalculator
+     - Serializable: to_dict()/to_json()/from_dict()/from_json() round-trip
+     - Properties: is_realized, savings_delta (predicted vs realized diff in pp)
+
+  3. aurelius/shadow/recorder.py — DecisionRecorder:
+     - JSONL persistence (append-safe, streaming-readable, human-inspectable)
+     - save(records, path, mode="a"): append records to JSONL
+     - load(path): deserialize all records (skips malformed lines with warning)
+     - mark_realized(records, updates): apply realized fields from dict
+     - save_updated(records, path): overwrite file with current state
+
+  4. aurelius/shadow/runner.py — LiveShadowRunner:
+     - Makes optimizer decisions as if running live (single-fold, not multi-fold)
+     - Leakage invariant: only trains on price_df rows with timestamp < decision_time
+     - RT prices are NEVER used at decision time
+     - Supports both seasonal_naive and ML forecaster modes
+     - Runs current_price_only baseline alongside optimizer
+     - Returns list[DecisionRecord] with realized fields = None
+     - decision_time defaults to last price timestamp + 1h if not specified
+     - Graceful fallback to naive forecast if ML forecaster fails
+
+  5. aurelius/shadow/realizer.py — RealizedSavingsCalculator:
+     - Fills in realized_ fields from actual RT settlement prices
+     - Computes realized_energy_cost (hourly window × RT price × power_kw)
+     - Computes realized_baseline_cost (same runtime at baseline region/time)
+     - Computes realized_savings_pct = (1 - opt/base) × 100
+     - Graceful handling: missing RT data sets realization_note="missing_rt_price"
+     - Allows up to 50% missing hours in a job window (real-world tolerance)
+     - skip_realized=True: does not overwrite already-realized records
+
+  6. aurelius/shadow/report.py — ShadowReport:
+     - Aggregates list[DecisionRecord] into human-readable + machine-readable report
+     - Summary: n_jobs, n_realized, n_pending, mean predicted/realized savings
+     - Forecast accuracy: MAE ($/MWh) and MAPE (%) of DA forecast vs actual RT
+     - savings_delta_pp: realized - predicted (positive = optimizer conservative = good)
+     - Per-workload-type breakdown (WorkloadBreakdown dataclass)
+     - to_dict() + to_text() + save(output_dir) → JSON + TXT files
+     - Works with partial realization (shows PENDING for unrealized records)
+
+  7. aurelius/cli.py — shadow subcommand:
+     - shadow run: train on history, forecast, optimize, save decisions JSONL
+       Options: --price-file, --regions, --jobs-file/--num-jobs, --carbon-file,
+                --train-days, --horizon-hours, --forecaster, --decision-time,
+                --output-dir
+     - shadow realize: fill in actual RT prices for pending decisions
+       Options: --decisions-file, --rt-price-file, --output-file
+     - shadow report: generate JSON + TXT comparison report
+       Options: --decisions-file, --output-dir
+
+Adversarial findings (all verified correct):
+  ✓ No future prices leak into training (ts >= decision_time filtered out)
+  ✓ RT prices never visible at decision time (separate Realizer step)
+  ✓ Missing RT data → realization_note="missing_rt_price" (no crash)
+  ✓ Empty price_df/jobs → returns [] (no crash)
+  ✓ No training data before decision_time → returns [] (no crash)
+  ✓ Savings math: opt_cost/base_cost ratio verified against manual calculation
+  ✓ JSON round-trip preserves all fields including naive datetime → UTC attach
+  ✓ JSONL append-safe (multiple runs can write to same archive)
+  ✓ CLI shadow run → realize → report end-to-end tested manually
+
+Tests: 59 new tests in tests/test_shadow_mode.py (all passing)
+  - TestDecisionRecord (10): construction, serialization, round-trip
+  - TestDecisionRecorder (9): save, load, append, overwrite, mark_realized
+  - TestLiveShadowRunner (14): basic run, leakage invariant, no-training-data,
+    empty inputs, default decision_time, ml_forecaster, single_region, carbon
+  - TestRealizedSavingsCalculator (9): positive/negative savings, missing data,
+    skip_realized, math verification, formula check
+  - TestShadowReport (12): empty, all-pending, all-realized, partial, delta,
+    dict/text/save, by-workload, forecast accuracy
+  - TestShadowEndToEnd (3): full pipeline, predicted savings plausible, realized plausible
+
+Full test suite: 953 → 1012 passed (after Phase 7 merge), 5 skipped, 0 regressions
+
+Pilot readiness audit impact:
+  Section 7 (Shadow Mode Dry Run): PARTIAL → PASS
+  Overall verdict: CONDITIONAL PASS → PASS
+
+Enterprise contract readiness impact:
+  The last Tier 1 pilot blocker is resolved. A buyer can now:
+  1. Provide their workload trace CSV
+  2. Run shadow mode to see optimizer decisions
+  3. Wait 7-14 days
+  4. Load RT settlement CSV to see realized savings
+  5. Review the comparison report
+
+Next exact task:
+  Option A: ENTSO-E connector — EU market expansion (requires ENTSOE_API_KEY)
+  Option B: ROI methodology document — formal $/saved/month calculator
+  Option C: Database persistence — Postgres/TimescaleDB for multi-instance pilots
+  Option D: Hyperparameter tuning / cross-region calibration layer for per-region forecaster
+  Recommended: Option B (ROI methodology) — highest direct impact on contract signing
+
+===============================================================================
+ENTERPRISE CONTRACT READINESS NOTE (2026-05-23)
+===============================================================================
+
+Does this run make Aurelius more contract-ready? YES — significantly.
+
+Why:
+  The live shadow mode was the last remaining blocker identified in the
+  PILOT_READINESS_AUDIT. With shadow run + realize + report implemented:
+  - A buyer can run shadow mode on their actual job trace and energy data
+  - After 7-14 days they see predicted vs realized savings for their specific
+    environment (not just historical backtesting numbers)
+  - This is the first pilot-grade economic evidence Aurelius can produce for
+    a prospective enterprise customer
+  - The PILOT_READINESS_AUDIT overall verdict upgrades from CONDITIONAL PASS
+    to PASS for Tier 1 (region/time optimization) pilots
+
+What enterprise blocker remains:
+  1. ENTSO-E connector — EU enterprise customers can't be served
+  2. ROI methodology document — buyers need a formal $/saved/month calculation
+     they can show to their CFO/procurement team
+  3. Database persistence — needed for multi-node/multi-instance production
+  4. SOC2/security posture — enterprise procurement often requires this
+
+What should be built next to remove the most impactful blocker:
+  ROI Methodology Document:
+    - Input: customer GPU cost/month, workload trace, region
+    - Output: projected savings/month, savings/year, payback period
+    - Methodology: apply proven 25% mean savings to customer's actual costs
+    - This is a 1-2 day implementation but high leverage for contract signing

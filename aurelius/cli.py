@@ -591,6 +591,188 @@ def cmd_backtest(args):
         print(f"Results saved to: {output_path}")
 
 
+def cmd_shadow_run(args):
+    """Run shadow mode: make optimizer decisions without executing workloads."""
+    import pandas as pd
+    from pathlib import Path
+    from .shadow import LiveShadowRunner, DecisionRecorder
+    from .models import OptimizationConfig
+    from .ingestion.job_logs import JobLogIngester
+
+    regions = [r.strip() for r in args.regions.split(",")]
+    output_dir = Path(args.output_dir) if args.output_dir else Path("reports/shadow")
+    output_dir.mkdir(parents=True, exist_ok=True)
+
+    # Load DA price data
+    from .ingestion.grid_apis.csv_importer import CSVPriceImporter
+    price_df = CSVPriceImporter(args.price_file).load_all()
+    if price_df.empty:
+        print(f"ERROR: No price data loaded from {args.price_file}", file=sys.stderr)
+        sys.exit(1)
+    price_df = price_df[price_df["region"].isin(regions)]
+
+    # Load carbon data (optional)
+    carbon_df = None
+    if args.carbon_file:
+        from .ingestion.grid_apis.csv_importer import CSVCarbonImporter
+        carbon_df = CSVCarbonImporter(args.carbon_file).load_all()
+
+    # Resolve decision_time
+    decision_time = None
+    if args.decision_time:
+        from datetime import timezone
+        decision_time = datetime.fromisoformat(args.decision_time.replace("Z", "+00:00"))
+        if decision_time.tzinfo is None:
+            decision_time = decision_time.replace(tzinfo=timezone.utc)
+
+    # Load or generate jobs
+    if args.jobs_file:
+        ingester = JobLogIngester(regions=regions)
+        jobs = ingester.load_from_file(args.jobs_file)
+        if not jobs:
+            print(f"ERROR: No jobs loaded from {args.jobs_file}", file=sys.stderr)
+            sys.exit(1)
+        print(f"Loaded {len(jobs)} jobs from {args.jobs_file}")
+    else:
+        # Synthetic jobs around the decision window
+        from .ingestion.job_logs import JobLogIngester as _JLI
+        ingester = _JLI()
+        # Use last available price timestamp as submit anchor
+        price_df["timestamp"] = pd.to_datetime(price_df["timestamp"], utc=True)
+        anchor = price_df["timestamp"].max().to_pydatetime()
+        jobs = ingester.generate_synthetic(
+            num_jobs=args.num_jobs,
+            start_time=anchor - pd.Timedelta(hours=24),
+            duration_hours=14 * 24,
+            regions=regions,
+            workload_mix="realistic",
+            seed=42,
+        )
+        print(f"Generated {len(jobs)} synthetic jobs")
+
+    # Build forecaster
+    price_forecaster_cls = None
+    price_forecaster_config = None
+    if args.forecaster == "ml_quantile":
+        from .forecasting.price_model import PriceQuantileForecaster, PriceModelConfig
+        price_forecaster_cls = PriceQuantileForecaster
+        price_forecaster_config = PriceModelConfig(seed=42, n_estimators=200, num_leaves=63)
+
+    config = OptimizationConfig()
+    runner = LiveShadowRunner(
+        regions=regions,
+        method="greedy",
+        train_days=args.train_days,
+        horizon_hours=args.horizon_hours,
+        config=config,
+        price_forecaster_cls=price_forecaster_cls,
+        price_forecaster_config=price_forecaster_config,
+    )
+
+    records = runner.run(
+        price_df=price_df,
+        jobs=jobs,
+        carbon_df=carbon_df,
+        decision_time=decision_time,
+    )
+
+    if not records:
+        print("No decisions produced. Check price data range and job submit times.")
+        sys.exit(1)
+
+    from datetime import timezone as _tz
+    ts = datetime.now(_tz.utc).strftime("%Y%m%dT%H%M%SZ")
+    decisions_path = output_dir / f"decisions_{ts}.jsonl"
+    recorder = DecisionRecorder(output_path=decisions_path)
+    recorder.save(records)
+
+    # Print summary
+    pred_savings = sum(r.predicted_savings_pct for r in records) / len(records)
+    print(f"\nSHADOW RUN COMPLETE")
+    print(f"  Run ID:              {runner.run_id}")
+    print(f"  Jobs decided:        {len(records)}")
+    print(f"  Mean predicted saving (vs CPO): {pred_savings:.1f}%")
+    print(f"  Decisions saved to:  {decisions_path}")
+    print(f"\nNext steps:")
+    print(f"  1. Wait until scheduled jobs have run (7-14 days for RT prices to settle).")
+    print(f"  2. Run: python -m aurelius.cli shadow realize \\")
+    print(f"       --decisions-file {decisions_path} \\")
+    print(f"       --rt-price-file <rt_settlement.csv>")
+    print(f"  3. Run: python -m aurelius.cli shadow report \\")
+    print(f"       --decisions-file <realized.jsonl>")
+
+
+def cmd_shadow_realize(args):
+    """Fill in realized RT prices for a pending shadow decisions file."""
+    from pathlib import Path
+    from .shadow import DecisionRecorder, RealizedSavingsCalculator
+    from .ingestion.grid_apis.csv_importer import CSVPriceImporter
+
+    decisions_path = Path(args.decisions_file)
+    recorder = DecisionRecorder()
+    records = recorder.load(decisions_path)
+    if not records:
+        print(f"ERROR: No records loaded from {decisions_path}", file=sys.stderr)
+        sys.exit(1)
+
+    # Load RT settlement prices
+    rt_df = CSVPriceImporter(args.rt_price_file).load_all()
+    if rt_df.empty:
+        print(f"ERROR: No RT price data from {args.rt_price_file}", file=sys.stderr)
+        sys.exit(1)
+
+    calculator = RealizedSavingsCalculator(rt_df)
+    realized_records = calculator.realize(records)
+
+    n_realized = sum(1 for r in realized_records if r.is_realized)
+    n_pending = len(realized_records) - n_realized
+
+    if args.output_file:
+        out_path = Path(args.output_file)
+    else:
+        stem = decisions_path.stem.replace("decisions_", "realized_")
+        out_path = decisions_path.parent / f"{stem}.jsonl"
+
+    recorder.save_updated(realized_records, path=out_path)
+    print(f"\nREALIZATION COMPLETE")
+    print(f"  Records processed:  {len(realized_records)}")
+    print(f"  Records realized:   {n_realized}")
+    print(f"  Records pending:    {n_pending} (RT data not available)")
+    print(f"  Output saved to:    {out_path}")
+    if n_realized > 0:
+        realized = [r for r in realized_records if r.is_realized]
+        mean_real = sum(r.realized_savings_pct for r in realized) / len(realized)
+        mean_pred = sum(r.predicted_savings_pct for r in realized) / len(realized)
+        print(f"\n  Mean predicted savings:  {mean_pred:.1f}%")
+        print(f"  Mean realized savings:   {mean_real:.1f}%")
+        delta = mean_real - mean_pred
+        sign = "+" if delta >= 0 else ""
+        print(f"  Delta (realized-pred):   {sign}{delta:.1f}pp")
+
+
+def cmd_shadow_report(args):
+    """Generate a shadow mode comparison report."""
+    from pathlib import Path
+    from .shadow import DecisionRecorder, ShadowReport
+
+    decisions_path = Path(args.decisions_file)
+    recorder = DecisionRecorder()
+    records = recorder.load(decisions_path)
+    if not records:
+        print(f"ERROR: No records loaded from {decisions_path}", file=sys.stderr)
+        sys.exit(1)
+
+    report = ShadowReport.from_records(records, data_source_note=str(decisions_path))
+
+    output_dir = Path(args.output_dir) if args.output_dir else decisions_path.parent
+    paths = report.save(output_dir)
+
+    print(report.to_text())
+    print(f"\nReport saved to:")
+    print(f"  JSON: {paths['json']}")
+    print(f"  TXT:  {paths['txt']}")
+
+
 def cmd_show_schema(args):
     """Show database schema."""
     from .database import print_schema
@@ -978,6 +1160,104 @@ def main():
         help="Save results as JSON to this path",
     )
 
+    # --- Shadow mode subcommand ---
+    shadow_parser = subparsers.add_parser(
+        "shadow",
+        help="Production shadow mode — make optimizer decisions without executing workloads",
+    )
+    shadow_subparsers = shadow_parser.add_subparsers(dest="shadow_command")
+
+    # shadow run
+    sr_parser = shadow_subparsers.add_parser(
+        "run",
+        help=(
+            "Run shadow mode: train on historical DA prices, forecast next window, "
+            "schedule submitted jobs, save decisions (no workloads are executed)."
+        ),
+    )
+    sr_parser.add_argument(
+        "--price-file", required=True,
+        help="Path to DA price CSV (timestamp, region, price_per_mwh)",
+    )
+    sr_parser.add_argument(
+        "--regions", default="us-west,us-east,us-south",
+        help="Comma-separated list of regions (default: us-west,us-east,us-south)",
+    )
+    sr_parser.add_argument(
+        "--jobs-file", default=None,
+        help="Customer workload trace CSV. If absent, synthetic jobs are generated.",
+    )
+    sr_parser.add_argument(
+        "--num-jobs", type=int, default=50,
+        help="Number of synthetic jobs when --jobs-file is absent (default: 50)",
+    )
+    sr_parser.add_argument(
+        "--carbon-file", default=None,
+        help="Optional carbon intensity CSV (timestamp, region, gco2_per_kwh)",
+    )
+    sr_parser.add_argument(
+        "--train-days", type=int, default=30,
+        help="Days of history to use for forecaster training (default: 30)",
+    )
+    sr_parser.add_argument(
+        "--horizon-hours", type=int, default=168,
+        help="How far ahead to forecast and schedule in hours (default: 168)",
+    )
+    sr_parser.add_argument(
+        "--forecaster", default="ml_quantile",
+        choices=["ml_quantile", "seasonal_naive"],
+        help="Forecasting method (default: ml_quantile)",
+    )
+    sr_parser.add_argument(
+        "--decision-time", default=None,
+        help=(
+            "ISO 8601 UTC timestamp for 'now' (default: last available price + 1h). "
+            "Example: 2026-03-01T00:00:00Z"
+        ),
+    )
+    sr_parser.add_argument(
+        "--output-dir", default=None,
+        help="Directory for decisions JSONL output (default: reports/shadow/)",
+    )
+
+    # shadow realize
+    srz_parser = shadow_subparsers.add_parser(
+        "realize",
+        help=(
+            "Fill in realized RT prices for pending shadow decisions. "
+            "Run after the scheduled job windows have passed."
+        ),
+    )
+    srz_parser.add_argument(
+        "--decisions-file", required=True,
+        help="Path to decisions JSONL file (output of 'shadow run')",
+    )
+    srz_parser.add_argument(
+        "--rt-price-file", required=True,
+        help="Path to RT settlement price CSV (timestamp, region, price_per_mwh)",
+    )
+    srz_parser.add_argument(
+        "--output-file", default=None,
+        help="Output JSONL path (default: realized_<timestamp>.jsonl in same dir)",
+    )
+
+    # shadow report
+    srp_parser = shadow_subparsers.add_parser(
+        "report",
+        help=(
+            "Generate a shadow mode comparison report (predicted vs realized savings). "
+            "Works with decisions files that have full or partial realization."
+        ),
+    )
+    srp_parser.add_argument(
+        "--decisions-file", required=True,
+        help="Path to JSONL file (from 'shadow run' or 'shadow realize')",
+    )
+    srp_parser.add_argument(
+        "--output-dir", default=None,
+        help="Directory for report output (default: same dir as decisions file)",
+    )
+
     # Parse arguments
     args = parser.parse_args()
 
@@ -991,6 +1271,17 @@ def main():
         cmd_robustness_test(args)
     elif args.command == "backtest":
         cmd_backtest(args)
+    elif args.command == "shadow":
+        sc = getattr(args, "shadow_command", None)
+        if sc == "run":
+            cmd_shadow_run(args)
+        elif sc == "realize":
+            cmd_shadow_realize(args)
+        elif sc == "report":
+            cmd_shadow_report(args)
+        else:
+            shadow_parser.print_help()
+            sys.exit(1)
     else:
         parser.print_help()
         sys.exit(1)
