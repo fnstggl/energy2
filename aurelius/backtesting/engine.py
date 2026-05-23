@@ -230,6 +230,7 @@ class BacktestEngine:
         recorder_path: Optional[Path] = None,
         rt_risk_lambda: Optional[float] = None,
         weather_df: Optional[Any] = None,  # pd.DataFrame with canonical weather schema
+        queue_df: Optional[Any] = None,    # pd.DataFrame with canonical queue schema
     ) -> None:
         self.method = method
         self.config = config or OptimizationConfig()
@@ -286,6 +287,14 @@ class BacktestEngine:
         # per fold with proper train/eval split. None = price-only mode (no change
         # in ML behaviour vs. v2.0).
         self.weather_df = weather_df
+
+        # Optional queue DataFrame for queue-aware placement optimization.
+        # Schema: timestamp, region, cluster_id, gpu_type, available_gpus,
+        # queue_depth_jobs, est_wait_hours.  Converted to a dict lookup per
+        # fold so the optimizer can penalise congested regions.  Leakage-safe:
+        # only rows with timestamp ≤ eval window are used for each fold.
+        # None = queue-unaware mode (no change to existing behaviour).
+        self.queue_df = queue_df
 
     @property
     def uses_ml_forecaster(self) -> bool:
@@ -464,6 +473,22 @@ class BacktestEngine:
             f"Fold {split.fold_index}: {n_fc} forecast hours for optimizer"
         )
 
+        # --- Build queue signal for the optimizer (leakage-safe) ---
+        # Only use queue state recorded BEFORE the eval window starts so the
+        # optimizer never sees future congestion during backtesting.
+        queue_data: Optional[dict[str, dict[datetime, float]]] = None
+        if self.queue_df is not None and not (
+            hasattr(self.queue_df, "empty") and self.queue_df.empty
+        ):
+            from aurelius.ingestion.queue_provider import QueueProvider
+            q_ts = pd.to_datetime(self.queue_df["timestamp"], utc=True)
+            # Use all queue rows up to (but not including) eval_start
+            q_mask = q_ts < split.eval_start
+            if q_mask.any():
+                queue_provider = QueueProvider.from_dataframe(self.queue_df[q_mask])
+                queue_data = queue_provider.to_dict_lookup()
+            # If no rows exist before eval_start, leave queue_data as None
+
         # --- Run optimizer ---
         try:
             if self.forecast_horizon_hours is not None and not self.oracle_forecast:
@@ -483,6 +508,7 @@ class BacktestEngine:
                 opt_result = self.scheduler.solve(
                     eval_jobs, opt_prices, forecast_carbon_data,
                     method=self.method,
+                    queue_data=queue_data,
                 )
                 opt_schedule = opt_result.schedule
         except Exception as exc:

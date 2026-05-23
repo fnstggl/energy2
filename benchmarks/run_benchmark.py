@@ -279,6 +279,8 @@ def run_single_benchmark(
     forecaster: str = "seasonal_naive",
     carbon_file: Optional[str] = None,
     weather_file: Optional[str] = None,
+    queue_file: Optional[str] = None,
+    queue_delay_cost_per_gpu_hour: float = 0.0,
     repo_root: Path,
 ) -> dict:
     """Run one (region_combo × workload_type) benchmark cell.
@@ -425,6 +427,39 @@ def run_single_benchmark(
             print("  WARNING: ml_quantile_perregion unavailable, falling back to seasonal_naive")
             effective_forecaster = "seasonal_naive"
 
+    # Load queue state CSV if provided
+    queue_df_loaded: Optional[pd.DataFrame] = None
+    if queue_file and queue_file != "none":
+        try:
+            _qpath = repo_root / queue_file
+            queue_df_loaded = pd.read_csv(str(_qpath))
+            queue_df_loaded["timestamp"] = pd.to_datetime(
+                queue_df_loaded["timestamp"], utc=True
+            )
+            print(f"  Queue signal: {queue_df_loaded['region'].nunique()} regions, "
+                  f"{len(queue_df_loaded)} rows from {queue_file}")
+        except Exception as exc:
+            print(f"  WARNING: failed to load queue file {queue_file}: {exc}")
+
+    # Apply queue delay cost to optimizer config when queue data is provided
+    if queue_df_loaded is not None and queue_delay_cost_per_gpu_hour > 0.0:
+        config = OptimizationConfig(
+            alpha=config.alpha,
+            beta=config.beta,
+            gamma=config.gamma,
+            delta=config.delta,
+            min_power_fraction=config.min_power_fraction,
+            max_power_fraction=config.max_power_fraction,
+            region_power_caps=config.region_power_caps,
+            default_region=config.default_region,
+            carbon_objective=config.carbon_objective,
+            carbon_threshold_gco2_per_kwh=config.carbon_threshold_gco2_per_kwh,
+            data_transfer_cost_per_gb=config.data_transfer_cost_per_gb,
+            sla_risk_thresholds=config.sla_risk_thresholds,
+            queue_delay_cost_per_gpu_hour=queue_delay_cost_per_gpu_hour,
+        )
+        print(f"  Queue-aware routing: cost_per_gpu_hour=${queue_delay_cost_per_gpu_hour:.2f}")
+
     engine = BacktestEngine(
         method=method,
         train_days=train_days,
@@ -435,6 +470,7 @@ def run_single_benchmark(
         price_forecaster_config=price_forecaster_config,
         context_hours=336,  # 2 weeks for lag_168h to work across the full eval horizon
         weather_df=weather_df_loaded if not weather_df_loaded.empty else None,
+        queue_df=queue_df_loaded,
     )
     if oracle:
         engine.oracle_forecast = True
@@ -613,6 +649,13 @@ def parse_args() -> argparse.Namespace:
                    help="Path to weather CSV (relative to repo root). If omitted, auto-detects "
                         "from co-located files (data/weather_q12026.csv etc.). "
                         "Pass 'none' to explicitly disable weather features.")
+    p.add_argument("--queue-file", default=None,
+                   help="Path to queue-state CSV (relative to repo root). Schema: "
+                        "timestamp,region,cluster_id,gpu_type,available_gpus,"
+                        "queue_depth_jobs,est_wait_hours. Enables queue-aware routing.")
+    p.add_argument("--queue-delay-cost", type=float, default=0.0,
+                   help="Opportunity cost per GPU-hour lost to queue waiting ($/GPU-hour). "
+                        "Requires --queue-file. Typical value for H100: 2.0–4.0.")
     return p.parse_args()
 
 
@@ -679,6 +722,8 @@ def main() -> int:
                     forecaster=args.forecaster,
                     carbon_file=args.carbon_file,
                     weather_file=getattr(args, "weather_file", None),
+                    queue_file=getattr(args, "queue_file", None),
+                    queue_delay_cost_per_gpu_hour=getattr(args, "queue_delay_cost", 0.0),
                     repo_root=repo_root,
                 )
                 result["run_ts"] = run_ts

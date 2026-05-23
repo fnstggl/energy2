@@ -23,6 +23,28 @@ from ..models import Job, OptimizationConfig, ScheduleDecision
 logger = logging.getLogger(__name__)
 
 
+def _lookup_last_known(series: dict[datetime, float], ts: datetime) -> float:
+    """Return the last value at or before `ts` in `series`.
+
+    Used for queue state lookups where the "last known" value before a
+    scheduling timestamp is the correct leakage-safe choice.
+
+    Returns 0.0 if no entry exists at or before `ts`.
+    """
+    if not series:
+        return 0.0
+    ts_floor = ts.replace(minute=0, second=0, microsecond=0, tzinfo=None)
+    best_key: Optional[datetime] = None
+    best_val: float = 0.0
+    for k, v in series.items():
+        k_naive = k.replace(minute=0, second=0, microsecond=0, tzinfo=None)
+        if k_naive <= ts_floor:
+            if best_key is None or k_naive >= best_key:
+                best_key = k_naive
+                best_val = v
+    return best_val
+
+
 @dataclass
 class ObjectiveComponents:
     """Breakdown of objective function components.
@@ -33,6 +55,7 @@ class ObjectiveComponents:
         risk_penalty: Total risk/uncertainty penalty
         sla_penalty_cost: Total SLA violation penalty cost in dollars
         data_transfer_cost: Total inter-region data transfer cost in dollars
+        queue_delay_cost: Total opportunity cost of GPU-hours lost to queue wait
         total: Weighted sum of all components
         energy_kwh: Total energy consumed in kWh (before PUE)
         carbon_kg: Total carbon emissions in kg CO2
@@ -42,6 +65,7 @@ class ObjectiveComponents:
     risk_penalty: float
     sla_penalty_cost: float
     data_transfer_cost: float
+    queue_delay_cost: float
     total: float
     energy_kwh: float
     carbon_kg: float
@@ -74,6 +98,7 @@ class ObjectiveFunction:
         price_data: dict[str, dict[datetime, float]],
         carbon_data: dict[str, dict[datetime, float]],
         risk_data: Optional[dict[str, dict[datetime, float]]] = None,
+        queue_data: Optional[dict[str, dict[datetime, float]]] = None,
     ) -> ObjectiveComponents:
         """Calculate the full objective for a schedule.
 
@@ -83,6 +108,10 @@ class ObjectiveFunction:
             price_data: {region: {timestamp: price_per_mwh}}
             carbon_data: {region: {timestamp: gco2_per_kwh}}
             risk_data: {region: {timestamp: risk_penalty}} (optional)
+            queue_data: {region: {timestamp: est_wait_hours}} (optional).
+                When provided and config.queue_delay_cost_per_gpu_hour > 0,
+                the estimated GPU-hours lost to queue waiting are added to the
+                objective so the optimizer routes away from congested regions.
 
         Returns:
             ObjectiveComponents with breakdown
@@ -97,6 +126,7 @@ class ObjectiveFunction:
         total_carbon_kg = 0.0
         total_sla_penalty_cost = 0.0
         total_data_transfer_cost = 0.0
+        total_queue_delay_cost = 0.0
 
         for decision in schedule:
             job = job_by_id.get(decision.job_id)
@@ -161,13 +191,23 @@ class ObjectiveFunction:
                 transfer_cost = data_transfer_gb * self.config.data_transfer_cost_per_gb
                 total_data_transfer_cost += transfer_cost
 
-        # Weighted total: alpha*energy + beta*carbon + gamma*risk + delta*SLA + data_transfer
+            # Queue delay cost: opportunity cost of GPU-hours lost to queue waiting.
+            # Applies at the job start hour; uses last known state ≤ start_time.
+            if queue_data is not None and self.config.queue_delay_cost_per_gpu_hour > 0.0:
+                gpu_count = max(1, getattr(job, "gpu_count", 1))
+                region_queue = queue_data.get(decision.region, {})
+                wait_h = _lookup_last_known(region_queue, decision.start_time)
+                queue_cost = wait_h * self.config.queue_delay_cost_per_gpu_hour * gpu_count
+                total_queue_delay_cost += queue_cost
+
+        # Weighted total: alpha*energy + beta*carbon + gamma*risk + delta*SLA + data_transfer + queue
         total = (
             self.config.alpha * total_energy_cost
             + self.config.beta * total_carbon_cost
             + self.config.gamma * total_risk_penalty
             + self.config.delta * total_sla_penalty_cost
             + total_data_transfer_cost
+            + total_queue_delay_cost
         )
 
         return ObjectiveComponents(
@@ -176,6 +216,7 @@ class ObjectiveFunction:
             risk_penalty=round(total_risk_penalty, 4),
             sla_penalty_cost=round(total_sla_penalty_cost, 2),
             data_transfer_cost=round(total_data_transfer_cost, 4),
+            queue_delay_cost=round(total_queue_delay_cost, 4),
             total=round(total, 4),
             energy_kwh=round(total_energy_kwh, 2),
             carbon_kg=round(total_carbon_kg, 2),
@@ -190,6 +231,7 @@ class ObjectiveFunction:
         price_data: dict[str, dict[datetime, float]],
         carbon_data: dict[str, dict[datetime, float]],
         risk_data: Optional[dict[str, dict[datetime, float]]] = None,
+        queue_data: Optional[dict[str, dict[datetime, float]]] = None,
     ) -> ObjectiveComponents:
         """Calculate objective for a single job placement.
 
@@ -202,7 +244,8 @@ class ObjectiveFunction:
             power_fraction: Power throttle level
             price_data: Price lookup
             carbon_data: Carbon lookup
-            risk_data: Risk lookup
+            risk_data: Risk lookup (optional)
+            queue_data: Queue wait-hours lookup (optional)
 
         Returns:
             ObjectiveComponents for this job placement
@@ -221,6 +264,7 @@ class ObjectiveFunction:
             price_data,
             carbon_data,
             risk_data,
+            queue_data,
         )
 
     def compare_options(
@@ -230,6 +274,7 @@ class ObjectiveFunction:
         price_data: dict[str, dict[datetime, float]],
         carbon_data: dict[str, dict[datetime, float]],
         risk_data: Optional[dict[str, dict[datetime, float]]] = None,
+        queue_data: Optional[dict[str, dict[datetime, float]]] = None,
     ) -> list[tuple[tuple[datetime, str, float], ObjectiveComponents]]:
         """Compare multiple scheduling options for a job.
 
@@ -238,7 +283,8 @@ class ObjectiveFunction:
             options: List of (start_time, region, power_fraction) tuples
             price_data: Price lookup
             carbon_data: Carbon lookup
-            risk_data: Risk lookup
+            risk_data: Risk lookup (optional)
+            queue_data: Queue wait-hours lookup (optional)
 
         Returns:
             List of (option, objective) tuples sorted by objective (best first)
@@ -247,7 +293,7 @@ class ObjectiveFunction:
         for start_time, region, power_fraction in options:
             obj = self.calculate_job_cost(
                 job, start_time, region, power_fraction,
-                price_data, carbon_data, risk_data
+                price_data, carbon_data, risk_data, queue_data
             )
             results.append(((start_time, region, power_fraction), obj))
 
@@ -290,4 +336,4 @@ def estimate_baseline_cost(
         ))
 
     objective = ObjectiveFunction()
-    return objective.calculate(jobs, schedule, price_data, carbon_data)
+    return objective.calculate(jobs, schedule, price_data, carbon_data, queue_data=None)
