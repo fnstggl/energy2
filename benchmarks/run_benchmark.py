@@ -179,6 +179,19 @@ def _get_ml_forecaster_cls():
         return None, None
 
 
+def _get_per_region_forecaster_cls():
+    """Import per-region forecaster class; returns None if unavailable."""
+    try:
+        from aurelius.forecasting.price_model import (
+            PerRegionForecaster,
+            PerRegionForecasterConfig,
+            PriceModelConfig,
+        )
+        return PerRegionForecaster, PerRegionForecasterConfig, PriceModelConfig
+    except ImportError:
+        return None, None, None
+
+
 def _load_carbon_df(region_combo: dict, repo_root: Path) -> pd.DataFrame:
     """Auto-detect and load a carbon CSV for the given region_combo.
 
@@ -311,12 +324,13 @@ def run_single_benchmark(
     if carbon_regions:
         print(f"  Carbon signal: {carbon_regions} (watttime_moer)")
 
-    # Weather data for ML forecaster: ml_quantile_weather explicitly opts in;
-    # plain ml_quantile runs v2.0 (no weather) to preserve the baseline metric.
-    # Use --weather-file <path> to supply a custom file, or --forecaster ml_quantile_weather
-    # to auto-detect weather from co-located data files.
+    # Weather data for ML forecaster:
+    # - ml_quantile_weather: joint model with all-region weather features
+    # - ml_quantile_perregion: per-region model; weather applied selectively
+    #   (ERCOT/us-south gets weather; CAISO/PJM remain price-only)
+    # - plain ml_quantile: price-only v2.0, no weather (preserve baseline)
     weather_df_loaded: pd.DataFrame = pd.DataFrame()
-    use_weather = forecaster == "ml_quantile_weather"
+    use_weather = forecaster in ("ml_quantile_weather", "ml_quantile_perregion")
     if use_weather:
         if weather_file and weather_file != "none":
             try:
@@ -380,6 +394,36 @@ def run_single_benchmark(
         else:
             print("  WARNING: ml_quantile unavailable, falling back to seasonal_naive")
             effective_forecaster = "seasonal_naive"
+    elif forecaster == "ml_quantile_perregion":
+        PerRegionForecaster, PerRegionForecasterConfig, PriceModelConfig = _get_per_region_forecaster_cls()
+        if PerRegionForecaster is not None:
+            price_forecaster_cls = PerRegionForecaster
+            # Base config: applied to all regions (price-only volatility features)
+            base_cfg = PriceModelConfig(
+                seed=42,
+                n_estimators=200,
+                learning_rate=0.05,
+                include_volatility_features=True,
+                num_leaves=63,
+                include_weather_features=True,
+            )
+            # ERCOT (us-south) gets more capacity: higher num_leaves for spike patterns
+            ercot_cfg = PriceModelConfig(
+                seed=42,
+                n_estimators=250,
+                learning_rate=0.05,
+                include_volatility_features=True,
+                num_leaves=127,
+                include_weather_features=True,
+            )
+            price_forecaster_config = PerRegionForecasterConfig(
+                base_config=base_cfg,
+                weather_regions=["us-south"],   # ERCOT gets weather; CAISO/PJM don't
+                region_configs={"us-south": ercot_cfg},
+            )
+        else:
+            print("  WARNING: ml_quantile_perregion unavailable, falling back to seasonal_naive")
+            effective_forecaster = "seasonal_naive"
 
     engine = BacktestEngine(
         method=method,
@@ -439,7 +483,7 @@ def run_single_benchmark(
 
     # Collect per-fold forecast quality if ML mode was used
     forecast_quality_summary = None
-    if effective_forecaster == "ml_quantile":
+    if effective_forecaster in ("ml_quantile", "ml_quantile_perregion"):
         fq_records = [r.forecast_quality.to_dict() for r in rounds if r.forecast_quality is not None]
         if fq_records:
             import math
@@ -554,10 +598,13 @@ def parse_args() -> argparse.Namespace:
                             "greedy_migrate_dp", "local_search_migrate_dp"],
                    help="Optimizer method")
     p.add_argument("--forecaster", default="seasonal_naive",
-                   choices=["seasonal_naive", "ml_quantile", "ml_quantile_weather"],
+                   choices=["seasonal_naive", "ml_quantile", "ml_quantile_weather",
+                            "ml_quantile_perregion"],
                    help="Forecasting method: 'seasonal_naive' (default, no ML), "
-                        "'ml_quantile' (LightGBM + volatility features, auto-uses weather if found), "
-                        "'ml_quantile_weather' (same as ml_quantile, explicit weather mode). "
+                        "'ml_quantile' (LightGBM joint model + volatility features), "
+                        "'ml_quantile_weather' (joint model + weather features), "
+                        "'ml_quantile_perregion' (one model per region; ERCOT gets weather, "
+                        "CAISO/PJM price-only — eliminates cross-region feature stealing). "
                         "NEVER mix oracle with ml_quantile for savings claims.")
     p.add_argument("--carbon-file", default=None,
                    help="Path to carbon CSV (relative to repo root). If omitted, auto-detects "

@@ -19,7 +19,7 @@ while preserving predict-time safety and deterministic fallback.
 import json
 import logging
 import math
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from datetime import datetime, timedelta
 from pathlib import Path
 from typing import Any, Optional, Union
@@ -641,6 +641,226 @@ class PriceQuantileForecaster:
             "n_samples": total_count,
             "meets_88pct_threshold": coverage >= 0.88,
         }
+
+
+# ===========================================================================
+# Per-Region Forecaster (v4.0)
+# ===========================================================================
+
+@dataclass
+class PerRegionForecasterConfig:
+    """Configuration for per-region forecaster.
+
+    Trains one PriceQuantileForecaster per region, eliminating cross-region
+    feature stealing that occurs in joint multi-region models.
+
+    Attributes:
+        base_config: Base model config applied to all regions unless
+            overridden by region_configs.
+        weather_regions: Regions that receive weather features during training
+            and prediction. Regions NOT in this list use price-only models.
+            Default: ["us-south"] — ERCOT gets weather (cold-snap/heat-wave
+            detection); CAISO/PJM run price-only (no feature stealing).
+        region_configs: Optional per-region overrides. Keys are region strings;
+            values are PriceModelConfig instances that override base_config for
+            that region only. Allows different num_leaves/n_estimators per grid.
+    """
+    base_config: PriceModelConfig = field(default_factory=PriceModelConfig)
+    weather_regions: list = field(default_factory=lambda: ["us-south"])
+    region_configs: dict = field(default_factory=dict)  # {region: PriceModelConfig}
+
+
+class PerRegionForecaster:
+    """Per-region LightGBM quantile forecaster.
+
+    Trains one PriceQuantileForecaster per region instead of a joint model,
+    eliminating cross-region feature stealing.
+
+    Key benefits over joint PriceQuantileForecaster:
+    - Each region gets its own model capacity (no shared features).
+    - Weather features applied selectively: ERCOT gets temperature/HDD/CDD;
+      CAISO/PJM use price-only (avoids joint-model degradation from
+      January cold-snap features polluting non-cold-snap regions).
+    - Per-region hyperparameter tuning supported via region_configs.
+
+    Interface is identical to PriceQuantileForecaster (fit / predict /
+    metadata), so it is a drop-in replacement in BacktestEngine.
+
+    Training discipline:
+    - Offline batch training only (fit() must be called before predict()).
+    - Fixed random seeds for determinism.
+    - Leakage-safe: fit() receives only training records.
+    """
+
+    def __init__(
+        self,
+        config: Optional[PerRegionForecasterConfig] = None,
+        corrections_path: Optional[Union[str, Path]] = None,
+    ) -> None:
+        if config is None:
+            config = PerRegionForecasterConfig()
+        # Accept a bare PriceModelConfig for backward compatibility
+        if isinstance(config, PriceModelConfig):
+            config = PerRegionForecasterConfig(base_config=config)
+        self.config: PerRegionForecasterConfig = config
+        self._corrections_path = corrections_path
+        # One forecaster per region, populated at fit() time.
+        self._region_forecasters: dict[str, PriceQuantileForecaster] = {}
+        self._fitted = False
+        self._known_regions: list[str] = []
+        self._train_weather_lookup: dict = {}
+
+    def _make_forecaster(self, region: str) -> PriceQuantileForecaster:
+        """Build a PriceQuantileForecaster for a specific region."""
+        # Use per-region config override if available, else base config
+        region_cfg = self.config.region_configs.get(region, self.config.base_config)
+        fc = PriceQuantileForecaster(
+            config=region_cfg,
+            corrections_path=self._corrections_path if self._corrections_path is not False else False,
+        )
+        return fc
+
+    def fit(
+        self,
+        prices: list[EnergyPrice],
+        weather_df: Optional["pd.DataFrame"] = None,
+    ) -> "PerRegionForecaster":
+        """Fit one PriceQuantileForecaster per region.
+
+        Args:
+            prices:     List of historical EnergyPrice objects (all regions).
+            weather_df: Optional canonical weather DataFrame. Weather features
+                        are applied ONLY to regions listed in
+                        config.weather_regions; other regions are trained
+                        price-only to avoid cross-region feature pollution.
+
+        Returns:
+            Self for chaining.
+        """
+        import pandas as _pd
+
+        # Group price records by region
+        by_region: dict[str, list[EnergyPrice]] = {}
+        for p in prices:
+            by_region.setdefault(p.region, []).append(p)
+
+        self._known_regions = sorted(by_region)
+        self._region_forecasters = {}
+
+        # Build weather lookup once for fast slicing
+        weather_lookup: dict = {}
+        if weather_df is not None and not (
+            hasattr(weather_df, "empty") and weather_df.empty
+        ):
+            from .quantile_model import build_weather_lookup as _bwl
+            weather_lookup = _bwl(weather_df)
+            self._train_weather_lookup = weather_lookup
+
+        for region, region_prices in by_region.items():
+            fc = self._make_forecaster(region)
+            # Supply weather_df only for designated regions
+            region_weather: Optional[Any] = None
+            if weather_df is not None and region in self.config.weather_regions:
+                if not (hasattr(weather_df, "empty") and weather_df.empty):
+                    mask = weather_df["region"] == region
+                    rw = weather_df[mask]
+                    region_weather = rw if not rw.empty else None
+
+            fc.fit(region_prices, weather_df=region_weather)
+            self._region_forecasters[region] = fc
+            logger.info(
+                f"PerRegionForecaster: fitted region={region}, "
+                f"n={len(region_prices)}, weather={'on' if region_weather is not None else 'off'}"
+            )
+
+        self._fitted = True
+        return self
+
+    def predict(
+        self,
+        region: str,
+        timestamps: list[datetime],
+        recent_prices: Optional[list[EnergyPrice]] = None,
+        weather_df: Optional["pd.DataFrame"] = None,
+    ) -> list[PriceQuantileForecast]:
+        """Predict prices for a specific region using its dedicated model.
+
+        Args:
+            region:        Target region.
+            timestamps:    Future timestamps to forecast.
+            recent_prices: Recent price data for lag features.
+            weather_df:    Optional weather DataFrame for regions in
+                           config.weather_regions. Ignored for price-only regions.
+
+        Returns:
+            List of PriceQuantileForecast objects.
+        """
+        if not self._fitted:
+            logger.warning("PerRegionForecaster not fitted; returning flat fallback")
+            return self._flat_fallback(region, timestamps)
+
+        fc = self._region_forecasters.get(region)
+        if fc is None:
+            logger.warning(
+                f"PerRegionForecaster: no model for region={region}; returning flat fallback"
+            )
+            return self._flat_fallback(region, timestamps)
+
+        # Apply weather only for designated regions
+        effective_weather: Optional[Any] = None
+        if weather_df is not None and region in self.config.weather_regions:
+            if not (hasattr(weather_df, "empty") and weather_df.empty):
+                effective_weather = weather_df
+
+        return fc.predict(region, timestamps, recent_prices, weather_df=effective_weather)
+
+    def predict_range(
+        self,
+        region: str,
+        start_time: datetime,
+        hours: int,
+        recent_prices: Optional[list[EnergyPrice]] = None,
+    ) -> list[PriceQuantileForecast]:
+        timestamps = [start_time + timedelta(hours=h) for h in range(hours)]
+        return self.predict(region, timestamps, recent_prices)
+
+    def _flat_fallback(
+        self, region: str, timestamps: list[datetime]
+    ) -> list[PriceQuantileForecast]:
+        return [
+            PriceQuantileForecast(
+                timestamp=ts,
+                region=region,
+                p50=50.0,
+                p90=65.0,
+                model_type="per_region_fallback",
+                features_version="v4.0",
+            )
+            for ts in timestamps
+        ]
+
+    @property
+    def is_fitted(self) -> bool:
+        return self._fitted
+
+    @property
+    def metadata(self) -> Optional[ModelMetadata]:
+        if not self._fitted or not self._region_forecasters:
+            return None
+        # Return metadata from the first sub-model as a representative sample
+        first = next(iter(self._region_forecasters.values()))
+        return first.metadata
+
+    def forecasts_to_dict(
+        self,
+        forecasts: list[PriceQuantileForecast],
+    ) -> dict[str, dict[datetime, dict[str, float]]]:
+        result: dict[str, dict[datetime, dict[str, float]]] = {}
+        for f in forecasts:
+            if f.region not in result:
+                result[f.region] = {}
+            result[f.region][f.timestamp] = {"p50": f.p50, "p90": f.p90}
+        return result
 
 
 class PriceForecaster:
