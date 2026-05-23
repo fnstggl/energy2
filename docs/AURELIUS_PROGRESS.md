@@ -488,10 +488,10 @@ LAST VERIFIED IMPLEMENTATION RUN (UPDATED)
 ===============================================================================
 
 Date:
-2026-05-22
+2026-05-23
 
 Branch:
-claude/brave-mccarthy-yiYC1
+claude/brave-mccarthy-QG2QF
 
 PR URL:
 (pending — see push)
@@ -500,32 +500,33 @@ PR Status:
 IN PROGRESS
 
 Main Commit SHA:
-1c9c42f (base); Phase 2 implementation in progress
+(see git log)
 
 ===============================================================================
 LAST VERIFIED TEST STATUS (UPDATED)
 ===============================================================================
 
 Unit + integration:
-692 passed, 0 failed, 138 warnings
+724 passed, 0 failed (4 skipped), 160 warnings
 
-New tests (Phase 2):
-25 new tests in tests/test_ml_forecaster_v2.py:
-  - TestVolatilityRegimeFeatures (7 tests): spike detection, momentum, clipping
-  - TestBuildFeatureMatrixVolatility (5 tests): columns, predict-time, no-NaN
-  - TestPriceModelConfigV2 (5 tests): new defaults, backward compat
-  - TestPriceQuantileForecasterV2 (5 tests): fit, spike-aware, determinism
-  - TestCarbonCSVLoading (2 tests): WattTime MOER schema, Q1 2026 file
-  - TestMLForecasterBenchmarkAcceptance (1 test): ML MAPE < baseline MAPE
+New tests (Phase 3):
+23 new tests in tests/test_weather_features.py:
+  - TestBuildWeatherLookup (5 tests): lookup construction, multi-region, NaN→0
+  - TestBuildFeatureMatrixWithWeather (5 tests): columns, backward compat
+  - TestBuildFeatureMatrixForPredictWithWeather (2 tests): passthrough, fallback
+  - TestPriceQuantileForecasterBackwardCompat (2 tests): no-weather v2.0
+  - TestPriceQuantileForecasterWithWeather (6 tests): v3.0, determinism
+  - TestWeatherLeakageSafety (2 tests): train<eval_start, missing→empty
+  - TestBacktestEngineWeatherIntegration (1 test): end-to-end smoke
 
 Pre-existing tests:
-667 (all Phase 1 benchmark harness, migration, spread_risk, region_registry, etc.)
+701 (all Phase 1-2 benchmark, migration, spread_risk, ML forecaster, etc.)
 
 Skipped:
-7 live API tests requiring credentials
+4 live API tests requiring credentials
 
 Result:
-ALL PASSING (692 tests)
+ALL PASSING (724 tests)
 
 ===============================================================================
 FIRST OFFICIAL BENCHMARK RESULTS
@@ -782,53 +783,140 @@ The system remains:
 ROADMAP PHASE 3 — WEATHER & COOLING INTELLIGENCE
 ===============================================================================
 
-Status: NEXT
+Status: INFRASTRUCTURE COMPLETE — ACCEPTANCE CRITERION NOT MET
 
-Rationale:
-  The ML v2 forecaster gap analysis shows:
-    training@3region: 22.7pp remaining below oracle
-    fine_tuning@3region: 48pp remaining below oracle
-  Both gaps are dominated by inability to predict ERCOT winter cold-snap spikes
-  without weather data. Oracle diagnostics proved structural savings exist — the
-  bottleneck is now FORECAST QUALITY for spike events.
+Run date: 2026-05-23
+Branch: claude/brave-mccarthy-QG2QF
 
-Next exact task:
-  1. Integrate Open-Meteo weather API (no key required) for 3-region combo:
-     - Fetch historical temperature, humidity, and wind data for Q1 2026 and
-       Summer 2025 for CAISO (San Francisco), PJM (Washington DC), ERCOT (Houston)
-     - Add weather features to ML price forecaster:
-       * temperature (°F or °C)
-       * heating_degree_day proxy (max(0, 65°F - temp))
-       * cooling_degree_day proxy (max(0, temp - 65°F))
-       * wind_speed (ERCOT relies heavily on wind generation)
-       * humidity (affects cooling efficiency and demand)
-     - Target: reduce training@3region oracle gap from 22.7pp to <15pp
+Summary:
+  Full weather feature infrastructure implemented and tested (24 weather tests,
+  724 total tests passing). The primary acceptance criterion — training@
+  caiso_pjm_ercot_da_rt ≥ 20.0% — was NOT met. Weather features regress the
+  primary metric (15.0% → 11.1%). Root cause is structural: the January 2026
+  cold snap falls entirely within training windows; all 5 eval folds run in
+  February-March mild weather where temperature features add noise without
+  signal. The infrastructure is correct and useful; the Q1 2026 backtesting
+  fold structure simply cannot demonstrate weather value for this metric.
 
-  2. Script: scripts/fetch_weather_data.py
-     - Open-Meteo historical endpoint, no API key needed
-     - Save to data/weather_q12026.csv and data/summer2025/weather_summer2025.csv
+What was implemented:
+  1. Weather data acquisition (scripts/fetch_weather_data.py):
+     - Iowa Environmental Mesonet (IEM) ASOS METAR: free, no API key
+     - Stations: KSFO (CAISO), KDCA (PJM), KHOU (ERCOT)
+     - Fetched: data/weather_q12026.csv (7,635 rows, Q1 2026)
+     - Fetched: data/summer2025/weather_summer2025.csv (8,859 rows, Summer 2025)
+     - Open-Meteo ERA5 archive unavailable (503); IEM ASOS used instead
 
-  3. Wire weather features into PriceQuantileForecaster:
-     - Add optional weather_df parameter to fit() and predict()
-     - Features passed alongside price lag features
-     - Backward compatible: if weather_df=None, fall back to price-only features
+  2. Weather features added to ML forecaster (aurelius/forecasting/):
+     - WEATHER_FEATURE_COLS: temperature_c, hdd_f, cdd_f, wind_speed_ms,
+       temp_rolling_24h_c, temp_delta_24h_c
+     - build_weather_lookup(): O(1) (timestamp, region) lookup dict
+     - add_weather_features(): graceful join, missing → 0.0 (no crash)
+     - build_feature_matrix() / build_feature_matrix_for_predict(): optional
+       weather_lookup parameter (backward-compatible, optional)
+     - PriceModelConfig: include_weather_features=True (default), plus new
+       min_child_samples and reg_lambda regularization params
+     - PriceQuantileForecaster.fit()/predict(): optional weather_df parameter
+       with graceful fallback to price-only mode
+     - Model version: v3.0 when weather active, v2.0 when not
 
-  4. Run head-to-head benchmark (weather-enhanced vs ml_quantile_v2):
-     - training@caiso_pjm_ercot_da_rt
-     - fine_tuning@caiso_pjm_ercot_da_rt
-     - Target: ≥5pp improvement for training vs ml_quantile_v2 (15.0%)
+  3. Backtest engine (aurelius/backtesting/engine.py):
+     - BacktestEngine: weather_df parameter
+     - _build_ml_forecast(): leakage-safe weather split (train < eval_start)
+     - Backward-compatible via inspect.signature() for custom forecaster subclasses
+     - Weather for prediction: full range (correct — weather is exogenous)
 
-  5. If weather closes the gap materially (>5pp):
-     - Archive as new baseline
-     - Update Phase 3 status to COMPLETE
+  4. Benchmark runner (benchmarks/run_benchmark.py):
+     - --forecaster ml_quantile_weather: weather-enhanced v3.0
+     - --forecaster ml_quantile: v2.0 (no weather, baseline preserved)
+     - Auto-detection of co-located weather CSVs
+     - ml_quantile (no weather) preserves exact 15.0% baseline
 
-Caution:
-  - Weather data must be from HISTORICAL endpoints (not live forecasts)
-    for proper leakage-free backtesting
-  - Open-Meteo historical API provides data up to 5 days before present,
-    so Q1 2026 data should be fully available
-  - DO NOT use weather forecast data as training/eval input — only historical
-    actuals (same rule as price data)
+  5. Tests (tests/test_weather_features.py): 23 new tests, all passing
+     - TestBuildWeatherLookup (5), TestBuildFeatureMatrixWithWeather (5)
+     - TestBuildFeatureMatrixForPredictWithWeather (2)
+     - TestPriceQuantileForecasterBackwardCompat (2)
+     - TestPriceQuantileForecasterWithWeather (6)
+     - TestWeatherLeakageSafety (2), TestBacktestEngineWeatherIntegration (1)
+
+Benchmark results (2026-05-23):
+
+  Primary metric: training@caiso_pjm_ercot_da_rt
+    ml_quantile v2.0 (no weather):   15.0%   ← BASELINE PRESERVED
+    ml_quantile_weather v3.0:        11.1%   ← REGRESSION (-3.9pp)
+    Oracle ceiling (v2.0 run):       29.9%   ← remaining gap: 14.9pp
+
+  Summer 2025: training@summer2025_3region
+    ml_quantile v2.0 (no weather):    8.5%
+    ml_quantile_weather v3.0:         8.2%   ← negligible change (-0.3pp)
+
+  Full ml_quantile v2.0 benchmark (all workloads, all regions — 2026-05-23):
+    background_maintenance@caiso_pjm_ercot_da_rt:  40.3%  ✓
+    data_processing@caiso_pjm_ercot_da_rt:         37.7%  ✓
+    llm_batch_inference@caiso_pjm_ercot_da_rt:     33.6%  ✓
+    scheduled_batch@caiso_pjm_ercot_da_rt:         25.3%  ✓
+    fine_tuning@caiso_pjm_ercot_da_rt:             13.4%  ⚠
+    training@caiso_pjm_ercot_da_rt:                15.0%  ⚠
+    realtime_inference@caiso_pjm_ercot_da_rt:      10.0%  ⚠
+    (all 42 cells in benchmark artifact)
+
+  Benchmark artifact: benchmarks/results/benchmark_ml_quantile_v3_weather_q12026_20260523.json
+
+Root cause analysis (why weather regressed the primary metric):
+  The January 2026 ERCOT cold snap (Jan 7-14, Houston min -4.4°C, 36 hours
+  below freezing, max hdd_f=41) falls entirely within the 30-day training
+  window for ALL 5 evaluation folds. The evaluation folds run February-March
+  where ERCOT weather is mild (hdd_f ≈ 0-5). Weather features therefore:
+    - Learn "high HDD → high ERCOT price" from January cold snap (in training)
+    - Get mild weather signals during evaluation (no predictive signal)
+    - Add noise to the joint 3-region LightGBM model that hurts CAISO/PJM
+      predictions (feature stealing in shared model capacity)
+  Tested configurations that all regressed:
+    - All 3 regions' weather (11.1%)
+    - ERCOT-only weather (9.3%)
+    - ERCOT-only weather + regularization (num_leaves=31, mcs=50, λ=0.5) (2.6%)
+  Note: single-region ERCOT benchmark improved with weather (-7.8% → -0.9%)
+  confirming the weather feature logic is correct; the multi-region joint model
+  is where the structural mismatch causes regression.
+
+Why the acceptance criterion cannot be met with this dataset/configuration:
+  The 30-day-training / 7-day-eval fold structure places the ONLY cold snap
+  event in the training set. No eval fold contains a cold snap. Weather features
+  would help if: (a) cold snaps appeared in eval windows, or (b) eval windows
+  contained post-cold-snap "recovery" price elevations (they do not — ERCOT
+  prices normalize within 7 days of a cold snap). Separate-model-per-region
+  (ERCOT with weather, CAISO/PJM without) estimated to reach ~17.3% — still
+  below the 20% acceptance criterion.
+
+What works as intended (verified):
+  ✓ Weather lookup joins correctly by (timestamp, region) UTC-floored hour
+  ✓ Missing weather → 0.0 (graceful degradation, no crash)
+  ✓ Leakage-safe split: train weather < eval_start, predict gets full range
+  ✓ Backward-compatible with custom forecaster subclasses (inspect.signature)
+  ✓ Single-region ERCOT benchmark improves from -7.8% to -0.9% with weather
+  ✓ All 724 tests pass (701 pre-existing + 23 new weather tests)
+  ✓ No regression in v2.0 baseline metrics (15.0% preserved exactly)
+
+Acceptance criterion status:
+  REQUIRED: training@caiso_pjm_ercot_da_rt ≥ 20.0% with weather features
+  ACHIEVED:  11.1% (ml_quantile_weather) — criterion NOT met
+  Honest finding: Q1 2026 fold structure makes this metric inaccessible to
+  weather-based improvements. Infrastructure delivered; metric deferred.
+
+Next exact task for Phase 3 completion:
+  Option A (recommended): Per-region model architecture
+    - Train separate PriceQuantileForecaster per region in _build_ml_forecast()
+    - ERCOT model: include weather features (hdd_f, temp_delta_24h_c)
+    - CAISO/PJM models: price-only (no weather, no feature stealing)
+    - Expected: ERCOT -0.9% + CAISO/PJM ~26% each → overall ~17.3%
+    - Still below 20% but shows weather helps without harming other regions
+  Option B: Different forecast window
+    - Use --train-days 7 so early folds capture Jan 8-14 cold snap in eval
+    - Requires re-establishing baseline with 7-day training window
+    - Would demonstrate weather benefit for cold snap periods definitively
+  Option C: Extend to summer heat waves
+    - Summer 2025 has heat waves throughout (CDD events in eval windows)
+    - Requires confirming whether CDD→price correlation holds in eval windows
+    - More promising for summer data than winter where cold snap is front-loaded
 
 ===============================================================================
 ELECTRICITY MAPS CONTRIB AUDIT + MARKET-DATA PROVIDER ABSTRACTION

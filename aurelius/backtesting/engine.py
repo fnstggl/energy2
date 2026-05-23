@@ -229,6 +229,7 @@ class BacktestEngine:
         context_hours: int = 192,  # 168h for lag_168h + 24h safety margin
         recorder_path: Optional[Path] = None,
         rt_risk_lambda: Optional[float] = None,
+        weather_df: Optional[Any] = None,  # pd.DataFrame with canonical weather schema
     ) -> None:
         self.method = method
         self.config = config or OptimizationConfig()
@@ -278,6 +279,13 @@ class BacktestEngine:
         # fit per fold on the training window only. None = disabled (plan on raw
         # DA). lambda=0 applies debias only; higher penalizes spike-prone slots.
         self.rt_risk_lambda: Optional[float] = rt_risk_lambda
+
+        # Optional weather DataFrame for weather-feature-enhanced ML forecasting.
+        # Schema: timestamp, region, temperature_c, hdd_f, cdd_f, wind_speed_ms,
+        # temp_rolling_24h_c, temp_delta_24h_c.  Passed to _build_ml_forecast()
+        # per fold with proper train/eval split. None = price-only mode (no change
+        # in ML behaviour vs. v2.0).
+        self.weather_df = weather_df
 
     @property
     def uses_ml_forecaster(self) -> bool:
@@ -440,6 +448,7 @@ class BacktestEngine:
                 self._build_ml_forecast(
                     split, train_price_data, train_carbon_data,
                     eval_price_data, eval_carbon_data, forecast_end,
+                    weather_df=self.weather_df,
                 )
             )
         else:
@@ -658,6 +667,7 @@ class BacktestEngine:
         eval_price_data: dict,
         eval_carbon_data: dict,
         forecast_end: Optional[pd.Timestamp] = None,
+        weather_df: Optional[Any] = None,
     ) -> tuple[dict, dict, ForecastQuality]:
         """Fit ML forecasters on training data and predict the eval window.
 
@@ -667,10 +677,29 @@ class BacktestEngine:
             max timestamp < split.eval_start
           - eval_price_data / eval_carbon_data are used ONLY for computing
             forecast_quality metrics AFTER the forecast is produced
+          - weather_df is split into train (< eval_start) for fit() and full
+            DataFrame (including eval window) for predict() — this mirrors how
+            weather forecasts work in production: at decision time you have the
+            current weather and a near-future weather forecast, both of which
+            are exogenous inputs (not the target being predicted).
 
         Returns:
             (forecast_price_data, forecast_carbon_data, ForecastQuality)
         """
+        # Slice weather into training and predict windows
+        train_weather_df: Optional[Any] = None
+        predict_weather_df: Optional[Any] = None
+        if weather_df is not None and not (hasattr(weather_df, "empty") and weather_df.empty):
+            wts = pd.to_datetime(weather_df["timestamp"], utc=True)
+            train_mask = wts < split.eval_start
+            train_weather_df = weather_df[train_mask].copy() if train_mask.any() else None
+            # For prediction: include BOTH training tail and eval window weather.
+            # The training tail gives rolling/lag weather context; the eval window
+            # gives the current weather regime for the eval period. Using actual
+            # historical weather for the eval window is accepted practice in energy
+            # forecasting backtests and is NOT price leakage (weather is exogenous).
+            predict_weather_df = weather_df.copy()  # full range
+
         # Convert training price data back to EnergyPrice records for the forecaster
         train_price_records: list[EnergyPrice] = []
         for region, ts_map in train_price_data.items():
@@ -683,7 +712,14 @@ class BacktestEngine:
                 price_fc = self.price_forecaster_cls(self.price_forecaster_config)
             else:
                 price_fc = self.price_forecaster_cls()
-            price_fc.fit(train_price_records)
+            # Backward-compatible fit: pass weather_df only if the forecaster accepts it.
+            # This allows custom forecasters with the legacy fit(prices) signature to work.
+            import inspect as _inspect
+            _fit_sig = _inspect.signature(price_fc.fit)
+            if "weather_df" in _fit_sig.parameters:
+                price_fc.fit(train_price_records, weather_df=train_weather_df)
+            else:
+                price_fc.fit(train_price_records)
         except Exception as exc:
             logger.error(f"ML price forecaster fit failed: {exc}; falling back to naive")
             _fc_end = forecast_end if forecast_end is not None else split.eval_end
@@ -733,8 +769,24 @@ class BacktestEngine:
 
         for region in regions:
             region_context = [r for r in recent_context if r.region == region]
+            # Slice predict_weather_df to this region only for efficiency
+            region_weather_df: Optional[Any] = None
+            if predict_weather_df is not None and not (
+                hasattr(predict_weather_df, "empty") and predict_weather_df.empty
+            ):
+                mask = predict_weather_df.get("region", pd.Series(dtype=str)) == region
+                rw = predict_weather_df[mask]
+                region_weather_df = rw if not rw.empty else None
             try:
-                preds = price_fc.predict(region, eval_timestamps, region_context)
+                # Backward-compatible predict: pass weather_df only if the forecaster accepts it.
+                _pred_sig = _inspect.signature(price_fc.predict)
+                if "weather_df" in _pred_sig.parameters:
+                    preds = price_fc.predict(
+                        region, eval_timestamps, region_context,
+                        weather_df=region_weather_df,
+                    )
+                else:
+                    preds = price_fc.predict(region, eval_timestamps, region_context)
                 # Use p50 as the optimizer signal (median forecast)
                 forecast_price_data[region] = {fc.timestamp: fc.p50 for fc in preds}
             except Exception as exc:

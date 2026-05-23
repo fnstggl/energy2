@@ -218,6 +218,42 @@ def _load_carbon_df(region_combo: dict, repo_root: Path) -> pd.DataFrame:
     return pd.DataFrame()
 
 
+def _load_weather_df(region_combo: dict, repo_root: Path) -> pd.DataFrame:
+    """Auto-detect and load a weather CSV for the given region_combo.
+
+    Looks for weather files co-located with the price data (same date directory)
+    and in the top-level data/ directory.  Returns empty DataFrame if not found —
+    the ML forecaster then falls back to price-only mode (no crash).
+
+    Schema: timestamp, region, temperature_c, hdd_f, cdd_f, wind_speed_ms,
+            temp_rolling_24h_c, temp_delta_24h_c, source.
+    """
+    weather_candidates: list[Path] = []
+
+    da_path = repo_root / region_combo["da_price_file"]
+    weather_candidates.append(da_path.parent / "weather_q12026.csv")
+    weather_candidates.append(da_path.parent / "weather_summer2025.csv")
+
+    data_dir = repo_root / "data"
+    weather_candidates.append(data_dir / "weather_q12026.csv")
+
+    for candidate in weather_candidates:
+        if candidate.exists():
+            try:
+                df = pd.read_csv(str(candidate))
+                if df.empty or "timestamp" not in df.columns or "region" not in df.columns:
+                    continue
+                df["timestamp"] = pd.to_datetime(df["timestamp"], utc=True)
+                combo_regions = region_combo["regions"]
+                df_filtered = df[df["region"].isin(combo_regions)]
+                if not df_filtered.empty:
+                    return df_filtered.reset_index(drop=True)
+            except Exception:
+                pass
+
+    return pd.DataFrame()
+
+
 def run_single_benchmark(
     *,
     region_combo: dict,
@@ -229,16 +265,21 @@ def run_single_benchmark(
     oracle: bool = False,
     forecaster: str = "seasonal_naive",
     carbon_file: Optional[str] = None,
+    weather_file: Optional[str] = None,
     repo_root: Path,
 ) -> dict:
     """Run one (region_combo × workload_type) benchmark cell.
 
     Args:
-        forecaster: "seasonal_naive" (default, no leakage risk) or
-                    "ml_quantile" (LightGBM quantile, re-fit per fold).
-        carbon_file: Path to carbon CSV (relative to repo root). If None,
-                    auto-detects from co-located files. If no carbon data is
-                    found, the optimizer runs price-only (correct fallback).
+        forecaster:   "seasonal_naive" (default, no leakage risk) or
+                      "ml_quantile" (LightGBM quantile, re-fit per fold) or
+                      "ml_quantile_weather" (ML quantile + weather features).
+        carbon_file:  Path to carbon CSV (relative to repo root). If None,
+                      auto-detects from co-located files. If no carbon data is
+                      found, the optimizer runs price-only (correct fallback).
+        weather_file: Path to weather CSV (relative to repo root). If None,
+                      auto-detects from co-located files. If no weather data is
+                      found, the ML forecaster runs price-only (correct fallback).
 
     Returns a result dict with savings vs each baseline.
     """
@@ -270,6 +311,34 @@ def run_single_benchmark(
     if carbon_regions:
         print(f"  Carbon signal: {carbon_regions} (watttime_moer)")
 
+    # Weather data for ML forecaster: ml_quantile_weather explicitly opts in;
+    # plain ml_quantile runs v2.0 (no weather) to preserve the baseline metric.
+    # Use --weather-file <path> to supply a custom file, or --forecaster ml_quantile_weather
+    # to auto-detect weather from co-located data files.
+    weather_df_loaded: pd.DataFrame = pd.DataFrame()
+    use_weather = forecaster == "ml_quantile_weather"
+    if use_weather:
+        if weather_file and weather_file != "none":
+            try:
+                weather_df_loaded = pd.read_csv(str(repo_root / weather_file))
+                weather_df_loaded["timestamp"] = pd.to_datetime(
+                    weather_df_loaded["timestamp"], utc=True
+                )
+                weather_df_loaded = weather_df_loaded[
+                    weather_df_loaded["region"].isin(regions)
+                ].reset_index(drop=True)
+            except Exception as exc:
+                print(f"  WARNING: failed to load weather file {weather_file}: {exc}")
+        else:
+            weather_df_loaded = _load_weather_df(region_combo, repo_root)
+
+    weather_regions = (
+        weather_df_loaded["region"].unique().tolist()
+        if not weather_df_loaded.empty else []
+    )
+    if weather_regions:
+        print(f"  Weather signal: {weather_regions} (iem_asos_metar)")
+
     start_ts = pd.Timestamp(region_combo["date_start"], tz="UTC")
     end_ts = pd.Timestamp(region_combo["date_end"], tz="UTC")
 
@@ -295,17 +364,18 @@ def run_single_benchmark(
     price_forecaster_cls = None
     price_forecaster_config = None
     effective_forecaster = forecaster
-    if forecaster == "ml_quantile":
+    if forecaster in ("ml_quantile", "ml_quantile_weather"):
         PriceQuantileForecaster, PriceModelConfig = _get_ml_forecaster_cls()
         if PriceQuantileForecaster is not None:
             price_forecaster_cls = PriceQuantileForecaster
-            # v2.0: use updated config with volatility features and better hyperparams
+            # v3.0: weather features enabled when weather data is available
             price_forecaster_config = PriceModelConfig(
                 seed=42,
                 n_estimators=200,
                 learning_rate=0.05,
                 include_volatility_features=True,
                 num_leaves=63,
+                include_weather_features=True,
             )
         else:
             print("  WARNING: ml_quantile unavailable, falling back to seasonal_naive")
@@ -320,6 +390,7 @@ def run_single_benchmark(
         price_forecaster_cls=price_forecaster_cls,
         price_forecaster_config=price_forecaster_config,
         context_hours=336,  # 2 weeks for lag_168h to work across the full eval horizon
+        weather_df=weather_df_loaded if not weather_df_loaded.empty else None,
     )
     if oracle:
         engine.oracle_forecast = True
@@ -483,13 +554,18 @@ def parse_args() -> argparse.Namespace:
                             "greedy_migrate_dp", "local_search_migrate_dp"],
                    help="Optimizer method")
     p.add_argument("--forecaster", default="seasonal_naive",
-                   choices=["seasonal_naive", "ml_quantile"],
-                   help="Forecasting method: 'seasonal_naive' (default, no ML) or "
-                        "'ml_quantile' (LightGBM, re-fit per fold). "
+                   choices=["seasonal_naive", "ml_quantile", "ml_quantile_weather"],
+                   help="Forecasting method: 'seasonal_naive' (default, no ML), "
+                        "'ml_quantile' (LightGBM + volatility features, auto-uses weather if found), "
+                        "'ml_quantile_weather' (same as ml_quantile, explicit weather mode). "
                         "NEVER mix oracle with ml_quantile for savings claims.")
     p.add_argument("--carbon-file", default=None,
                    help="Path to carbon CSV (relative to repo root). If omitted, auto-detects "
                         "from co-located files. Admissible: watttime_moer (production data only).")
+    p.add_argument("--weather-file", default=None,
+                   help="Path to weather CSV (relative to repo root). If omitted, auto-detects "
+                        "from co-located files (data/weather_q12026.csv etc.). "
+                        "Pass 'none' to explicitly disable weather features.")
     return p.parse_args()
 
 
@@ -555,6 +631,7 @@ def main() -> int:
                     oracle=False,
                     forecaster=args.forecaster,
                     carbon_file=args.carbon_file,
+                    weather_file=getattr(args, "weather_file", None),
                     repo_root=repo_root,
                 )
                 result["run_ts"] = run_ts
@@ -600,6 +677,7 @@ def main() -> int:
                         oracle=True,
                         forecaster="seasonal_naive",  # oracle always uses naive (ceiling test, not ML test)
                         carbon_file=args.carbon_file,
+                        weather_file=None,  # oracle doesn't use weather (it sees actual prices)
                         repo_root=repo_root,
                     )
                     r["run_ts"] = run_ts

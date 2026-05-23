@@ -321,6 +321,104 @@ def check_recent_data_sufficient(
     return len(recent_values) >= min_hours
 
 
+# Weather feature columns used in build_feature_matrix when weather_df is provided.
+# These must match the canonical weather CSV schema from fetch_weather_data.py.
+WEATHER_FEATURE_COLS = [
+    "temperature_c",       # dry-bulb temperature (°C) — primary demand driver
+    "hdd_f",               # heating degree-hours (°F base 65): max(0, 65°F - T)
+    "cdd_f",               # cooling degree-hours (°F base 65): max(0, T - 65°F)
+    "wind_speed_ms",       # surface wind speed m/s — key for ERCOT wind generation
+    "temp_rolling_24h_c",  # 24h trailing mean temp — cold-snap / heat-wave regime flag
+    "temp_delta_24h_c",    # T minus T_24h_ago — rapid warming/cooling detection
+]
+
+
+def build_weather_lookup(
+    weather_df: pd.DataFrame,
+) -> dict[tuple, dict[str, float]]:
+    """Build a fast (timestamp, region) → {col: value} lookup from a weather DataFrame.
+
+    Timestamps are normalised to UTC-aware, floored to the hour, so they match
+    the price-record timestamps used throughout the backtest engine.
+
+    Args:
+        weather_df: Canonical weather DataFrame with columns: timestamp, region,
+                    temperature_c, hdd_f, cdd_f, wind_speed_ms, temp_rolling_24h_c,
+                    temp_delta_24h_c.  Extra columns are silently ignored.
+
+    Returns:
+        Dict keyed by (floor_hour_ts_utc, region) → {col: value}.
+        Empty dict if weather_df is None or empty.
+    """
+    if weather_df is None or weather_df.empty:
+        return {}
+
+    lookup: dict[tuple, dict[str, float]] = {}
+    ts_series = pd.to_datetime(weather_df["timestamp"], utc=True).dt.floor("h")
+
+    available_cols = [c for c in WEATHER_FEATURE_COLS if c in weather_df.columns]
+
+    for i, row in weather_df.reset_index(drop=True).iterrows():
+        ts = ts_series.iloc[i]
+        region = str(row["region"])
+        key = (ts, region)
+        vals = {}
+        for col in available_cols:
+            v = row.get(col, float("nan"))
+            vals[col] = float(v) if not (v != v) else 0.0  # NaN → 0
+        lookup[key] = vals
+
+    return lookup
+
+
+def add_weather_features(
+    df: pd.DataFrame,
+    timestamps: list[datetime],
+    regions: list[str],
+    weather_lookup: dict[tuple, dict[str, float]],
+) -> pd.DataFrame:
+    """Join weather features into a feature matrix row-by-row.
+
+    For each (timestamp, region) row, look up weather features from the prebuilt
+    lookup dict.  Missing entries → 0.0 (graceful degradation when weather data
+    has gaps, or when this is a holdout region with no weather file).
+
+    Args:
+        df:             Feature matrix to augment (one row per sample).
+        timestamps:     Timestamps aligned with df rows.
+        regions:        Regions aligned with df rows.
+        weather_lookup: Prebuilt lookup from build_weather_lookup().
+
+    Returns:
+        df with weather columns appended.  Never raises; missing → 0.0.
+    """
+    if not weather_lookup:
+        return df
+
+    # Determine which columns are present in the lookup
+    sample_vals = next(iter(weather_lookup.values()), {})
+    cols = list(sample_vals.keys())
+    if not cols:
+        return df
+
+    weather_rows = {col: [] for col in cols}
+    ts_utc = [
+        (pd.Timestamp(t).tz_convert("UTC") if t.tzinfo is not None
+         else pd.Timestamp(t, tz="UTC")).floor("h")
+        for t in timestamps
+    ]
+
+    for ts, region in zip(ts_utc, regions):
+        entry = weather_lookup.get((ts, region), {})
+        for col in cols:
+            weather_rows[col].append(entry.get(col, 0.0))
+
+    for col in cols:
+        df[col] = weather_rows[col]
+
+    return df
+
+
 def build_feature_matrix(
     timestamps: list[datetime],
     regions: list[str],
@@ -331,6 +429,7 @@ def build_feature_matrix(
     known_regions: Optional[list[str]] = None,
     lag_hours: Optional[list[int]] = None,
     rolling_hours: Optional[list[int]] = None,
+    weather_lookup: Optional[dict] = None,
 ) -> pd.DataFrame:
     """Build full feature matrix for training or prediction.
 
@@ -338,6 +437,10 @@ def build_feature_matrix(
     - lag_hours: [1, 6, 24, 168] (full seasonal lag set)
     - rolling_hours: [6, 24]
     - include_volatility: False by default, opt-in for regime features
+
+    v3.0 addition:
+    - weather_lookup: optional prebuilt dict from build_weather_lookup(); when
+      provided, weather features (temperature, HDD, CDD, wind) are appended.
 
     Args:
         timestamps: List of timestamps
@@ -349,6 +452,7 @@ def build_feature_matrix(
         known_regions: Known regions for consistent encoding
         lag_hours: Specific lag hours to use
         rolling_hours: Specific rolling windows
+        weather_lookup: Prebuilt weather lookup from build_weather_lookup() (optional)
 
     Returns:
         DataFrame with all features
@@ -401,6 +505,10 @@ def build_feature_matrix(
                 ]:
                     df[col] = 0.0
 
+    # Weather features (v3.0)
+    if weather_lookup:
+        df = add_weather_features(df, timestamps, regions, weather_lookup)
+
     # Fill NaN with 0
     df = df.fillna(0)
 
@@ -415,6 +523,7 @@ def build_feature_matrix_for_predict(
     lag_hours: Optional[list[int]] = None,
     rolling_hours: Optional[list[int]] = None,
     include_volatility: bool = False,
+    weather_lookup: Optional[dict] = None,
 ) -> tuple[pd.DataFrame, bool]:
     """Build feature matrix for prediction with automatic fallback.
 
@@ -429,6 +538,12 @@ def build_feature_matrix_for_predict(
         lag_hours: Lag hours to use if sufficient data
         rolling_hours: Rolling windows if sufficient data
         include_volatility: Whether to include volatility regime features
+        weather_lookup: Prebuilt weather lookup from build_weather_lookup() (optional).
+            When provided, weather features are joined for each (timestamp, region).
+            For the prediction horizon, entries from the weather_lookup covering those
+            timestamps are used directly (historical actuals serve as proxy for weather
+            forecasts at backtesting time; production use would substitute weather API
+            forecast values instead).
 
     Returns:
         Tuple of (feature_matrix, used_lags) where used_lags indicates
@@ -454,6 +569,7 @@ def build_feature_matrix_for_predict(
             include_rolling=False,
             include_volatility=False,
             known_regions=known_regions,
+            weather_lookup=weather_lookup,
         )
         return df, False
 
@@ -488,6 +604,7 @@ def build_feature_matrix_for_predict(
         known_regions=known_regions,
         lag_hours=lag_hours,
         rolling_hours=rolling_hours,
+        weather_lookup=weather_lookup,
     )
 
     df = full_df.iloc[n_recent:].reset_index(drop=True)
@@ -539,6 +656,8 @@ def train_lightgbm_quantile(
     max_depth: int = 6,
     learning_rate: float = 0.05,
     num_leaves: int = 63,
+    min_child_samples: int = 20,
+    reg_lambda: float = 0.0,
 ) -> Any:
     """Train a LightGBM quantile regressor.
 
@@ -551,6 +670,8 @@ def train_lightgbm_quantile(
         max_depth: Maximum tree depth
         learning_rate: Learning rate
         num_leaves: LightGBM num_leaves (controls model capacity)
+        min_child_samples: Minimum samples required in a leaf node (regularization)
+        reg_lambda: L2 regularization term (0.0 = disabled)
 
     Returns:
         Trained LightGBM model (or None if unavailable)
@@ -569,9 +690,12 @@ def train_lightgbm_quantile(
             random_state=seed,
             n_jobs=1,
             verbose=-1,
+            min_child_samples=min_child_samples,
         )
         if num_leaves > 0:
             lgb_kwargs["num_leaves"] = num_leaves
+        if reg_lambda > 0.0:
+            lgb_kwargs["reg_lambda"] = reg_lambda
 
         model = lgb.LGBMRegressor(**lgb_kwargs)
         model.fit(X_train, y_train)

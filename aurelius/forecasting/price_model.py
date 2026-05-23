@@ -34,8 +34,10 @@ from .quantile_model import (
     QuantileForecast,
     QUANTILE_P50,
     QUANTILE_P90,
+    WEATHER_FEATURE_COLS,
     build_feature_matrix,
     build_feature_matrix_for_predict,
+    build_weather_lookup,
     check_recent_data_sufficient,
     predict_with_fallback,
     set_deterministic_seed,
@@ -110,6 +112,18 @@ class PriceModelConfig:
             improves detection of price-spike regimes.
         num_leaves: LightGBM num_leaves (overrides max_depth when set to > 0).
             Default 0 means use max_depth.
+        include_weather_features: Enable weather features (temperature, HDD, CDD, wind
+            speed) when a weather DataFrame is supplied at fit/predict time. When no
+            weather data is available the model degrades gracefully to price-only mode.
+            Primarily improves ERCOT winter (cold-snap price spike prediction) and
+            summer heat-wave demand spikes. Default True — features are only active when
+            weather_df is actually provided.
+        min_child_samples: Minimum samples per LightGBM leaf node. Higher values
+            increase regularization and reduce overfitting, especially important when
+            adding weather features to the training set. Default 20 (LightGBM default).
+        reg_lambda: L2 regularization coefficient for LightGBM. Non-zero values
+            shrink leaf weights toward zero, reducing overfit on small training sets.
+            Default 0.0 (disabled).
     """
     seed: int = DEFAULT_SEED
     n_estimators: int = 200
@@ -118,6 +132,9 @@ class PriceModelConfig:
     use_baseline_fallback: bool = True
     include_volatility_features: bool = True
     num_leaves: int = 63
+    include_weather_features: bool = True
+    min_child_samples: int = 20
+    reg_lambda: float = 0.0
 
 
 class PriceQuantileForecaster:
@@ -172,6 +189,14 @@ class PriceQuantileForecaster:
         # v2.0: Volatility regime features for price spike detection.
         # Enabled when config.include_volatility_features is True.
         self._use_volatility = self.config.include_volatility_features
+        # v3.0: Weather features for temperature/demand-driven price signals.
+        # Active when config.include_weather_features is True AND weather data
+        # is supplied at fit()/predict() time.  Missing weather → price-only (no crash).
+        self._use_weather = self.config.include_weather_features
+        # Stored weather lookup built during fit() — used to ensure training-time
+        # weather features are available for the predict() call path when the
+        # caller does not supply a separate predict-time weather_df.
+        self._train_weather_lookup: dict = {}
         # Bias-correction lookup: {region: {hour: bias}} loaded from artifact
         self._p50_bias: dict[str, dict[int, float]] = {}
         self._corrections_loaded: bool = False
@@ -213,15 +238,27 @@ class PriceQuantileForecaster:
         except Exception as exc:
             logger.warning(f"PriceQuantileForecaster: failed to load corrections from {path}: {exc}")
 
-    def fit(self, prices: list[EnergyPrice]) -> "PriceQuantileForecaster":
+    def fit(
+        self,
+        prices: list[EnergyPrice],
+        weather_df: Optional["pd.DataFrame"] = None,
+    ) -> "PriceQuantileForecaster":
         """Fit the quantile models on historical price data.
 
         Args:
-            prices: List of historical EnergyPrice objects
+            prices:     List of historical EnergyPrice objects.
+            weather_df: Optional canonical weather DataFrame (columns: timestamp,
+                        region, temperature_c, hdd_f, cdd_f, wind_speed_ms,
+                        temp_rolling_24h_c, temp_delta_24h_c).  When provided and
+                        include_weather_features is True, weather features are joined
+                        into the training matrix.  None → price-only mode (no change
+                        in behaviour vs. v2.0).
 
         Returns:
             Self for chaining
         """
+        import pandas as _pd  # local import to avoid top-level circular dep in tests
+
         set_deterministic_seed(self.config.seed)
 
         # Extract training data
@@ -231,6 +268,19 @@ class PriceQuantileForecaster:
 
         self._known_regions = sorted(set(regions))
         self._baseline_mean = float(np.mean(values)) if len(values) > 0 else 50.0
+
+        # Build weather lookup once and cache for predict-time reuse
+        self._train_weather_lookup = {}
+        effective_weather_lookup: dict = {}
+        if self._use_weather and weather_df is not None and not (
+            hasattr(weather_df, "empty") and weather_df.empty
+        ):
+            effective_weather_lookup = build_weather_lookup(weather_df)
+            self._train_weather_lookup = effective_weather_lookup
+            logger.info(
+                f"Weather features enabled: {len(effective_weather_lookup)} hourly entries, "
+                f"regions={list(weather_df['region'].unique()) if 'region' in weather_df else '?'}"
+            )
 
         X = build_feature_matrix(
             timestamps,
@@ -242,10 +292,13 @@ class PriceQuantileForecaster:
             known_regions=self._known_regions,
             lag_hours=self._lag_hours,
             rolling_hours=self._rolling_hours,
+            weather_lookup=effective_weather_lookup,
         )
         X_np = X.values
 
         num_leaves = getattr(self.config, "num_leaves", 0)
+        min_child_samples = getattr(self.config, "min_child_samples", 20)
+        reg_lambda = getattr(self.config, "reg_lambda", 0.0)
 
         logger.info("Training p50 (median) price model...")
         self._model_p50 = train_lightgbm_quantile(
@@ -255,6 +308,8 @@ class PriceQuantileForecaster:
             max_depth=self.config.max_depth,
             learning_rate=self.config.learning_rate,
             num_leaves=num_leaves,
+            min_child_samples=min_child_samples,
+            reg_lambda=reg_lambda,
         )
 
         logger.info("Training p90 (upper bound) price model...")
@@ -265,17 +320,26 @@ class PriceQuantileForecaster:
             max_depth=self.config.max_depth,
             learning_rate=self.config.learning_rate,
             num_leaves=num_leaves,
+            min_child_samples=min_child_samples,
+            reg_lambda=reg_lambda,
         )
 
         self._fitted = True
 
         if self._model_p50 is not None and self._model_p90 is not None:
             vol_suffix = "+volatility" if self._use_volatility else ""
-            model_type = f"lightgbm_quantile{vol_suffix}"
+            wx_suffix = "+weather" if effective_weather_lookup else ""
+            model_type = f"lightgbm_quantile{vol_suffix}{wx_suffix}"
         else:
             model_type = "baseline_fallback"
 
-        features_version = "v2.0" if self._use_volatility else "v1.2"
+        if effective_weather_lookup:
+            features_version = "v3.0"
+        elif self._use_volatility:
+            features_version = "v2.0"
+        else:
+            features_version = "v1.2"
+
         self._metadata = ModelMetadata(
             model_type=model_type,
             trained_at=datetime.utcnow(),
@@ -297,16 +361,27 @@ class PriceQuantileForecaster:
         region: str,
         timestamps: list[datetime],
         recent_prices: Optional[list[EnergyPrice]] = None,
+        weather_df: Optional["pd.DataFrame"] = None,
     ) -> list[PriceQuantileForecast]:
         """Generate quantile price forecasts.
 
         v1.1: Uses lag features if sufficient recent data available (≥6 hours),
         otherwise falls back silently to temporal+region features.
 
+        v3.0: Optionally accepts weather_df for weather feature augmentation.
+        If weather_df is None, falls back to the training-time weather lookup
+        (if available), otherwise runs price-only (no crash).
+
         Args:
-            region: Region to forecast
-            timestamps: List of future timestamps to predict
-            recent_prices: Recent price data for feature computation (≥6 hours for lags)
+            region:        Region to forecast.
+            timestamps:    List of future timestamps to predict.
+            recent_prices: Recent price data for feature computation (≥6 hours for lags).
+            weather_df:    Optional canonical weather DataFrame covering the prediction
+                           timestamps (columns: timestamp, region, temperature_c, …).
+                           When None, the model falls back to training-time weather data
+                           if available, then to price-only mode.  Supplying eval-window
+                           historical actuals is correct for backtesting (they serve as
+                           a proxy for high-accuracy weather forecasts).
 
         Returns:
             List of PriceQuantileForecast objects
@@ -314,6 +389,17 @@ class PriceQuantileForecaster:
         if not self._fitted:
             logger.warning("Model not fitted, using baseline fallback")
             return self._baseline_predict(timestamps, region)
+
+        # Resolve weather lookup for the prediction window
+        predict_weather_lookup: dict = {}
+        if self._use_weather:
+            if weather_df is not None and not (
+                hasattr(weather_df, "empty") and weather_df.empty
+            ):
+                predict_weather_lookup = build_weather_lookup(weather_df)
+            elif self._train_weather_lookup:
+                # Fallback: use training-time weather lookup (covers context window)
+                predict_weather_lookup = self._train_weather_lookup
 
         # v1.1: Extract recent values for this region
         recent_values = None
@@ -336,6 +422,7 @@ class PriceQuantileForecaster:
                 lag_hours=self._lag_hours,
                 rolling_hours=self._rolling_hours,
                 include_volatility=self._use_volatility,
+                weather_lookup=predict_weather_lookup,
             )
         else:
             logger.debug("Price model: using temporal+region only (insufficient recent data)")
@@ -349,6 +436,7 @@ class PriceQuantileForecaster:
                 known_regions=self._known_regions,
                 lag_hours=self._lag_hours,
                 rolling_hours=self._rolling_hours,
+                weather_lookup=predict_weather_lookup,
             )
 
         X_np = X.values
