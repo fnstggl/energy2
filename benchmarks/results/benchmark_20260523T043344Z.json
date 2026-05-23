@@ -1,0 +1,557 @@
+{
+  "run_ts": "20260523T043344Z",
+  "quick": false,
+  "method": "greedy_migrate",
+  "primary_baseline": "current_price_only",
+  "results": [
+    {
+      "region_combo": "caiso_pjm_ercot_da_rt",
+      "regions": [
+        "us-west",
+        "us-east",
+        "us-south"
+      ],
+      "workload_type": "training",
+      "folds": 5,
+      "num_eval_jobs": 22,
+      "method": "greedy_migrate",
+      "forecaster": "ml_quantile_v5",
+      "oracle": false,
+      "settle_model": true,
+      "carbon_regions": [
+        "us-west"
+      ],
+      "missing_price_hours": 0,
+      "missing_price_pct": 0.0,
+      "savings": {
+        "fifo": {
+          "savings_pct": 60.588,
+          "savings_usd": 9451.4094,
+          "mean_opt_cost": 6148.0901,
+          "mean_baseline_cost": 15599.4995
+        },
+        "peak_blind_asap": {
+          "savings_pct": 60.123,
+          "savings_usd": 9269.3883,
+          "mean_opt_cost": 6148.0901,
+          "mean_baseline_cost": 15417.4784
+        },
+        "latency_first": {
+          "savings_pct": 60.123,
+          "savings_usd": 9269.3883,
+          "mean_opt_cost": 6148.0901,
+          "mean_baseline_cost": 15417.4784
+        },
+        "closest_region": {
+          "savings_pct": 60.123,
+          "savings_usd": 9269.3883,
+          "mean_opt_cost": 6148.0901,
+          "mean_baseline_cost": 15417.4784
+        },
+        "fixed_primary_region": {
+          "savings_pct": 60.123,
+          "savings_usd": 9269.3883,
+          "mean_opt_cost": 6148.0901,
+          "mean_baseline_cost": 15417.4784
+        },
+        "current_price_only": {
+          "savings_pct": 11.368,
+          "savings_usd": 788.5889,
+          "mean_opt_cost": 6148.0901,
+          "mean_baseline_cost": 6936.679
+        },
+        "round_robin": {
+          "savings_pct": 36.236,
+          "savings_usd": 3493.9151,
+          "mean_opt_cost": 6148.0901,
+          "mean_baseline_cost": 9642.0052
+        }
+      },
+      "primary_savings_pct": 11.368,
+      "date_range": {
+        "start": "2026-01-01",
+        "end": "2026-03-10"
+      },
+      "train_days": 30,
+      "eval_days": 7,
+      "forecast_quality": {
+        "forecaster": "ml_quantile_v5",
+        "folds_with_quality": 5,
+        "mean_mape": 8.2398,
+        "mean_p90_coverage": 0.6313
+      },
+      "run_ts": "20260523T043344Z"
+    },
+    {
+      "region_combo": "caiso_pjm_ercot_da_rt",
+      "regions": [
+        "us-west",
+        "us-east",
+        "us-south"
+      ],
+      "workload_type": "fine_tuning",
+      "folds": 5,
+      "num_eval_jobs": 22,
+      "method": "greedy_migrate",
+      "forecaster": "ml_quantile_v5",
+      "oracle": false,
+      "settle_model": true,
+      "carbon_regions": [
+        "us-west"
+      ],
+      "missing_price_hours": 0,
+      "missing_price_pct": 0.0,
+      "savings": {
+        "fifo": {
+          "savings_pct": 55.296,
+          "savings_usd": 325.9681,
+          "mean_opt_cost": 263.5334,
+          "mean_baseline_cost": 589.5014
+        },
+        "peak_blind_asap": {
+          "savings_pct": 54.564,
+          "savings_usd": 316.4724,
+          "mean_opt_cost": 263.5334,
+          "mean_baseline_cost": 580.0058
+        },
+        "latency_first": {
+          "savings_pct": 54.564,
+          "savings_usd": 316.4724,
+          "mean_opt_cost": 263.5334,
+          "mean_baseline_cost": 580.0058
+        },
+        "closest_region": {
+          "savings_pct": 54.564,
+          "savings_usd": 316.4724,
+          "mean_opt_cost": 263.5334,
+          "mean_baseline_cost": 580.0058
+        },
+        "fixed_primary_region": {
+          "savings_pct": 54.564,
+          "savings_usd": 316.4724,
+          "mean_opt_cost": 263.5334,
+          "mean_baseline_cost": 580.0058
+        },
+        "current_price_only": {
+          "savings_pct": 15.115,
+          "savings_usd": 46.9256,
+          "mean_opt_cost": 263.5334,
+          "mean_baseline_cost": 310.459
+        },
+        "round_robin": {
+          "savings_pct": 37.512,
+          "savings_usd": 158.2008,
+          "mean_opt_cost": 263.5334,
+          "mean_baseline_cost": 421.7342
+        }
+      },
+      "primary_savings_pct": 15.115,
+      "date_range": {
+        "start": "2026-01-01",
+        "end": "2026-03-10"
+      },
+      "train_days": 30,
+      "eval_days": 7,
+      "forecast_quality": {
+        "forecaster": "ml_quantile_v5",
+        "folds_with_quality": 5,
+        "mean_mape": 8.2398,
+        "mean_p90_coverage": 0.6313
+      },
+      "run_ts": "20260523T043344Z"
+    },
+    {
+      "region_combo": "caiso_pjm_ercot_da_rt",
+      "regions": [
+        "us-west",
+        "us-east",
+        "us-south"
+      ],
+      "workload_type": "llm_batch_inference",
+      "folds": 5,
+      "num_eval_jobs": 22,
+      "method": "greedy_migrate",
+      "forecaster": "ml_quantile_v5",
+      "oracle": false,
+      "settle_model": true,
+      "carbon_regions": [
+        "us-west"
+      ],
+      "missing_price_hours": 0,
+      "missing_price_pct": 0.0,
+      "savings": {
+        "fifo": {
+          "savings_pct": 67.43,
+          "savings_usd": 75.3465,
+          "mean_opt_cost": 36.3939,
+          "mean_baseline_cost": 111.7404
+        },
+        "peak_blind_asap": {
+          "savings_pct": 67.43,
+          "savings_usd": 75.3465,
+          "mean_opt_cost": 36.3939,
+          "mean_baseline_cost": 111.7404
+        },
+        "latency_first": {
+          "savings_pct": 67.43,
+          "savings_usd": 75.3465,
+          "mean_opt_cost": 36.3939,
+          "mean_baseline_cost": 111.7404
+        },
+        "closest_region": {
+          "savings_pct": 67.43,
+          "savings_usd": 75.3465,
+          "mean_opt_cost": 36.3939,
+          "mean_baseline_cost": 111.7404
+        },
+        "fixed_primary_region": {
+          "savings_pct": 67.43,
+          "savings_usd": 75.3465,
+          "mean_opt_cost": 36.3939,
+          "mean_baseline_cost": 111.7404
+        },
+        "current_price_only": {
+          "savings_pct": 32.744,
+          "savings_usd": 17.7186,
+          "mean_opt_cost": 36.3939,
+          "mean_baseline_cost": 54.1125
+        },
+        "round_robin": {
+          "savings_pct": 54.527,
+          "savings_usd": 43.6401,
+          "mean_opt_cost": 36.3939,
+          "mean_baseline_cost": 80.034
+        }
+      },
+      "primary_savings_pct": 32.744,
+      "date_range": {
+        "start": "2026-01-01",
+        "end": "2026-03-10"
+      },
+      "train_days": 30,
+      "eval_days": 7,
+      "forecast_quality": {
+        "forecaster": "ml_quantile_v5",
+        "folds_with_quality": 5,
+        "mean_mape": 8.2398,
+        "mean_p90_coverage": 0.6313
+      },
+      "run_ts": "20260523T043344Z"
+    },
+    {
+      "region_combo": "caiso_pjm_ercot_da_rt",
+      "regions": [
+        "us-west",
+        "us-east",
+        "us-south"
+      ],
+      "workload_type": "data_processing",
+      "folds": 5,
+      "num_eval_jobs": 21,
+      "method": "greedy_migrate",
+      "forecaster": "ml_quantile_v5",
+      "oracle": false,
+      "settle_model": true,
+      "carbon_regions": [
+        "us-west"
+      ],
+      "missing_price_hours": 0,
+      "missing_price_pct": 0.0,
+      "savings": {
+        "fifo": {
+          "savings_pct": 69.221,
+          "savings_usd": 45.974,
+          "mean_opt_cost": 20.4422,
+          "mean_baseline_cost": 66.4162
+        },
+        "peak_blind_asap": {
+          "savings_pct": 69.221,
+          "savings_usd": 45.974,
+          "mean_opt_cost": 20.4422,
+          "mean_baseline_cost": 66.4162
+        },
+        "latency_first": {
+          "savings_pct": 69.221,
+          "savings_usd": 45.974,
+          "mean_opt_cost": 20.4422,
+          "mean_baseline_cost": 66.4162
+        },
+        "closest_region": {
+          "savings_pct": 69.221,
+          "savings_usd": 45.974,
+          "mean_opt_cost": 20.4422,
+          "mean_baseline_cost": 66.4162
+        },
+        "fixed_primary_region": {
+          "savings_pct": 69.221,
+          "savings_usd": 45.974,
+          "mean_opt_cost": 20.4422,
+          "mean_baseline_cost": 66.4162
+        },
+        "current_price_only": {
+          "savings_pct": 37.462,
+          "savings_usd": 12.2452,
+          "mean_opt_cost": 20.4422,
+          "mean_baseline_cost": 32.6874
+        },
+        "round_robin": {
+          "savings_pct": 56.968,
+          "savings_usd": 27.0627,
+          "mean_opt_cost": 20.4422,
+          "mean_baseline_cost": 47.5049
+        }
+      },
+      "primary_savings_pct": 37.462,
+      "date_range": {
+        "start": "2026-01-01",
+        "end": "2026-03-10"
+      },
+      "train_days": 30,
+      "eval_days": 7,
+      "forecast_quality": {
+        "forecaster": "ml_quantile_v5",
+        "folds_with_quality": 5,
+        "mean_mape": 8.2398,
+        "mean_p90_coverage": 0.6313
+      },
+      "run_ts": "20260523T043344Z"
+    },
+    {
+      "region_combo": "caiso_pjm_ercot_da_rt",
+      "regions": [
+        "us-west",
+        "us-east",
+        "us-south"
+      ],
+      "workload_type": "scheduled_batch",
+      "folds": 5,
+      "num_eval_jobs": 23,
+      "method": "greedy_migrate",
+      "forecaster": "ml_quantile_v5",
+      "oracle": false,
+      "settle_model": true,
+      "carbon_regions": [
+        "us-west"
+      ],
+      "missing_price_hours": 0,
+      "missing_price_pct": 0.0,
+      "savings": {
+        "fifo": {
+          "savings_pct": 53.104,
+          "savings_usd": 71.4506,
+          "mean_opt_cost": 63.0969,
+          "mean_baseline_cost": 134.5475
+        },
+        "peak_blind_asap": {
+          "savings_pct": 52.956,
+          "savings_usd": 71.0255,
+          "mean_opt_cost": 63.0969,
+          "mean_baseline_cost": 134.1224
+        },
+        "latency_first": {
+          "savings_pct": 52.956,
+          "savings_usd": 71.0255,
+          "mean_opt_cost": 63.0969,
+          "mean_baseline_cost": 134.1224
+        },
+        "closest_region": {
+          "savings_pct": 52.956,
+          "savings_usd": 71.0255,
+          "mean_opt_cost": 63.0969,
+          "mean_baseline_cost": 134.1224
+        },
+        "fixed_primary_region": {
+          "savings_pct": 52.956,
+          "savings_usd": 71.0255,
+          "mean_opt_cost": 63.0969,
+          "mean_baseline_cost": 134.1224
+        },
+        "current_price_only": {
+          "savings_pct": 16.822,
+          "savings_usd": 12.7612,
+          "mean_opt_cost": 63.0969,
+          "mean_baseline_cost": 75.8581
+        },
+        "round_robin": {
+          "savings_pct": 25.969,
+          "savings_usd": 22.1332,
+          "mean_opt_cost": 63.0969,
+          "mean_baseline_cost": 85.2301
+        }
+      },
+      "primary_savings_pct": 16.822,
+      "date_range": {
+        "start": "2026-01-01",
+        "end": "2026-03-10"
+      },
+      "train_days": 30,
+      "eval_days": 7,
+      "forecast_quality": {
+        "forecaster": "ml_quantile_v5",
+        "folds_with_quality": 5,
+        "mean_mape": 8.2398,
+        "mean_p90_coverage": 0.6313
+      },
+      "run_ts": "20260523T043344Z"
+    },
+    {
+      "region_combo": "caiso_pjm_ercot_da_rt",
+      "regions": [
+        "us-west",
+        "us-east",
+        "us-south"
+      ],
+      "workload_type": "background_maintenance",
+      "folds": 5,
+      "num_eval_jobs": 22,
+      "method": "greedy_migrate",
+      "forecaster": "ml_quantile_v5",
+      "oracle": false,
+      "settle_model": true,
+      "carbon_regions": [
+        "us-west"
+      ],
+      "missing_price_hours": 0,
+      "missing_price_pct": 0.0,
+      "savings": {
+        "fifo": {
+          "savings_pct": 69.147,
+          "savings_usd": 15.2985,
+          "mean_opt_cost": 6.8261,
+          "mean_baseline_cost": 22.1245
+        },
+        "peak_blind_asap": {
+          "savings_pct": 69.147,
+          "savings_usd": 15.2985,
+          "mean_opt_cost": 6.8261,
+          "mean_baseline_cost": 22.1245
+        },
+        "latency_first": {
+          "savings_pct": 69.147,
+          "savings_usd": 15.2985,
+          "mean_opt_cost": 6.8261,
+          "mean_baseline_cost": 22.1245
+        },
+        "closest_region": {
+          "savings_pct": 69.147,
+          "savings_usd": 15.2985,
+          "mean_opt_cost": 6.8261,
+          "mean_baseline_cost": 22.1245
+        },
+        "fixed_primary_region": {
+          "savings_pct": 69.147,
+          "savings_usd": 15.2985,
+          "mean_opt_cost": 6.8261,
+          "mean_baseline_cost": 22.1245
+        },
+        "current_price_only": {
+          "savings_pct": 23.699,
+          "savings_usd": 2.1202,
+          "mean_opt_cost": 6.8261,
+          "mean_baseline_cost": 8.9462
+        },
+        "round_robin": {
+          "savings_pct": 55.697,
+          "savings_usd": 8.5817,
+          "mean_opt_cost": 6.8261,
+          "mean_baseline_cost": 15.4078
+        }
+      },
+      "primary_savings_pct": 23.699,
+      "date_range": {
+        "start": "2026-01-01",
+        "end": "2026-03-10"
+      },
+      "train_days": 30,
+      "eval_days": 7,
+      "forecast_quality": {
+        "forecaster": "ml_quantile_v5",
+        "folds_with_quality": 5,
+        "mean_mape": 8.2398,
+        "mean_p90_coverage": 0.6313
+      },
+      "run_ts": "20260523T043344Z"
+    },
+    {
+      "region_combo": "caiso_pjm_ercot_da_rt",
+      "regions": [
+        "us-west",
+        "us-east",
+        "us-south"
+      ],
+      "workload_type": "realtime_inference",
+      "folds": 5,
+      "num_eval_jobs": 27,
+      "method": "greedy_migrate",
+      "forecaster": "ml_quantile_v5",
+      "oracle": false,
+      "settle_model": true,
+      "carbon_regions": [
+        "us-west"
+      ],
+      "missing_price_hours": 0,
+      "missing_price_pct": 0.0,
+      "savings": {
+        "fifo": {
+          "savings_pct": 31.171,
+          "savings_usd": 2.7725,
+          "mean_opt_cost": 6.1221,
+          "mean_baseline_cost": 8.8946
+        },
+        "peak_blind_asap": {
+          "savings_pct": 31.171,
+          "savings_usd": 2.7725,
+          "mean_opt_cost": 6.1221,
+          "mean_baseline_cost": 8.8946
+        },
+        "latency_first": {
+          "savings_pct": 31.171,
+          "savings_usd": 2.7725,
+          "mean_opt_cost": 6.1221,
+          "mean_baseline_cost": 8.8946
+        },
+        "closest_region": {
+          "savings_pct": 31.171,
+          "savings_usd": 2.7725,
+          "mean_opt_cost": 6.1221,
+          "mean_baseline_cost": 8.8946
+        },
+        "fixed_primary_region": {
+          "savings_pct": 31.171,
+          "savings_usd": 2.7725,
+          "mean_opt_cost": 6.1221,
+          "mean_baseline_cost": 8.8946
+        },
+        "current_price_only": {
+          "savings_pct": 1.391,
+          "savings_usd": 0.0864,
+          "mean_opt_cost": 6.1221,
+          "mean_baseline_cost": 6.2085
+        },
+        "round_robin": {
+          "savings_pct": 29.43,
+          "savings_usd": 2.5531,
+          "mean_opt_cost": 6.1221,
+          "mean_baseline_cost": 8.6752
+        }
+      },
+      "primary_savings_pct": 1.391,
+      "date_range": {
+        "start": "2026-01-01",
+        "end": "2026-03-10"
+      },
+      "train_days": 30,
+      "eval_days": 7,
+      "forecast_quality": {
+        "forecaster": "ml_quantile_v5",
+        "folds_with_quality": 5,
+        "mean_mape": 8.2398,
+        "mean_p90_coverage": 0.6313
+      },
+      "run_ts": "20260523T043344Z"
+    }
+  ],
+  "warnings": [],
+  "leakage_issues": [],
+  "regressions": []
+}

@@ -385,6 +385,7 @@ def run_single_benchmark(
         if PriceQuantileForecaster is not None:
             price_forecaster_cls = PriceQuantileForecaster
             # v3.0: weather features enabled when weather data is available
+            # include_rank_features=False preserves exact v2.0 baseline
             price_forecaster_config = PriceModelConfig(
                 seed=42,
                 n_estimators=200,
@@ -392,9 +393,27 @@ def run_single_benchmark(
                 include_volatility_features=True,
                 num_leaves=63,
                 include_weather_features=True,
+                include_rank_features=False,
             )
         else:
             print("  WARNING: ml_quantile unavailable, falling back to seasonal_naive")
+            effective_forecaster = "seasonal_naive"
+    elif forecaster == "ml_quantile_v5":
+        # v5.0: price rank/percentile features + lag_336h (bi-weekly lag)
+        PriceQuantileForecaster, PriceModelConfig = _get_ml_forecaster_cls()
+        if PriceQuantileForecaster is not None:
+            price_forecaster_cls = PriceQuantileForecaster
+            price_forecaster_config = PriceModelConfig(
+                seed=42,
+                n_estimators=200,
+                learning_rate=0.05,
+                include_volatility_features=True,
+                num_leaves=63,
+                include_weather_features=False,
+                include_rank_features=True,
+            )
+        else:
+            print("  WARNING: ml_quantile_v5 unavailable, falling back to seasonal_naive")
             effective_forecaster = "seasonal_naive"
     elif forecaster == "ml_quantile_perregion":
         PerRegionForecaster, PerRegionForecasterConfig, PriceModelConfig = _get_per_region_forecaster_cls()
@@ -519,7 +538,7 @@ def run_single_benchmark(
 
     # Collect per-fold forecast quality if ML mode was used
     forecast_quality_summary = None
-    if effective_forecaster in ("ml_quantile", "ml_quantile_perregion"):
+    if effective_forecaster in ("ml_quantile", "ml_quantile_perregion", "ml_quantile_v5"):
         fq_records = [r.forecast_quality.to_dict() for r in rounds if r.forecast_quality is not None]
         if fq_records:
             import math
@@ -635,12 +654,14 @@ def parse_args() -> argparse.Namespace:
                    help="Optimizer method")
     p.add_argument("--forecaster", default="seasonal_naive",
                    choices=["seasonal_naive", "ml_quantile", "ml_quantile_weather",
-                            "ml_quantile_perregion"],
+                            "ml_quantile_perregion", "ml_quantile_v5"],
                    help="Forecasting method: 'seasonal_naive' (default, no ML), "
-                        "'ml_quantile' (LightGBM joint model + volatility features), "
+                        "'ml_quantile' (LightGBM v2.0 — volatility features, preserved baseline), "
                         "'ml_quantile_weather' (joint model + weather features), "
                         "'ml_quantile_perregion' (one model per region; ERCOT gets weather, "
-                        "CAISO/PJM price-only — eliminates cross-region feature stealing). "
+                        "CAISO/PJM price-only — eliminates cross-region feature stealing), "
+                        "'ml_quantile_v5' (v5.0 — adds price rank features + lag_336h for "
+                        "better cheap-regime routing). "
                         "NEVER mix oracle with ml_quantile for savings claims.")
     p.add_argument("--carbon-file", default=None,
                    help="Path to carbon CSV (relative to repo root). If omitted, auto-detects "

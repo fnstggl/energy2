@@ -30,21 +30,16 @@ from ..models import EnergyPrice
 from .quantile_model import (
     DEFAULT_SEED,
     MIN_RECENT_HOURS,
-    ModelMetadata,
-    QuantileForecast,
     QUANTILE_P50,
     QUANTILE_P90,
-    WEATHER_FEATURE_COLS,
+    ModelMetadata,
     build_feature_matrix,
     build_feature_matrix_for_predict,
     build_weather_lookup,
     check_recent_data_sufficient,
     predict_with_fallback,
     set_deterministic_seed,
-    time_series_cv_split,
     train_lightgbm_quantile,
-    validate_quantiles,
-    compute_volatility_regime_features,
 )
 
 logger = logging.getLogger(__name__)
@@ -124,6 +119,11 @@ class PriceModelConfig:
         reg_lambda: L2 regularization coefficient for LightGBM. Non-zero values
             shrink leaf weights toward zero, reducing overfit on small training sets.
             Default 0.0 (disabled).
+        include_rank_features: Enable v5.0 price rank/percentile features
+            (rolling_mean_168h, price_range_position_168h, below_p10_168h,
+            price_vs_mean_168h). These encode "is the current price cheap relative
+            to recent history?" which is the core routing signal for multi-region
+            optimization. Default True.
     """
     seed: int = DEFAULT_SEED
     n_estimators: int = 200
@@ -135,6 +135,7 @@ class PriceModelConfig:
     include_weather_features: bool = True
     min_child_samples: int = 20
     reg_lambda: float = 0.0
+    include_rank_features: bool = False
 
 
 class PriceQuantileForecaster:
@@ -184,15 +185,22 @@ class PriceQuantileForecaster:
         # backtesting engine handles this via per-region context slicing.
         self._use_lags = True
         self._use_rolling = True
-        self._lag_hours = [1, 6, 24, 168]
-        self._rolling_hours = [6, 24]
         # v2.0: Volatility regime features for price spike detection.
-        # Enabled when config.include_volatility_features is True.
         self._use_volatility = self.config.include_volatility_features
         # v3.0: Weather features for temperature/demand-driven price signals.
-        # Active when config.include_weather_features is True AND weather data
-        # is supplied at fit()/predict() time.  Missing weather → price-only (no crash).
         self._use_weather = self.config.include_weather_features
+        # v5.0: Price rank features — encode cheap/expensive regime for routing.
+        # Active when config.include_rank_features is True (default).
+        self._use_rank = self.config.include_rank_features
+        # v5.0: add lag_336h (2-week bi-weekly lag) when rank features are enabled.
+        # Rank features require the 168h trailing window, and lag_336h provides a
+        # second weekly reference point (same-hour 2 weeks ago).
+        # When rank features are off, use the v2.0 lag set for backward compat.
+        if self._use_rank:
+            self._lag_hours = [1, 6, 24, 168, 336]
+        else:
+            self._lag_hours = [1, 6, 24, 168]
+        self._rolling_hours = [6, 24]
         # Stored weather lookup built during fit() — used to ensure training-time
         # weather features are available for the predict() call path when the
         # caller does not supply a separate predict-time weather_df.
@@ -241,7 +249,7 @@ class PriceQuantileForecaster:
     def fit(
         self,
         prices: list[EnergyPrice],
-        weather_df: Optional["pd.DataFrame"] = None,
+        weather_df: Optional[Any] = None,
     ) -> "PriceQuantileForecaster":
         """Fit the quantile models on historical price data.
 
@@ -257,7 +265,6 @@ class PriceQuantileForecaster:
         Returns:
             Self for chaining
         """
-        import pandas as _pd  # local import to avoid top-level circular dep in tests
 
         set_deterministic_seed(self.config.seed)
 
@@ -289,6 +296,7 @@ class PriceQuantileForecaster:
             include_lags=self._use_lags,
             include_rolling=self._use_rolling,
             include_volatility=self._use_volatility,
+            include_rank_features=self._use_rank,
             known_regions=self._known_regions,
             lag_hours=self._lag_hours,
             rolling_hours=self._rolling_hours,
@@ -329,12 +337,15 @@ class PriceQuantileForecaster:
         if self._model_p50 is not None and self._model_p90 is not None:
             vol_suffix = "+volatility" if self._use_volatility else ""
             wx_suffix = "+weather" if effective_weather_lookup else ""
-            model_type = f"lightgbm_quantile{vol_suffix}{wx_suffix}"
+            rank_suffix = "+rank" if self._use_rank else ""
+            model_type = f"lightgbm_quantile{vol_suffix}{wx_suffix}{rank_suffix}"
         else:
             model_type = "baseline_fallback"
 
         if effective_weather_lookup:
             features_version = "v3.0"
+        elif self._use_rank:
+            features_version = "v5.0"
         elif self._use_volatility:
             features_version = "v2.0"
         else:
@@ -361,7 +372,7 @@ class PriceQuantileForecaster:
         region: str,
         timestamps: list[datetime],
         recent_prices: Optional[list[EnergyPrice]] = None,
-        weather_df: Optional["pd.DataFrame"] = None,
+        weather_df: Optional[Any] = None,
     ) -> list[PriceQuantileForecast]:
         """Generate quantile price forecasts.
 
@@ -401,16 +412,20 @@ class PriceQuantileForecaster:
                 # Fallback: use training-time weather lookup (covers context window)
                 predict_weather_lookup = self._train_weather_lookup
 
-        # v1.1: Extract recent values for this region
+        # Extract recent values for this region.
+        # Use up to max_lag+24h of context to support lag_336h (v5.0) and rank features.
+        # The caller (BacktestEngine) provides context_hours=336 records per region.
+        max_lag = max(self._lag_hours) if self._lag_hours else 168
+        context_window = max_lag + 24  # safety margin beyond longest lag
         recent_values = None
         if recent_prices:
             region_prices = [p.price_per_mwh for p in recent_prices if p.region == region]
             if len(region_prices) >= MIN_RECENT_HOURS:
-                recent_values = np.array(region_prices[-48:])  # Use up to 48 hours
+                recent_values = np.array(region_prices[-context_window:])
 
         regions = [region] * len(timestamps)
 
-        # v1.1: Check if sufficient recent data for lag features
+        # Check if sufficient recent data for lag features
         use_lags = check_recent_data_sufficient(recent_values)
 
         if use_lags:
@@ -422,6 +437,7 @@ class PriceQuantileForecaster:
                 lag_hours=self._lag_hours,
                 rolling_hours=self._rolling_hours,
                 include_volatility=self._use_volatility,
+                include_rank_features=self._use_rank,
                 weather_lookup=predict_weather_lookup,
             )
         else:
@@ -433,6 +449,7 @@ class PriceQuantileForecaster:
                 include_lags=True,
                 include_rolling=True,
                 include_volatility=self._use_volatility,
+                include_rank_features=self._use_rank,
                 known_regions=self._known_regions,
                 lag_hours=self._lag_hours,
                 rolling_hours=self._rolling_hours,
@@ -723,7 +740,7 @@ class PerRegionForecaster:
     def fit(
         self,
         prices: list[EnergyPrice],
-        weather_df: Optional["pd.DataFrame"] = None,
+        weather_df: Optional[Any] = None,
     ) -> "PerRegionForecaster":
         """Fit one PriceQuantileForecaster per region.
 
@@ -737,7 +754,6 @@ class PerRegionForecaster:
         Returns:
             Self for chaining.
         """
-        import pandas as _pd
 
         # Group price records by region
         by_region: dict[str, list[EnergyPrice]] = {}
@@ -781,7 +797,7 @@ class PerRegionForecaster:
         region: str,
         timestamps: list[datetime],
         recent_prices: Optional[list[EnergyPrice]] = None,
-        weather_df: Optional["pd.DataFrame"] = None,
+        weather_df: Optional[Any] = None,
     ) -> list[PriceQuantileForecast]:
         """Predict prices for a specific region using its dedicated model.
 

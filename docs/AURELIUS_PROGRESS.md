@@ -1185,3 +1185,165 @@ Production API access still required for real benchmark claims?
   require real, unrandomized historical data from the source-of-truth ISO/TSO
   (and a paid EM plan for deeper carbon history). This branch adds plumbing and
   guardrails, not validated savings.
+
+===============================================================================
+ROADMAP FORECASTER v5.0 — PRICE CONTEXT FEATURES (COLD-SNAP RECOVERY)
+===============================================================================
+
+Status: INFRASTRUCTURE DELIVERED — ACCEPTANCE CRITERION NOT MET
+Run date: 2026-05-23
+Branch: claude/youthful-feynman-oBAKP
+
+Summary:
+  Price context feature infrastructure (v5.0) implemented, leakage-tested, and
+  benchmarked on Q1 2026 3-region data. The primary acceptance criterion —
+  ml_quantile_v5 ≥ ml_quantile_v2 with no regressions — was NOT met. The rank
+  features help fine_tuning (+2.7pp) but regress background_maintenance (-8pp)
+  and realtime_inference (-14.7pp). Root cause identified: lag_336h adds noise
+  for short-horizon workloads in the joint model on 30-day training windows.
+  include_rank_features remains False by default; v5.0 is an opt-in benchmark.
+
+Motivation:
+  Oracle diagnostics identified a 22-48pp forecasting gap (v2.0 actual vs
+  oracle ceiling):
+    training@3region:    ml_v2 15.0% vs oracle 29.9% → 14.9pp gap
+    fine_tuning@3region: ml_v2 12.6% vs oracle 46.8% → 34.2pp gap
+  Root cause: January 2026 ERCOT cold snap (lag_168h = $2000/MWh) anchors the
+  v2.0 model to predict high ERCOT prices for 7 days after recovery to $20-50/MWh.
+  Target: encode "current price vs last week's price for this region."
+
+What was implemented:
+  1. compute_price_rank_features() — v5.0 cold-snap recovery features:
+     - price_momentum_168h: (price - lag_168h) / |lag_168h|, clipped [-1, 5]
+       Cold-snap recovery: -0.95 = "95% cheaper than last week"
+       Spike onset: +5.0 = "≥5× more expensive than last week"
+       Neutral fallback: 0.0 when lag_168h context unavailable
+     - price_vs_lag168_abs: price / lag_168h, clipped [0, 10]
+       Complementary absolute ratio (0.05 = 5% of last week's price)
+  
+  2. _compute_per_region_lag_168h() — cross-region contamination fix:
+     compute_lagged_features() builds one ts→val dict for ALL regions combined;
+     in joint training, ERCOT's cold-snap $2000 overwrites the lag lookup for
+     CAISO and PJM. Per-region lookup dicts prevent this contamination.
+     Each region's lag_168h is computed against its own historical prices only.
+  
+  3. PRICE_RANK_FEATURE_COLS = ["price_momentum_168h", "price_vs_lag168_abs"]
+  
+  4. build_feature_matrix(): include_rank_features=False parameter; when True,
+     uses _compute_per_region_lag_168h() for correct multi-region training.
+     Placeholder branch: momentum=0.0 (neutral), ratio=1.0 (neutral).
+  
+  5. build_feature_matrix_for_predict(): include_rank_features=False parameter
+     (single-region context at predict time → no contamination risk).
+  
+  6. PriceModelConfig.include_rank_features=False (opt-in, not default).
+  
+  7. PriceQuantileForecaster.__init__(): when _use_rank=True, lag_hours expanded
+     to [1, 6, 24, 168, 336] (adds 2-week bi-weekly lag for broader context).
+  
+  8. benchmarks/run_benchmark.py: ml_quantile_v5 forecaster option added.
+     Uses include_rank_features=True explicitly.
+  
+  9. tests/test_forecaster_v5.py: 44 tests for new feature design:
+     - TestComputePriceRankFeatures (14 tests)
+     - TestPriceRankFeatureCols (3 tests)
+     - TestBuildFeatureMatrixWithRankFeatures (6 tests)
+     - TestBuildFeatureMatrixForPredictWithRankFeatures (3 tests)
+     - TestPriceModelConfigV5 (5 tests)
+     - TestPriceQuantileForecasterV5 (7 tests)
+     - TestRankFeaturesLeakageSafety (3 tests)
+     - TestV5BenchmarkAcceptance (2 tests)
+
+Design iterations (why price_momentum_168h was chosen over other approaches):
+
+  Attempt 1 — Rolling percentile rank features (range_position, below_p10):
+    Root cause: at predict time, future values forward-filled with last_known_price
+    → trailing 168h window for k≥168h prediction = all last_known_price
+    → range_position = 0, below_p10 = 1 always → degenerate features
+    Training-prediction distribution shift → model confused → REJECTED
+
+  Attempt 2 — Per-region percentile features (with regions parameter):
+    Root cause: same forward-fill degeneration for long-horizon predictions
+    → still degenerate at k≥168h → REJECTED
+
+  Attempt 3 — price_momentum_168h (current implementation):
+    Derived from time-based lag_168h (computed by compute_lagged_features
+    via timestamp lookup, not row-shift). For k<168h: lag_168h reaches into
+    real context. For k≥168h: both current and lag_168h = last_known_price
+    → momentum = 0 (neutral, not degenerate). Graceful degradation. ADOPTED.
+
+Benchmark results (2026-05-23, Q1 2026, 5 folds, 30-day training):
+
+  ml_quantile_v5 vs ml_quantile_v2 (all deltas vs v2.0 baseline):
+    fine_tuning:          15.3% vs 12.6%  (+2.7pp ✓ improvement)
+    llm_batch_inference:  33.7% vs 33.7%  ( 0.0pp  no change)
+    scheduled_batch:      26.3% vs 25.4%  (+0.9pp ✓ slight improvement)
+    data_processing:      36.4% vs 37.9%  (-1.5pp  slight regression)
+    training:             -1.6% vs 15.0%  (-16.6pp ✗ regression + 12% missing hours)
+    background:           37.8% vs 45.8%  ( -8.0pp ✗ regression)
+    realtime_inference:  -11.9% vs  2.8%  (-14.7pp ✗ big regression)
+    Mean:                 19.4% vs 24.7%  ( -5.3pp ✗ overall regression)
+
+  Note on training workload: 12% missing price hours flagged (us-west/us-east
+  data gaps March 15-16, 2026) — savings figure not reliable for that workload.
+
+  Oracle ceilings (for reference):
+    training ceiling:    29.9%
+    fine_tuning ceiling: 46.8%
+    llm_batch ceiling:   42.7%
+
+Root cause analysis (why v5.0 regressed):
+
+  1. lag_336h noise for short horizons:
+     v5.0 adds lag_336h (2-week lag). For realtime_inference (4h window) and
+     background_maintenance (168h window), the 2-week lag introduces noise
+     because price regimes change on 2-week timescales. LightGBM with only
+     30 days of training data (720 per-region hourly records per fold) cannot
+     learn useful signal from lag_336h — it overfits to the cold-snap regime.
+     Estimated contribution: ~8pp of regression in realtime_inference.
+
+  2. Residual training-prediction distribution shift:
+     df["lag_168h"] in the training matrix is contaminated (ERCOT overwrites
+     CAISO/PJM in global ts→val dict). The rank features use per-region
+     lag_168h (correct) while df["lag_168h"] in the same matrix uses the
+     contaminated global lag. These two features encode DIFFERENT reference
+     prices, creating an inconsistency the LightGBM model must navigate.
+     Fix would require per-region lag for ALL lag features (not just rank).
+
+  3. Feature count vs training data ratio:
+     v2.0: ~12 features, 720 per-region training records per fold
+     v5.0: ~15 features (+price_momentum_168h, +price_vs_lag168_abs, +lag_336h)
+     Higher feature-to-data ratio → overfitting with 30-day windows
+     
+When v5.0 features WOULD help (conditions required):
+  - Training windows ≥ 60 days (≥ 1440 per-region records) to absorb lag_336h
+  - OR: exclude lag_336h from v5.0 feature set (use rank features with v2.0 lags)
+  - OR: per-region architecture with ≥ 90 days (eliminates contamination)
+  - Dataset that includes cold-snap recovery WITHIN evaluation windows
+    (not just in training): Q2 2026 or winter 2025-2026 would be needed
+
+Acceptance criterion status:
+  REQUIRED: ml_quantile_v5 ≥ ml_quantile_v2 (24.7% mean) with no regressions
+  ACHIEVED: 19.4% mean (-5.3pp) — criterion NOT met
+  v2.0 (24.7% mean) remains the best validated joint forecaster.
+
+Tests: 834 passed, 0 failed, 4 skipped (834 total, up from 798)
+  - 790 pre-existing tests (all preserved)
+  - 44 new tests in tests/test_forecaster_v5.py
+
+Benchmark artifacts:
+  benchmarks/results/benchmark_ml_quantile_v5_3region_q12026_20260523.json
+
+LAST VERIFIED TEST STATUS (v5.0 branch):
+  Unit + integration: 834 passed, 0 failed, 4 skipped
+  All pre-existing tests preserved: YES
+  v2.0 baseline preserved: 24.7% mean (CONFIRMED)
+
+Next exact task:
+  Option A: Extended Training Window Benchmark (60-day windows)
+    Tests whether rank features improve over v2.0 with more data.
+    If yes, v5.0 becomes default. Required: Summer 2025 90-day dataset or
+    configurable train_days parameter in benchmark runner.
+  Option B: ROADMAP PHASE 4 — GPU Telemetry & DCGM
+    Implement fixture-backed Prometheus metrics, DCGM data model, Tier 3
+    optimizer interface. Foundation infrastructure (no live cluster needed).

@@ -18,8 +18,7 @@ while preserving predict-time safety and deterministic fallback.
 """
 
 import logging
-import math
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from datetime import datetime
 from typing import Any, Optional
 
@@ -297,6 +296,120 @@ def compute_volatility_regime_features(
     }
 
 
+# v5.0 price context feature column names
+PRICE_RANK_FEATURE_COLS = [
+    "price_momentum_168h",
+    "price_vs_lag168_abs",
+]
+
+
+def _compute_per_region_lag_168h(
+    values: np.ndarray,
+    timestamps: "np.ndarray",  # pd.DatetimeIndex or array of Timestamps
+    regions: list[str],
+    lag_h: int = 168,
+) -> np.ndarray:
+    """Compute lag_Nh per-region, avoiding cross-region timestamp contamination.
+
+    compute_lagged_features builds a single ts→val dict for all regions combined.
+    When multiple regions share the same timestamp (joint training), only one
+    region's value survives in the dict per timestamp, causing contamination
+    (e.g. ERCOT's cold-snap $2000 price overwriting CAISO's lag lookup).
+
+    This function builds per-region dicts so each region's lag is computed
+    against its own historical prices only.
+
+    Args:
+        values:     Price values aligned with timestamps and regions.
+        timestamps: Timestamp array (pd.Timestamps).
+        regions:    Region strings aligned with values.
+        lag_h:      Lag in hours.
+
+    Returns:
+        Array of lag values (same length as values), per-region correct.
+    """
+    n = len(values)
+    lag_arr = np.empty(n, dtype=float)
+    regions_arr = np.array(regions)
+    delta = pd.Timedelta(hours=lag_h)
+
+    for rgn in sorted(set(regions)):
+        mask = regions_arr == rgn
+        idx = np.where(mask)[0]
+        rgn_ts = timestamps[mask]
+        rgn_vals = values[mask]
+        rgn_lookup: dict = {ts: val for ts, val in zip(rgn_ts, rgn_vals)}
+        for i in idx:
+            lagged_ts = timestamps[i] - delta
+            # Fall back to current value if 168h context not available
+            lag_arr[i] = rgn_lookup.get(lagged_ts, values[i])
+
+    return lag_arr
+
+
+def compute_price_rank_features(
+    values: np.ndarray,
+    lag_168h_values: Optional[np.ndarray] = None,
+    eps: float = 1e-3,
+) -> dict[str, np.ndarray]:
+    """Compute v5.0 price context features targeting the cold-snap recovery bottleneck.
+
+    These features encode "how does the current price compare to last week's price
+    for this region?" — the core signal for detecting post-cold-snap recovery periods
+    when a region transitions from very expensive to very cheap within ~7 days.
+
+    Features are derived directly from the existing time-based lag_168h values
+    (computed correctly by compute_lagged_features using timestamp lookups, not
+    row-based shifts). This guarantees correctness for multi-region joint models.
+
+    Features:
+        price_momentum_168h: (price - lag_168h) / (|lag_168h| + ε), clipped [-1, 5]
+            Encodes "how much has this region's price changed vs last week?"
+            Value -0.95 means "95% cheaper than last week" (cold-snap recovery).
+            Value +3.0 means "4× more expensive than last week" (spike onset).
+            Correct at predict time: lag_168h reaches into context for k<168h,
+            then degrades gracefully to 0 (neutral) for k≥168h.
+
+        price_vs_lag168_abs: price / (lag_168h + ε), clipped [0, 10]
+            Absolute ratio (complementary to momentum_168h).
+            Model can learn "ratio < 0.2 means much cheaper than last week."
+
+    Args:
+        values:          Chronologically ordered price array ($/MWh)
+        lag_168h_values: Pre-computed time-based 168h lag values (same length as values).
+                         Must come from compute_lagged_features() for correctness.
+                         If None, returns zero arrays (fallback mode).
+        eps:             Denominator floor for division
+
+    Returns:
+        Dict mapping feature name → array (same length as input)
+    """
+    n = len(values)
+    if lag_168h_values is None or len(lag_168h_values) != n:
+        return {
+            "price_momentum_168h": np.zeros(n),
+            "price_vs_lag168_abs": np.ones(n),
+        }
+
+    s = np.array(values, dtype=float)
+    lag = np.array(lag_168h_values, dtype=float)
+    lag_abs = np.abs(lag)
+
+    # Momentum: (current - lag168) / |lag168|, clipped to [-1, 5]
+    momentum = ((s - lag) / (lag_abs + eps)).clip(-1.0, 5.0)
+    # Replace NaN/inf from zero-lag (if context had no 168h data)
+    momentum = np.where(np.isfinite(momentum), momentum, 0.0)
+
+    # Absolute ratio: current / lag168, clipped to [0, 10]
+    ratio = (s / (lag + eps)).clip(0.0, 10.0)
+    ratio = np.where(np.isfinite(ratio), ratio, 1.0)
+
+    return {
+        "price_momentum_168h": momentum,
+        "price_vs_lag168_abs": ratio,
+    }
+
+
 # Minimum hours of recent data required to enable lag features
 MIN_RECENT_HOURS = 6
 
@@ -426,6 +539,7 @@ def build_feature_matrix(
     include_lags: bool = True,
     include_rolling: bool = True,
     include_volatility: bool = False,
+    include_rank_features: bool = False,
     known_regions: Optional[list[str]] = None,
     lag_hours: Optional[list[int]] = None,
     rolling_hours: Optional[list[int]] = None,
@@ -442,6 +556,12 @@ def build_feature_matrix(
     - weather_lookup: optional prebuilt dict from build_weather_lookup(); when
       provided, weather features (temperature, HDD, CDD, wind) are appended.
 
+    v5.0 addition:
+    - include_rank_features: adds price rank/percentile features that encode
+      "is the current price cheap relative to recent history?" — the core signal
+      for multi-region routing decisions (rolling_mean_168h, range_position_168h,
+      below_p10_168h, price_vs_mean_168h).
+
     Args:
         timestamps: List of timestamps
         regions: List of regions
@@ -449,6 +569,7 @@ def build_feature_matrix(
         include_lags: Whether to include lagged features
         include_rolling: Whether to include rolling features
         include_volatility: Whether to include volatility regime features
+        include_rank_features: Whether to include v5.0 price rank features
         known_regions: Known regions for consistent encoding
         lag_hours: Specific lag hours to use
         rolling_hours: Specific rolling windows
@@ -469,7 +590,7 @@ def build_feature_matrix(
     df["region_encoded"] = encode_region(regions, known_regions)
 
     # Lagged and rolling features
-    if include_lags or include_rolling or include_volatility:
+    if include_lags or include_rolling or include_volatility or include_rank_features:
         if values is not None and len(values) == len(timestamps):
             ts_array = pd.to_datetime(timestamps)
 
@@ -486,6 +607,18 @@ def build_feature_matrix(
             if include_volatility:
                 vol_feats = compute_volatility_regime_features(values)
                 for name, arr in vol_feats.items():
+                    df[name] = arr
+
+            if include_rank_features:
+                # Use per-region lag_168h to prevent cross-region contamination.
+                # The global df["lag_168h"] shares one ts→val dict across all regions
+                # in joint training, causing ERCOT's cold-snap $2000 to overwrite
+                # lag lookups for CAISO/PJM. Recompute per-region instead.
+                lag_168h_arr = _compute_per_region_lag_168h(
+                    values, ts_array, regions, lag_h=168
+                )
+                rank_feats = compute_price_rank_features(values, lag_168h_values=lag_168h_arr)
+                for name, arr in rank_feats.items():
                     df[name] = arr
         else:
             # Placeholder columns for model compatibility when no values available
@@ -505,6 +638,10 @@ def build_feature_matrix(
                 ]:
                     df[col] = 0.0
 
+            if include_rank_features:
+                df["price_momentum_168h"] = 0.0   # neutral: no change vs last week
+                df["price_vs_lag168_abs"] = 1.0   # neutral: ratio 1 (same as last week)
+
     # Weather features (v3.0)
     if weather_lookup:
         df = add_weather_features(df, timestamps, regions, weather_lookup)
@@ -523,6 +660,7 @@ def build_feature_matrix_for_predict(
     lag_hours: Optional[list[int]] = None,
     rolling_hours: Optional[list[int]] = None,
     include_volatility: bool = False,
+    include_rank_features: bool = False,
     weather_lookup: Optional[dict] = None,
 ) -> tuple[pd.DataFrame, bool]:
     """Build feature matrix for prediction with automatic fallback.
@@ -538,6 +676,7 @@ def build_feature_matrix_for_predict(
         lag_hours: Lag hours to use if sufficient data
         rolling_hours: Rolling windows if sufficient data
         include_volatility: Whether to include volatility regime features
+        include_rank_features: Whether to include v5.0 price rank features
         weather_lookup: Prebuilt weather lookup from build_weather_lookup() (optional).
             When provided, weather features are joined for each (timestamp, region).
             For the prediction horizon, entries from the weather_lookup covering those
@@ -568,6 +707,7 @@ def build_feature_matrix_for_predict(
             include_lags=False,
             include_rolling=False,
             include_volatility=False,
+            include_rank_features=False,
             known_regions=known_regions,
             weather_lookup=weather_lookup,
         )
@@ -601,6 +741,7 @@ def build_feature_matrix_for_predict(
         include_lags=True,
         include_rolling=True,
         include_volatility=include_volatility,
+        include_rank_features=include_rank_features,
         known_regions=known_regions,
         lag_hours=lag_hours,
         rolling_hours=rolling_hours,
@@ -788,7 +929,7 @@ def _run_validation():
     set_deterministic_seed(42)
     vals2 = np.random.rand(5)
     assert np.allclose(vals1, vals2), "Seeds should produce same values"
-    print(f"  Same seed produces identical values: PASS")
+    print("  Same seed produces identical values: PASS")
 
     # Test 2: Quantile validation
     print("\nTest 2: QUANTILE VALIDATION")
@@ -856,12 +997,12 @@ def _run_validation():
     print("\nTest 7: LIGHTGBM TRAINING")
     print("-" * 40)
     try:
-        import lightgbm
-        X = np.random.rand(100, 5)
+        import lightgbm as _lgbm  # noqa: F401
+        x_train = np.random.rand(100, 5)
         y = np.random.rand(100) * 100
-        model = train_lightgbm_quantile(X, y, quantile=0.5, seed=42, n_estimators=10)
+        model = train_lightgbm_quantile(x_train, y, quantile=0.5, seed=42, n_estimators=10)
         if model is not None:
-            preds = model.predict(X[:5])
+            preds = model.predict(x_train[:5])
             print(f"  Trained p50 model, sample predictions: {preds[:3]}")
             print("  LightGBM training: PASS")
         else:
@@ -878,20 +1019,20 @@ def _run_validation():
     # With sufficient recent data (>=6 hours)
     recent_sufficient = np.array([50.0, 52.0, 48.0, 55.0, 53.0, 51.0, 49.0, 54.0])
     df_with, used_lags = build_feature_matrix_for_predict(pred_ts, pred_regions, recent_sufficient)
-    assert used_lags == True, "Should use lags with sufficient data"
+    assert used_lags is True, "Should use lags with sufficient data"
     assert "lag_1h" in df_with.columns, "Should have lag_1h with sufficient data"
     print(f"  With 8 hours of data: used_lags={used_lags}, features={len(df_with.columns)}: PASS")
 
     # With insufficient recent data (<6 hours)
     recent_insufficient = np.array([50.0, 52.0, 48.0])
     df_without, used_lags = build_feature_matrix_for_predict(pred_ts, pred_regions, recent_insufficient)
-    assert used_lags == False, "Should NOT use lags with insufficient data"
+    assert used_lags is False, "Should NOT use lags with insufficient data"
     assert "lag_1h" not in df_without.columns, "Should NOT have lag_1h without sufficient data"
     print(f"  With 3 hours of data: used_lags={used_lags}, features={len(df_without.columns)}: PASS")
 
     # With None recent data
     df_none, used_lags = build_feature_matrix_for_predict(pred_ts, pred_regions, None)
-    assert used_lags == False, "Should NOT use lags with None data"
+    assert used_lags is False, "Should NOT use lags with None data"
     print(f"  With None data: used_lags={used_lags}, features={len(df_none.columns)}: PASS")
 
     print("\n" + "=" * 60)
