@@ -11,6 +11,11 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 COPY aurelius/pyproject.toml ./pyproject.toml
 COPY aurelius/ ./aurelius/
 
+# Install build deps for psycopg2
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    libpq-dev \
+    && rm -rf /var/lib/apt/lists/*
+
 # Install dependencies into a prefix so we can copy them cleanly
 RUN pip install --no-cache-dir --prefix=/install \
     fastapi>=0.100.0 \
@@ -25,16 +30,19 @@ RUN pip install --no-cache-dir --prefix=/install \
     joblib>=1.3.0 \
     requests>=2.31.0 \
     pyyaml>=6.0 \
-    strictyaml>=1.6.0
+    strictyaml>=1.6.0 \
+    sqlalchemy>=2.0.0 \
+    psycopg2-binary>=2.9.0
 
 # ── Runtime stage ────────────────────────────────────────────────────────────
 FROM python:3.11-slim AS runtime
 
 WORKDIR /app
 
-# Runtime system deps: libgomp1 required by LightGBM on Linux
+# Runtime system deps: libgomp1 (LightGBM), libpq5 (psycopg2 Postgres client)
 RUN apt-get update && apt-get install -y --no-install-recommends \
     libgomp1 \
+    libpq5 \
     && rm -rf /var/lib/apt/lists/*
 
 # Copy installed packages from builder

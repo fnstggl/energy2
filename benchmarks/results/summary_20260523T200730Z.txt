@@ -1,0 +1,13 @@
+Aurelius Benchmark Summary — 20260523T200730Z
+Primary baseline: current_price_only
+Method: greedy_migrate
+
+training@caiso_pjm_ercot_da_rt: 15.0% vs current_price_only  (folds=5)
+fine_tuning@caiso_pjm_ercot_da_rt: 15.0% vs current_price_only  (folds=5)
+llm_batch_inference@caiso_pjm_ercot_da_rt: 33.5% vs current_price_only  (folds=5)
+data_processing@caiso_pjm_ercot_da_rt: 38.3% vs current_price_only  (folds=5)
+scheduled_batch@caiso_pjm_ercot_da_rt: 25.7% vs current_price_only  (folds=5)
+background_maintenance@caiso_pjm_ercot_da_rt: 48.1% vs current_price_only  (folds=5)
+realtime_inference@caiso_pjm_ercot_da_rt: 2.8% vs current_price_only  (folds=5)
+
+Mean: 25.5%  Min: 2.8%  Max: 48.1%

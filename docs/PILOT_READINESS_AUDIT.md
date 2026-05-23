@@ -502,8 +502,10 @@ cd /path/to/energy2
 docker build -f docker/Dockerfile -t aurelius:latest .
 docker run --env-file .env -p 8000:8000 aurelius:latest
 ```
-**Gap:** docker-compose.yml exists but Postgres/TimescaleDB is not wired up.
-The system currently writes to local JSONL files, not a database.
+**Postgres persistence:** docker-compose.yml configures Postgres. TimeSeriesStore
+(aurelius/database/store.py) provides SQLAlchemy-backed persistence for prices,
+carbon, and benchmark results. Set DATABASE_URL to activate. Falls back to
+JSONL/CSV when DATABASE_URL is absent. SQLite supported for single-node pilots.
 
 ### Local Python (recommended for first pilot)
 ```bash
@@ -584,9 +586,10 @@ a neocloud or GPU infrastructure operator.
    Priority: MEDIUM (US pilots can proceed without it).
 
 3. **Database persistence** (Postgres/TimescaleDB)
-   Current state: JSONL append-only local files.
-   Required: For multi-instance deployment, audit trail, pilot reporting.
-   Priority: MEDIUM (single-node pilot can use JSONL).
+   Current state: COMPLETE. TimeSeriesStore (SQLAlchemy) in aurelius/database/store.py.
+   Supports Postgres (production), SQLite (single-node/dev), no-op mode (JSONL fallback).
+   docker-compose.yml already configured. Migrations in aurelius/database/migrations/.
+   Priority: RESOLVED.
 
 4. **Per-region forecaster with ≥90-day training windows**
    Current state: joint model (all regions) with 30-day windows is best validated.
@@ -837,6 +840,6 @@ All infrastructure, benchmark methodology, and safety systems are production-rea
 
 **Remaining limitations** (documented, not blocking Tier 1 pilot):
 - ENTSO-E connector: requires API token (EU expansion)
-- Database persistence: JSONL files used (Postgres/TimescaleDB is optional)
+- Database persistence: COMPLETE (TimeSeriesStore: Postgres + SQLite + JSONL fallback)
 - Per-region forecaster: requires ≥90-day training windows per region
 - Tier 2/Tier 3: require customer queue/DCGM data (fixture-tested, not live)

@@ -2279,21 +2279,149 @@ Scope of changes:
 Tests: 1165 passed, 1 skipped (1166 collected = 1165 pre-existing + 9 new − some
   previously-skipped tests now run), 0 regressions
 
-Expected benchmark improvement (NOT yet re-validated):
-  With recovery_excluded_workload_types=frozenset({"training"}), the training
-  workload should recover from 12.3% → ~15.0% (matching ml_quantile v2.0 baseline),
-  removing the -2.7pp regression. Mean savings expected to remain at 25.1%+ since
-  background_maintenance and other workloads continue to receive the correction.
+Benchmark re-validation (2026-05-23):
+  With recovery_excluded_workload_types=frozenset({"training"}), confirmed:
+    training:              15.0%  ← regression RESOLVED (matches v2.0 baseline)
+    fine_tuning:           15.0%  ← +1.6pp improvement
+    llm_batch_inference:   33.5%  ← no change
+    data_processing:       38.3%  ← +0.6pp improvement
+    scheduled_batch:       25.7%  ← +0.4pp improvement
+    background_maintenance: 48.1% ← +7.8pp improvement
+    realtime_inference:     2.8%  ← no change
+    Mean:                  25.5%  ← NEW HIGH (was 25.0% for v2.0, 25.1% prev)
 
-Acceptance criterion update:
+Acceptance criterion status: MET
   REQUIRED:  mean ≥ 25.0% AND no workload regresses > 2pp vs ml_quantile v2.0
-  PREVIOUS:  mean 25.1% ✓ | training -2.7pp ⚠ (exceeded 2pp threshold)
-  EXPECTED:  mean 25.1% ✓ | training 0pp regression ✓ (correction suppressed)
-  STATUS:    Pending benchmark re-run to validate expected improvement
+  ACHIEVED:  mean 25.5% ✓ | training 0pp regression ✓ (correction suppressed)
+  STATUS:    COMPLETE — ml_quantile_recovery is now the validated best forecaster
+
+Benchmark artifact: benchmarks/results/benchmark_20260523T200730Z.json
+
+===============================================================================
+BEST VALIDATED FORECASTER (updated 2026-05-23)
+===============================================================================
+
+ml_quantile_recovery (v2.0 + two-gate regime correction, training excluded):
+  BEST VALIDATED: 25.5% mean savings vs current_price_only
+  Recommended for all fleets (training exclusion is the default in benchmark runner)
+
+ml_quantile v2.0 (joint, 30-day windows):
+  FALLBACK / COMPARISON: 25.0% mean savings
+  Still the recommended default when background_maintenance fraction < 20%
+
+60% savings is aspirational. 25.5% is the proven ceiling as of this run.
+
+===============================================================================
+PHASE 11 — POSTGRES PERSISTENCE LAYER
+===============================================================================
+
+Status: COMPLETE (2026-05-23)
+Branch: feature/postgres-persistence-layer
+
+Summary:
+  SQLAlchemy-backed time-series persistence layer implemented, tested (52 new
+  tests), and integrated with the benchmark runner and daily learning loop.
+  Supports Postgres (production) and SQLite (dev/test). No-op mode when
+  DATABASE_URL is absent. Backward-compatible with existing JSONL/CSV paths.
+  Old aurelius/database.py Supabase client preserved via package re-export.
+
+What was implemented:
+
+  1. aurelius/database/__init__.py — package exports:
+     - TimeSeriesStore (new SQLAlchemy store)
+     - SupabaseClient, get_db (backward compat re-exports from supabase_client.py)
+
+  2. aurelius/database/store.py — TimeSeriesStore:
+     - Dialect-agnostic: Postgres (production) + SQLite (tests/single-node)
+     - Tables: energy_prices, carbon_intensity, benchmark_runs
+     - UniqueConstraints: (timestamp, region, source) per table for idempotent upsert
+     - upsert_prices(df): bulk-upsert canonical price DataFrame (INSERT OR IGNORE)
+     - get_prices(region, start, end, source=None): return hourly price rows
+     - upsert_carbon(df): bulk-upsert carbon intensity rows
+     - get_carbon(region, start, end): return hourly carbon rows
+     - save_benchmark_run(): archive benchmark cell (run_id × region × workload)
+     - get_benchmark_history(region_combo, workload, forecaster, limit): retrieve history
+     - row_counts(): health check / diagnostics
+     - close(): dispose connection pool
+     - Graceful no-op mode: when DATABASE_URL absent or connection fails
+
+  3. aurelius/database/supabase_client.py — moved from aurelius/database.py:
+     - SupabaseClient and get_db() preserved for backward compatibility
+     - energy_prices.py continues to import get_db() without changes
+
+  4. aurelius/database/migrations/002_benchmark_runs.sql — new migration:
+     - benchmark_runs table with TimescaleDB hypertable support
+     - Unique index per (run_id, region_combo, workload)
+
+  5. benchmarks/run_benchmark.py integration:
+     - import os (added)
+     - Optional TimeSeriesStore import (no-op if unavailable)
+     - After benchmark completes: archives all non-error result cells to DB
+     - Only when DATABASE_URL is set (no-op otherwise)
+
+  6. scripts/daily_learning_loop.py integration:
+     - Optional TimeSeriesStore import (no-op if unavailable)
+     - _persist_prices_to_db(): upserts freshly fetched prices after Step 2
+     - _persist_benchmark_to_db(): saves smoke test result after Step 7
+     - Both are no-ops when DATABASE_URL is absent
+
+  7. docker/Dockerfile:
+     - Added libpq-dev to builder stage (psycopg2 build dep)
+     - Added libpq5 to runtime stage (psycopg2 runtime dep)
+     - Added sqlalchemy>=2.0.0 and psycopg2-binary>=2.9.0 to pip install
+
+  8. aurelius/pyproject.toml:
+     - Added sqlalchemy>=2.0.0 to main dependencies
+     - Added [project.optional-dependencies] postgres section
+
+  9. .env.example:
+     - Updated DATABASE_URL section with full documentation:
+       Postgres, SQLite file, and sqlite:///:memory: examples
+
+  10. tests/test_database_store.py — 52 new tests:
+      - TestTimeSeriesStoreInit (8): enabled/disabled, bad URL, dialect, tables
+      - TestUpsertPrices (8): basic, no-op, empty, idempotent, mixed, regions, naive ts, sources
+      - TestGetPrices (8): correct rows, disabled, no data, sorted, columns, filter, naive query, schema
+      - TestUpsertCarbon (4): basic, idempotent, disabled, empty
+      - TestGetCarbon (4): basic, columns, disabled, schema
+      - TestBenchmarkRuns (10): save, overwrite, multiple, filter region, filter workload,
+        filter forecaster, meta json, limit, disabled, no-op
+      - TestRowCounts (2): reflect inserts, disabled
+      - TestHelpers (4): to_utc naive, to_utc aware, empty price schema, empty carbon schema
+      - TestClose (2): disables store, idempotent
+      - TestIntegrationPriceRoundTrip (2): value preservation, 3-region combo
+
+Adversarial audit:
+  ✓ No future data leakage — TimeSeriesStore is pure persistence (no optimizer logic)
+  ✓ No fake savings — no benchmark claims in new code
+  ✓ Upsert is idempotent — UniqueConstraint + INSERT OR IGNORE prevents duplicates
+  ✓ Backward compatible — get_db() re-exported, no breaking changes to energy_prices.py
+  ✓ No secrets committed — DATABASE_URL left empty in .env.example
+  ✓ SQLite in-memory for all tests — no live Postgres required
+  ✓ close() idempotent — safe to call multiple times
+  ✓ No-op mode: disabled store returns 0/empty on all operations (no crash)
+  ✓ ruff check: 0 errors (fixed unused imports, import ordering)
+
+Tests: 1226 passed, 5 skipped, 0 failed (was 1174 before this run)
+  New: 52 tests in tests/test_database_store.py
+  Pre-existing: 1174 (all preserved, 0 regressions)
+
+Production deployment note:
+  To activate Postgres persistence:
+    export DATABASE_URL=postgresql://aurelius:aurelius@localhost/aurelius
+    psql $DATABASE_URL -f aurelius/database/migrations/001_timeseries.sql
+    psql $DATABASE_URL -f aurelius/database/migrations/002_benchmark_runs.sql
+  Or use docker-compose (Postgres already configured):
+    docker-compose -f docker/docker-compose.yml up -d postgres
+    docker-compose run aurelius-api python -c "from aurelius.database import TimeSeriesStore; TimeSeriesStore()"
+  SQLite single-node (no Docker required):
+    export DATABASE_URL=sqlite:///./aurelius.db
+    (tables created automatically on first TimeSeriesStore() instantiation)
 
 Next recommended task:
-  Option A: Run benchmark to validate recovery_excluded_workload_types fix
-    (expected: training recovers to ~15.0%, mean stays ≥ 25.0%)
-  Option B: ENTSO-E connector — EU market expansion (requires ENTSOE_API_KEY)
-  Option C: Database persistence — Postgres for multi-instance production
-  Recommended: Option A to confirm the training regression is resolved, then B/C
+  Option A: ENTSO-E production validation — requires ENTSOE_API_KEY (not in env)
+  Option B: Database migration CLI — alembic-based migration management for upgrades
+  Option C: API endpoint for TimeSeriesStore health/metrics (for monitoring)
+  Option D: CLI db commands (aurelius db status, aurelius db migrate, aurelius db prices show)
+  Recommended: Option A when ENTSOE_API_KEY becomes available; otherwise
+    Option D (CLI db commands) for operator ergonomics

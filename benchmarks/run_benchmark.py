@@ -33,6 +33,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
 import sys
 from datetime import datetime, timezone
 from pathlib import Path
@@ -50,6 +51,12 @@ from aurelius.backtesting.baselines import ALL_BASELINES
 from aurelius.ingestion.job_logs import JobLogIngester
 from aurelius.ingestion.grid_apis.csv_importer import CSVPriceImporter
 from aurelius.models import OptimizationConfig
+
+# Optional DB persistence — no-op when DATABASE_URL is not set
+try:
+    from aurelius.database import TimeSeriesStore as _TSStore
+except ImportError:
+    _TSStore = None  # type: ignore[assignment,misc]
 
 # ---------------------------------------------------------------------------
 # Benchmark suite definitions
@@ -964,6 +971,26 @@ def main() -> int:
         exit_code = 1
     elif args.compare_baseline:
         print(f"\n✓  No regressions vs {args.compare_baseline}")
+
+    # Optional: persist benchmark results to TimeSeriesStore (no-op if DATABASE_URL absent)
+    if _TSStore is not None and not args.quick:
+        _db_url = os.environ.get("DATABASE_URL", "")
+        if _db_url:
+            _store = _TSStore(_db_url)
+            if _store.enabled:
+                for r in non_error:
+                    pct = r.get("primary_savings_pct")
+                    if pct is not None:
+                        _store.save_benchmark_run(
+                            run_id=run_ts,
+                            forecaster=args.forecaster,
+                            region_combo=r.get("region_combo", ""),
+                            workload=r.get("workload_type", ""),
+                            savings_vs_cpo=float(pct),
+                            folds=r.get("folds", 0),
+                            miss_pct=float(r.get("missing_price_pct", 0.0)),
+                        )
+                _store.close()
 
     # Save results
     result_file = output_dir / f"benchmark_{run_ts}.json"

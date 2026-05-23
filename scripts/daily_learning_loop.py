@@ -53,6 +53,12 @@ from typing import Optional
 
 import pandas as pd
 
+# TimeSeriesStore is optional — graceful no-op when DATABASE_URL is not set
+try:
+    from aurelius.database import TimeSeriesStore as _TimeSeriesStore
+except ImportError:
+    _TimeSeriesStore = None  # type: ignore[assignment,misc]
+
 # Project root so imports work when running as a script
 _ROOT = Path(__file__).parent.parent
 sys.path.insert(0, str(_ROOT))
@@ -571,6 +577,70 @@ def generate_report(
 
 
 # ---------------------------------------------------------------------------
+# Optional DB persistence helpers
+# ---------------------------------------------------------------------------
+
+def _persist_prices_to_db(
+    new_data: dict[str, pd.DataFrame],
+    db_url: Optional[str] = None,
+) -> None:
+    """Upsert freshly fetched price rows into the TimeSeriesStore.
+
+    No-op when DATABASE_URL is not configured or TimeSeriesStore is unavailable.
+    """
+    if _TimeSeriesStore is None:
+        return
+    url = db_url or os.environ.get("DATABASE_URL", "")
+    if not url:
+        return
+    store = _TimeSeriesStore(url)
+    if not store.enabled:
+        return
+    total = 0
+    for region, df in new_data.items():
+        if not df.empty:
+            n = store.upsert_prices(df)
+            total += n
+            logger.info(f"DB: upserted {n} new price rows for {region}")
+    if total:
+        logger.info(f"DB: total {total} price rows upserted")
+    store.close()
+
+
+def _persist_benchmark_to_db(
+    smoke_result: dict,
+    run_id: str,
+    db_url: Optional[str] = None,
+) -> None:
+    """Save benchmark smoke test result to the TimeSeriesStore.
+
+    No-op when DATABASE_URL is not configured or TimeSeriesStore is unavailable.
+    """
+    if _TimeSeriesStore is None or smoke_result.get("status") != "ok":
+        return
+    url = db_url or os.environ.get("DATABASE_URL", "")
+    if not url:
+        return
+    store = _TimeSeriesStore(url)
+    if not store.enabled:
+        return
+    savings = smoke_result.get("savings_vs_cpo_mean")
+    if savings is None:
+        store.close()
+        return
+    store.save_benchmark_run(
+        run_id=run_id,
+        forecaster="ml_quantile",
+        region_combo=REGION_COMBO,
+        workload="mixed_smoke_test",
+        savings_vs_cpo=float(savings) * 100.0,
+        folds=smoke_result.get("n_folds", 0),
+    )
+    logger.info(f"DB: saved benchmark smoke test result for run_id={run_id}")
+    store.close()
+
+
+# ---------------------------------------------------------------------------
 # Main entry point
 # ---------------------------------------------------------------------------
 
@@ -619,8 +689,10 @@ def main() -> None:
         logger.info("Step 1: Fetching latest prices...")
         fetch_results = fetch_latest_prices(REGIONS, args.data_dir, args.dry_run)
 
-    # Step 2: Append to store
+    # Step 2: Append to store + optional DB persistence
     logger.info("Step 2: Updating historical store...")
+    if fetch_results and not args.dry_run:
+        _persist_prices_to_db(fetch_results)
     if store_path.exists() or fetch_results:
         store_df = append_to_store(fetch_results, store_path, args.dry_run)
     else:
@@ -670,6 +742,11 @@ def main() -> None:
         logger.info(f"Smoke test: {smoke_test.get('status')}")
         if smoke_test.get("savings_vs_cpo_mean") is not None:
             logger.info(f"  Smoke test savings: {smoke_test['savings_vs_cpo_mean']*100:.1f}%")
+
+    # Optional: persist benchmark result to DB
+    run_id_str = loop_start.strftime("%Y%m%dT%H%M%SZ")
+    if not args.dry_run:
+        _persist_benchmark_to_db(smoke_test, run_id=run_id_str)
 
     # Step 8: Generate report
     logger.info("Step 8: Generating report...")
