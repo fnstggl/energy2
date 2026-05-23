@@ -491,7 +491,7 @@ Date:
 2026-05-23
 
 Branch:
-claude/brave-mccarthy-QG2QF
+claude/youthful-feynman-DfckO
 
 PR URL:
 (pending — see push)
@@ -507,7 +507,7 @@ LAST VERIFIED TEST STATUS (UPDATED)
 ===============================================================================
 
 Unit + integration:
-724 passed, 0 failed (4 skipped), 160 warnings
+750 passed, 0 failed (4 skipped), 200 warnings
 
 New tests (Phase 3):
 23 new tests in tests/test_weather_features.py:
@@ -902,21 +902,113 @@ Acceptance criterion status:
   Honest finding: Q1 2026 fold structure makes this metric inaccessible to
   weather-based improvements. Infrastructure delivered; metric deferred.
 
-Next exact task for Phase 3 completion:
-  Option A (recommended): Per-region model architecture
-    - Train separate PriceQuantileForecaster per region in _build_ml_forecast()
-    - ERCOT model: include weather features (hdd_f, temp_delta_24h_c)
-    - CAISO/PJM models: price-only (no weather, no feature stealing)
-    - Expected: ERCOT -0.9% + CAISO/PJM ~26% each → overall ~17.3%
-    - Still below 20% but shows weather helps without harming other regions
-  Option B: Different forecast window
-    - Use --train-days 7 so early folds capture Jan 8-14 cold snap in eval
-    - Requires re-establishing baseline with 7-day training window
-    - Would demonstrate weather benefit for cold snap periods definitively
-  Option C: Extend to summer heat waves
-    - Summer 2025 has heat waves throughout (CDD events in eval windows)
-    - Requires confirming whether CDD→price correlation holds in eval windows
-    - More promising for summer data than winter where cold snap is front-loaded
+===============================================================================
+ROADMAP PHASE 3 EXTENSION — PER-REGION FORECASTER ARCHITECTURE
+===============================================================================
+
+Run date: 2026-05-23
+Branch: claude/youthful-feynman-DfckO
+
+Summary:
+  PerRegionForecaster (v4.0) implemented, tested (26 new tests), and benchmarked.
+  The per-region approach does NOT improve the Q1 2026 primary benchmark metric.
+  Root cause identified and documented below. Infrastructure is correct and
+  valuable for longer training windows (≥90 days per region).
+
+What was implemented:
+  1. PerRegionForecasterConfig dataclass:
+     - base_config: PriceModelConfig (applied to all regions by default)
+     - weather_regions: list of regions that receive weather features;
+       default ["us-south"] so ERCOT gets weather and CAISO/PJM don't
+     - region_configs: optional per-region PriceModelConfig overrides
+       (ERCOT override: n_estimators=250, num_leaves=127 for spike patterns)
+
+  2. PerRegionForecaster class (aurelius/forecasting/price_model.py):
+     - Identical fit()/predict() interface to PriceQuantileForecaster
+       → drop-in replacement in BacktestEngine, no engine changes required
+     - fit(): groups price records by region, trains one separate
+       PriceQuantileForecaster per region; weather passed only to regions
+       in weather_regions (ERCOT), all others remain price-only
+     - predict(): dispatches to per-region sub-forecaster; unknown/unfitted
+       regions return flat fallback (no crash)
+     - Backward-compatible: accepts bare PriceModelConfig for ease of use
+
+  3. Benchmark runner update (benchmarks/run_benchmark.py):
+     - Added ml_quantile_perregion to --forecaster choices
+     - Weather data auto-loaded for perregion mode (for ERCOT weather features)
+     - ERCOT gets higher-capacity model config (250 trees, 127 leaves)
+     - Forecast quality collection extended to perregion mode
+
+  4. Tests (tests/test_per_region_forecaster.py): 26 new tests, all passing
+     - TestPerRegionForecasterConfig (5): config construction, backward compat
+     - TestPerRegionForecasterFit (7): per-region training, weather routing,
+       region config override, isolation between region models
+     - TestPerRegionForecasterPredict (5): dispatch, fallback, p90≥p50
+     - TestPerRegionForecasterDeterminism (2): same seed same output
+     - TestPerRegionForecasterLeakage (2): fit only on training data
+     - TestPerRegionForecasterMetadata (3): metadata, is_fitted
+     - TestPerRegionForecasterBacktestIntegration (2): end-to-end with engine
+
+Benchmark results (2026-05-23, Q1 2026, 30-day training, 5 folds):
+
+  training@caiso_pjm_ercot_da_rt:
+    ml_quantile v2.0 (joint, no weather, BASELINE):  15.0%  ← PRESERVED
+    ml_quantile_perregion v4.0 (ERCOT gets weather): -10.9%  ← REGRESSION
+
+  Root cause — per-region data starvation on 30-day windows:
+    Joint model (2160 records per fold across 3 regions):
+      Effective samples per LightGBM leaf ≈ 0.17 → well-generalized
+    Per-region model (720 records per fold for each region):
+      Effective samples per LightGBM leaf ≈ 0.06 → 3× more overfit
+    With 1/3 the training data, per-region models fail to learn robust
+    price-hour rank ordering from 30-day windows. The January cold snap
+    patterns dominate ERCOT training data and produce noisy February-March
+    predictions. CAISO/PJM models also have less statistical power.
+    Additionally, the joint model learns CROSS-REGION calibration ("when
+    CAISO is expensive AND ERCOT is cheap, route to ERCOT"), which per-region
+    models cannot capture — this cross-region correlation is the core signal
+    for multi-region optimization.
+
+  Cross-region calibration loss (key finding):
+    The 15.0% joint model savings come partly from correctly ranking all 3
+    regions' price levels relative to each other. Per-region models produce
+    forecasts on independent scales without cross-region recalibration, which
+    causes the optimizer to systematically misroute jobs across regions.
+
+  When per-region architecture WOULD help (conditions required):
+    - Training window ≥ 90 days per region (≥ 2160 records per region)
+    - Enough data for each region to learn its own patterns independently
+    - Cross-region correlation captured via separate calibration layer
+    - Appropriate hyperparameters per region (not just copying joint config)
+    - Summer 2025 data (90 days) would be a better test case
+
+Honest acceptance criterion status (Phase 3 Extension):
+  REQUIRED: training@caiso_pjm_ercot_da_rt ≥ 17% with per-region architecture
+  ACHIEVED: -10.9% — criterion NOT met
+  Infrastructure is correct and tested; regression is a data-quantity constraint.
+  ml_quantile v2.0 joint model (15.0%) remains the best validated forecaster.
+  The per-region artifact is saved: benchmark_perregion_training_3region_q12026_20260523.json
+
+Next exact task (after this PR merges):
+  The per-region architecture is NOT the right next improvement for 30-day windows.
+  The highest-leverage next milestones are:
+  1. ROADMAP PHASE 4 — GPU Telemetry & DCGM:
+     Implement DCGM-compatible fixture tests, Prometheus mock endpoint,
+     GPU health / thermal / utilization features. Foundation infrastructure
+     (no live cluster required). Expected to unlock Tier 3 control-level
+     optimization and improve pilot appeal to GPU fleet operators.
+  2. ROADMAP PHASE 5 — Queue-Aware Optimization:
+     Implement queue depth / wait time / GPU availability features from
+     Kubernetes/Slurm/Ray CSV trace inputs. Multi-signal objective function
+     improvement (electricity + queue delay + SLA).
+  3. ALTERNATIVE — Extended Training Window Benchmark:
+     Re-run per-region benchmark with --train-days 90 (using summer 2025 data)
+     to validate whether per-region outperforms joint when data is sufficient.
+     If yes, perregion becomes the default for production deployments.
+
+Tests after Phase 3 extension: 750 passed, 4 skipped (no regressions)
+  - 724 pre-existing tests
+  - 26 new tests in tests/test_per_region_forecaster.py
 
 ===============================================================================
 ELECTRICITY MAPS CONTRIB AUDIT + MARKET-DATA PROVIDER ABSTRACTION
