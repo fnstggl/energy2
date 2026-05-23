@@ -127,6 +127,26 @@ REGION_COMBOS = [
     },
 ]
 
+# Extended region combos — require the combined 2025-2026 dataset.
+# Build it first with: python scripts/build_combined_dataset.py
+# (needs fall2025 data from: python scripts/fetch_caiso_pjm_prices.py
+#  --start 2025-09-01 --end 2026-01-01 --out-dir data/fall2025)
+# These combos use 90-day training windows to validate per-region forecaster
+# with sufficient per-region data (≥2160 records/region vs 720 with 30-day windows).
+EXTENDED_REGION_COMBOS = [
+    {
+        "name": "combined_2025_2026_3region",
+        "regions": ["us-west", "us-east", "us-south"],
+        "da_price_file": "data/combined_2025_2026/3region_dam.csv",
+        "rt_price_file": "data/combined_2025_2026/3region_rt.csv",
+        # Combined: Jun 2025 → Mar 2026 (~270–290 days)
+        # Use start=2025-09-01 so 90-day training window starts in full fall data.
+        "date_start": "2025-09-01",
+        "date_end": "2026-03-10",
+        "recommended_train_days": 90,
+    },
+]
+
 QUICK_REGION_COMBOS = [
     {
         "name": "caiso_pjm_da_rt",
@@ -303,6 +323,17 @@ def run_single_benchmark(
     da_file = repo_root / region_combo["da_price_file"]
     rt_file = repo_root / region_combo["rt_price_file"] if region_combo["rt_price_file"] else None
     regions = region_combo["regions"]
+
+    # Check that data file exists before attempting to load it — gives a clear
+    # SKIPPED message instead of a confusing file-not-found stack trace.
+    if not da_file.exists():
+        return {
+            "region_combo": region_combo["name"],
+            "workload_type": workload_type,
+            "skipped": True,
+            "skip_reason": f"DA price file not found: {region_combo['da_price_file']} "
+                           f"— run scripts/build_combined_dataset.py first",
+        }
 
     price_df = CSVPriceImporter(str(da_file)).load_all()
     price_df = price_df[price_df["region"].isin(regions)]
@@ -675,6 +706,10 @@ def compare_against_baseline(
 def parse_args() -> argparse.Namespace:
     p = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     p.add_argument("--quick", action="store_true", help="Reduced suite for CI smoke testing")
+    p.add_argument("--extended-data", action="store_true",
+                   help="Include EXTENDED_REGION_COMBOS (combined_2025_2026 dataset, ~270 days). "
+                        "Requires: python scripts/build_combined_dataset.py first. "
+                        "Use with --train-days 90 for per-region forecaster validation.")
     p.add_argument("--output-dir", default="benchmarks/results", help="Output directory")
     p.add_argument("--workload", help="Run a single workload type")
     p.add_argument("--region-combo", help="Run a single region combo by name")
@@ -740,6 +775,10 @@ def main() -> int:
     workloads = QUICK_WORKLOAD_TYPES if args.quick else WORKLOAD_TYPES
     region_combos = QUICK_REGION_COMBOS if args.quick else REGION_COMBOS
 
+    # Add extended combos when requested (e.g. --extended-data --train-days 90)
+    if getattr(args, "extended_data", False) and not args.quick:
+        region_combos = region_combos + EXTENDED_REGION_COMBOS
+
     if args.workload:
         if args.workload not in WORKLOAD_TYPES:
             print(f"ERROR: unknown workload type '{args.workload}'. Valid: {WORKLOAD_TYPES}", file=sys.stderr)
@@ -747,8 +786,8 @@ def main() -> int:
         workloads = [args.workload]
 
     if args.region_combo:
-        all_combo_names = [c["name"] for c in REGION_COMBOS]
-        matches = [c for c in REGION_COMBOS if c["name"] == args.region_combo]
+        all_combo_names = [c["name"] for c in REGION_COMBOS + EXTENDED_REGION_COMBOS]
+        matches = [c for c in REGION_COMBOS + EXTENDED_REGION_COMBOS if c["name"] == args.region_combo]
         if not matches:
             print(f"ERROR: unknown region combo '{args.region_combo}'. Valid: {all_combo_names}", file=sys.stderr)
             return 2
@@ -800,6 +839,10 @@ def main() -> int:
                 )
                 result["run_ts"] = run_ts
                 results.append(result)
+
+                if result.get("skipped"):
+                    print(f"  SKIPPED: {result.get('skip_reason', 'data file missing')}")
+                    continue
 
                 if "error" in result:
                     print(f"  ERROR: {result['error']}")
@@ -869,7 +912,7 @@ def main() -> int:
         regressions = compare_against_baseline(results, previous)
 
     # Print summary table
-    non_error = [r for r in results if "error" not in r]
+    non_error = [r for r in results if "error" not in r and not r.get("skipped")]
     print(f"\n{'='*70}")
     print(f"BENCHMARK SUMMARY  —  primary baseline: {PRIMARY_BASELINE}")
     print(f"{'='*70}")

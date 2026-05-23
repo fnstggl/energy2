@@ -33,9 +33,15 @@ from __future__ import annotations
 
 import argparse
 import os
+import sys
 import time
 from datetime import datetime, timezone
 from pathlib import Path
+
+# Make aurelius importable when running the script directly from any working dir.
+_REPO_ROOT = Path(__file__).resolve().parent.parent
+sys.path.insert(0, str(_REPO_ROOT))
+sys.path.insert(0, str(_REPO_ROOT / "aurelius"))
 
 import pandas as pd
 

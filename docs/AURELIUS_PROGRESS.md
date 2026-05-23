@@ -1880,3 +1880,188 @@ What should be built next:
     data to validate per-region forecaster gains (oracle gap 22.7pp for training)
   Recommended: Option A (ENTSO-E) — unblocks EU market expansion,
     highest new ICP value (EU neoclouds, HPC operators)
+
+===============================================================================
+EXTENDED TRAINING WINDOW BENCHMARK — COMPLETED (2026-05-23)
+===============================================================================
+
+Status: COMPLETE — ACCEPTANCE CRITERION NOT MET
+Branch: claude/youthful-feynman-2LGIl
+Date: 2026-05-23
+
+Goal:
+  Validate whether per-region forecaster (v4.0) with 90-day training windows
+  closes the 22-48pp oracle forecasting gap identified in Phase 3 diagnostics.
+  Root cause hypothesis: per-region model needed ≥2160 records/region (vs 720
+  with 30-day windows).
+
+What was implemented:
+
+  1. scripts/fetch_caiso_pjm_prices.py: added sys.path.insert for standalone
+     script execution (was failing with "No module named 'aurelius'" in subprocesses)
+
+  2. scripts/build_combined_dataset.py (NEW):
+     - Merges summer2025 (Jun-Aug) + fall2025 (Sep-Dec) + Q1 2026 (Jan-Mar) per ISO
+     - Produces data/combined_2025_2026/ (3region_dam.csv, 3region_rt.csv + per-region CSVs)
+     - 287-day continuous dataset, 3 ISOs, dedup-safe merge with per-region validation
+     - Confirms ≥180 days required for 90-day training windows
+
+  3. benchmarks/run_benchmark.py updates:
+     - EXTENDED_REGION_COMBOS: new list for combined_2025_2026_3region combo
+       (requires build_combined_dataset.py; 90-day recommended_train_days documented)
+     - --extended-data flag: includes EXTENDED_REGION_COMBOS in full benchmark runs
+     - File-existence check in run_single_benchmark: returns {"skipped": True,
+       "skip_reason": "..."} when DA file missing (graceful, not an error)
+     - SKIPPED results excluded from non_error summary list
+     - --region-combo lookup extended to cover EXTENDED_REGION_COMBOS
+
+  4. aurelius/forecasting/price_model.py: PerRegionForecaster.metadata improved:
+     - Returns aggregate metadata: model_type="per_region_forecaster",
+       total_samples across all region sub-models, sorted regions list
+     - Previously returned first sub-model metadata (misleading for multi-region usage)
+
+  5. benchmarks/run_extended_benchmark.sh (NEW):
+     - Documents exact 3-step reproduction commands:
+       (1) joint ml_quantile 90d, (2) per-region 90d, (3) oracle diagnostics
+     - Honest notes on what to check for validity
+     - Interpretation guide for the comparison
+
+  6. tests/test_extended_benchmark.py (NEW):
+     - 27 new tests across 7 test classes:
+       - TestExtendedRegionCombos (6): structure, 3-region, date range
+       - TestMissingDataFileSkip (2): graceful skip behavior
+       - TestBuildCombinedDatasetMerge (5): dedup, region preservation, span, sort, no-gap
+       - TestPerRegionForecasterWith90DayData (5): fit, sample count, predict, p90≥p50, isolation
+       - TestCombinedDatasetCoverage (4): minimum days, 270-day span, gap filling, fold count
+       - TestExtendedDataFlag (3): no overlap, lookup, skipped exclusion
+       - TestPerRegionVsJointWith90DayData (2): coherent forecasts, aggregate metadata
+
+Data fetched:
+  data/fall2025/: Sep 1 – Dec 31 2025 (122 days × 24h = 2928 rows/ISO)
+    - caiso_us_west_dam.csv, caiso_us_west_rt.csv
+    - pjm_us_east_dam.csv, pjm_us_east_rt.csv
+    - ercot_us_south_dam.csv, ercot_us_south_rt.csv
+  data/combined_2025_2026/: 287-day continuous 3-region dataset
+    - 3region_dam.csv: 20,570 rows (Jun 2025 – Mar 2026)
+    - 3region_rt.csv: 20,594 rows
+
+BENCHMARK RESULTS (2026-05-23):
+
+  Dataset: combined_2025_2026_3region (287 days, 3 ISOs)
+  Train: 90 days | Eval: 7 days | ~10-13 folds per workload
+
+  Joint ml_quantile v2.0 (90-day windows):
+    training:              -3.8%   ← REGRESSION vs 30d (was +15.0%)
+    fine_tuning:           11.4%   ← slight regression (was 13.4%)
+    llm_batch_inference:   31.4%   ← slight regression (was 33.6%)
+    data_processing:       42.6%   ← IMPROVEMENT (+4.9pp vs 37.7%)
+    scheduled_batch:       14.4%   ← regression (was 25.3%)
+    background_maintenance: 32.8%  ← regression (was 40.3%)
+    realtime_inference:     0.8%   ← regression (was 10.0%)
+    Mean:                  18.5%   ← regression (was 25.0% with 30d windows)
+
+  Per-region v4.0 (90-day windows):
+    training:             -11.7%   ← regression (vs joint 90d)
+    fine_tuning:            6.8%   ← regression
+    llm_batch_inference:   18.7%   ← regression
+    data_processing:       24.1%   ← regression
+    scheduled_batch:       13.3%   ← regression
+    background_maintenance: 20.5%  ← regression
+    realtime_inference:    -1.8%   ← regression
+    Mean:                  10.0%   ← regression vs joint 90d (18.5%) and 30d (25.0%)
+
+  Benchmark artifacts:
+    benchmarks/results/benchmark_joint_90d_combined_2025_2026_20260523.json
+    benchmarks/results/benchmark_perregion_90d_combined_2025_2026_20260523.json
+
+Root cause analysis (why 90-day windows regress):
+
+  The combined dataset creates a DIFFERENT evaluation challenge than the 30-day
+  Q1 2026 benchmark:
+
+  With 30d Q1 2026 windows (prior best result: 25.0% mean):
+    - Train: Jan 1-30 → eval: Jan 31 - Mar 10
+    - Jan cold snap (Jan 7-14) appears in TRAINING data for early folds
+    - Model learns "ERCOT spiked to $2000 this month" → avoids ERCOT correctly
+    - Later folds see post-cold-snap recovery prices (mild, easier to predict)
+
+  With 90d combined dataset windows (new benchmark: 18.5% mean):
+    - Train: Sep 1 - Nov 30 → eval: Dec 2025 onward
+    - December and January folds EVALUATE during cold snap period
+    - Model was trained on fall 2025 (moderate ERCOT prices, no cold snap)
+    - Cold snap is an OOD event: model fails to predict ERCOT spike
+    - Fails to avoid ERCOT → negative training savings
+
+  Root cause confirmed: The training oracle gap is NOT a data-quantity problem.
+  It is a REGIME-CHANGE / OUT-OF-DISTRIBUTION problem.
+  Extended windows spanning pre-cold-snap → cold-snap boundary make it WORSE.
+
+  Per-region model (10.0% mean) loses to joint model (18.5% mean) because:
+  - Cross-region calibration loss persists (per-region scales are independent)
+  - Per-region training data (90d × 1 region) = less cross-region correlation
+  - Joint model's 3× the per-region data enables better relative pricing
+
+  data_processing is the exception (42.6% joint 90d > 37.7% joint 30d):
+  - data_processing has shorter duration (4-12h), more flexible scheduling
+  - Longer training window helps find cheaper time-of-day patterns
+
+Key learnings:
+
+  1. ERCOT cold snap oracle gap is structural, NOT solvable by longer windows
+     - Solution requires: ensemble uncertainty, heat-wave/cold-snap probability
+       model, or explicit regime detection with conservative fallback
+  2. Joint model beats per-region on ALL evaluated configurations
+     - Cross-region calibration is the dominant signal in multi-region optimization
+     - Per-region should not be promoted as default forecaster (any window)
+  3. 30-day Q1 2026 windows remain the best validated configuration (25.0% mean)
+  4. 90-day windows improve data_processing (+4.9pp) but hurt most others
+  5. Extended data is valuable for: testing seasonal robustness; seeing OOD failures
+
+Acceptance criterion status:
+  REQUIRED: per-region v4.0 with 90-day windows beats joint v2.0 with 30-day windows
+  ACHIEVED: per-region 90d = 10.0% mean < joint 30d = 25.0% — criterion NOT met
+  REQUIRED ALTERNATIVE: any configuration ≥ 20.0% for training@combined_3region
+  ACHIEVED: joint 90d = -3.8% for training — criterion NOT met
+  HONEST FINDING: ERCOT cold snap is an OOD regime; 30-day Q1 anchored windows
+  work better than extended windows when evaluation overlaps cold snap period.
+
+Tests: 1119 passed (1092 pre-existing + 27 new), 5 skipped, 0 regressions
+
+===============================================================================
+UPDATED: BEST VALIDATED FORECASTER
+===============================================================================
+
+ml_quantile v2.0 (joint, 30-day windows, Q1 2026 or summer 2025 data):
+  BEST VALIDATED: 25.0% mean savings vs current_price_only
+  Remains the benchmark champion across all configurations tested.
+
+No configuration tested has exceeded 25.0% mean savings.
+60% is aspirational; 25% is proven.
+
+===============================================================================
+ENTERPRISE CONTRACT READINESS NOTE (2026-05-23 — Extended Benchmark)
+===============================================================================
+
+Does this run make Aurelius more contract-ready? YES — incrementally.
+
+Why:
+  The extended benchmark definitively answers the "per-region vs joint" question:
+  joint model wins on all configurations. This saves future engineering time.
+  data/combined_2025_2026/ is a valuable long-horizon data asset.
+  The OOD analysis explains WHY winter ERCOT training savings are negative.
+  This is important for honest customer communication.
+
+What enterprise blocker remains:
+  1. ENTSO-E connector (EU expansion) — connector exists, requires ENTSOE_API_KEY
+  2. Regime detection / cold-snap safety gate for ERCOT winter periods
+  3. Database persistence (Postgres/TimescaleDB) for multi-instance pilots
+  4. SOC2/security posture documentation
+
+What should be built next:
+  Option A: ENTSO-E production validation (requires ENTSOE_API_KEY) — EU expansion
+  Option B: Seasonal regime detection / uncertainty-aware fallback:
+    - Add high-uncertainty flag to optimizer when recent price variance > threshold
+    - Use conservative placement (current_price_only behavior) during detected spikes
+    - This would fix the -3.8% training regression in cold-snap periods
+  Option C: Database persistence — Postgres schema migration for multi-pilot deployment
+  Recommended: Option A (ENTSO-E) if key becomes available; Option B if not
