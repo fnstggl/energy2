@@ -491,7 +491,7 @@ Date:
 2026-05-23
 
 Branch:
-claude/youthful-feynman-DfckO
+claude/youthful-feynman-2pFK8
 
 PR URL:
 (pending — see push)
@@ -507,26 +507,30 @@ LAST VERIFIED TEST STATUS (UPDATED)
 ===============================================================================
 
 Unit + integration:
-750 passed, 0 failed (4 skipped), 200 warnings
+798 passed, 0 failed (4 skipped), 200 warnings
 
-New tests (Phase 3):
-23 new tests in tests/test_weather_features.py:
-  - TestBuildWeatherLookup (5 tests): lookup construction, multi-region, NaN→0
-  - TestBuildFeatureMatrixWithWeather (5 tests): columns, backward compat
-  - TestBuildFeatureMatrixForPredictWithWeather (2 tests): passthrough, fallback
-  - TestPriceQuantileForecasterBackwardCompat (2 tests): no-weather v2.0
-  - TestPriceQuantileForecasterWithWeather (6 tests): v3.0, determinism
-  - TestWeatherLeakageSafety (2 tests): train<eval_start, missing→empty
-  - TestBacktestEngineWeatherIntegration (1 test): end-to-end smoke
+New tests (Phase 5 — Queue-Aware Optimization):
+48 new tests in tests/test_queue_aware.py
+  - TestQueueStateModel (2)
+  - TestQueueProviderFromCSV (4)
+  - TestQueueProviderGetWaitHours (6)
+  - TestQueueProviderToDictLookup (2)
+  - TestQueueProviderGenerateFixture (7)
+  - TestLookupLastKnown (5)
+  - TestObjectiveFunctionQueueDelay (6)
+  - TestSchedulerQueueAwareRouting (6)
+  - TestOptimizationConfigQueue (4)
+  - TestBacktestEngineQueueIntegration (5)
+  - TestQueueProviderRoundTrip (1)
 
 Pre-existing tests:
-701 (all Phase 1-2 benchmark, migration, spread_risk, ML forecaster, etc.)
+750 (all Phase 1-4 benchmark, migration, spread_risk, ML forecaster, etc.)
 
 Skipped:
 4 live API tests requiring credentials
 
 Result:
-ALL PASSING (724 tests)
+ALL PASSING (798 total)
 
 ===============================================================================
 FIRST OFFICIAL BENCHMARK RESULTS
@@ -989,26 +993,136 @@ Honest acceptance criterion status (Phase 3 Extension):
   ml_quantile v2.0 joint model (15.0%) remains the best validated forecaster.
   The per-region artifact is saved: benchmark_perregion_training_3region_q12026_20260523.json
 
-Next exact task (after this PR merges):
-  The per-region architecture is NOT the right next improvement for 30-day windows.
-  The highest-leverage next milestones are:
-  1. ROADMAP PHASE 4 — GPU Telemetry & DCGM:
-     Implement DCGM-compatible fixture tests, Prometheus mock endpoint,
-     GPU health / thermal / utilization features. Foundation infrastructure
-     (no live cluster required). Expected to unlock Tier 3 control-level
-     optimization and improve pilot appeal to GPU fleet operators.
-  2. ROADMAP PHASE 5 — Queue-Aware Optimization:
-     Implement queue depth / wait time / GPU availability features from
-     Kubernetes/Slurm/Ray CSV trace inputs. Multi-signal objective function
-     improvement (electricity + queue delay + SLA).
-  3. ALTERNATIVE — Extended Training Window Benchmark:
-     Re-run per-region benchmark with --train-days 90 (using summer 2025 data)
-     to validate whether per-region outperforms joint when data is sufficient.
-     If yes, perregion becomes the default for production deployments.
-
 Tests after Phase 3 extension: 750 passed, 4 skipped (no regressions)
   - 724 pre-existing tests
   - 26 new tests in tests/test_per_region_forecaster.py
+
+===============================================================================
+ROADMAP PHASE 5 — QUEUE-AWARE OPTIMIZATION
+===============================================================================
+
+Status: COMPLETE (2026-05-23)
+Branch: claude/youthful-feynman-2pFK8
+
+Summary:
+  Full queue-aware optimization infrastructure implemented, tested (48 new
+  tests), benchmarked, and integrated end-to-end. The optimizer now penalizes
+  placements in congested regions via a queue delay cost in the multi-signal
+  objective function. Backward-compatible: zero cost config = unchanged behaviour.
+
+What was implemented:
+
+  1. Data model (aurelius/models.py):
+     - QueueState dataclass: timestamp, region, cluster_id, gpu_type,
+       available_gpus, queue_depth_jobs, est_wait_hours
+     - OptimizationConfig: queue_delay_cost_per_gpu_hour field (default 0.0)
+       plus to_dict() inclusion
+
+  2. QueueProvider (aurelius/ingestion/queue_provider.py):
+     - from_csv(): loads canonical queue CSV schema (6 columns)
+     - from_dataframe(): construct from DataFrame (used in backtesting engine)
+     - get_wait_hours(region, timestamp): leakage-safe "last known before T" lookup
+     - to_dict_lookup(): returns {region: {timestamp: est_wait_hours}} —
+       plugs directly into objective function and scheduler
+     - generate_fixture(): reproducible synthetic queue data with realistic
+       business-hours congestion patterns (seed-deterministic)
+     - to_dataframe() / save_csv(): export and round-trip support
+     - Multi-cluster aggregation: weighted-mean wait time across clusters
+
+  3. Objective function (aurelius/optimization/objective.py):
+     - ObjectiveComponents: added queue_delay_cost: float field
+     - _lookup_last_known() helper: leakage-safe last-value lookup
+     - calculate(): queue_data parameter (optional); computes
+       queue_cost = est_wait_h * queue_delay_cost_per_gpu_hour * gpu_count
+     - calculate_job_cost() / compare_options(): queue_data propagated
+     - New total formula:
+       alpha*energy + beta*carbon + gamma*risk + delta*SLA + data_transfer + queue_delay
+
+  4. Scheduler (aurelius/optimization/scheduler.py):
+     - solve(): queue_data parameter (optional)
+     - _solve_greedy() / _find_best_slot(): queue_data threaded through
+     - _solve_local_search(): queue_data threaded through
+     - Optimizer naturally routes away from congested regions because
+       queue delay adds to the placement objective score
+
+  5. Backtesting engine (aurelius/backtesting/engine.py):
+     - __init__(): queue_df parameter (optional DataFrame)
+     - _run_fold(): builds queue_data lookup from queue_df with proper
+       leakage-safe split (only rows with timestamp < eval_start used)
+     - Passes queue_data to scheduler.solve() per fold
+
+  6. Benchmark runner (benchmarks/run_benchmark.py):
+     - --queue-file: path to queue CSV (relative to repo root)
+     - --queue-delay-cost: $/GPU-hour opportunity cost (default 0.0)
+     - Auto-loads and logs queue signal stats
+     - Rebuilds OptimizationConfig with queue cost when provided
+
+  7. Synthetic fixtures:
+     - data/queue_q12026_3region.csv: 6,477 rows (Q1 2026, CAISO/PJM/ERCOT)
+       us-west: mean 1.93h wait, us-east: mean 3.21h wait, us-south: mean 0.64h
+     - data/summer2025/queue_summer2025_3region.csv: 6,621 rows (Summer 2025)
+
+Adversarial findings (all verified correct):
+  ✓ No queue data / zero config → zero queue_delay_cost (backward compat)
+  ✓ Future queue data (dt(100)) not used when scheduling at dt(0) (leakage safe)
+  ✓ Queue-aware optimizer routes to us-south (0h wait) over us-west (5h wait)
+    even when us-west energy price is lower, when queue cost dominates
+  ✓ test_high_queue_cost_overrides_price_advantage: $320 queue cost >> $4
+    energy savings → correctly switches to us-east (passing test)
+  ✓ Multi-cluster weighted aggregation verified
+  ✓ Business-hours congestion pattern verified (12-20 UTC higher than 0-8 UTC)
+  ✓ Far-future queue data (2030) not used in 2026 backtesting folds
+
+Queue fixture data note:
+  SYNTHETIC: These fixtures are generated programmatically for testing/demo.
+  They are NOT from any real customer queue system. Real queue traces must
+  come from the customer's Kubernetes/Slurm/Ray cluster for production use.
+  Synthetic queue data MUST NOT be used for savings benchmark claims.
+
+Benchmark demo (quick mode, llm_batch_inference, queue-aware):
+  --queue-file data/queue_q12026_3region.csv --queue-delay-cost 2.0
+  Result: 33.0% vs current_price_only [folds=7]
+  Note: This is a pricing-only benchmark; the queue delay component adds
+  routing intelligence but the savings % still reflects energy price savings
+  (queue cost is an additional optimizer signal, not a new savings source).
+
+Tests: 48 new tests in tests/test_queue_aware.py
+  - TestQueueStateModel (2): construction, optional gpu_type
+  - TestQueueProviderFromCSV (4): load, bad column, defaults, regions
+  - TestQueueProviderGetWaitHours (6): exact match, last-known, no-data,
+    unknown region, leakage safety, multi-cluster aggregation
+  - TestQueueProviderToDictLookup (2): format, mirrors get_wait_hours
+  - TestQueueProviderGenerateFixture (7): records, determinism, seed diff,
+    non-negative, congestion pattern, base_wait_hours, save/reload
+  - TestLookupLastKnown (5): empty, exact, last-before, all-after, latest
+  - TestObjectiveFunctionQueueDelay (6): no data, zero config, calculation,
+    total inclusion, zero-gpu-count default, backward compat
+  - TestSchedulerQueueAwareRouting (6): routes-to-clear, no-queue, high-cost,
+    zero-cost-ignores, backward-compat, objective-components
+  - TestOptimizationConfigQueue (4): default zero, custom, to_dict, backward
+  - TestBacktestEngineQueueIntegration (5): none, stores, run-with, run-without,
+    leakage-safe-in-fold
+  - TestQueueProviderRoundTrip (1): DataFrame round-trip
+
+Total tests: 798 passed, 4 skipped (no regressions)
+
+Enterprise value of queue-aware optimization:
+  Tier 2 control-level optimization (cluster/queue placement) is now
+  implemented with a clear CSV trace ingestion path. A neocloud pilot can
+  provide their queue state logs and immediately get queue-aware routing
+  without any code changes — just supply --queue-file and --queue-delay-cost.
+  The control pathway: any customer who tracks GPU availability + queue depth
+  in a CSV export from Kubernetes/Slurm/Ray/AWS Batch can plug it in.
+
+Next exact task (after this PR merges):
+  ROADMAP PHASE 4 — GPU Telemetry & DCGM:
+  Implement DCGM-compatible fixture tests, Prometheus mock endpoint,
+  GPU health / thermal / utilization features. Foundation infrastructure
+  (no live cluster required). Exposes Tier 3 control-level optimization
+  (specific GPU/node placement based on health, temperature, utilization).
+  ALTERNATIVE: Extended Training Window Benchmark (summer 2025, 90-day windows)
+  to validate whether per-region forecaster outperforms joint model with
+  sufficient data. If yes, perregion becomes the default forecaster.
 
 ===============================================================================
 ELECTRICITY MAPS CONTRIB AUDIT + MARKET-DATA PROVIDER ABSTRACTION

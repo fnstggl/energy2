@@ -340,6 +340,32 @@ class SimulationResult:
 
 
 @dataclass
+class QueueState:
+    """Per-region cluster queue state at a point in time.
+
+    Captures the GPU availability and queue congestion for a region/cluster
+    at a given hour. Used by the queue-aware optimizer to penalize placements
+    in congested regions even when energy price is similar.
+
+    Attributes:
+        timestamp: UTC hour this snapshot was taken (floor to hour)
+        region: Aurelius region identifier (e.g. "us-west", "us-east")
+        cluster_id: Cluster or node-pool identifier within the region
+        gpu_type: GPU model (e.g. "a100", "h100"); None means any/unknown
+        available_gpus: Number of GPUs currently idle and schedulable
+        queue_depth_jobs: Number of jobs waiting to acquire GPUs
+        est_wait_hours: Estimated wait time in hours before a new job gets GPUs
+    """
+    timestamp: datetime
+    region: str
+    cluster_id: str
+    gpu_type: Optional[str]
+    available_gpus: int
+    queue_depth_jobs: int
+    est_wait_hours: float
+
+
+@dataclass
 class OptimizationConfig:
     """Configuration for the optimizer.
 
@@ -359,6 +385,11 @@ class OptimizationConfig:
         carbon_threshold_gco2_per_kwh: Hard carbon cap (carbon_constrained mode)
         data_transfer_cost_per_gb: Cost per GB of inter-region transfer ($/GB)
         sla_risk_thresholds: Max acceptable downside risk per workload_type (fraction)
+        queue_delay_cost_per_gpu_hour: Opportunity cost of idle GPU-hours lost to
+            queue waiting ($/GPU-hour). Zero disables queue-aware routing.
+            Typical value for premium H100: $2–4/GPU-hour. At 0.0 (default),
+            queue data is stored in ObjectiveComponents for reporting but does
+            not affect placement decisions.
     """
     alpha: float = 1.0
     beta: float = 0.3
@@ -384,6 +415,7 @@ class OptimizationConfig:
         "scheduled_batch": 0.07,
         "background_maintenance": 0.10,
     })
+    queue_delay_cost_per_gpu_hour: float = 0.0
 
     def to_dict(self) -> dict:
         return {
@@ -398,4 +430,5 @@ class OptimizationConfig:
             "carbon_objective": self.carbon_objective,
             "carbon_threshold_gco2_per_kwh": self.carbon_threshold_gco2_per_kwh,
             "data_transfer_cost_per_gb": self.data_transfer_cost_per_gb,
+            "queue_delay_cost_per_gpu_hour": self.queue_delay_cost_per_gpu_hour,
         }
