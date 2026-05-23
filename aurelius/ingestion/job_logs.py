@@ -197,6 +197,212 @@ class JobLogIngester:
         logger.info(f"Loaded {len(jobs)} jobs from {filepath}")
         return jobs
 
+    # Per-workload-type defaults used when customer CSV omits optional columns.
+    # power_kw is estimated as gpu_count * 0.4 kW (A100/H100 ≈ 400W TDP).
+    CUSTOMER_CSV_DEFAULTS: dict[str, dict] = {
+        "training": {
+            "gpu_count": 8, "power_kw_per_gpu": 0.4,
+            "max_delay_hours": 48.0, "interruptible": True,
+            "checkpointable": True, "migration_cost_hours": 0.5,
+        },
+        "fine_tuning": {
+            "gpu_count": 4, "power_kw_per_gpu": 0.4,
+            "max_delay_hours": 24.0, "interruptible": True,
+            "checkpointable": True, "migration_cost_hours": 0.25,
+        },
+        "llm_batch_inference": {
+            "gpu_count": 4, "power_kw_per_gpu": 0.4,
+            "max_delay_hours": 24.0, "interruptible": False,
+            "checkpointable": True, "migration_cost_hours": 0.1,
+        },
+        "data_processing": {
+            "gpu_count": 4, "power_kw_per_gpu": 0.4,
+            "max_delay_hours": 24.0, "interruptible": True,
+            "checkpointable": True, "migration_cost_hours": 0.05,
+        },
+        "scheduled_batch": {
+            "gpu_count": 4, "power_kw_per_gpu": 0.4,
+            "max_delay_hours": 24.0, "interruptible": True,
+            "checkpointable": True, "migration_cost_hours": 0.1,
+        },
+        "realtime_inference": {
+            "gpu_count": 2, "power_kw_per_gpu": 0.4,
+            "max_delay_hours": 0.0, "interruptible": False,
+            "checkpointable": False, "migration_cost_hours": None,
+        },
+        "background_maintenance": {
+            "gpu_count": 1, "power_kw_per_gpu": 0.4,
+            "max_delay_hours": 168.0, "interruptible": True,
+            "checkpointable": True, "migration_cost_hours": 0.05,
+        },
+    }
+
+    def load_from_customer_csv(
+        self,
+        filepath: Path,
+        default_regions: Optional[list[str]] = None,
+    ) -> list[Job]:
+        """Load jobs from a simplified customer-facing CSV.
+
+        Required columns:
+            job_id, workload_type, submit_time, duration_hours
+
+        Optional columns (workload_type defaults applied when absent):
+            gpu_count, deadline, max_delay_hours, allowed_regions,
+            forbidden_regions, interruptible, checkpointable, preemptible,
+            data_transfer_gb, sla_class, sla_penalty_per_hour, gpu_type,
+            power_kw, migration_cost_hours, pue
+
+        This is the recommended ingestion path for customer pilot traces.
+        The legacy ``load_from_csv`` requires internal columns (power_kw,
+        earliest_start, region_options, runtime_hours) — this method uses
+        the public-facing customer schema and derives the remaining fields.
+
+        Args:
+            filepath: Path to the customer workload trace CSV.
+            default_regions: Regions to allow when ``allowed_regions`` column
+                             is absent.  Defaults to us-west, us-east, us-south.
+        """
+        if default_regions is None:
+            default_regions = ["us-west", "us-east", "us-south"]
+
+        import pandas as pd
+        df = pd.read_csv(filepath)
+
+        required = {"job_id", "workload_type", "submit_time", "duration_hours"}
+        missing = required - set(df.columns)
+        if missing:
+            raise ValueError(
+                f"Customer CSV missing required columns: {sorted(missing)}. "
+                f"Found: {sorted(df.columns)}"
+            )
+
+        jobs: list[Job] = []
+        for _, row in df.iterrows():
+            wtype = str(row["workload_type"]).strip().lower()
+            if wtype not in self.CUSTOMER_CSV_DEFAULTS:
+                known = list(self.CUSTOMER_CSV_DEFAULTS)
+                raise ValueError(
+                    f"Unknown workload_type '{wtype}' in row {row['job_id']!r}. "
+                    f"Must be one of: {known}"
+                )
+            defaults = self.CUSTOMER_CSV_DEFAULTS[wtype]
+
+            submit_time = self._parse_dt(str(row["submit_time"]))
+            duration_h = float(row["duration_hours"])
+
+            # gpu_count: CSV column overrides per-workload default
+            gpu_count = int(row["gpu_count"]) if "gpu_count" in df.columns and pd.notna(row.get("gpu_count")) else defaults["gpu_count"]
+
+            # power_kw: explicit column or estimate from gpu_count
+            if "power_kw" in df.columns and pd.notna(row.get("power_kw")):
+                power_kw = float(row["power_kw"])
+            else:
+                power_kw = gpu_count * defaults["power_kw_per_gpu"]
+
+            # max_delay_hours → deadline and earliest_start
+            if "max_delay_hours" in df.columns and pd.notna(row.get("max_delay_hours")):
+                max_delay_h: Optional[float] = float(row["max_delay_hours"])
+            else:
+                max_delay_h = defaults["max_delay_hours"]
+
+            if "deadline" in df.columns and pd.notna(row.get("deadline")):
+                deadline = self._parse_dt(str(row["deadline"]))
+            elif max_delay_h is not None:
+                deadline = submit_time + timedelta(hours=duration_h + max_delay_h)
+            else:
+                deadline = submit_time + timedelta(hours=duration_h * 3)
+
+            earliest_start = submit_time
+
+            # region options
+            if "allowed_regions" in df.columns and pd.notna(row.get("allowed_regions")):
+                allowed_str = str(row["allowed_regions"]).strip()
+                # Support "|" or ";" as multi-value separators (commas are CSV delimiters)
+                sep = "|" if "|" in allowed_str else (";" if ";" in allowed_str else "|")
+                parts = [r.strip() for r in allowed_str.replace(";", "|").split("|") if r.strip()]
+                allowed = parts if parts else list(default_regions)
+            else:
+                allowed = list(default_regions)
+
+            forbidden: list[str] = []
+            if "forbidden_regions" in df.columns and pd.notna(row.get("forbidden_regions")):
+                forb_str = str(row["forbidden_regions"]).strip()
+                forbidden = [r.strip() for r in forb_str.replace(";", "|").split("|") if r.strip()]
+
+            # boolean fields
+            def _bool(col: str, fallback: bool) -> bool:
+                if col in df.columns and pd.notna(row.get(col)):
+                    v = row[col]
+                    if isinstance(v, bool):
+                        return v
+                    return str(v).strip().lower() in ("1", "true", "yes")
+                return fallback
+
+            interruptible = _bool("interruptible", bool(defaults["interruptible"]))
+            checkpointable = _bool("checkpointable", bool(defaults["checkpointable"]))
+            preemptible = _bool("preemptible", interruptible)
+
+            mch = defaults["migration_cost_hours"]
+            if "migration_cost_hours" in df.columns and pd.notna(row.get("migration_cost_hours")):
+                mch = float(row["migration_cost_hours"])
+
+            sla_class = str(row.get("sla_class", "best_effort")).strip() if "sla_class" in df.columns and pd.notna(row.get("sla_class")) else "best_effort"
+            sla_penalty = float(row["sla_penalty_per_hour"]) if "sla_penalty_per_hour" in df.columns and pd.notna(row.get("sla_penalty_per_hour")) else 0.0
+            data_gb = float(row["data_transfer_gb"]) if "data_transfer_gb" in df.columns and pd.notna(row.get("data_transfer_gb")) else 0.0
+            gpu_type = str(row["gpu_type"]).strip() if "gpu_type" in df.columns and pd.notna(row.get("gpu_type")) else None
+            pue = float(row["pue"]) if "pue" in df.columns and pd.notna(row.get("pue")) else 1.0
+
+            job = Job(
+                job_id=str(row["job_id"]),
+                submit_time=submit_time,
+                runtime_hours=duration_h,
+                deadline=deadline,
+                power_kw=power_kw,
+                earliest_start=earliest_start,
+                region_options=allowed,
+                workload_type=wtype,
+                gpu_type=gpu_type,
+                gpu_count=gpu_count,
+                interruptible=interruptible,
+                preemptible=preemptible,
+                checkpointable=checkpointable,
+                max_delay_hours=max_delay_h,
+                allowed_regions=allowed,
+                forbidden_regions=forbidden,
+                sla_class=sla_class,
+                sla_penalty_per_hour=sla_penalty,
+                data_transfer_gb=data_gb,
+                pue=pue,
+                migration_cost_hours=mch,
+            )
+            jobs.append(job)
+
+        logger.info(f"Loaded {len(jobs)} jobs from customer CSV {filepath}")
+        return jobs
+
+    def load_from_file(self, filepath: Path) -> list[Job]:
+        """Load jobs from either JSON or CSV, auto-detecting format.
+
+        For CSV files: if the columns match the customer-facing schema
+        (job_id + workload_type + submit_time + duration_hours), uses
+        ``load_from_customer_csv``.  Otherwise falls back to the legacy
+        ``load_from_csv`` (internal schema).
+
+        For JSON files: uses ``load_from_json``.
+        """
+        p = Path(filepath)
+        if p.suffix.lower() == ".json":
+            return self.load_from_json(p)
+
+        # CSV: detect which schema
+        import pandas as pd
+        header = pd.read_csv(p, nrows=0).columns.tolist()
+        customer_required = {"job_id", "workload_type", "submit_time", "duration_hours"}
+        if customer_required.issubset(set(header)):
+            return self.load_from_customer_csv(p)
+        return self.load_from_csv(p)
+
     def generate_synthetic(
         self,
         start_time: datetime,

@@ -1474,14 +1474,132 @@ Production limitation (must document per deployment):
   The fixture fixtures are clearly labeled SYNTHETIC and blocked from benchmark claims.
 
 Next exact task:
-  OPTION A: Pilot Readiness Audit (docs/PILOT_READINESS_AUDIT.md)
-    Full top-to-bottom production readiness audit:
-    - What works today vs requires customer infra
-    - First pilot deployment checklist
-    - ROI methodology document
-    - Data needed from customer
-    Priority: HIGH (needed for first enterprise contract)
-  OPTION B: Extended Training Window Benchmark
-    Test 60-90 day training windows with ml_quantile_v5 or per-region forecaster.
-    Likely unlocks 20%+ savings on training workload (currently 15.0%).
-    Priority: MEDIUM (improves sales story)
+  ROADMAP PHASE 7 — PRODUCTION SHADOW VALIDATION (live shadow mode):
+    Record optimizer decisions against live/rolling energy price data in dry-run mode,
+    then compare predicted savings vs realized prices after 7-14 days.
+    Required for closing a first enterprise contract:
+    - LiveShadowRunner class that ingests rolling price data
+    - Decision recorder (saves ScheduleDecision + forecast snapshot per job)
+    - Realized savings calculator (predicted vs actual price at scheduled time)
+    - Shadow report: predicted savings % vs realized savings %
+    This is the single remaining pilot blocker after the PILOT_READINESS_AUDIT.
+
+===============================================================================
+FINAL PILOT-READINESS HARDENING — COMPLETE (2026-05-23)
+===============================================================================
+
+Status: COMPLETE
+Branch: claude/youthful-feynman-D8J4O
+
+Summary:
+  Full pilot readiness hardening completed. docs/PILOT_READINESS_AUDIT.md
+  created and passes with CONDITIONAL PASS (Tier 1 production-ready).
+  Customer workload trace CSV ingestion implemented (top pilot blocker closed).
+  Deployment runbook created. 953 tests passing. No regressions.
+
+What was implemented:
+
+  1. docs/PILOT_READINESS_AUDIT.md — Full 19-section production readiness audit
+     - All 19 audit items rated PASS / PARTIAL / FIXTURE
+     - Proven savings documented: 25.0% mean vs current_price_only (real data)
+     - Extended training window diagnostic: 60-day windows evaluated and found WORSE
+       than 30-day/5-fold baseline (data-range constraint on 90-day datasets)
+     - First pilot deployment checklist with exact customer data requirements
+     - Control levels documented (Tier 1/2/3)
+     - Audit verdict: CONDITIONAL PASS for Tier 1 pilot
+
+  2. Customer workload trace CSV ingestion:
+     - JobLogIngester.load_from_customer_csv(): simplified 4-column minimum schema
+       with per-workload-type defaults (gpu_count, interruptible, max_delay_hours,
+       migration_cost_hours, power_kw, checkpointable)
+     - JobLogIngester.load_from_file(): auto-detects CSV vs JSON format
+     - Region multi-value: "|" separator (avoids CSV delimiter conflict)
+     - CLI --jobs-file now accepts both CSV and JSON (auto-detected)
+     - Sample trace: data/fixtures/sample_customer_workload_trace.csv (12 jobs)
+     - 36 new tests in tests/test_customer_csv_ingestion.py
+
+  3. docs/local_prod_like_run.md — Deployment runbook
+     - Install, configure, verify, benchmark, backtest, shadow test commands
+     - Docker instructions
+     - FastAPI REST service commands
+     - CI pipeline commands
+     - Pilot shadow test workflow
+     - Known limitations documented
+
+  4. aurelius/requirements-dev.txt — added httpx>=0.24.0
+     (required for FastAPI TestClient; 7 API auth tests were failing without it)
+
+  5. Extended benchmark diagnostic (2026-05-23):
+     - Summer2025 + 60-day windows: 8.6% mean (worse than 30-day/5-fold baseline)
+     - Q1 2026 + 60-day windows: 1 fold only (insufficient; data quality issues)
+     - Conclusion: 30-day/5-fold is optimal for 90-day datasets. Extended windows
+       require longer data history (180+ days per region).
+
+Files changed:
+  - docs/PILOT_READINESS_AUDIT.md (new, 740+ lines)
+  - docs/local_prod_like_run.md (new, 320+ lines)
+  - aurelius/ingestion/job_logs.py (load_from_customer_csv, load_from_file, CUSTOMER_CSV_DEFAULTS)
+  - aurelius/cli.py (--jobs-file uses load_from_file; help text updated)
+  - aurelius/requirements-dev.txt (httpx added)
+  - data/fixtures/sample_customer_workload_trace.csv (new)
+  - tests/test_customer_csv_ingestion.py (new, 36 tests)
+  - docs/AURELIUS_PROGRESS.md (this update)
+
+Tests:
+  953 passed, 0 failed, 5 skipped (was 917 before this run)
+  New: 36 tests in tests/test_customer_csv_ingestion.py
+  All pre-existing tests: PRESERVED, no regressions
+
+Adversarial audit (all verified correct):
+  ✓ Customer CSV with missing required columns raises ValueError (not silent failure)
+  ✓ Unknown workload_type raises ValueError (not silent failure)
+  ✓ Per-workload-type defaults applied correctly (7 types tested)
+  ✓ JSON format still works via load_from_file auto-detection
+  ✓ Multi-region "|" separator works; ";" also accepted
+  ✓ No future leakage from new code (load_from_customer_csv is pure I/O)
+  ✓ Extended 60-day benchmark: worse than baseline (honest finding; documented)
+  ✓ No secrets committed
+  ✓ 60% savings NOT claimed anywhere in new documents
+
+Enterprise contract readiness impact:
+  - Customer workload trace ingestion: RESOLVED (was TOP blocker)
+  - Pilot readiness audit: EXISTS (was MISSING)
+  - Deployment runbook: EXISTS (was MISSING)
+  - Remaining blocker: live shadow mode (record+compare live decisions)
+  - With this PR, Aurelius is ready for a first Tier 1 pilot with a neocloud operator
+    who provides their workload trace CSV and energy pricing region
+
+===============================================================================
+LAST VERIFIED TEST STATUS (Pilot Readiness Hardening)
+===============================================================================
+
+Date: 2026-05-23
+Branch: claude/youthful-feynman-D8J4O
+
+Unit + integration: 953 passed, 0 failed, 5 skipped
+New tests: 36 (tests/test_customer_csv_ingestion.py)
+Pre-existing tests: 917 (all preserved, 0 regressions)
+
+===============================================================================
+ENTERPRISE CONTRACT READINESS NOTE
+===============================================================================
+
+Does this run make Aurelius more contract-ready? YES.
+
+Why:
+- Customer workload trace ingestion is now implemented — a buyer can now plug in
+  their real job history and immediately get a backtested savings estimate
+- docs/PILOT_READINESS_AUDIT.md shows a buyer exactly what is and isn't proven,
+  what they need to provide, and what to expect in a first pilot
+- docs/local_prod_like_run.md provides an operator-grade runbook for deploying
+  Aurelius in a pilot environment
+
+What enterprise blocker remains:
+  Live shadow mode — the buyer needs to see that the optimizer makes correct
+  decisions against their LIVE data, not just historical data. Without this,
+  the sales cycle requires trust in historical backtesting alone.
+
+What should be built next to remove that blocker:
+  ROADMAP PHASE 7 — PRODUCTION SHADOW VALIDATION
+  Implement LiveShadowRunner, DecisionRecorder, and RealizedSavingsCalculator.
+  This closes the last Tier 1 pilot readiness gap.

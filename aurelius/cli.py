@@ -427,7 +427,7 @@ def cmd_backtest(args):
     # Generate synthetic jobs if no job file provided
     if args.jobs_file:
         job_ingester = JobLogIngester()
-        jobs = job_ingester.load_from_json(args.jobs_file)
+        jobs = job_ingester.load_from_file(args.jobs_file)
     else:
         from datetime import datetime
         job_ingester = JobLogIngester()
@@ -858,7 +858,14 @@ def main():
     )
     bt_parser.add_argument(
         "--jobs-file", default=None,
-        help="Path to JSON job log file (generates synthetic jobs if omitted)",
+        help=(
+            "Path to a workload trace file. Accepts: "
+            "(1) customer CSV with columns job_id,workload_type,submit_time,"
+            "duration_hours (plus optional gpu_count,deadline,allowed_regions,...); "
+            "(2) legacy internal CSV (job_id,submit_time,runtime_hours,...); "
+            "(3) JSON job log. Format is auto-detected. "
+            "Generates synthetic jobs if omitted."
+        ),
     )
     bt_parser.add_argument(
         "--num-jobs", type=int, default=20,

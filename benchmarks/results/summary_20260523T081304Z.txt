@@ -1,0 +1,13 @@
+Aurelius Benchmark Summary — 20260523T081304Z
+Primary baseline: current_price_only
+Method: greedy_migrate
+
+training@summer2025_3region: -2.9% vs current_price_only  (folds=3)
+fine_tuning@summer2025_3region: 6.8% vs current_price_only  (folds=3)
+llm_batch_inference@summer2025_3region: 7.6% vs current_price_only  (folds=3)
+data_processing@summer2025_3region: 14.4% vs current_price_only  (folds=3)
+scheduled_batch@summer2025_3region: 8.5% vs current_price_only  (folds=3)
+background_maintenance@summer2025_3region: 24.7% vs current_price_only  (folds=3)
+realtime_inference@summer2025_3region: 1.3% vs current_price_only  (folds=3)
+
+Mean: 8.6%  Min: -2.9%  Max: 24.7%
