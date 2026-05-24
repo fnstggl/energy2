@@ -254,9 +254,22 @@ class JobScheduler:
             )
             result = self._apply_migration_optimization(result, jobs, price_data, mode="dp")
         elif method == "milp":
-            result = self._solve_milp(
-                jobs, price_data, carbon_data, risk_data, time_limit_seconds
-            )
+            # The MILP formulation does not model SLA constraints. Silently
+            # solving it while an SLA registry is active would emit
+            # SLA-violating schedules (e.g. routing to a forbidden region).
+            # Fall back to the SLA-aware greedy solver instead of lying.
+            if self.sla_enabled and any(self._sla_policy_for(j) is not None for j in jobs):
+                logger.warning(
+                    "MILP method does not support SLA enforcement; an SLA "
+                    "registry is active, so falling back to SLA-aware greedy."
+                )
+                result = self._solve_greedy(
+                    jobs, price_data, carbon_data, risk_data, queue_data, gpu_health_data
+                )
+            else:
+                result = self._solve_milp(
+                    jobs, price_data, carbon_data, risk_data, time_limit_seconds
+                )
         else:
             logger.warning(f"Unknown method {method}, falling back to greedy")
             result = self._solve_greedy(
@@ -289,7 +302,22 @@ class JobScheduler:
             if best_decision:
                 schedule.append(best_decision)
             else:
-                region = job.region_options[0]
+                # No feasible slot. When SLA correction is active and every
+                # placement was hard-blocked, prefer the job's CURRENT region
+                # (least-change) rather than an arbitrary region_options[0],
+                # which could be the cheapest *forbidden* region. The job must
+                # still be scheduled somewhere (batch model has no true no-op),
+                # but we refuse to actively migrate it into a violation.
+                if self._sla_policy_for(job) is not None:
+                    region = self._job_current_region(job)
+                    logger.warning(
+                        "No SLA-safe slot for %s; all placements violate hard SLA. "
+                        "Keeping current region %s (least-change fallback).",
+                        job.job_id, region,
+                    )
+                else:
+                    region = job.region_options[0]
+                    logger.warning(f"No optimal slot found for {job.job_id}, using fallback")
                 schedule.append(ScheduleDecision(
                     job_id=job.job_id,
                     start_time=job.earliest_start,
@@ -297,7 +325,6 @@ class JobScheduler:
                     power_fraction=1.0,
                     actual_runtime_hours=job.runtime_hours,
                 ))
-                logger.warning(f"No optimal slot found for {job.job_id}, using fallback")
 
         objective = self.objective_fn.calculate(
             jobs, schedule, price_data, carbon_data, risk_data, queue_data, gpu_health_data
