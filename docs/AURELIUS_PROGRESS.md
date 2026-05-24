@@ -2802,3 +2802,57 @@ ENTERPRISE CONTRACT READINESS NOTE:
   Next enterprise-expansion task: ENTSO-E (requires ENTSOE_API_KEY from ENTSO-E portal)
 
 Last verified commit SHA: da565f7
+
+===============================================================================
+VERIFICATION RUN — 2026-05-24 (session claude/ecstatic-bell-XmfhF)
+===============================================================================
+
+Date: 2026-05-24
+Branch: claude/ecstatic-bell-XmfhF
+Purpose: Routine verification — confirm no regressions, full functional check
+
+Verification results:
+
+  1. Test suite (non-live):             PASS — 1297 passed, 7 skipped, 0 failed
+     Total collected: 1317 (including live tests excluded by --ignore=tests/live)
+  2. Shadow demo (fixture trace):       PASS — 10 jobs decided, mean 60.8% predicted saving
+     Forecaster: seasonal_naive (default). Safety gate correctly blocked 1 invalid-baseline job.
+  3. Shadow demo (ml_quantile_recovery): PASS — 10 jobs decided, mean 60.8% predicted saving
+     Best validated forecaster (25.5% proven mean) confirmed available in shadow mode.
+  4. ROI CLI ($500K/month):             PASS — p50 $111,450/mo projected savings, caveats printed
+  5. Benchmark smoke (llm_batch quick): PASS — 26.7% savings vs current_price_only (7 folds)
+  6. Daily learning loop (--dry-run):   PASS — exits 0, smoke test ok, no files written in dry-run
+     (smoke shows -6.4% mean: expected — quick 10-day seasonal_naive on Q1 ERCOT winter data)
+  7. DB status (no Postgres here):      PASS — graceful DISABLED message, no crash
+     (psycopg2 not installed locally; Railway Postgres on private network only, expected)
+  8. Ruff lint check:                   PASS — 0 errors across aurelius/ scripts/ tests/
+  9. ENTSOE_API_KEY:                    NOT SET — EU expansion remains blocked
+ 10. PILOT_READINESS_AUDIT.md:          PASS (test count 1297 confirmed accurate)
+
+Adversarial checks:
+  ✓ ml_quantile_recovery available in shadow --forecaster choices (confirmed)
+  ✓ Safety gate fail-closed: blocked 1 invalid-baseline job in shadow demo
+  ✓ Learning loop dry-run exits 0 (test_dry_run_exits_cleanly passes)
+  ✓ Benchmark smoke asserts status == "ok" (not "ok or error" — tightened assertion)
+  ✓ No false savings claims: -6.4% smoke test honestly reported, not hidden
+  ✓ No Ray adapter exists (execution/ray.py absent) — docs reference Ray as customer infra,
+    not as Aurelius execution capability. No stale claim in user-facing docs.
+  ✓ No secrets committed
+
+GLOBAL TERMINATION RULE ASSESSMENT: CONFIRMED COMPLETE (re-verified third time)
+
+  All core pilot architecture criteria met. No bugs found. No regressions.
+  DECISION: STOP. No new features warranted by evidence.
+
+Open items (all documented, none blocking Tier 1 pilot):
+  - G1 gap: realized customer outcomes not yet driving model promotion
+    (uses forecast accuracy MAE instead). Acknowledged design gap.
+  - ENTSO-E: requires ENTSOE_API_KEY (not in environment)
+  - Ray execution adapter: out of current scope; docs correctly frame as customer infra
+
+ENTERPRISE CONTRACT READINESS NOTE:
+  This run makes Aurelius more contract-ready: NO (verification only — no new capabilities)
+  What enterprise blocker remains: NONE for Tier 1 pilot.
+  Next enterprise-expansion task: ENTSO-E (requires ENTSOE_API_KEY from ENTSO-E portal)
+
+Last verified commit SHA: c5c7794
