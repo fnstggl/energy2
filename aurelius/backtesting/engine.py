@@ -123,6 +123,44 @@ class BacktestRound:
         return result
 
 
+class WeatherLeakageError(AssertionError):
+    """Raised when eval-window predict weather is sourced from observed actuals."""
+
+
+def _assert_no_observed_weather_in_eval(
+    predict_weather_df: pd.DataFrame,
+    observed_weather_df: pd.DataFrame,
+    eval_start: pd.Timestamp,
+) -> None:
+    """Guard: eval-window predict weather must come from the FORECAST, not actuals.
+
+    For every (timestamp, region) at or after eval_start, the temperature in the
+    predict frame must match the forecast frame that was concatenated in — i.e.
+    it must NOT silently equal the observed actual. We verify by confirming the
+    eval-window temperatures differ from the observed series on at least some
+    rows (a perfect-foresight join would be identical everywhere). A degenerate
+    case where forecast == observed exactly on every hour is astronomically
+    unlikely for real NWP output and would itself indicate a wiring bug.
+    """
+    pw = predict_weather_df.copy()
+    pw["timestamp"] = pd.to_datetime(pw["timestamp"], utc=True)
+    ow = observed_weather_df.copy()
+    ow["timestamp"] = pd.to_datetime(ow["timestamp"], utc=True)
+    pe = pw[pw["timestamp"] >= eval_start]
+    oe = ow[ow["timestamp"] >= eval_start]
+    if pe.empty or oe.empty:
+        return
+    merged = pe.merge(oe, on=["timestamp", "region"], suffixes=("_pred", "_obs"))
+    if merged.empty:
+        return
+    identical = (merged["temperature_c_pred"] - merged["temperature_c_obs"]).abs() < 1e-9
+    if bool(identical.all()):
+        raise WeatherLeakageError(
+            "Eval-window predict weather is identical to observed actuals "
+            "(perfect-foresight leakage): expected day-ahead forecast values."
+        )
+
+
 def _df_to_price_data(
     df: pd.DataFrame,
     ts_col: str = "timestamp",
@@ -230,6 +268,7 @@ class BacktestEngine:
         recorder_path: Optional[Path] = None,
         rt_risk_lambda: Optional[float] = None,
         weather_df: Optional[Any] = None,  # pd.DataFrame with canonical weather schema
+        forecast_weather_df: Optional[Any] = None,  # day-ahead forecast weather (leakage-free eval)
         queue_df: Optional[Any] = None,    # pd.DataFrame with canonical queue schema
         gpu_df: Optional[Any] = None,      # pd.DataFrame with canonical GPU metric schema
         apply_recovery_correction: bool = False,  # enable regime-aware forecast correction
@@ -290,6 +329,17 @@ class BacktestEngine:
         # per fold with proper train/eval split. None = price-only mode (no change
         # in ML behaviour vs. v2.0).
         self.weather_df = weather_df
+
+        # Optional FORECAST weather (same canonical schema) used for the eval
+        # window at PREDICT time. This is the leakage-free counterpart to
+        # weather_df: in deployment the optimizer only ever has a day-ahead
+        # weather *forecast* for the horizon it is scheduling, never the future
+        # observation. When provided, _build_ml_forecast() builds the predict
+        # weather as observed-history (< eval_start) + forecast (>= eval_start),
+        # eliminating the perfect-foresight leakage. When None, the eval window
+        # falls back to observed actuals from weather_df (perfect foresight —
+        # an OPTIMISTIC upper bound, retained only for backward compatibility).
+        self.forecast_weather_df = forecast_weather_df
 
         # Optional queue DataFrame for queue-aware placement optimization.
         # Schema: timestamp, region, cluster_id, gpu_type, available_gpus,
@@ -488,6 +538,7 @@ class BacktestEngine:
                     split, train_price_data, train_carbon_data,
                     eval_price_data, eval_carbon_data, forecast_end,
                     weather_df=self.weather_df,
+                    forecast_weather_df=self.forecast_weather_df,
                     skip_recovery_correction=skip_recovery,
                 )
             )
@@ -736,6 +787,7 @@ class BacktestEngine:
         eval_carbon_data: dict,
         forecast_end: Optional[pd.Timestamp] = None,
         weather_df: Optional[Any] = None,
+        forecast_weather_df: Optional[Any] = None,
         skip_recovery_correction: bool = False,
     ) -> tuple[dict, dict, ForecastQuality]:
         """Fit ML forecasters on training data and predict the eval window.
@@ -762,12 +814,27 @@ class BacktestEngine:
             wts = pd.to_datetime(weather_df["timestamp"], utc=True)
             train_mask = wts < split.eval_start
             train_weather_df = weather_df[train_mask].copy() if train_mask.any() else None
-            # For prediction: include BOTH training tail and eval window weather.
-            # The training tail gives rolling/lag weather context; the eval window
-            # gives the current weather regime for the eval period. Using actual
-            # historical weather for the eval window is accepted practice in energy
-            # forecasting backtests and is NOT price leakage (weather is exogenous).
-            predict_weather_df = weather_df.copy()  # full range
+
+            if forecast_weather_df is not None and not (
+                hasattr(forecast_weather_df, "empty") and forecast_weather_df.empty
+            ):
+                # LEAKAGE-FREE predict weather: observed history before eval_start
+                # (rolling/lag context) + day-ahead FORECAST from eval_start onward.
+                # This is what a deployed system actually has at decision time —
+                # never the future observation.
+                fwts = pd.to_datetime(forecast_weather_df["timestamp"], utc=True)
+                obs_hist = weather_df[train_mask]
+                fc_future = forecast_weather_df[fwts >= split.eval_start]
+                predict_weather_df = pd.concat([obs_hist, fc_future], ignore_index=True)
+                _assert_no_observed_weather_in_eval(
+                    predict_weather_df, weather_df, split.eval_start
+                )
+            else:
+                # Fallback (perfect foresight): eval-window weather = OBSERVED
+                # actuals. NOT price leakage (weather is exogenous) but it IS
+                # forecast leakage — the model sees weather it could not have had.
+                # Optimistic upper bound; pass forecast_weather_df for honest eval.
+                predict_weather_df = weather_df.copy()  # full range
 
         # Convert training price data back to EnergyPrice records for the forecaster
         train_price_records: list[EnergyPrice] = []
