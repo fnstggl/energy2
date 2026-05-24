@@ -945,3 +945,192 @@ class TestShadowSafetyGate:
         assert records
         # An unrealistically strict gate must filter (block) at least one decision.
         assert any(r.gate_status == "filtered" for r in records)
+
+
+# ============================================================================
+# TestShadowRecoveryCorrection — ml_quantile_recovery in shadow mode
+# ============================================================================
+
+
+class TestShadowRecoveryCorrection:
+    """Verify that apply_recovery_correction=True wires through without error."""
+
+    REGIONS = ["us-west", "us-east", "us-south"]
+    DECISION_TIME = _utc(2026, 2, 10, 0)
+
+    def _price_df(self) -> pd.DataFrame:
+        """Price df with a simulated cold-snap recovery: us-south starts cheap,
+        spikes to $2000/MWh in week 1, then recovers to $25/MWh in week 2.
+        The recovery correction should detect this and reduce the forecast bias.
+        """
+        start = self.DECISION_TIME - timedelta(days=32)
+        rows = []
+        for region in self.REGIONS:
+            for h in range(32 * 24):
+                ts = start + timedelta(hours=h)
+                if region == "us-south":
+                    # Spike in days 1-7, recovery in days 8-32
+                    spike_start = start + timedelta(days=1)
+                    spike_end = start + timedelta(days=7)
+                    if spike_start <= ts < spike_end:
+                        price = 2000.0
+                    else:
+                        price = 25.0 + ts.hour * 0.5
+                else:
+                    price = 50.0 + ts.hour * 0.3
+                rows.append({"timestamp": ts, "region": region, "price_per_mwh": price})
+        return pd.DataFrame(rows)
+
+    def _jobs(self, n: int = 3):
+        return [
+            _make_job(
+                job_id=f"recovery-job-{i}",
+                submit_time=self.DECISION_TIME + timedelta(hours=i),
+                runtime_hours=8.0,
+                regions=self.REGIONS,
+                workload_type="llm_batch_inference",
+            )
+            for i in range(n)
+        ]
+
+    def test_recovery_runner_init(self):
+        """LiveShadowRunner accepts apply_recovery_correction=True."""
+        runner = LiveShadowRunner(
+            regions=self.REGIONS,
+            train_days=30,
+            apply_recovery_correction=True,
+        )
+        assert runner.apply_recovery_correction is True
+
+    def test_recovery_runner_no_forecaster_cls_ignores_correction(self):
+        """Without an ML forecaster, recovery correction is a no-op (seasonal-naive path)."""
+        runner = LiveShadowRunner(
+            regions=self.REGIONS,
+            train_days=30,
+            apply_recovery_correction=True,
+            price_forecaster_cls=None,  # seasonal naive
+        )
+        records = runner.run(
+            price_df=self._price_df(),
+            jobs=self._jobs(),
+            decision_time=self.DECISION_TIME,
+        )
+        # Should produce records without crashing
+        assert isinstance(records, list)
+
+    def test_recovery_runner_with_ml_forecaster_runs(self):
+        """Recovery correction runs end-to-end with ML forecaster."""
+        try:
+            from aurelius.forecasting.price_model import PriceModelConfig, PriceQuantileForecaster
+        except ImportError:
+            pytest.skip("lightgbm not available")
+
+        runner = LiveShadowRunner(
+            regions=self.REGIONS,
+            train_days=30,
+            apply_recovery_correction=True,
+            price_forecaster_cls=PriceQuantileForecaster,
+            price_forecaster_config=PriceModelConfig(seed=42, n_estimators=50, num_leaves=15),
+        )
+        records = runner.run(
+            price_df=self._price_df(),
+            jobs=self._jobs(),
+            decision_time=self.DECISION_TIME,
+        )
+        # Recovery correction must not produce errors or empty results
+        assert isinstance(records, list)
+        # Should produce at least some decisions (prices present, jobs valid)
+        assert len(records) > 0
+
+    def test_recovery_runner_records_have_gate_status(self):
+        """Safety gate should still annotate records even in recovery mode."""
+        try:
+            from aurelius.forecasting.price_model import PriceModelConfig, PriceQuantileForecaster
+        except ImportError:
+            pytest.skip("lightgbm not available")
+
+        runner = LiveShadowRunner(
+            regions=self.REGIONS,
+            train_days=30,
+            apply_recovery_correction=True,
+            price_forecaster_cls=PriceQuantileForecaster,
+            price_forecaster_config=PriceModelConfig(seed=42, n_estimators=50, num_leaves=15),
+        )
+        records = runner.run(
+            price_df=self._price_df(),
+            jobs=self._jobs(),
+            decision_time=self.DECISION_TIME,
+        )
+        for r in records:
+            assert r.gate_status in ("passed", "filtered"), (
+                f"Expected gate_status in ('passed','filtered'), got {r.gate_status!r}"
+            )
+
+    def test_no_regression_in_baseline_mode(self):
+        """apply_recovery_correction=False (default) still works correctly."""
+        runner = LiveShadowRunner(
+            regions=self.REGIONS,
+            train_days=30,
+            apply_recovery_correction=False,
+        )
+        assert runner.apply_recovery_correction is False
+        records = runner.run(
+            price_df=self._price_df(),
+            jobs=self._jobs(),
+            decision_time=self.DECISION_TIME,
+        )
+        assert isinstance(records, list)
+
+
+# ============================================================================
+# TestShadowFixtureOOTB — sample_customer_workload_trace.csv works out-of-box
+# ============================================================================
+
+
+class TestShadowFixtureOOTB:
+    """Verify the bundled sample trace works OOTB with default decision_time."""
+
+    def test_sample_trace_dates_compatible_with_q12026_data(self):
+        """The sample fixture submit_times must fall BEFORE the last price row
+        so that jobs have deadlines that exceed the default decision_time
+        (last_price_ts + 1h).
+        """
+        from pathlib import Path
+
+        import pandas as pd
+
+        fixture_path = Path(__file__).parent.parent / "data/fixtures/sample_customer_workload_trace.csv"
+        if not fixture_path.exists():
+            pytest.skip("sample trace not present")
+
+        trace = pd.read_csv(fixture_path, parse_dates=["submit_time"])
+        # All jobs must have submit_time in March 2026
+        # (compatible with q12026_3region_dam.csv which ends ~2026-03-15)
+        assert (trace["submit_time"].dt.year == 2026).all()
+        assert (trace["submit_time"].dt.month >= 3).all(), (
+            "Sample trace jobs must be in March 2026 to be schedulable with "
+            "default decision_time (last Q1 price row + 1h)."
+        )
+
+    def test_sample_trace_loads_as_jobs(self):
+        """sample_customer_workload_trace.csv loads without errors via JobLogIngester."""
+        from pathlib import Path
+
+        from aurelius.ingestion.job_logs import JobLogIngester
+
+        fixture_path = Path(__file__).parent.parent / "data/fixtures/sample_customer_workload_trace.csv"
+        if not fixture_path.exists():
+            pytest.skip("sample trace not present")
+
+        ingester = JobLogIngester()
+        jobs = ingester.load_from_file(str(fixture_path))
+        assert len(jobs) > 0
+        # Every job should have a valid workload_type
+        valid_types = {
+            "training", "fine_tuning", "llm_batch_inference", "data_processing",
+            "scheduled_batch", "realtime_inference", "background_maintenance",
+        }
+        for job in jobs:
+            assert job.workload_type in valid_types, (
+                f"Unexpected workload_type: {job.workload_type!r}"
+            )

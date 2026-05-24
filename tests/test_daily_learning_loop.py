@@ -245,9 +245,11 @@ class TestBenchmarkSmokeTest:
         if not da_path.exists():
             pytest.skip("q12026_3region_dam.csv not available")
         result = run_benchmark_smoke_test(data_dir)
-        assert result["status"] in ("ok", "error")
-        if result["status"] == "ok":
-            assert result["savings_vs_cpo_mean"] is not None
+        assert result["status"] == "ok", (
+            f"Smoke test should succeed with real data, got status={result['status']!r}. "
+            f"Details: {result}"
+        )
+        assert result["savings_vs_cpo_mean"] is not None
 
 
 # ---------------------------------------------------------------------------
@@ -270,12 +272,14 @@ class TestLearningLoopDryRun:
             "--skip-benchmark",
         ]
         with patch("sys.argv", ["daily_learning_loop.py"] + args):
-            # Should not raise
+            # --skip-benchmark suppresses the smoke test, so exit code must be 0
             try:
                 main()
             except SystemExit as e:
-                # Only ok exit codes: 0 (clean) or 1 (smoke test failed)
-                assert e.code in (0, 1)
+                assert e.code == 0, (
+                    f"Dry-run with --skip-benchmark must exit 0, got {e.code}. "
+                    "If the loop itself raised, the test should have propagated the exception."
+                )
 
     def test_dry_run_writes_no_files(self, tmp_path):
         from scripts.daily_learning_loop import main

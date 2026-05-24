@@ -709,10 +709,13 @@ def cmd_shadow_run(args):
     # Build forecaster
     price_forecaster_cls = None
     price_forecaster_config = None
-    if args.forecaster == "ml_quantile":
+    apply_recovery_correction = False
+    if args.forecaster in ("ml_quantile", "ml_quantile_recovery"):
         from .forecasting.price_model import PriceModelConfig, PriceQuantileForecaster
         price_forecaster_cls = PriceQuantileForecaster
         price_forecaster_config = PriceModelConfig(seed=42, n_estimators=200, num_leaves=63)
+        if args.forecaster == "ml_quantile_recovery":
+            apply_recovery_correction = True
 
     config = OptimizationConfig()
     runner = LiveShadowRunner(
@@ -723,6 +726,8 @@ def cmd_shadow_run(args):
         config=config,
         price_forecaster_cls=price_forecaster_cls,
         price_forecaster_config=price_forecaster_config,
+        apply_recovery_correction=apply_recovery_correction,
+        forecaster_version=args.forecaster,
     )
 
     records = runner.run(
@@ -1385,8 +1390,13 @@ def main():
     )
     sr_parser.add_argument(
         "--forecaster", default="ml_quantile",
-        choices=["ml_quantile", "seasonal_naive"],
-        help="Forecasting method (default: ml_quantile)",
+        choices=["ml_quantile", "ml_quantile_recovery", "seasonal_naive"],
+        help=(
+            "Forecasting method (default: ml_quantile). "
+            "ml_quantile_recovery adds two-gate regime-correction to reduce "
+            "post-cold-snap ERCOT overprediction — best for flexible/maintenance "
+            "workload fleets (validated: 25.5%% mean savings vs current_price_only)."
+        ),
     )
     sr_parser.add_argument(
         "--decision-time", default=None,

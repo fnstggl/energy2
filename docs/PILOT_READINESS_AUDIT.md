@@ -23,10 +23,8 @@ phase. Each item is rated:
 
 **Status: PASS**
 
-- 1236 tests passing, 0 failing, 1 skipped (re-measured 2026-05-23, live tests excluded)
-- (Prior doc claimed "917 tests" — that figure was stale and understated.)
+- 1280 tests passing, 0 failing, 1 skipped (re-measured 2026-05-24, live tests excluded)
 - Live API tests under `tests/live/` are excluded by default (require real credentials)
-- No regressions introduced by the audit fixes (+19 new DB store tests)
 - Run command: `python -m pytest tests/ --tb=short --ignore=tests/live`
 
 ---
@@ -218,17 +216,24 @@ The complete 3-step workflow enables live pilot validation:
 
 ### Step 1: Shadow Run (make decisions, no workloads executed)
 ```bash
-# With customer workload trace
+# With customer workload trace (forecaster choices: ml_quantile, ml_quantile_recovery, seasonal_naive)
 python -m aurelius.cli shadow run \
   --price-file data/q12026_3region_dam.csv \
   --regions us-west,us-east,us-south \
   --jobs-file customer_trace.csv \
-  --forecaster ml_quantile \
+  --forecaster ml_quantile_recovery \
   --train-days 30 \
-  --decision-time 2026-03-01T00:00:00Z \
   --output-dir reports/shadow/
 
-# With synthetic jobs (for demo/testing)
+# With bundled demo fixture (OOTB — no --decision-time needed)
+python -m aurelius.cli shadow run \
+  --price-file data/q12026_3region_dam.csv \
+  --regions us-west,us-east,us-south \
+  --jobs-file data/fixtures/sample_customer_workload_trace.csv \
+  --forecaster ml_quantile \
+  --output-dir reports/shadow/
+
+# With synthetic jobs (for quick testing)
 python -m aurelius.cli shadow run \
   --price-file data/q12026_3region_dam.csv \
   --regions us-west,us-east,us-south \
@@ -236,6 +241,11 @@ python -m aurelius.cli shadow run \
   --forecaster ml_quantile \
   --output-dir reports/shadow/
 ```
+
+**Forecaster selection:**
+- `ml_quantile` — LightGBM quantile forecaster v2.0 (25.0% mean savings, recommended default)
+- `ml_quantile_recovery` — v2.0 + two-gate regime correction (25.5% mean savings, best for flexible/maintenance-heavy fleets; suppresses correction for training workloads to avoid -2.7pp regression)
+- `seasonal_naive` — hour-of-day mean (fast, no lightgbm required; suitable for quick smoke tests)
 Output: `reports/shadow/decisions_<timestamp>.jsonl`
 Each line is a DecisionRecord with: scheduled_region, scheduled_start, forecast_price_p50,
 predicted_energy_cost, baseline_energy_cost, predicted_savings_pct.

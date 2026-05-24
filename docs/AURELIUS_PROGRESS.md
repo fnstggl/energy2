@@ -2425,3 +2425,122 @@ Next recommended task:
   Option D: CLI db commands (aurelius db status, aurelius db migrate, aurelius db prices show)
   Recommended: Option A when ENTSOE_API_KEY becomes available; otherwise
     Option D (CLI db commands) for operator ergonomics
+
+===============================================================================
+POST-PILOT-READINESS HARDENING — 2026-05-24
+===============================================================================
+
+Status: COMPLETE
+Branch: claude/brave-hopper-DyrpS
+Date: 2026-05-24
+
+Summary:
+  Shadow mode hardening + deployment ergonomics fixes. Four concrete gaps from
+  the FULL_SYSTEM_AUDIT closed: requirements.txt missing sqlalchemy, ml_quantile_recovery
+  not available in shadow mode, sample fixture dates incompatible OOTB, and learning loop
+  tests too weak. 7 new tests added. 1280 total passing, 0 regressions.
+
+What was implemented:
+
+  1. aurelius/requirements.txt — Added sqlalchemy>=2.0.0
+     Root cause: pyproject.toml had sqlalchemy>=2.0.0 in dependencies but
+     requirements.txt (the simpler install path) was missing it. Installing
+     from requirements.txt produced ModuleNotFoundError: No module named 'sqlalchemy',
+     breaking the database store, benchmark runner, CLI, and 16 test collection errors.
+     Fix: add sqlalchemy>=2.0.0 to requirements.txt under new "Database" section.
+
+  2. aurelius/shadow/runner.py — apply_recovery_correction support
+     - New __init__ parameter: apply_recovery_correction=False (backward-compat)
+     - In _build_ml_forecast(): after building the ML forecast, if
+       apply_recovery_correction=True, calls RegimeDetector.apply_corrections_to_forecast()
+       with the correct argument types:
+         train_price_dict = _df_to_price_data(train_df)  → {region: {ts: price}}
+         recent_prices = _df_to_price_records(tail 168h) → list[EnergyPrice]
+     - Uses the last min(context_hours, 168) hours as the recent context window
+       (mirrors the BacktestEngine behavior)
+     - Graceful: exception in correction → warning log, uncorrected forecast returned
+     - RegimeDetector import is lazy (inside the if block)
+
+  3. aurelius/cli.py — ml_quantile_recovery in shadow --forecaster
+     - shadow run parser: choices=["ml_quantile", "ml_quantile_recovery", "seasonal_naive"]
+     - cmd_shadow_run(): when args.forecaster == "ml_quantile_recovery", sets
+       apply_recovery_correction=True in the LiveShadowRunner constructor
+     - forecaster_version label passed to runner for audit trail
+     - Validated: python -m aurelius.cli shadow run --help shows all three choices
+
+  4. data/fixtures/sample_customer_workload_trace.csv — Fix OOTB demo dates
+     Root cause: fixture had submit_times Jan 14-16, 2026. Q1 price data ends
+     2026-03-15. Default decision_time = last_price_ts + 1h = 2026-03-15T01:00Z.
+     Jan jobs had deadlines already past this time → "no schedulable jobs" unless
+     --decision-time was manually specified.
+     Fix: moved all submit_times to 2026-03-09 to 2026-03-11. Jobs now have
+     deadlines that fall within or after the default decision_time horizon, so
+     shadow run with --jobs-file data/fixtures/sample_customer_workload_trace.csv
+     works OOTB without any --decision-time override.
+
+  5. tests/test_daily_learning_loop.py — Tightened weak assertions
+     - TestBenchmarkSmokeTest::test_runs_with_real_data:
+       old: assert result["status"] in ("ok", "error")  ← accepted total failure silently
+       new: assert result["status"] == "ok"  ← smoke test must succeed with real data
+     - TestLearningLoopDryRun::test_dry_run_exits_cleanly:
+       old: assert e.code in (0, 1)  ← accepted broken exit code silently
+       new: assert e.code == 0  ← --skip-benchmark run must exit clean
+
+  6. tests/test_shadow_mode.py — 7 new tests
+     TestShadowRecoveryCorrection (5 tests):
+       test_recovery_runner_init: apply_recovery_correction=True stored correctly
+       test_recovery_runner_no_forecaster_cls_ignores_correction: seasonal-naive path
+         not affected by recovery flag (no ML forecaster to correct)
+       test_recovery_runner_with_ml_forecaster_runs: full end-to-end with cold-snap
+         price fixture (us-south spike $2000/MWh → recovery $25/MWh); no crash
+       test_recovery_runner_records_have_gate_status: safety gate still annotates
+         records in recovery mode
+       test_no_regression_in_baseline_mode: apply_recovery_correction=False path unchanged
+
+     TestShadowFixtureOOTB (2 tests):
+       test_sample_trace_dates_compatible_with_q12026_data: asserts all submit_times
+         are in March 2026 (compatible with Q1 price data default decision_time)
+       test_sample_trace_loads_as_jobs: JobLogIngester.load_from_file() succeeds
+         on the fixture with all valid workload_types
+
+Adversarial audit (all verified):
+  ✓ apply_recovery_correction=False (default) → no change to existing behavior
+  ✓ RegimeDetector exception → warning + uncorrected forecast (no crash)
+  ✓ requirements.txt fix tested: ModuleNotFoundError resolves after install
+  ✓ Sample fixture: shadow run OOTB produces decisions (no --decision-time needed)
+  ✓ Tightened test_runs_with_real_data passes (status="ok" with real data confirmed)
+  ✓ Tightened dry_run test passes (--skip-benchmark exits 0 confirmed)
+  ✓ ruff check aurelius/shadow/runner.py aurelius/cli.py → 0 errors
+  ✓ 1280 tests passing, 0 failed, 1 skipped (no regressions)
+  ✓ No new benchmark claims made
+  ✓ No secrets committed
+
+Tests: 1280 passed, 0 failed, 1 skipped (was 1273 before this run)
+  New: 7 tests in tests/test_shadow_mode.py (TestShadowRecoveryCorrection + TestShadowFixtureOOTB)
+  Pre-existing: 1273 (all preserved, 0 regressions)
+
+Enterprise contract readiness impact:
+  - Shadow demo fixture now works OOTB: a prospect can clone the repo and run
+    `python -m aurelius.cli shadow run --jobs-file data/fixtures/sample_customer_workload_trace.csv ...`
+    without needing to know the data date range
+  - ml_quantile_recovery (best validated forecaster, 25.5%) is now available in shadow mode;
+    previously only ml_quantile (25.0%) was exposed
+  - requirements.txt deployment bug fixed: first-run install from requirements.txt
+    no longer silently fails on sqlalchemy import
+
+BEST VALIDATED CONFIGURATION (unchanged):
+  ml_quantile_recovery shadow/backtest:
+    Mean savings: 25.5% vs current_price_only (Q1 2026, 3-region, 5 folds, real data)
+  ml_quantile v2.0 shadow/backtest:
+    Mean savings: 25.0% vs current_price_only
+
+60% savings is aspirational. 25.5% is the proven ceiling.
+
+Next recommended task:
+  Option A: CLI db commands (aurelius db status, aurelius db prices show, aurelius db migrate)
+    — operator ergonomics, pilot deployability. High value for a neocloud pilot engineer
+      who needs to inspect what's been stored in Postgres without writing Python.
+  Option B: ENTSO-E production validation — requires ENTSOE_API_KEY (not in env yet)
+  Option C: Close gap G1 — realized customer savings drive model promotion
+    (currently: forecast accuracy (MAE) drives promotion; G1 = realized outcomes)
+  Recommended: Option A (CLI db commands) — highest ergonomics ROI without new infrastructure

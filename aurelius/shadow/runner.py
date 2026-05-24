@@ -76,21 +76,26 @@ class LiveShadowRunner:
         optimizer_version: str = "greedy_migrate",
         safety_gate_config: Optional[Any] = None,
         enable_safety_gate: bool = True,
+        apply_recovery_correction: bool = False,
     ) -> None:
         """
         Args:
-            regions:               Allowed regions (default: all in price_df).
-            method:                Optimizer method ("greedy", "local_search").
-            train_days:            Days of history to use for forecaster training.
-            horizon_hours:         How far ahead to forecast and schedule (default: 168h).
-            config:                OptimizationConfig (uses defaults if None).
-            price_forecaster_cls:  ML forecaster class (e.g. PriceQuantileForecaster).
-                                   If None, seasonal-naive mean is used.
-            price_forecaster_config: Config passed to price_forecaster_cls().
-            context_hours:         Tail of training data passed as lag context.
-            run_id:                Optional fixed run ID (auto-generated if None).
-            forecaster_version:    Label for audit trail.
-            optimizer_version:     Label for audit trail.
+            regions:                   Allowed regions (default: all in price_df).
+            method:                    Optimizer method ("greedy", "local_search").
+            train_days:                Days of history to use for forecaster training.
+            horizon_hours:             How far ahead to forecast and schedule (default: 168h).
+            config:                    OptimizationConfig (uses defaults if None).
+            price_forecaster_cls:      ML forecaster class (e.g. PriceQuantileForecaster).
+                                       If None, seasonal-naive mean is used.
+            price_forecaster_config:   Config passed to price_forecaster_cls().
+            context_hours:             Tail of training data passed as lag context.
+            run_id:                    Optional fixed run ID (auto-generated if None).
+            forecaster_version:        Label for audit trail.
+            optimizer_version:         Label for audit trail.
+            apply_recovery_correction: When True, applies two-gate regime-recovery
+                                       bias correction to the ML forecast (ml_quantile_recovery
+                                       mode). Reduces post-cold-snap ERCOT overprediction.
+                                       Only active when price_forecaster_cls is not None.
         """
         self.regions = regions or []
         self.method = method
@@ -103,6 +108,7 @@ class LiveShadowRunner:
         self.run_id = run_id or make_run_id()
         self.forecaster_version = forecaster_version
         self.optimizer_version = optimizer_version
+        self.apply_recovery_correction = apply_recovery_correction
         self.scheduler = JobScheduler(self.config)
 
         from aurelius.safety.quantile_gate import QuantileGateConfig, QuantileSafetyGate
@@ -377,6 +383,28 @@ class LiveShadowRunner:
                     forecast_hours=forecast_hours,
                 )
                 forecast.update(naive)
+
+            # Optional post-spike recovery bias correction (ml_quantile_recovery mode).
+            # Detects regions recovering from a price spike (ratio < 0.40 AND recent
+            # mean ≤ $30/MWh) and exponentially decays the overprediction.
+            if self.apply_recovery_correction and forecast:
+                try:
+                    from aurelius.forecasting.regime import RegimeDetector
+                    detector = RegimeDetector()
+                    # train_price_data needs {region: {timestamp: price}} dict format
+                    train_price_dict = _df_to_price_data(train_df)
+                    # recent context is the last ~168h of training data as EnergyPrice records
+                    context_start = decision_time - timedelta(hours=min(self.context_hours, 168))
+                    ctx_mask = train_df["timestamp"] >= _to_utc_ts(context_start)
+                    recent_prices = _df_to_price_records(train_df[ctx_mask])
+                    forecast = detector.apply_corrections_to_forecast(
+                        forecast, train_price_dict, recent_prices
+                    )
+                except Exception as exc:
+                    logger.warning(
+                        "LiveShadowRunner: recovery correction failed (%s), using uncorrected forecast",
+                        exc,
+                    )
 
             return forecast
 

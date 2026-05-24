@@ -22,3 +22,6 @@ lightgbm>=4.0.0
 # Reporting
 jinja2>=3.1.0
 matplotlib>=3.7.0
+
+# Database (SQLAlchemy ORM for Postgres/SQLite persistence)
+sqlalchemy>=2.0.0
