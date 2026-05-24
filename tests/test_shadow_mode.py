@@ -1134,3 +1134,43 @@ class TestShadowFixtureOOTB:
             assert job.workload_type in valid_types, (
                 f"Unexpected workload_type: {job.workload_type!r}"
             )
+
+    def test_sample_trace_majority_schedulable_at_default_decision_time(self):
+        """At least 8 out of 12 fixture jobs must be schedulable at the default
+        decision_time (last Q1 price row + 1h = 2026-03-15T01:00Z).
+
+        Realtime-inference jobs (max_delay=0) are intentionally expired — they
+        run on submit and cannot be delayed. All other job types should pass.
+        """
+        from datetime import timedelta, timezone
+        from pathlib import Path
+
+        import pandas as pd
+
+        price_path = Path(__file__).parent.parent / "data/q12026_3region_dam.csv"
+        fixture_path = Path(__file__).parent.parent / "data/fixtures/sample_customer_workload_trace.csv"
+        if not price_path.exists() or not fixture_path.exists():
+            pytest.skip("Q1 price data or sample trace not present")
+
+        prices = pd.read_csv(price_path, parse_dates=["timestamp"])
+        last_ts = prices["timestamp"].max()
+        if last_ts.tzinfo is None:
+            last_ts = last_ts.replace(tzinfo=timezone.utc)
+        decision_time = last_ts + timedelta(hours=1)
+
+        trace = pd.read_csv(fixture_path, parse_dates=["submit_time"])
+        schedulable = 0
+        for _, row in trace.iterrows():
+            submit = row["submit_time"]
+            if submit.tzinfo is None:
+                submit = submit.replace(tzinfo=timezone.utc)
+            max_delay = float(row["max_delay_hours"])
+            duration = float(row["duration_hours"])
+            deadline = submit + timedelta(hours=max_delay)
+            if deadline > decision_time and deadline >= decision_time + timedelta(hours=duration):
+                schedulable += 1
+
+        assert schedulable >= 8, (
+            f"Expected ≥8 schedulable jobs at decision_time={decision_time}, "
+            f"got {schedulable}. Shadow OOTB demo would be nearly empty."
+        )

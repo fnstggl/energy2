@@ -25,3 +25,5 @@ matplotlib>=3.7.0
 
 # Database (SQLAlchemy ORM for Postgres/SQLite persistence)
 sqlalchemy>=2.0.0
+# PostgreSQL driver — required when DATABASE_URL starts with postgresql://
+psycopg2-binary>=2.9.0
