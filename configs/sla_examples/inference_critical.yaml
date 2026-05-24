@@ -1,0 +1,29 @@
+# Critical real-time inference SLA.
+# Tier "critical" supplies the safest defaults (no migrations, large capacity
+# buffer, tight latency). Explicit fields below override those tier defaults.
+policies:
+  - name: inference-prod
+    tier: critical
+    description: Customer-facing real-time inference. Latency + residency hard SLAs.
+    applies_to_workloads:
+      - inference-prod
+    applies_to_workload_types:
+      - realtime_inference
+    hard:
+      allowed_regions: [us-east, us-west]
+      data_residency_region: us-east
+      max_p95_latency_ms: 200
+      max_p99_latency_ms: 500
+      max_queue_wait_ms: 100
+      min_availability_pct: 99.95
+      max_error_rate_pct: 0.1
+      max_timeout_rate_pct: 0.1
+      migration_allowed: false
+      max_migrations_per_hour: 0
+      required_capacity_buffer_pct: 30
+    soft:
+      preferred_regions: [us-east]
+      preferred_carbon_intensity: 250
+      preferred_latency_headroom_pct: 40
+      max_acceptable_savings_tradeoff_pct: 2
+      optimization_aggressiveness: conservative

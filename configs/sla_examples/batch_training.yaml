@@ -1,0 +1,23 @@
+# Batch training SLA.
+# Tier "batch" is the most cost-optimized: aggressive migration allowed, loose
+# latency/queue limits, only reliability floors. Great for chasing cheap energy.
+policies:
+  - name: batch-training
+    tier: batch
+    description: Checkpointable training jobs. Maximize savings; tolerate latency.
+    applies_to_workload_types:
+      - training
+      - fine_tuning
+      - data_processing
+    hard:
+      # Only a soft reliability floor; latency intentionally unbounded for batch.
+      min_availability_pct: 95
+      max_error_rate_pct: 5
+      migration_allowed: true
+      max_migrations_per_hour: 60
+      required_capacity_buffer_pct: 0
+    soft:
+      preferred_carbon_intensity: 200
+      preferred_energy_price_percentile: 25
+      max_acceptable_savings_tradeoff_pct: 50
+      optimization_aggressiveness: aggressive

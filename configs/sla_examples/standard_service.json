@@ -1,0 +1,45 @@
+{
+  "default": "standard-svc",
+  "policies": [
+    {
+      "name": "standard-svc",
+      "tier": "standard",
+      "description": "Balanced default for services without a bespoke SLA.",
+      "applies_to_workload_types": ["scheduled_batch", "llm_batch_inference"],
+      "hard": {
+        "allowed_regions": ["us-east", "us-west", "eu-west"],
+        "max_p99_latency_ms": 3000,
+        "max_queue_wait_ms": 2000,
+        "min_availability_pct": 99.5,
+        "migration_allowed": true,
+        "max_migrations_per_hour": 2,
+        "required_capacity_buffer_pct": 10
+      },
+      "soft": {
+        "preferred_regions": ["us-east"],
+        "max_acceptable_savings_tradeoff_pct": 10,
+        "optimization_aggressiveness": "balanced"
+      }
+    },
+    {
+      "name": "eu-residency",
+      "tier": "latency_sensitive",
+      "description": "EU data-residency-bound workload.",
+      "applies_to_workloads": ["eu-inference"],
+      "hard": {
+        "allowed_regions": ["eu-west"],
+        "data_residency_region": "eu-west",
+        "max_p99_latency_ms": 800,
+        "migration_allowed": true,
+        "max_migrations_per_hour": 1,
+        "no_migration_windows": [
+          ["2026-12-24T00:00:00", "2026-12-26T23:59:59"]
+        ]
+      },
+      "soft": {
+        "preferred_regions": ["eu-west"],
+        "optimization_aggressiveness": "conservative"
+      }
+    }
+  ]
+}
