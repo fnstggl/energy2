@@ -1,6 +1,6 @@
 # Aurelius Pilot Readiness Audit
 
-**Date:** 2026-05-23 (updated 2026-05-23)
+**Date:** 2026-05-23 (updated 2026-05-24)
 **Auditor:** Autonomous engineering agent
 **Status:** PASS — Tier 1 (region/time optimization) is pilot-ready and contract-ready.
            Tier 2 (queue-aware) and Tier 3 (GPU/node) require customer data.
@@ -23,7 +23,7 @@ phase. Each item is rated:
 
 **Status: PASS**
 
-- 1280 tests passing, 0 failing, 1 skipped (re-measured 2026-05-24, live tests excluded)
+- 1297 tests passing, 7 skipped, 0 failing (re-measured 2026-05-24, live tests excluded; 1317 total collected including 13 live tests)
 - Live API tests under `tests/live/` are excluded by default (require real credentials)
 - Run command: `python -m pytest tests/ --tb=short --ignore=tests/live`
 

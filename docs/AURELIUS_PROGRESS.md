@@ -2768,3 +2768,37 @@ ENTERPRISE CONTRACT READINESS NOTE:
   Next enterprise-expansion task: ENTSO-E (requires ENTSOE_API_KEY from ENTSO-E portal)
 
 Last verified commit SHA: e4a7523
+
+===============================================================================
+VERIFICATION RUN — 2026-05-24 (session claude/ecstatic-bell-iqudA)
+===============================================================================
+
+Date: 2026-05-24
+Branch: claude/ecstatic-bell-iqudA
+Purpose: Routine verification — confirm no regressions, update docs truthfully
+
+Verification results:
+
+  1. Test suite (non-live):           PASS — 1297 passed, 7 skipped, 0 failed
+     Total collected: 1317 (including 13 live tests excluded by --ignore=tests/live)
+  2. Shadow demo (50 synthetic jobs): PASS — 50 jobs decided, mean 55.6% predicted saving
+  3. Shadow demo (fixture trace):     PASS — 10 jobs decided, mean 60.8% predicted saving
+     Safety gate: correctly blocked 1 invalid-baseline job (fail-closed confirmed)
+  4. ROI CLI ($500K/month):           PASS — p50 projected savings shown, caveats printed
+  5. Benchmark smoke (all combos):    PASS — mean 13.7% savings (full 42-cell matrix)
+     Note: 4 cells below floor (us-east-only single-region, known structural limitation)
+  6. DB (Railway Postgres):           PASS — graceful no-op, private network only as expected
+  7. ENTSOE_API_KEY:                  NOT SET — EU expansion remains blocked
+  8. PILOT_READINESS_AUDIT.md:        PASS (updated test count 1280 → 1297)
+
+GLOBAL TERMINATION RULE ASSESSMENT: CONFIRMED COMPLETE (re-verified)
+
+  All core pilot architecture criteria met. No regressions found.
+  DECISION: STOP. No new features warranted.
+
+ENTERPRISE CONTRACT READINESS NOTE:
+  This run makes Aurelius more contract-ready: MARGINALLY (doc accuracy only)
+  What enterprise blocker remains: NONE for Tier 1 pilot.
+  Next enterprise-expansion task: ENTSO-E (requires ENTSOE_API_KEY from ENTSO-E portal)
+
+Last verified commit SHA: da565f7
