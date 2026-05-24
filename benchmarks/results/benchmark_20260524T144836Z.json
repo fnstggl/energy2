@@ -1,0 +1,89 @@
+{
+  "run_ts": "20260524T144836Z",
+  "quick": false,
+  "method": "greedy_migrate",
+  "primary_baseline": "current_price_only",
+  "results": [
+    {
+      "region_combo": "caiso_pjm_ercot_da_rt",
+      "regions": [
+        "us-west",
+        "us-east",
+        "us-south"
+      ],
+      "workload_type": "training",
+      "folds": 5,
+      "num_eval_jobs": 47,
+      "method": "greedy_migrate",
+      "forecaster": "ml_quantile",
+      "oracle": false,
+      "settle_model": true,
+      "carbon_regions": [
+        "us-west"
+      ],
+      "missing_price_hours": 0,
+      "missing_price_pct": 0.0,
+      "savings": {
+        "fifo": {
+          "savings_pct": 60.419,
+          "savings_usd": 29734.9864,
+          "mean_opt_cost": 19479.6482,
+          "mean_baseline_cost": 49214.6346
+        },
+        "peak_blind_asap": {
+          "savings_pct": 69.153,
+          "savings_usd": 43670.0775,
+          "mean_opt_cost": 19479.6482,
+          "mean_baseline_cost": 63149.7258
+        },
+        "latency_first": {
+          "savings_pct": 69.153,
+          "savings_usd": 43670.0775,
+          "mean_opt_cost": 19479.6482,
+          "mean_baseline_cost": 63149.7258
+        },
+        "closest_region": {
+          "savings_pct": 69.153,
+          "savings_usd": 43670.0775,
+          "mean_opt_cost": 19479.6482,
+          "mean_baseline_cost": 63149.7258
+        },
+        "fixed_primary_region": {
+          "savings_pct": 69.153,
+          "savings_usd": 43670.0775,
+          "mean_opt_cost": 19479.6482,
+          "mean_baseline_cost": 63149.7258
+        },
+        "current_price_only": {
+          "savings_pct": 8.887,
+          "savings_usd": 1899.9991,
+          "mean_opt_cost": 19479.6482,
+          "mean_baseline_cost": 21379.6473
+        },
+        "round_robin": {
+          "savings_pct": 40.366,
+          "savings_usd": 13185.9564,
+          "mean_opt_cost": 19479.6482,
+          "mean_baseline_cost": 32665.6046
+        }
+      },
+      "primary_savings_pct": 8.887,
+      "date_range": {
+        "start": "2026-01-01",
+        "end": "2026-03-10"
+      },
+      "train_days": 30,
+      "eval_days": 7,
+      "forecast_quality": {
+        "forecaster": "ml_quantile",
+        "folds_with_quality": 5,
+        "mean_mape": 8.2633,
+        "mean_p90_coverage": 0.6674
+      },
+      "run_ts": "20260524T144836Z"
+    }
+  ],
+  "warnings": [],
+  "leakage_issues": [],
+  "regressions": []
+}

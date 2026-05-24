@@ -1,0 +1,83 @@
+{
+  "run_ts": "20260524T144740Z",
+  "quick": false,
+  "method": "greedy_migrate",
+  "primary_baseline": "current_price_only",
+  "results": [
+    {
+      "region_combo": "caiso_pjm_ercot_da_rt",
+      "regions": [
+        "us-west",
+        "us-east",
+        "us-south"
+      ],
+      "workload_type": "training",
+      "folds": 4,
+      "num_eval_jobs": 13,
+      "method": "greedy_migrate",
+      "forecaster": "ml_quantile_weather",
+      "oracle": false,
+      "settle_model": true,
+      "carbon_regions": [
+        "us-west"
+      ],
+      "missing_price_hours": 0,
+      "missing_price_pct": 0.0,
+      "savings": {
+        "fifo": {
+          "savings_pct": 61.088,
+          "savings_usd": 7192.016,
+          "mean_opt_cost": 4581.1415,
+          "mean_baseline_cost": 11773.1576
+        },
+        "peak_blind_asap": {
+          "savings_pct": 63.92,
+          "savings_usd": 8116.1312,
+          "mean_opt_cost": 4581.1415,
+          "mean_baseline_cost": 12697.2727
+        },
+        "latency_first": {
+          "savings_pct": 63.92,
+          "savings_usd": 8116.1312,
+          "mean_opt_cost": 4581.1415,
+          "mean_baseline_cost": 12697.2727
+        },
+        "closest_region": {
+          "savings_pct": 63.92,
+          "savings_usd": 8116.1312,
+          "mean_opt_cost": 4581.1415,
+          "mean_baseline_cost": 12697.2727
+        },
+        "fixed_primary_region": {
+          "savings_pct": 63.92,
+          "savings_usd": 8116.1312,
+          "mean_opt_cost": 4581.1415,
+          "mean_baseline_cost": 12697.2727
+        },
+        "current_price_only": {
+          "savings_pct": 15.671,
+          "savings_usd": 851.3085,
+          "mean_opt_cost": 4581.1415,
+          "mean_baseline_cost": 5432.45
+        },
+        "round_robin": {
+          "savings_pct": 21.3,
+          "savings_usd": 1239.9138,
+          "mean_opt_cost": 4581.1415,
+          "mean_baseline_cost": 5821.0553
+        }
+      },
+      "primary_savings_pct": 15.671,
+      "date_range": {
+        "start": "2026-01-01",
+        "end": "2026-03-10"
+      },
+      "train_days": 30,
+      "eval_days": 7,
+      "run_ts": "20260524T144740Z"
+    }
+  ],
+  "warnings": [],
+  "leakage_issues": [],
+  "regressions": []
+}
