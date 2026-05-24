@@ -55,9 +55,11 @@ RUN groupadd --gid 1001 aurelius \
 # Copy application code
 COPY aurelius/ ./aurelius/
 COPY scripts/ ./scripts/
+COPY docker/start.sh ./start.sh
 
-# Create data directories with correct ownership
-RUN mkdir -p /app/data /app/ml_artifacts /app/logs \
+# Create data directories with correct ownership; make entrypoint executable
+RUN chmod +x /app/start.sh \
+    && mkdir -p /app/data /app/ml_artifacts /app/logs \
     && chown -R aurelius:aurelius /app
 
 USER aurelius
@@ -68,4 +70,5 @@ HEALTHCHECK --interval=30s --timeout=10s --start-period=15s --retries=3 \
 
 EXPOSE 8000
 
-CMD ["python", "-m", "uvicorn", "aurelius.api.app:app", "--host", "0.0.0.0", "--port", "8000"]
+# Migrate (idempotent) then launch the API. Honors $PORT when the platform sets it.
+CMD ["/app/start.sh"]
