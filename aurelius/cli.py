@@ -904,6 +904,79 @@ def cmd_roi(args):
         print(f"\nJSON saved to: {output_path}")
 
 
+def cmd_db(args):
+    """Database management subcommands."""
+    from .database.migrate import run_migrations
+    from .database.store import TimeSeriesStore
+
+    sub = getattr(args, "db_command", None)
+
+    if sub == "status":
+        store = TimeSeriesStore()
+        if not store.enabled:
+            print("db status: DISABLED")
+            print("  DATABASE_URL not set or connection failed.")
+            print("  Set DATABASE_URL to enable persistence.")
+            return
+        counts = store.row_counts()
+        print(f"db status: OK (dialect={store.dialect})")
+        print("  Table row counts:")
+        for table, count in sorted(counts.items()):
+            print(f"    {table}: {count:,}")
+        store.close()
+
+    elif sub == "migrate":
+        result = run_migrations()
+        if result["status"] == "skipped":
+            print(f"db migrate: skipped — {result.get('reason', 'no DATABASE_URL')}")
+        elif result["status"] == "ok":
+            n = len(result.get("tables", []))
+            sql = result.get("sql_files_applied") or []
+            print(f"db migrate: ok ({result['dialect']}) — {n} tables, {len(sql)} sql files")
+        else:
+            print(f"db migrate: error — {result.get('error', 'unknown')}", file=sys.stderr)
+            sys.exit(1)
+
+    elif sub == "prices":
+        ps = getattr(args, "prices_command", None)
+        if ps == "show":
+            store = TimeSeriesStore()
+            if not store.enabled:
+                print("db prices show: store is disabled (no DATABASE_URL or connection failed)")
+                return
+            region = getattr(args, "region", None)
+            limit = getattr(args, "limit", 20)
+            start = getattr(args, "start", None)
+            end = getattr(args, "end", None)
+            from datetime import datetime as _dt
+            from datetime import timezone
+            start_dt = _dt.fromisoformat(start).replace(tzinfo=timezone.utc) if start else _dt(2000, 1, 1, tzinfo=timezone.utc)
+            end_dt = _dt.fromisoformat(end).replace(tzinfo=timezone.utc) if end else _dt(2100, 1, 1, tzinfo=timezone.utc)
+            if not region:
+                # No region specified — show row count summary from row_counts()
+                counts = store.row_counts()
+                n = counts.get("energy_prices", 0)
+                print(f"db prices show: {n:,} total price rows in store.")
+                print("  Use --region <name> to see rows for a specific region.")
+                store.close()
+                return
+            df = store.get_prices(region=region, start=start_dt, end=end_dt)
+            if df.empty:
+                print(f"db prices show: no rows found (region={region}, start={start or 'any'}, end={end or 'any'})")
+            else:
+                tail = df.tail(limit)
+                print(f"db prices show: {len(df):,} rows for region={region}, showing last {len(tail)}")
+                print(tail.to_string(index=False))
+            store.close()
+        else:
+            print("Usage: aurelius db prices show [--region R] [--start ISO] [--end ISO] [--limit N]")
+            sys.exit(1)
+
+    else:
+        print("Usage: aurelius db <status|migrate|prices>")
+        sys.exit(1)
+
+
 def cmd_show_schema(args):
     """Show database schema."""
     from .database import print_schema
@@ -1464,6 +1537,50 @@ def main():
         help="Directory for report output (default: same dir as decisions file)",
     )
 
+    # --- db subcommand ---
+    db_parser = subparsers.add_parser(
+        "db",
+        help="Database management: status, migrate, prices",
+    )
+    db_subparsers = db_parser.add_subparsers(dest="db_command")
+
+    db_subparsers.add_parser(
+        "status",
+        help="Show database connection status and table row counts",
+    )
+
+    db_subparsers.add_parser(
+        "migrate",
+        help="Run database migrations (create/update schema tables)",
+    )
+
+    # db prices
+    db_prices_parser = db_subparsers.add_parser(
+        "prices",
+        help="Inspect price rows stored in the database",
+    )
+    db_prices_subparsers = db_prices_parser.add_subparsers(dest="prices_command")
+    db_prices_show = db_prices_subparsers.add_parser(
+        "show",
+        help="Show recent price rows from the database",
+    )
+    db_prices_show.add_argument(
+        "--region", default=None,
+        help="Filter by region (e.g. us-west). Omit to show all regions.",
+    )
+    db_prices_show.add_argument(
+        "--start", default=None,
+        help="Start timestamp ISO 8601 UTC (e.g. 2026-01-01)",
+    )
+    db_prices_show.add_argument(
+        "--end", default=None,
+        help="End timestamp ISO 8601 UTC (e.g. 2026-03-31)",
+    )
+    db_prices_show.add_argument(
+        "--limit", type=int, default=20,
+        help="Maximum rows to display (default: 20)",
+    )
+
     # Parse arguments
     args = parser.parse_args()
 
@@ -1479,6 +1596,8 @@ def main():
         cmd_robustness_test(args)
     elif args.command == "backtest":
         cmd_backtest(args)
+    elif args.command == "db":
+        cmd_db(args)
     elif args.command == "shadow":
         sc = getattr(args, "shadow_command", None)
         if sc == "run":

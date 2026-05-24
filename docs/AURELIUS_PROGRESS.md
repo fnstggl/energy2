@@ -2544,3 +2544,105 @@ Next recommended task:
   Option C: Close gap G1 — realized customer savings drive model promotion
     (currently: forecast accuracy (MAE) drives promotion; G1 = realized outcomes)
   Recommended: Option A (CLI db commands) — highest ergonomics ROI without new infrastructure
+
+===============================================================================
+POST-PILOT-READINESS HARDENING — 2026-05-24 (Run 2)
+===============================================================================
+
+Status: COMPLETE
+Branch: claude/ecstatic-bell-BItPO
+Date: 2026-05-24
+
+Summary:
+  Two targeted operational hardening fixes. No new features. No new benchmark
+  claims. 16 new tests. 1305 total tests passing, 11 skipped, 0 failed, 0 errors.
+
+What was implemented:
+
+  1. tests/test_postgres_live.py — Fix graceful skip when Postgres unreachable:
+     - Root cause: `pg_store` fixture used `assert store.enabled` which caused
+       ERROR (not SKIP) when DATABASE_URL pointed to an unreachable host.
+       Running `pytest -x tests/` on a machine with DATABASE_URL set but without
+       Railway private-network access would stop the entire suite at this error.
+     - Fix: replace `assert store.enabled` with `pytest.skip(...)` when the
+       connection cannot be established. The pytestmark skip condition remains
+       (skips when DATABASE_URL has no postgresql URL). The new fixture-level skip
+       fires when the URL is present but the host is unreachable.
+     - Result: 6 tests now SKIP cleanly instead of ERROR when Postgres is
+       unavailable (e.g. outside Railway's private network).
+
+  2. aurelius/cli.py + tests/test_db_cli.py — CLI `db` subcommand group:
+     - `aurelius db status`: show DATABASE_URL connection status, dialect,
+       and per-table row counts. Prints "DISABLED" gracefully when no URL set.
+     - `aurelius db migrate`: run schema migrations (ORM create_all + Postgres
+       .sql files). Safe to run repeatedly. Exits 0 on success or no-op.
+     - `aurelius db prices show`: inspect stored energy price rows.
+       Without --region: shows total count and usage hint.
+       With --region: shows matching rows, respecting --limit, --start, --end.
+     - 16 new tests in tests/test_db_cli.py:
+       TestDbStatusDisabled (2), TestDbStatusEnabled (3),
+       TestDbMigrate (3), TestDbPricesShow (7), TestDbUnknownSubcommand (1)
+
+Tests: 1305 passed, 11 skipped, 0 failed (was 1289/5-skipped before this run)
+  - 6 previously-erroring live Postgres tests now correctly SKIP (counted in skipped)
+  - 16 new tests in tests/test_db_cli.py (all passing)
+  - All 1289 pre-existing tests preserved, 0 regressions
+
+Adversarial audit:
+  ✓ No DATABASE_URL value printed in any output (only "set/not set" status)
+  ✓ `db status` with no URL: clean output, no crash
+  ✓ `db status` with SQLite: correct counts from real store
+  ✓ `db migrate` idempotent: safe to run twice (second run is a no-op)
+  ✓ `db prices show` with no region: count summary, usage hint, no crash
+  ✓ `db prices show` disabled: clean message, no crash
+  ✓ Unknown db subcommand: exits 1 with usage hint
+  ✓ ruff check: 0 errors (auto-fixed import sorting, removed unused import)
+  ✓ No benchmark claims made; no savings figures changed; no model code touched
+
+Enterprise contract readiness impact:
+  A pilot operator can now run:
+    python -m aurelius.cli db status
+    python -m aurelius.cli db migrate
+    python -m aurelius.cli db prices show --region us-west --limit 50
+  without writing Python. This closes the last "operator ergonomics" gap for
+  a first Tier 1 pilot deployment.
+
+===============================================================================
+GLOBAL TERMINATION ASSESSMENT — 2026-05-24
+===============================================================================
+
+System state as of this run:
+
+  COMPLETE:
+  ✓ Benchmark harness (Phase 1): leakage-free, real data, 0% missing hours
+  ✓ ML forecasting (Phase 2): ml_quantile v2.0, 25.5% proven mean savings
+  ✓ Weather intelligence (Phase 3): infrastructure delivered; acceptance
+    criterion unmet for Q1 2026 fold structure (documented)
+  ✓ GPU telemetry / DCGM (Phase 4): fixture-based, Tier 3 control docs
+  ✓ Queue-aware optimization (Phase 5): CSV trace ingestion, 48 tests
+  ✓ Regime detection / recovery (Phase 6): ml_quantile_recovery, 25.5% mean
+  ✓ Shadow mode (Phase 7): run → realize → report, 59 tests
+  ✓ ROI methodology (Phase 8): CLI calculator, docs/ROI_METHODOLOGY.md
+  ✓ Learning loop (Phase 8): daily_learning_loop.py, model promotion
+  ✓ Postgres persistence (Phase 11/12): SQLAlchemy store, 9 tables, Railway
+  ✓ Deployment: Docker, CI, .env.example, local_prod_like_run.md
+  ✓ PILOT_READINESS_AUDIT.md: PASS (Tier 1 region/time)
+  ✓ CLI db commands: status, migrate, prices show
+  ✓ 1305 tests passing, 0 failing, 0 erroring
+
+  REMAINING OPTIONAL ENHANCEMENTS (not blocking pilot):
+  - ENTSO-E connector: requires ENTSOE_API_KEY (not in env)
+  - G1 gap: realized savings driving model promotion (currently MAE-based)
+  - Per-region forecaster: needs ≥90 days/region for cross-region calibration
+  - Weather features: need ≥2 cold-snap events in eval window
+  - Extended data range (>287 days) for seasonal robustness
+
+  ASSESSMENT: Core pilot architecture is operational. The system is production-
+  ready for Tier 1 pilots. Remaining work is either blocked on external APIs
+  (ENTSOE_API_KEY) or requires customer evidence (G1, per-region). No invented
+  work items added. System is genuinely operationally complete for Tier 1.
+
+Next recommended task:
+  If ENTSOE_API_KEY becomes available: ENTSO-E production validation (EU expansion)
+  Otherwise: STOP — system is complete for Tier 1 pilot. Wait for customer evidence
+  or external API availability before adding more features.
