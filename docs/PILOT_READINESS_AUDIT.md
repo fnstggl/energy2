@@ -505,7 +505,23 @@ Does NOT automatically move workloads — requires scheduler adapter
 
 ## 14. Deployment Path
 
-**Status: PARTIAL**
+**Status: PASS (Railway + Docker) — Postgres persistence is the production source of truth.**
+
+### Railway (production)
+- **Build:** root `railway.json` pins the Docker builder to `docker/Dockerfile`.
+  This fixes the prior build failure — Railway's Railpack auto-detector could not
+  determine how to build the app because the Python manifests live under
+  `aurelius/`, not at repo root (build log: *"Railpack could not determine how to
+  build the app"*).
+- **DATABASE_URL:** must be set on the `energy2` Railway service (a reference to
+  the managed Postgres service, e.g. `${{Postgres-w5kk.DATABASE_URL}}`, or that
+  service's `postgresql://…@postgres-*.railway.internal:5432/railway` URL). The
+  `*.railway.internal` host resolves only inside Railway's private network, so DB
+  connectivity is verified from within the Railway runtime, not from CI/laptops.
+- **Migrations on deploy:** `railway.json`'s `startCommand` runs
+  `python -m aurelius.database.migrate` (idempotent; ORM `create_all` + Postgres
+  `*.sql` extras) before launching uvicorn, then serves on `$PORT`. Health check:
+  `/health`.
 
 ### Docker
 ```bash
@@ -515,8 +531,10 @@ docker run --env-file .env -p 8000:8000 aurelius:latest
 ```
 **Postgres persistence:** docker-compose.yml configures Postgres. TimeSeriesStore
 (aurelius/database/store.py) provides SQLAlchemy-backed persistence for prices,
-carbon, and benchmark results. Set DATABASE_URL to activate. Falls back to
-JSONL/CSV when DATABASE_URL is absent. SQLite supported for single-node pilots.
+carbon, decisions, realized outcomes, telemetry, model registry, and benchmarks.
+Set DATABASE_URL to activate. Falls back to JSONL/CSV when DATABASE_URL is absent.
+SQLite supported for single-node pilots. Apply schema with
+`python -m aurelius.database.migrate` (runs automatically on Railway deploy).
 
 ### Local Python (recommended for first pilot)
 ```bash
@@ -809,9 +827,26 @@ correct p10<p50<p90 ordering, CLI error handling, JSON serialization.
 
 ## 21. Data Collection / Continuous Learning Status
 
-**Status: PARTIAL — collection backbone implemented; learning loop not yet closed.**
+**Status: PARTIAL — full persistence surface live on production Postgres; the
+learning loop reads realized outcomes back from Postgres, but promotion is not
+yet driven by realized customer savings.**
 
-See `docs/DATA_MOAT_ARCHITECTURE.md` and `docs/FULL_SYSTEM_AUDIT.md` for detail.
+Explicit verdict (per the completion bar):
+- **COMPLETE:** Postgres persistence + migrations + shadow/loop DB writes +
+  realized-outcome read-back + idempotent dedupe. Verified end-to-end against a
+  real Postgres server (shadow run → realize → daily loop; replays deduped).
+- **PARTIAL:** *continuous learning*. Realized outcomes ARE read back from
+  Postgres and surfaced (mean realized savings, mean |forecast error|), but the
+  model **promotion/comparison metric is held-out forecast accuracy (MAE), not
+  realized customer savings** (gap **G1′** in DATA_MOAT_ARCHITECTURE.md).
+  Therefore we do **not** claim "data moat complete".
+- **BLOCKED:** nothing in this scope is blocked. (Production DB connectivity can
+  only be exercised from inside Railway's private network, since
+  `*.railway.internal` is not externally resolvable — this is a verification
+  *location* constraint, not a blocker.)
+
+See `docs/DATA_MOAT_ARCHITECTURE.md` (§3a gap table, §5a Railway/migrations) and
+`docs/FULL_SYSTEM_AUDIT.md` for detail.
 
 What now exists (added 2026-05-23):
 - Append-only, customer-isolated event tables in the SQLAlchemy `TimeSeriesStore`
@@ -849,9 +884,13 @@ Honest gaps (do NOT claim "fully autonomous" or "complete data moat"):
 
 Verification:
 ```bash
+# Apply schema (idempotent; ORM create_all + Postgres *.sql extras)
+DATABASE_URL=sqlite:///./aurelius.db python -m aurelius.database.migrate
 DATABASE_URL=sqlite:///./aurelius.db python -c \
   "from aurelius.database import TimeSeriesStore; s=TimeSeriesStore(); print(s.row_counts()); s.close()"
-python -m pytest tests/test_database_store.py -q   # 71 tests, SQLite-backed
+python -m pytest tests/test_database_store.py -q          # SQLite-backed store tests
+# Optional live Postgres tests — skipped unless a Postgres URL is set:
+TEST_DATABASE_URL=postgresql://… python -m pytest tests/test_postgres_live.py -v
 ```
 
 ---
@@ -873,7 +912,7 @@ python -m pytest tests/test_database_store.py -q   # 71 tests, SQLite-backed
 | 11      | Reproduction commands         | PASS       |
 | 12      | Customer workload ingestion   | PASS       |
 | 13      | Control levels documented     | PASS       |
-| 14      | Deployment path               | PARTIAL    |
+| 14      | Deployment path               | PASS       |
 | 15      | First-pilot checklist         | PASS       |
 | 16      | Data needed from customer     | PASS       |
 | 17      | Pilot shadow test commands    | PASS       |

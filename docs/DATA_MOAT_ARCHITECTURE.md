@@ -1,7 +1,17 @@
 # Aurelius Data Moat / Continuous Learning Storage Architecture
 
+**Continuous-learning status: PARTIAL (not COMPLETE, not BLOCKED).**
+The full persistence surface is live on production Postgres and the loop reads
+realized outcomes back from Postgres, but model **promotion** is still driven by
+held-out *forecast accuracy*, not by *realized customer savings* (gap **G1′**).
+Per the completion bar, we therefore do **not** claim "data moat complete":
+realized outcomes are read back and surfaced, but they do not yet drive the
+promotion/comparison metric. See §6 and the gap table in §3a.
+
 **Status:** Storage + model-registry + outcome-driven promotion implemented
 (Postgres/SQLite via SQLAlchemy; artifacts via a pluggable object store).
+Production is Postgres-backed on Railway (DATABASE_URL → the managed Postgres
+service); migrations run on every deploy via `python -m aurelius.database.migrate`.
 **Honest scope / positioning:** Aurelius is now *append-only operational
 learning infrastructure with outcome tracking, a model registry, rollback, and
 shadow-mode evaluation*. It is NOT a "fully autonomous learning system" or a
@@ -10,6 +20,18 @@ co-persistence remain open (see gaps below). Do not market beyond the
 infrastructure that exists.
 
 ### Update log
+- **2026-05-24 (Railway Postgres productionization):** Made DATABASE_URL-backed
+  Postgres the production source of truth. Added a root `railway.json`
+  (Dockerfile builder — fixes the Railpack "could not determine how to build"
+  failure caused by the Python manifests living under `aurelius/` rather than
+  repo root), an idempotent migration runner (`aurelius/database/migrate.py`,
+  run on every deploy before the API boots), and an optional live-Postgres test
+  suite (`tests/test_postgres_live.py`, skipped unless a Postgres
+  `TEST_DATABASE_URL`/`DATABASE_URL` is set). Verified the full
+  shadow-run → shadow-realize → daily-learning-loop flow end-to-end against a
+  real Postgres server (decisions + realized outcomes written, realized
+  outcomes read back by the loop, replays deduped). Closes G5 (a migration
+  runner now exists; still not Alembic-versioned).
 - **2026-05-23 (productionization):** Added the DB-backed model registry
   (`model_registry`), append-only `promotion_decisions`, learning-run lifecycle
   (`learning_runs`), a pluggable artifact store (`aurelius/storage/`), a
@@ -81,6 +103,42 @@ via SQLAlchemy `MetaData.create_all()` on first connection.
 Every event/model row is scoped by `customer_id` + `pilot_id` (+ `run_id`), so
 pilots are isolated and a historical decision can be reproduced exactly (given
 the `training_dataset_hash` / `data_source_hash` of the inputs).
+
+---
+
+## 3a. Gap table vs the target 16-table surface
+
+The mission listed 16 target tables as a *minimum persistence surface, not a
+rigid schema*. Several targets are deliberately consolidated into broader,
+event-style tables rather than duplicated as thin per-concept tables — this is
+the simpler, safer schema and avoids writers that would otherwise be empty.
+Audited 2026-05-24; **no working tables were renamed or duplicated.**
+
+| # | Target entity | Existing table? | Store method? | Written by shadow/loop? | Read back for learning? | Gap | Action |
+|---|---------------|-----------------|---------------|-------------------------|-------------------------|-----|--------|
+| 1 | energy_prices | ✅ `energy_prices` | `upsert_prices`/`get_prices` | loop (`_persist_prices_to_db`) | ✅ (forecaster training data) | none | keep |
+| 2 | carbon_intensity | ✅ `carbon_intensity` | `upsert_carbon`/`get_carbon` | available (no loop writer wired) | optional | minor | keep; document |
+| 3 | weather_observations | ❌ | — | — | — | real gap | **document** — used at compute time from CSV + `data_source_hash`; per-decision feature co-persistence is open gap (see §6). Not adding an empty table. |
+| 4 | queue_snapshots | ✅ via `telemetry_snapshots` (kind=`queue`) | `record_telemetry` | interface only | — | no live writer | keep consolidated |
+| 5 | gpu_telemetry_snapshots | ✅ via `telemetry_snapshots` (kind=`gpu_dcgm`) | `record_telemetry` | interface only | — | no live writer | keep consolidated |
+| 6 | workload_traces | ❌ | — | — | — | real gap | **document** — ingested from customer CSV at run time; `data_source_hash` on each decision links back to the trace. Not adding an empty table. |
+| 7 | forecast_snapshots | ⚠ embedded in `decision_events` (p50/p90) | within `record_decisions` | shadow run | partial | no standalone table | keep embedded |
+| 8 | optimizer_decisions | ✅ `decision_events` | `record_decisions`/`get_decisions` | shadow run | ✅ (offline pairs) | none | keep |
+| 9 | baseline_decisions | ✅ `decision_events.baseline_*` | within `record_decisions` | shadow run | n/a | none | keep |
+| 10 | safety_gate_decisions | ✅ `decision_events.gate_status/gate_reason` | within `record_decisions` | shadow run (fail-closed) | n/a | none | keep |
+| 11 | realized_outcomes | ✅ `realized_outcomes` | `record_realized_outcomes`/`get_realized_outcomes` | shadow realize | ✅ (loop Step 5) | none | keep |
+| 12 | benchmark_runs | ✅ `benchmark_runs` | `save_benchmark_run`/`get_benchmark_history` | loop + benchmark runner | ✅ | none | keep |
+| 13 | model_versions | ✅ `model_registry` | `register_model`/`promote_model`/… | loop (model update) | ✅ (`get_active_model`) | none | keep |
+| 14 | model_promotion_events | ✅ `promotion_decisions` | `record_promotion_decision`/`get_promotion_decisions` | loop + rollback | ✅ | none | keep |
+| 15 | learning_loop_runs | ✅ `learning_runs` | `start_learning_run`/`finish_learning_run` | loop | n/a | none | keep |
+| 16 | raw_artifact_index | ⚠ artifact store + `model_registry.artifact_uri` | `register_model(artifact_uri=…)` | loop | ✅ | no separate index | **document** — large binaries live in the pluggable artifact store (`ARTIFACT_STORE_URI`); the DB holds the `artifact_uri`. A separate raw index is unnecessary; object storage is the right home for blobs. |
+
+**Net:** every customer/pilot-scoped table carries `customer_id`, `pilot_id`,
+`run_id` (where applicable), `source`, a timestamp, and `data_source_hash`
+(where applicable). The only genuine *missing* persistence is per-decision
+weather/queue/GPU **feature co-persistence** and **workload-trace archival** —
+both deliberately deferred to source CSV + `data_source_hash` (documented gap,
+not silently dropped).
 
 ---
 
@@ -164,6 +222,61 @@ DATABASE_URL=postgresql://... python scripts/daily_learning_loop.py \
 
 ---
 
+## 5a. Production deployment (Railway) + migrations
+
+**Builder.** A root `railway.json` pins the Docker builder to `docker/Dockerfile`.
+Without it, Railway's Railpack auto-detector fails with *"could not determine how
+to build the app"* because the Python manifests (`requirements.txt`,
+`pyproject.toml`) live under `aurelius/`, not at repo root. The Dockerfile
+installs `sqlalchemy` + `psycopg2-binary`, so the Postgres path is available in
+the deployed image.
+
+**DATABASE_URL.** The app reads `os.environ["DATABASE_URL"]`. On Railway it must
+be set on the `energy2` service (e.g. a reference to the managed Postgres
+service, `${{Postgres-w5kk.DATABASE_URL}}`, or the service's internal connection
+URL `postgresql://…@postgres-*.railway.internal:5432/railway`). The
+`*.railway.internal` host is only resolvable **inside** Railway's private
+network — it is intentionally unreachable from laptops / CI, so production DB
+verification must run from within the Railway environment.
+
+**Migrations on deploy.** `railway.json`'s `startCommand` runs
+`python -m aurelius.database.migrate` before launching uvicorn. The runner:
+1. applies `MetaData.create_all()` (the ORM schema — the source of truth for all
+   9 persistence tables), then
+2. applies the Postgres-only `migrations/*.sql` (TimescaleDB hypertables + extra
+   covering indexes; skipped on SQLite, and the hypertable `DO` blocks no-op on
+   plain Postgres without the TimescaleDB extension).
+
+It is idempotent (safe to re-run every deploy) and a no-op when `DATABASE_URL`
+is unset. Run it anywhere:
+
+```bash
+DATABASE_URL=postgresql://… python -m aurelius.database.migrate   # production / Railway
+DATABASE_URL=sqlite:///./aurelius.db python -m aurelius.database.migrate  # local
+```
+
+> **TimescaleDB note:** because `create_all()` runs first and creates the price
+> tables with an `id`-only primary key, enabling TimescaleDB hypertables on a
+> fresh DB requires running the `*.sql` files *before* `create_all` (so the
+> composite `(id, timestamp)` PK exists). Railway's managed Postgres is plain
+> Postgres (no TimescaleDB), so the hypertable `DO` blocks are skipped and this
+> ordering is moot in production today.
+
+**End-to-end verification (run against a real Postgres):**
+```bash
+DATABASE_URL=postgresql://…  # a reachable Postgres (prod-from-inside-Railway, or a local PG)
+python -m aurelius.database.migrate
+python -m aurelius.cli shadow run    --price-file <da.csv> --num-jobs 30 \
+    --customer-id acme --pilot-id p1 --output-dir reports/shadow/
+python -m aurelius.cli shadow realize --decisions-file reports/shadow/decisions_*.jsonl \
+    --rt-price-file <rt.csv> --customer-id acme --pilot-id p1
+python scripts/daily_learning_loop.py --no-fetch --customer-id acme --pilot-id p1
+python -c "from aurelius.database import TimeSeriesStore as T; s=T(); print(s.row_counts()); s.close()"
+TEST_DATABASE_URL=postgresql://… python -m pytest tests/test_postgres_live.py -v
+```
+
+---
+
 ## 6. What is real vs aspirational
 
 **Real today:**
@@ -191,9 +304,11 @@ DATABASE_URL=postgresql://... python scripts/daily_learning_loop.py \
   remaining step for a fully outcome-driven moat.
 - **G3 — Telemetry writers not wired.** Queue/GPU snapshot tables exist + are
   tested, but no live ingestion path writes to them yet.
-- **G5 — No Alembic migrations / retention policy.** Tables are created via
-  `create_all()` (additive, safe); schema versioning + a documented retention/
-  audit policy are still required for enterprise procurement.
+- **G5 (partly closed) — migration runner exists, not yet Alembic-versioned.**
+  `python -m aurelius.database.migrate` now applies the ORM schema + Postgres
+  `*.sql` extras idempotently and runs on every Railway deploy. A *versioned*
+  migration tool (Alembic) with up/down revisions and a documented retention/
+  audit policy is still required for enterprise procurement.
 - **Multi-host locking.** The run lock is single-host (fcntl); multi-host
   deployments should add a Postgres advisory lock.
 - **Decision-time feature co-persistence.** Weather/queue/GPU features used at
