@@ -66,15 +66,130 @@ class JobScheduler:
     def __init__(
         self,
         config: Optional[OptimizationConfig] = None,
+        sla_registry: Optional[object] = None,
+        region_contexts: Optional[dict] = None,
+        current_states: Optional[dict] = None,
+        sla_block_on_unknown: bool = False,
     ):
         """Initialize the scheduler.
 
         Args:
             config: Optimization configuration
+            sla_registry: Optional aurelius.sla.SLARegistry. When provided AND a
+                policy resolves for a job, SLA-aware correction is applied:
+                placements that violate HARD constraints are excluded, and SOFT
+                + risk penalties are folded into the objective so the optimizer
+                ranks safe-but-slightly-pricier placements ahead of risky cheap
+                ones. When None (default), behavior is identical to before —
+                SLAs never change a decision unless enforcement is enabled.
+            region_contexts: {region: aurelius.sla.RegionContext} feeding the
+                conservative predictor (spare capacity, baseline latency, etc.).
+            current_states: {job_id: aurelius.sla.WorkloadState} describing each
+                workload's current placement/telemetry. Absent => a minimal
+                state pinned to the job's default region is used.
+            sla_block_on_unknown: Fail-closed on unknown telemetry metrics.
         """
         self.config = config or OptimizationConfig()
         self.objective_fn = ObjectiveFunction(config)
         self.constraints = ConstraintBuilder(config)
+
+        # SLA-aware correction (all optional; off by default).
+        self.sla_registry = sla_registry
+        self.region_contexts = region_contexts or {}
+        self.current_states = current_states or {}
+        self.sla_block_on_unknown = sla_block_on_unknown
+        self._sla_predictor = None  # lazy
+
+    # ------------------------------------------------------------------
+    # SLA-aware correction helpers (active only when sla_registry is set)
+    # ------------------------------------------------------------------
+
+    @property
+    def sla_enabled(self) -> bool:
+        return self.sla_registry is not None and getattr(self.sla_registry, "enabled", True)
+
+    def _sla_policy_for(self, job: Job):
+        """Resolve the SLA policy governing a job, or None."""
+        if not self.sla_enabled:
+            return None
+        return self.sla_registry.resolve(
+            workload_id=getattr(job, "job_id", None),
+            workload_type=getattr(job, "workload_type", None),
+        )
+
+    def _job_current_region(self, job: Job) -> str:
+        """The region a job is considered to currently occupy.
+
+        Used to decide whether a candidate placement is a migration. Prefers an
+        explicit current_states entry, else the config default region if it is a
+        valid option, else the first region option.
+        """
+        state = self.current_states.get(getattr(job, "job_id", None))
+        if state is not None and state.region:
+            return state.region
+        if self.config.default_region in job.region_options:
+            return self.config.default_region
+        return job.region_options[0]
+
+    def _evaluate_sla_candidate(self, job: Job, decision: ScheduleDecision):
+        """Evaluate a candidate placement against the job's SLA policy.
+
+        Returns an aurelius.sla.SLAEvaluation, or None when SLA is not in effect
+        for this job (so callers leave legacy behavior untouched).
+        """
+        policy = self._sla_policy_for(job)
+        if policy is None:
+            return None
+
+        from ..sla import (
+            ActionType,
+            OptimizationAction,
+            WorkloadState,
+            evaluate_action_against_sla,
+        )
+        from ..sla.telemetry import HeuristicPredictor
+
+        if self._sla_predictor is None:
+            self._sla_predictor = HeuristicPredictor()
+
+        current_region = self._job_current_region(job)
+        is_move = decision.region != current_region
+        action = OptimizationAction(
+            action_type=ActionType.CHANGE_PLACEMENT if is_move else ActionType.KEEP,
+            target_region=decision.region,
+            expected_savings_pct=0.0,  # scheduler ranks by objective, not pct here
+        )
+
+        current_state = self.current_states.get(getattr(job, "job_id", None))
+        if current_state is None:
+            current_state = WorkloadState(region=current_region)
+
+        dest_ctx = self.region_contexts.get(decision.region)
+        predicted = self._sla_predictor.predict(action, current_state, dest_ctx)
+
+        return evaluate_action_against_sla(
+            action=action,
+            workload=job,
+            current_state=current_state,
+            predicted_state=predicted,
+            sla_policy=policy,
+            now=decision.start_time,
+            block_on_unknown=self.sla_block_on_unknown,
+        )
+
+    @staticmethod
+    def _sla_adjusted_score(objective_total: float, sla_eval) -> float:
+        """Fold SLA risk + soft penalties into a candidate's comparable score.
+
+        Penalties are expressed in 'savings-percent-equivalent' units, so we
+        convert to a fraction of the candidate's own objective magnitude. This
+        keeps the adjustment scale-free: a 10-point penalty raises the effective
+        cost of a placement by ~10%.
+        """
+        if sla_eval is None:
+            return objective_total
+        penalty_fraction = (sla_eval.risk_score + sla_eval.soft_penalty_score) / 100.0
+        return objective_total + abs(objective_total) * penalty_fraction
 
     def solve(
         self,
@@ -207,9 +322,21 @@ class JobScheduler:
         queue_data: Optional[dict[str, dict[datetime, float]]] = None,
         gpu_health_data: Optional[dict[str, dict[datetime, float]]] = None,
     ) -> Optional[ScheduleDecision]:
-        """Find the best slot for a job: evaluates time × region × power combos."""
+        """Find the best slot for a job: evaluates time × region × power combos.
+
+        When SLA correction is active for this job, placements that violate HARD
+        constraints are excluded outright, and SOFT + risk penalties are folded
+        into each candidate's score. The unconstrained (savings-only) best is
+        tracked in parallel purely so we can log what SLA enforcement changed.
+        """
         best_decision = None
         best_objective = float('inf')
+
+        # Parallel tracking of the SLA-blind best, for explainable logging.
+        sla_active = self._sla_policy_for(job) is not None
+        best_unconstrained_decision = None
+        best_unconstrained_objective = float('inf')
+        first_block_eval = None
 
         power_levels = [1.0, 0.75, 0.5] if self.config.min_power_fraction <= 0.5 else [1.0]
         power_levels = [p for p in power_levels if p >= self.config.min_power_fraction]
@@ -237,12 +364,50 @@ class JobScheduler:
                         [job], [decision],
                         price_data, carbon_data, risk_data, queue_data, gpu_health_data
                     )
-                    if obj.total < best_objective:
-                        best_objective = obj.total
+
+                    # Unconstrained (SLA-blind) best.
+                    if obj.total < best_unconstrained_objective:
+                        best_unconstrained_objective = obj.total
+                        best_unconstrained_decision = decision
+
+                    sla_eval = None
+                    if sla_active:
+                        sla_eval = self._evaluate_sla_candidate(job, decision)
+                        if sla_eval is not None and not sla_eval.allowed:
+                            if first_block_eval is None:
+                                first_block_eval = sla_eval
+                            continue  # HARD SLA violation: placement excluded
+
+                    score = self._sla_adjusted_score(obj.total, sla_eval)
+                    if score < best_objective:
+                        best_objective = score
                         best_decision = decision
                 current_start += timedelta(hours=1)
 
+        if sla_active:
+            self._log_sla_correction(
+                job, best_unconstrained_decision, best_decision, first_block_eval
+            )
+
         return best_decision
+
+    def _log_sla_correction(self, job, unconstrained, chosen, block_eval) -> None:
+        """Emit explainable logs about how SLA enforcement changed a placement."""
+        if unconstrained is None:
+            return
+        if chosen is not None and chosen.region == unconstrained.region:
+            return  # SLA did not change the region choice
+        u_region = unconstrained.region
+        c_region = chosen.region if chosen is not None else "UNSCHEDULABLE"
+        logger.info(
+            "SLA correction for %s: unconstrained placement=%s -> SLA-aware placement=%s",
+            job.job_id, u_region, c_region,
+        )
+        if block_eval is not None and block_eval.violated_hard_constraints:
+            logger.info(
+                "SLA violations that blocked %s in cheaper region: %s",
+                job.job_id, "; ".join(block_eval.violated_hard_constraints),
+            )
 
     def _solve_local_search(
         self,
@@ -496,6 +661,16 @@ class JobScheduler:
                 improved.append(decision)
                 continue
 
+            # SLA gate: if a policy forbids migration for this workload, never
+            # add region migrations during post-processing.
+            if self._sla_forbids_migration(job):
+                logger.info(
+                    "SLA: migration suppressed for %s (migration_allowed=false)",
+                    job.job_id,
+                )
+                improved.append(decision)
+                continue
+
             if mode == "dp":
                 improved_decision = self._try_optimal_migrations(decision, job, price_data)
             else:
@@ -516,6 +691,13 @@ class JobScheduler:
 
         result.schedule = improved
         return result
+
+    def _sla_forbids_migration(self, job: Job) -> bool:
+        """True when an active SLA policy sets migration_allowed=false for job."""
+        policy = self._sla_policy_for(job)
+        if policy is None:
+            return False
+        return policy.hard.migration_allowed is False
 
     def _try_single_migration(
         self,

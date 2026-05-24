@@ -983,6 +983,134 @@ def cmd_show_schema(args):
     print_schema()
 
 
+def _demo_sla_scenario() -> dict:
+    """Built-in illustrative scenario for `sla-report --demo`.
+
+    Mirrors the spec's example: a critical inference workload whose cheapest
+    migration is blocked, and a batch workload that migrates freely.
+    """
+    return {
+        "region_contexts": {
+            "us-east": {"baseline_p99_latency_ms": 500, "spare_capacity_pct": 60,
+                        "energy_price": 80, "energy_price_percentile": 70},
+            "ercot": {"baseline_p99_latency_ms": 6000, "spare_capacity_pct": 10,
+                      "energy_price": 10, "energy_price_percentile": 5,
+                      "thermally_stressed": True},
+        },
+        "workloads": [
+            {
+                "id": "inference-prod",
+                "workload_type": "realtime_inference",
+                "policy": "inference-prod",
+                "current_state": {"region": "us-east", "p99_latency_ms": 1500,
+                                  "availability_pct": 99.99, "capacity_buffer_pct": 50,
+                                  "queue_wait_ms": 10},
+                "candidate_actions": [
+                    {"action_type": "migrate_workload", "target_region": "ercot",
+                     "expected_savings_pct": 18.4},
+                ],
+            },
+            {
+                "id": "batch-job",
+                "workload_type": "training",
+                "policy": "batch-training",
+                "current_state": {"region": "us-east", "p99_latency_ms": 2000,
+                                  "availability_pct": 99.5, "capacity_buffer_pct": 20,
+                                  "queue_wait_ms": 1000},
+                "candidate_actions": [
+                    {"action_type": "migrate_workload", "target_region": "ercot",
+                     "expected_savings_pct": 18.4},
+                ],
+            },
+        ],
+    }
+
+
+def cmd_sla_report(args):
+    """Produce a before/after SLA-aware optimization report.
+
+    Loads SLA policies from a config file or directory, reads a scenario
+    (workloads + current state + candidate actions + region contexts), runs the
+    SLA-aware action selector, and prints/saves the report.
+    """
+    from .sla import (
+        ActionType,
+        OptimizationAction,
+        RegionContext,
+        SLAAwareActionSelector,
+        SLALoader,
+        SLAReport,
+        SLAValidationError,
+        WorkloadState,
+    )
+
+    # 1. Load SLA policies.
+    config_path = Path(args.config)
+    try:
+        if config_path.is_dir():
+            registry = SLALoader.load_dir(config_path)
+        else:
+            registry = SLALoader.load_file(config_path)
+    except SLAValidationError as e:
+        print("SLA config invalid:")
+        for msg in e.errors:
+            print(f"  - {msg}")
+        sys.exit(2)
+
+    # 2. Load scenario.
+    if args.demo:
+        scenario = _demo_sla_scenario()
+    elif args.scenario:
+        scenario = json.loads(Path(args.scenario).read_text())
+    else:
+        print("Provide --scenario <file.json> or --demo")
+        sys.exit(1)
+
+    region_contexts = {
+        name: RegionContext(region=name, **ctx)
+        for name, ctx in scenario.get("region_contexts", {}).items()
+    }
+
+    class _WL:
+        def __init__(self, wid, wtype):
+            self.job_id = wid
+            self.workload_type = wtype
+
+    selector = SLAAwareActionSelector()
+    report = SLAReport()
+
+    for wl in scenario.get("workloads", []):
+        wid = wl["id"]
+        wtype = wl.get("workload_type")
+        policy = (
+            registry.get(wl["policy"]) if wl.get("policy")
+            else registry.resolve(workload_id=wid, workload_type=wtype)
+        )
+        current = WorkloadState(**wl.get("current_state", {}))
+        actions = [
+            OptimizationAction(
+                action_type=ActionType(a["action_type"]),
+                target_region=a.get("target_region"),
+                expected_savings_pct=float(a.get("expected_savings_pct", 0.0)),
+                target_replicas=a.get("target_replicas"),
+            )
+            for a in wl.get("candidate_actions", [])
+        ]
+        decision = selector.select(
+            _WL(wid, wtype), actions, current, policy,
+            region_contexts=region_contexts,
+            block_on_unknown=args.block_on_unknown,
+        )
+        report.add(decision)
+
+    print(report.render_text())
+
+    if args.output:
+        out = Path(args.output)
+        out.write_text(json.dumps(report.to_dict(), indent=2))
+        print(f"\nJSON report saved to: {out}")
+
+
 def cmd_robustness_test(args):
     """Run robustness test harness."""
     from .validation.robustness import (
@@ -1119,6 +1247,31 @@ def main():
 
     # Show schema command
     subparsers.add_parser("show-schema", help="Show database schema")
+
+    # SLA report command
+    sla_parser = subparsers.add_parser(
+        "sla-report",
+        help="Produce a before/after SLA-aware optimization report",
+    )
+    sla_parser.add_argument(
+        "--config", type=str, default="configs/sla_examples",
+        help="SLA config file or directory (default: configs/sla_examples)",
+    )
+    sla_parser.add_argument(
+        "--scenario", type=str,
+        help="JSON scenario file (workloads + current state + candidate actions)",
+    )
+    sla_parser.add_argument(
+        "--demo", action="store_true",
+        help="Use the built-in illustrative scenario instead of --scenario",
+    )
+    sla_parser.add_argument(
+        "--block-on-unknown", action="store_true",
+        help="Fail-closed: block actions when a constrained metric has no telemetry",
+    )
+    sla_parser.add_argument(
+        "--output", type=str, help="Write the JSON report to this path",
+    )
 
     # Robustness test command
     robust_parser = subparsers.add_parser(
@@ -1592,6 +1745,8 @@ def main():
         cmd_generate_data(args)
     elif args.command == "show-schema":
         cmd_show_schema(args)
+    elif args.command == "sla-report":
+        cmd_sla_report(args)
     elif args.command == "robustness-test":
         cmd_robustness_test(args)
     elif args.command == "backtest":
