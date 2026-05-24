@@ -2646,3 +2646,80 @@ Next recommended task:
   If ENTSOE_API_KEY becomes available: ENTSO-E production validation (EU expansion)
   Otherwise: STOP — system is complete for Tier 1 pilot. Wait for customer evidence
   or external API availability before adding more features.
+
+===============================================================================
+POST-PILOT-READINESS HARDENING — 2026-05-24 (Run 3)
+===============================================================================
+
+Status: COMPLETE
+Branch: claude/ecstatic-bell-9u1LO
+Date: 2026-05-24
+
+Summary:
+  Two concrete pilot demo bugs found and fixed by actually running the system
+  end-to-end. No new features. No new benchmark claims. 1 new test. 1306 total
+  tests passing, 0 failed, 0 regressions.
+
+What was implemented:
+
+  1. data/fixtures/sample_customer_workload_trace.csv — Fix incomplete OOTB date fix
+     Root cause: Prior fix (PR #38) moved submit_times from January to March 9-11,
+     but max_delay_hours values were too short, causing 11/12 jobs to expire before
+     the default decision_time (2026-03-15T01:00Z). Only bg-001 (168h max_delay)
+     survived. The shadow demo produced "1 job decided" — useless for a pilot demo.
+     Fix: moved non-realtime submit_times to March 13-14, 2026; increased
+     max_delay_hours so deadlines fall after decision_time:
+       train-001:   submit=2026-03-13, max_delay=120h → deadline 2026-03-18 ✓
+       train-002:   submit=2026-03-13, max_delay=96h  → deadline 2026-03-17 ✓
+       finetune-001: submit=2026-03-14, max_delay=48h → deadline 2026-03-16 ✓
+       finetune-002: submit=2026-03-14, max_delay=48h → deadline 2026-03-16 ✓
+       llmbatch-001: submit=2026-03-14, max_delay=24h → deadline 2026-03-15T12:00Z ✓
+       llmbatch-002: submit=2026-03-14, max_delay=36h → deadline 2026-03-16T06:00Z ✓
+       dataproc-001: submit=2026-03-14, max_delay=24h → deadline 2026-03-15T08:00Z ✓
+       dataproc-002: submit=2026-03-14, max_delay=24h → deadline 2026-03-15T14:00Z ✓
+       schedmatch-001: submit=2026-03-14, max_delay=48h → deadline 2026-03-16 ✓
+       realtime-001: max_delay=0 → CORRECTLY EXPIRED (realtime can't be delayed)
+       realtime-002: max_delay=0 → CORRECTLY EXPIRED (realtime can't be delayed)
+       bg-001:      submit=2026-03-13, max_delay=168h → deadline 2026-03-20 ✓
+     Result: shadow demo now produces "10 jobs decided" OOTB (was 1).
+
+  2. aurelius/requirements.txt — Add psycopg2-binary>=2.9.0
+     Root cause: requirements.txt had sqlalchemy>=2.0.0 but not psycopg2-binary.
+     Installing from requirements.txt (non-Docker install path) left the PostgreSQL
+     driver missing, so DATABASE_URL=postgresql://... connections silently fell back
+     to no-op mode. psycopg2-binary is already in the Dockerfile but not in the
+     plain requirements install path.
+     Fix: added psycopg2-binary>=2.9.0 to requirements.txt under Database section.
+
+  3. tests/test_shadow_mode.py — New test: test_sample_trace_majority_schedulable_at_default_decision_time
+     - Loads Q1 price data, computes the actual default decision_time
+     - Verifies ≥8 fixture jobs have deadlines after decision_time + duration
+     - This test would have caught the prior incomplete fixture fix
+     - Existing tests preserved: all 1305 pre-existing tests pass (1306 total)
+
+Adversarial audit (all verified):
+  ✓ Shadow OOTB run: 10 jobs decided (up from 1), 2 realtime jobs correctly expired
+  ✓ Existing fixture tests still pass (month ≥ 3, loads correctly)
+  ✓ psycopg2-binary won't break non-Postgres installs (binary wheel, no build deps)
+  ✓ No benchmark results changed; no model code touched; no new claims made
+  ✓ ruff check: 0 errors
+  ✓ No secrets committed
+
+Tests: 1306 passed, 11 skipped, 0 failed (was 1305 before this run)
+  New: 1 test in TestShadowFixtureOOTB
+  Pre-existing: 1305 (all preserved, 0 regressions)
+
+Enterprise contract readiness impact:
+  A prospect running the shadow demo OOTB now sees 10 diverse job decisions across
+  training/fine_tuning/llm_batch/data_processing/scheduled_batch/background types,
+  rather than a single background maintenance job. This makes the first demo
+  significantly more compelling and representative.
+
+UPDATED GLOBAL TERMINATION ASSESSMENT:
+  No new capabilities added. Two deployment bugs fixed. System remains complete
+  for Tier 1 pilots. All prior termination criteria still hold.
+
+Next recommended task:
+  If ENTSOE_API_KEY becomes available: ENTSO-E production validation (EU expansion)
+  Otherwise: STOP — system is complete for Tier 1 pilot. Wait for customer evidence
+  or external API availability before adding more features.
