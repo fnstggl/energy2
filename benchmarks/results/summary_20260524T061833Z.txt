@@ -1,0 +1,7 @@
+Aurelius Benchmark Summary — 20260524T061833Z
+Primary baseline: current_price_only
+Method: greedy_migrate
+
+llm_batch_inference@us-west-only: 32.7% vs current_price_only  (folds=6)
+
+Mean: 32.7%  Min: 32.7%  Max: 32.7%
