@@ -717,6 +717,21 @@ def cmd_shadow_run(args):
         if args.forecaster == "ml_quantile_recovery":
             apply_recovery_correction = True
 
+    # Optional weather (leakage-free): observed history for training, day-ahead
+    # forecast for the prediction horizon.
+    weather_df = None
+    forecast_weather_df = None
+    if getattr(args, "weather_file", None):
+        weather_df = pd.read_csv(args.weather_file)
+        weather_df["timestamp"] = pd.to_datetime(weather_df["timestamp"], utc=True)
+        weather_df = weather_df[weather_df["region"].isin(regions)]
+        print(f"Weather (observed): {len(weather_df)} rows from {args.weather_file}")
+    if getattr(args, "forecast_weather_file", None):
+        forecast_weather_df = pd.read_csv(args.forecast_weather_file)
+        forecast_weather_df["timestamp"] = pd.to_datetime(forecast_weather_df["timestamp"], utc=True)
+        forecast_weather_df = forecast_weather_df[forecast_weather_df["region"].isin(regions)]
+        print(f"Weather (forecast): {len(forecast_weather_df)} rows from {args.forecast_weather_file}")
+
     config = OptimizationConfig()
     runner = LiveShadowRunner(
         regions=regions,
@@ -728,6 +743,8 @@ def cmd_shadow_run(args):
         price_forecaster_config=price_forecaster_config,
         apply_recovery_correction=apply_recovery_correction,
         forecaster_version=args.forecaster,
+        weather_df=weather_df,
+        forecast_weather_df=forecast_weather_df,
     )
 
     records = runner.run(
@@ -1452,6 +1469,21 @@ def main():
     sr_parser.add_argument(
         "--carbon-file", default=None,
         help="Optional carbon intensity CSV (timestamp, region, gco2_per_kwh)",
+    )
+    sr_parser.add_argument(
+        "--weather-file", default=None,
+        help=(
+            "Optional OBSERVED weather CSV (canonical schema) for forecaster "
+            "training. Enables weather-aware forecasting (validated: improves "
+            "forecast MAE/RMSE, concentrated in PJM/us-east and weather-stress events)."
+        ),
+    )
+    sr_parser.add_argument(
+        "--forecast-weather-file", default=None,
+        help=(
+            "Optional day-ahead FORECAST weather CSV for the prediction horizon "
+            "(leakage-free). If omitted, --weather-file is reused for the horizon."
+        ),
     )
     sr_parser.add_argument(
         "--train-days", type=int, default=30,

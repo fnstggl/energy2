@@ -1,0 +1,150 @@
+{
+  "n_folds": 14,
+  "n_seeds": 3,
+  "results": {
+    "mae_overall_observed": {
+      "mean": -1.492183409464552,
+      "ci_lo": -2.7539093192624517,
+      "ci_hi": -0.5283490719815831,
+      "sig": "SIGNIFICANT"
+    },
+    "mae_overall_forecast": {
+      "mean": -1.3632888665202505,
+      "ci_lo": -2.5262037827042816,
+      "ci_hi": -0.4794009322592296,
+      "sig": "SIGNIFICANT"
+    },
+    "mae_us-west_observed": {
+      "mean": -0.035308132195185964,
+      "ci_lo": -0.13239960597636527,
+      "ci_hi": 0.05168341588446249,
+      "sig": "n.s."
+    },
+    "mae_us-west_forecast": {
+      "mean": -0.05002107666143374,
+      "ci_lo": -0.15701134604210298,
+      "ci_hi": 0.047752424180729926,
+      "sig": "n.s."
+    },
+    "mae_us-east_observed": {
+      "mean": -4.017538864905953,
+      "ci_lo": -7.391226452098298,
+      "ci_hi": -1.1787210408335824,
+      "sig": "SIGNIFICANT"
+    },
+    "mae_us-east_forecast": {
+      "mean": -3.6408667486973263,
+      "ci_lo": -6.74709585959305,
+      "ci_hi": -1.0325270491226626,
+      "sig": "SIGNIFICANT"
+    },
+    "mae_us-south_observed": {
+      "mean": -0.42370323129251747,
+      "ci_lo": -0.6581602714002268,
+      "ci_hi": -0.18799874220521623,
+      "sig": "SIGNIFICANT"
+    },
+    "mae_us-south_forecast": {
+      "mean": -0.39897877420199057,
+      "ci_lo": -0.6364449622797855,
+      "ci_hi": -0.1561950617586815,
+      "sig": "SIGNIFICANT"
+    },
+    "rmse_overall_observed": {
+      "mean": -1.599620978063603,
+      "ci_lo": -2.9558937675820753,
+      "ci_hi": -0.5505236147750527,
+      "sig": "SIGNIFICANT"
+    },
+    "rmse_overall_forecast": {
+      "mean": -1.4816628122866653,
+      "ci_lo": -2.7623440493932554,
+      "ci_hi": -0.4935616047220346,
+      "sig": "SIGNIFICANT"
+    },
+    "rmse_us-west_observed": {
+      "mean": -0.04284504470727051,
+      "ci_lo": -0.13844002641347336,
+      "ci_hi": 0.043450527615602585,
+      "sig": "n.s."
+    },
+    "rmse_us-west_forecast": {
+      "mean": -0.05680492844173925,
+      "ci_lo": -0.16180575420443913,
+      "ci_hi": 0.03759357420324338,
+      "sig": "n.s."
+    },
+    "rmse_us-east_observed": {
+      "mean": -4.297071535278265,
+      "ci_lo": -7.93628454325425,
+      "ci_hi": -1.2471206847795808,
+      "sig": "SIGNIFICANT"
+    },
+    "rmse_us-east_forecast": {
+      "mean": -3.9585903098456092,
+      "ci_lo": -7.419182713439831,
+      "ci_hi": -1.048547463458001,
+      "sig": "SIGNIFICANT"
+    },
+    "rmse_us-south_observed": {
+      "mean": -0.45894635420527474,
+      "ci_lo": -0.686219276464852,
+      "ci_hi": -0.23156661904147316,
+      "sig": "SIGNIFICANT"
+    },
+    "rmse_us-south_forecast": {
+      "mean": -0.42959319857264755,
+      "ci_lo": -0.6599433700890766,
+      "ci_hi": -0.1948650372516629,
+      "sig": "SIGNIFICANT"
+    },
+    "pinball90_overall_observed": {
+      "mean": -0.42643048662727506,
+      "ci_lo": -0.8503576302760709,
+      "ci_hi": -0.09228153544580923,
+      "sig": "SIGNIFICANT"
+    },
+    "pinball90_overall_forecast": {
+      "mean": -0.4242121132553006,
+      "ci_lo": -0.8349046808432228,
+      "ci_hi": -0.09901119996349493,
+      "sig": "SIGNIFICANT"
+    },
+    "pinball90_us-west_observed": {
+      "mean": 0.0786001599293564,
+      "ci_lo": -0.024279698971415686,
+      "ci_hi": 0.1942197955490691,
+      "sig": "n.s."
+    },
+    "pinball90_us-west_forecast": {
+      "mean": 0.03300651033490311,
+      "ci_lo": -0.08012049649370975,
+      "ci_hi": 0.1561295587225275,
+      "sig": "n.s."
+    },
+    "pinball90_us-east_observed": {
+      "mean": -1.3549324851957958,
+      "ci_lo": -2.5368975541105443,
+      "ci_hi": -0.4101890722849394,
+      "sig": "SIGNIFICANT"
+    },
+    "pinball90_us-east_forecast": {
+      "mean": -1.304417003031207,
+      "ci_lo": -2.459533729474557,
+      "ci_hi": -0.38558100469435447,
+      "sig": "SIGNIFICANT"
+    },
+    "pinball90_us-south_observed": {
+      "mean": -0.0029591346153857562,
+      "ci_lo": -0.07044893053375358,
+      "ci_hi": 0.06961844515851102,
+      "sig": "n.s."
+    },
+    "pinball90_us-south_forecast": {
+      "mean": -0.0012258470695980358,
+      "ci_lo": -0.07355430552830199,
+      "ci_hi": 0.07655159670438576,
+      "sig": "n.s."
+    }
+  }
+}

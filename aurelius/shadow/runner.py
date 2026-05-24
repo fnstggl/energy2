@@ -77,6 +77,8 @@ class LiveShadowRunner:
         safety_gate_config: Optional[Any] = None,
         enable_safety_gate: bool = True,
         apply_recovery_correction: bool = False,
+        weather_df: Optional[Any] = None,
+        forecast_weather_df: Optional[Any] = None,
     ) -> None:
         """
         Args:
@@ -109,6 +111,14 @@ class LiveShadowRunner:
         self.forecaster_version = forecaster_version
         self.optimizer_version = optimizer_version
         self.apply_recovery_correction = apply_recovery_correction
+        # Observed weather history (for forecaster training) and the day-ahead
+        # forecast weather (for the prediction horizon). forecast_weather_df is
+        # leakage-free by construction: it is the forecast available at decision
+        # time, never a future observation. When forecast_weather_df is None the
+        # runner falls back to weather_df for the horizon (observed history only
+        # extends to decision_time, so practically price-only beyond it).
+        self.weather_df = weather_df
+        self.forecast_weather_df = forecast_weather_df
         self.scheduler = JobScheduler(self.config)
 
         from aurelius.safety.quantile_gate import QuantileGateConfig, QuantileSafetyGate
@@ -345,7 +355,27 @@ class LiveShadowRunner:
 
             cfg = self.price_forecaster_config
             forecaster = self.price_forecaster_cls(cfg) if cfg is not None else self.price_forecaster_cls()
-            forecaster.fit(train_records)
+
+            # Weather (leakage-free): train on observed history < decision_time;
+            # predict on the day-ahead forecast for the horizon. Threaded only if
+            # the forecaster's fit/predict accept weather_df (backward compatible).
+            import inspect as _inspect
+            _train_weather = None
+            _predict_weather = None
+            if self.weather_df is not None and not (
+                hasattr(self.weather_df, "empty") and self.weather_df.empty
+            ):
+                _wts = pd.to_datetime(self.weather_df["timestamp"], utc=True)
+                _train_weather = self.weather_df[_wts < _to_utc_ts(decision_time)]
+                fwx = self.forecast_weather_df if self.forecast_weather_df is not None else self.weather_df
+                _predict_weather = fwx
+            _fit_accepts_weather = "weather_df" in _inspect.signature(forecaster.fit).parameters
+            _pred_accepts_weather = "weather_df" in _inspect.signature(forecaster.predict).parameters
+
+            if _fit_accepts_weather and _train_weather is not None:
+                forecaster.fit(train_records, weather_df=_train_weather)
+            else:
+                forecaster.fit(train_records)
 
             # Build context from the tail of training data
             context_start = decision_time - timedelta(hours=self.context_hours)
@@ -367,7 +397,12 @@ class LiveShadowRunner:
             forecast: dict[str, dict[datetime, float]] = {}
             for region in effective_regions:
                 region_context = [r for r in context_records if r.region == region]
-                preds = forecaster.predict(region, forecast_timestamps, region_context)
+                if _pred_accepts_weather and _predict_weather is not None:
+                    rw = _predict_weather[_predict_weather["region"] == region]
+                    preds = forecaster.predict(region, forecast_timestamps, region_context,
+                                               weather_df=(rw if not rw.empty else None))
+                else:
+                    preds = forecaster.predict(region, forecast_timestamps, region_context)
                 for pred in preds:
                     ts = pred.timestamp.replace(minute=0, second=0, microsecond=0)
                     if ts.tzinfo is None:
