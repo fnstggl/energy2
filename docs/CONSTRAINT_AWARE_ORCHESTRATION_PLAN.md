@@ -55,7 +55,23 @@ Future phases are expected to critically evaluate and revise it when necessary.
 
 ---
 
-> **Document status:** Phase 0 (audit + research + plan). No production code has been written for constraint-aware orchestration as of this document. The repo audit below reflects the state on the date noted in §2.
+> **Document status:** Phase 0 (audit + research + plan). No fully integrated binding-constraint-aware orchestration layer currently exists, though several foundational components already exist in partial or dormant form.
+
+Examples include:
+
+- queue-aware objective terms,
+
+- GPU health scoring,
+
+- migration logic,
+
+- SLA-aware action correction,
+
+- telemetry ingestion scaffolding,
+
+- and topology/placement-adjacent scheduling concepts already present in the optimizer.
+
+Phase 0 therefore focuses heavily on identifying and reusing existing orchestration scaffolding rather than rebuilding functionality that already partially exists in the repo. The repo audit below reflects the state on the date noted in §2.
 >
 > **Provenance of external facts:** Connector details in §6 were researched against official documentation (URLs inline). Where a doc was ambiguous or unverified it is explicitly flagged `[UNVERIFIED]` or `[AMBIGUOUS]`. Do not treat any metric name or API signature as correct without re-verifying against the cited URL at implementation time — upstream projects rename metrics (see the vLLM V0→V1 split and DCGM `CLOCK_THROTTLE_REASONS`→`CLOCKS_EVENT_REASONS` rename documented in §6).
 
@@ -79,6 +95,24 @@ Aurelius is evolving into a **constraint-aware GPU orchestration control plane**
 > **Detect the current *binding constraint* of a GPU/inference cluster, then optimize scheduling, routing, placement, deferral, spreading, bin-packing, and migration decisions around that constraint while respecting SLAs.**
 
 The conceptual shift is from *"add every signal as a cost term and minimize the weighted sum"* to *"first classify which resource/condition is actually limiting the cluster right now (energy, thermal, queue, latency, communication, memory pressure, topology, utilization), then choose the optimization strategy appropriate to that constraint."* Energy-cost optimization becomes **one mode among several**, selected when energy is the binding constraint — not the universal objective.
+
+Importantly, Aurelius is NOT intended to operate as a mutually-exclusive “single active mode” system.
+
+A real cluster may simultaneously experience:
+- queue pressure,
+- thermal stress,
+- energy cost spikes,
+- topology fragmentation,
+- utilization waste,
+- and latency degradation.
+
+Therefore, the classifier must emit multiple simultaneously active constraints with ranked severity and confidence scores, not a single binary mode.
+
+The optimizer must consume the full constraint vector and use it to dynamically weight priorities, penalties, allowed actions, and risk thresholds.
+
+For operational safety, early recommendations may emphasize the highest-severity constraint most strongly, but the architecture itself must be multi-constraint from the beginning.
+
+Aurelius should implement constraint-aware multi-objective orchestration with dynamically weighted priorities rather than mutually-exclusive optimization modes.
 
 ### What Aurelius is NOT becoming
 
@@ -726,6 +760,27 @@ The product output. Recommendation-only by default.
 
 ---
 
+The optimizer must not use a globally static weighting function across all cluster conditions.
+
+Instead, the active constraint landscape should dynamically influence:
+- objective weighting,
+- migration penalties,
+- allowed actions,
+- risk tolerance,
+- SLA conservatism,
+- topology sensitivity,
+- queue sensitivity,
+- and thermal avoidance behavior.
+
+Hard constraints and operational safety rules must always dominate economic optimization.
+
+For example:
+- severe thermal stress should heavily penalize consolidation even if utilization efficiency would improve,
+- queue collapse should outweigh small energy-arbitrage opportunities,
+- and latency-risk amplification should suppress migrations even when migration appears economically favorable.
+
+The optimizer may still compute composite action scores internally, but those scores must be dynamically conditioned on the currently active constraint set rather than derived from a single globally static objective function.
+
 ## 8. Trust-Boundary Matrix
 
 Aurelius **detects** all constraints and **recommends** orchestration-level actions. It never enters the inference/runtime data plane. Customer trust level reflects how comfortable an operator is letting Aurelius act on that constraint (recommend → shadow → gated live).
@@ -860,6 +915,79 @@ Extend `aurelius/simulation/metrics.py` (`ScheduleMetrics`) and `SavingsReport` 
 
 **Reporting rule:** every comparison reports the full metric vector for baseline AND Aurelius on the identical environment, with §9.5 metadata and validity flag. A cost win that worsens p99/SLA/throttling/churn is flagged, not celebrated.
 
+### Operational degradation penalties
+
+Aurelius must optimize net operational quality, not isolated savings metrics.
+
+An optimizer that:
+- saves 22% energy cost,
+- but increases migration churn 600%,
+- destabilizes latency,
+- increases oscillatory routing behavior,
+- or creates operational unpredictability
+
+must be treated as a regression rather than an improvement.
+
+Benchmarking and optimizer evaluation must therefore include explicit degradation penalties for:
+- migration churn,
+- routing oscillation,
+- recommendation instability,
+- excessive action volatility,
+- SLA-tail-risk amplification,
+- repeated placement reversals,
+- topology fragmentation regressions,
+- and operational instability over time.
+
+The optimizer must not exploit benchmark artifacts by:
+- over-migrating,
+- excessively rerouting workloads,
+- aggressively chasing small transient gains,
+- or producing unstable recommendation behavior that would be operationally unacceptable in production environments.
+
+Operational stability is a first-class optimization objective alongside economic efficiency.
+
+## 10.3 Optimization Improvement & Validation Loop
+
+The goal of this architecture is NOT merely to implement the constraint-aware orchestration stack mechanically.
+
+The system must demonstrate:
+- statistically consistent improvement,
+- SLA preservation,
+- bounded migration churn,
+- stable behavior across workload classes,
+- meaningful economic benefit across controlled benchmark suites,
+- and operational stability under realistic telemetry conditions.
+
+Constraint-aware optimization should continue iterating until:
+- benchmark performance stabilizes,
+- regressions are eliminated,
+- migration behavior becomes operationally acceptable,
+- and KPI improvements converge across scenario families.
+
+Target KPIs are guidance, not hardcoded optimization objectives.
+
+The system should demonstrate:
+- meaningful improvement vs `current_price_only`,
+- meaningful improvement vs the existing Aurelius energy-aware optimizer,
+- no significant SLA regression,
+- bounded migration churn,
+- robustness across workload classes,
+- robustness across topology conditions,
+- and stable behavior under partial telemetry degradation.
+
+The optimizer must not stop at “feature complete.”
+
+A phase is not operationally successful merely because:
+- the classifier runs,
+- recommendations are emitted,
+- or benchmarks show isolated wins.
+
+The system must continue improving until:
+- benchmark behavior stabilizes,
+- improvements generalize across scenario families,
+- and operational regressions are acceptably bounded.
+
+The objective is durable operational quality, not isolated benchmark wins.
 ---
 
 ## 11. Phase-by-Phase Implementation Plan
