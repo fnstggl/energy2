@@ -1,0 +1,69 @@
+{
+  "description": "Thermal hotspot scenario: one region has GPU throttling.",
+  "timestamp": "2024-06-01T14:00:00+00:00",
+  "provenance": {
+    "source": "simulator",
+    "fetched_at": "2024-06-01T14:00:00+00:00",
+    "confidence": "high",
+    "is_sandbox": true,
+    "sample_age_s": 0.0
+  },
+  "snapshot_id": "fixture-thermal-001",
+  "is_partial": false,
+  "missing_sources": [],
+  "config_hash": null,
+  "regions": {
+    "us-west": {
+      "region": "us-west",
+      "timestamp": "2024-06-01T14:00:00+00:00",
+      "provenance": {
+        "source": "simulator",
+        "fetched_at": "2024-06-01T14:00:00+00:00",
+        "confidence": "high",
+        "is_sandbox": true,
+        "sample_age_s": 0.0
+      },
+      "spare_capacity_pct": 10.0,
+      "energy": {
+        "region": "us-west",
+        "timestamp": "2024-06-01T14:00:00+00:00",
+        "provenance": {
+          "source": "simulator",
+          "fetched_at": "2024-06-01T14:00:00+00:00",
+          "confidence": "high",
+          "is_sandbox": true,
+          "sample_age_s": null
+        },
+        "price_per_mwh": 52.0,
+        "price_percentile": 70.0,
+        "day_ahead_price_per_mwh": null,
+        "real_time_price_per_mwh": 52.0,
+        "carbon_gco2_per_kwh": 195.0,
+        "pue": 1.4,
+        "power_cap_kw": 8000.0,
+        "power_draw_kw": 7500.0
+      },
+      "thermal": {
+        "region": "us-west",
+        "timestamp": "2024-06-01T14:00:00+00:00",
+        "provenance": {
+          "source": "simulator",
+          "fetched_at": "2024-06-01T14:00:00+00:00",
+          "confidence": "medium",
+          "is_sandbox": true,
+          "sample_age_s": null
+        },
+        "node_id": null,
+        "max_gpu_temp_c": 91.0,
+        "mean_gpu_temp_c": 85.0,
+        "throttling_gpu_count": 6,
+        "total_gpu_count": 16,
+        "ambient_temp_c": 28.0,
+        "cooling_headroom_pct": 15.0
+      },
+      "topology": null,
+      "nodes": {},
+      "services": {}
+    }
+  }
+}

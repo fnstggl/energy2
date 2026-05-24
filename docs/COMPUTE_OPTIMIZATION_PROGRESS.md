@@ -16,33 +16,33 @@ Every implementation run must read that plan before deciding what to do next.
 
 ## Status Summary
 
-Current status: **PHASE 0 COMPLETE / PHASE 1 NOT STARTED**
+Current status: **PHASE 1 COMPLETE / PHASE 2 NOT STARTED**
 
-Phase 0 produced:
-- the canonical architecture plan
-- the implementation phase map
-- connector/API research
-- simulator/benchmarking strategy
-- trust-boundary rules
-- anti-checklist rules
-- anti-simulator-overfitting rules
+Phase 1 produced:
+- `aurelius/state/models.py` — canonical frozen dataclass state models
+- `aurelius/state/store.py` — leakage-safe append-only in-memory snapshot store
+- `aurelius/state/normalize.py` — adapters from existing models + validation helpers
+- `aurelius/state/__init__.py` — package exports
+- `tests/test_state_models.py` — 90 tests for all models
+- `tests/test_state_store.py` — 18 tests for the state store
+- `tests/test_state_normalize.py` — 46 tests for adapters + validation + optimizer non-regression
+- `tests/fixtures/cluster_state/` — 3 JSON fixture cluster snapshots
 
-Phase 1 has not begun yet.
+Phase 2 (Prometheus-native telemetry ingestion) has not begun yet.
 
 The next expected milestone is:
 
-**Phase 1 — Normalized state model**
+**Phase 2 — Prometheus-native connector**
 
-Expected Phase 1 files:
-- `aurelius/state/__init__.py`
-- `aurelius/state/models.py`
-- `aurelius/state/store.py`
-- `aurelius/state/normalize.py`
-
-Expected Phase 1 tests:
-- `tests/test_state_models.py`
-- `tests/test_state_store.py`
-- `tests/test_state_normalize.py`
+Expected Phase 2 files:
+- `aurelius/connectors/base.py`
+- `aurelius/connectors/prometheus.py`
+- `aurelius/connectors/dcgm.py`
+- `aurelius/connectors/vllm.py`
+- `aurelius/connectors/triton.py`
+- Metric mapping configs
+- Fake Prometheus HTTP fixtures
+- Tests proving sandbox and real paths are identical
 
 ---
 
@@ -163,7 +163,7 @@ Forbidden:
 | Phase | Name | Status | Evidence | Notes |
 |---|---|---:|---|---|
 | 0 | Audit + canonical plan | COMPLETE | `docs/CONSTRAINT_AWARE_ORCHESTRATION_PLAN.md` exists | Planning only; no production implementation yet |
-| 1 | Normalized state model | NOT_STARTED | None yet | Next milestone |
+| 1 | Normalized state model | COMPLETE | `aurelius/state/`, 154 tests passing | See Phase 1 details below |
 | 2 | Prometheus-native connector | NOT_STARTED | None yet | Depends on Phase 1 |
 | 3 | DCGM/vLLM/Triton/Ray adapters | NOT_STARTED | None yet | Depends on Phase 2 |
 | 4 | Kubernetes connector | NOT_STARTED | None yet | Depends on Phase 1/2 |
@@ -178,32 +178,99 @@ Forbidden:
 
 ---
 
-## Phase 1 Expected Scope
+## Phase 1 Completion Evidence
 
-Phase 1 should create the canonical normalized cluster state layer.
+### Phase 1 Milestone Decision
 
-Expected additions:
-- normalized dataclasses
-- provenance model
-- UTC-aware timestamp validation
-- `None`-not-zero missing telemetry behavior
-- range validation
-- JSON-compatible serialization/deserialization if practical
-- in-memory append-only snapshot store
-- leakage-safe `last_known_at_or_before()` lookup
-- adapters from existing models where possible
+- **What this run implemented:** Phase 1 — normalized state model (`aurelius/state/` package)
+- **Why it was the correct next step:** `docs/CONSTRAINT_AWARE_ORCHESTRATION_PLAN.md` existed from Phase 0 but `aurelius/state/` did not exist. No constraint-aware telemetry layer existed. This is the prerequisite foundation for all subsequent phases.
+- **Prior dependencies verified:** No prior constraint-aware phases existed. Existing energy-arbitrage phases (1-5) are complete and were explicitly left untouched.
+- **What was explicitly NOT attempted:** Connectors (Phase 2-4), topology collection (Phase 5), simulator (Phase 6), constraint classifier (Phase 7), optimizer changes (Phase 9).
 
-Expected non-goals:
-- no Prometheus connector
-- no DCGM/vLLM/Triton/Ray adapter
-- no Kubernetes connector
-- no topology collector
-- no simulator
-- no classifier
-- no optimizer change
-- no execution/mutation behavior
+### Repo-Reality Audit Findings
 
-Phase 1 should preserve existing optimizer behavior.
+**Plan vs repo mismatches:**
+- The plan (§5.6) says to reuse `aurelius/sla/telemetry.py:WorkloadState` and extend it additively. This was not done in Phase 1 because: (a) the plan also says "Do not touch optimizer logic in this phase" and (b) extending WorkloadState requires careful testing that it doesn't break existing SLA evaluator behavior. **Decision: documented as Phase 9 work.** The new state models don't duplicate WorkloadState — they reference it via adapters.
+- The plan mentioned a `QueueStateV2` wrapper with provenance. Implemented as `adapt_queue_state()` returning a dict (not a typed model) since the plan says "Reuse the existing `QueueState`" and creating a new typed model risks confusion. This is documented — Phase 2/7 can promote it if needed.
+- `asdict` was imported in models.py but not used (removed by ruff fix).
+
+**Models implemented (all from §5):**
+- `Provenance` ✓
+- `ConstraintType` (enum) ✓
+- `TopologyLinkType` (enum) ✓
+- `GPUState` (adapted from §5.4, adapts `GPUMetrics`/`GPUHealthScore`) ✓
+- `InferenceServiceState` (§5.5) ✓
+- `TopologyState` (§5.8) ✓
+- `EnergyState` (§5.9) ✓
+- `ThermalState` (§5.10) ✓
+- `NodeState` (§5.3) ✓
+- `RegionState` (§5.2) ✓
+- `ClusterState` (§5.1) ✓
+- `MigrationEvent` + `MigrationHistory` (§5.11) ✓
+- `ConstraintAssessment` (§5.12) ✓
+- `Recommendation` (§5.13) ✓
+
+**What was intentionally omitted:**
+- `WorkloadState` extension — Phase 9 (requires SLA engine wiring audit)
+- No connector code
+- No classifier code
+- No optimizer changes
+
+### Tests Added
+
+| Test File | Tests | What It Proves |
+|---|---|---|
+| `tests/test_state_models.py` | 90 | All model validation (UTC-aware, None-not-zero, pct/rate ranges, JSON round-trip, enum values, property derivations, impossible value rejection) |
+| `tests/test_state_store.py` | 18 | Append-only, leakage-safe lookup, out-of-order insert, range queries, latest/earliest, clear, duplicate timestamps |
+| `tests/test_state_normalize.py` | 46 | validate_utc_aware, validate_percentage, validate_non_negative, make_provenance, adapt_gpu_metrics (incl. GPUHealthScore merge), adapt_queue_state, coerce_to_utc, optimizer non-regression imports |
+
+### Commands Run
+
+```
+python -m compileall aurelius/state
+ruff check aurelius/state/ tests/test_state_models.py tests/test_state_store.py tests/test_state_normalize.py
+/root/.local/bin/pytest tests/test_state_models.py tests/test_state_store.py tests/test_state_normalize.py -q
+/root/.local/bin/pytest tests/test_scheduler.py tests/test_safety_gate.py -q
+```
+
+### Test Results
+
+```
+tests/test_state_models.py: 90 passed
+tests/test_state_store.py: 18 passed
+tests/test_state_normalize.py: 46 passed
+total Phase 1: 154 passed, 0 failed
+
+tests/test_scheduler.py: 10 passed (existing, unmodified)
+tests/test_safety_gate.py: 10 passed (existing, unmodified)
+ruff: All checks passed
+python -m compileall: No errors
+```
+
+### Proof Optimizer Behavior Was Not Changed
+
+- No file in `aurelius/optimization/`, `aurelius/backtesting/`, `aurelius/sla/`, `aurelius/forecasting/`, or `aurelius/models.py` was modified.
+- `tests/test_scheduler.py` and `tests/test_safety_gate.py` pass identically to before.
+- `test_state_normalize.py::TestOptimizerUnchanged` explicitly tests that `JobScheduler`, `ObjectiveFunction`, existing `QueueState`/`GPUMetrics`/`GPUHealthScore`, `WorkloadState`, and `ActionType` all import cleanly with unchanged behavior.
+
+### Wiring Evidence
+
+Phase 1 is additive groundwork. The state models are NOT yet wired into any production decision path — this is intentional and documented. Wiring happens in:
+- Phase 2 (connector produces `ClusterState`)
+- Phase 7 (classifier consumes `ClusterState`)
+- Phase 9 (optimizer/engine produces `Recommendation`)
+
+**Which paths are intentionally not wired yet:**
+- `BacktestEngine` still constructs `JobScheduler` without ClusterState
+- CLI `simulate`/`backtest` paths still use old energy-arbitrage flow
+- `SLARegistry` is still dormant (Phase 9 target)
+
+### Failure Mode Review
+
+- **Missing telemetry:** All optional fields default to `None`. The classifier (Phase 7) will treat `None` as `missing_signal` and reduce confidence — not fabricate a value.
+- **Naive timestamps:** Rejected at model construction time with a clear `ValueError`. The `coerce_to_utc()` helper provides an explicit escape hatch for synthetic sources.
+- **Invalid ranges:** All impossible values (pct > 100, negative bytes, pct < 0, PUE < 1.0, etc.) raise `ValueError` at construction time — never silently accepted.
+- **Partial connector failures:** `ClusterState.is_partial=True` + `missing_sources` list enables the classifier to reduce confidence proportionally.
 
 ---
 
@@ -277,12 +344,24 @@ Aurelius must optimize net operational quality, not isolated savings metrics.
 
 Current Known Risks
 
-* The SLA engine exists but may not yet be wired into real optimizer/backtest paths.
-* Existing telemetry scaffolding may be synthetic or fixture-based.
-* Constraint-aware orchestration is not yet implemented.
-* Simulator does not yet exist as a full cluster digital twin.
+* The SLA engine exists but is not yet wired into real optimizer/backtest paths (Phase 9 target).
+* `WorkloadState` extension (adding `service_id`, `gpu_uuids`, etc.) is deferred to Phase 9 to avoid breaking SLA evaluator while it is still dormant.
+* Phase 1 state models are additive; no production decision path yet consumes them.
+* Constraint classifier (Phase 7) has not been built — ClusterState is produced but not consumed.
+* Simulator (Phase 6) has not been built — state models are not yet exercised end-to-end.
 * Benchmarking does not yet prove multi-constraint optimization.
-* Phase completion claims must be verified against repo reality.
+
+⸻
+
+## Phase 1 Open Technical Debt
+
+| Item | Priority | Notes |
+|---|---|---|
+| `WorkloadState` extension (add `service_id`, `gpu_uuids`, `kv_cache_usage`, `comm_bytes_per_s`) | Medium | Deferred to Phase 9; existing SLA evaluator still consumes the original shape |
+| `QueueStateV2` typed model with provenance | Low | Currently a dict; can be promoted in Phase 2 once connector wiring is clearer |
+| JSON schema validation for fixture files | Low | Fixtures are tested via `ClusterState.from_dict()` round-trip, not schema validation |
+| `StateStore` Postgres persistence layer | Medium | Phase 1 is in-memory only; Postgres integration is a Phase 11/12 concern |
+| DCGMProvider unit bug (throttle ns vs µs) | Medium | Documented in §6.3 of the plan; Phase 3 will fix `dcgm_provider.py` |
 
 ⸻
 
@@ -296,16 +375,51 @@ Summary:
 
 * Created canonical implementation plan.
 * No production constraint-aware implementation yet.
-* Next milestone is Phase 1 normalized state model.
+* Next milestone was Phase 1 normalized state model.
 
 Evidence:
 
 * docs/CONSTRAINT_AWARE_ORCHESTRATION_PLAN.md
 
-Open limitations:
+---
 
-* No normalized aurelius/state/ model yet.
-* No constraint classifier yet.
-* No simulator yet.
-* No Prometheus-native ingestion yet.
-* No constraint-aware engine yet.
+Phase 1
+
+Status: COMPLETE
+
+Date: 2026-05-24
+Branch: claude/sleepy-bohr-m14dY
+PR: (to be created this run)
+
+Summary:
+
+* Created `aurelius/state/` package with 4 files:
+  - `__init__.py` (package exports)
+  - `models.py` (14 frozen dataclass state models + 2 enums)
+  - `store.py` (leakage-safe append-only StateStore)
+  - `normalize.py` (adapters + validation helpers)
+* Created 3 test files with 154 tests total (all passing)
+* Created `tests/fixtures/cluster_state/` with 3 JSON scenario fixtures
+* No existing optimizer, SLA, forecasting, or energy connector code was modified
+* All existing tests that can run (scheduler, safety gate) still pass
+
+Evidence:
+
+* `aurelius/state/__init__.py`, `models.py`, `store.py`, `normalize.py`
+* `tests/test_state_models.py` (90 tests)
+* `tests/test_state_store.py` (18 tests)
+* `tests/test_state_normalize.py` (46 tests)
+* `tests/fixtures/cluster_state/` (3 fixtures)
+* ruff: all checks passed
+* python -m compileall aurelius/state: no errors
+
+Open limitations from Phase 1:
+
+* No connectors yet (Phase 2+)
+* No constraint classifier yet (Phase 7)
+* No simulator yet (Phase 6)
+* No optimizer wiring yet (Phase 9)
+* WorkloadState extension deferred to Phase 9
+* StateStore is in-memory only; Postgres persistence is Phase 11/12
+
+Next milestone: **Phase 2 — Prometheus-native telemetry ingestion**

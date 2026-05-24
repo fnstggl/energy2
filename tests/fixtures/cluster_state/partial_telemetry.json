@@ -1,0 +1,34 @@
+{
+  "description": "Partial telemetry: DCGM connector failed, energy connector degraded.",
+  "timestamp": "2024-06-01T16:00:00+00:00",
+  "provenance": {
+    "source": "normalization-layer",
+    "fetched_at": "2024-06-01T16:00:00+00:00",
+    "confidence": "low",
+    "is_sandbox": true,
+    "sample_age_s": null
+  },
+  "snapshot_id": "fixture-partial-001",
+  "is_partial": true,
+  "missing_sources": ["dcgm-exporter", "watttime"],
+  "config_hash": null,
+  "regions": {
+    "us-east": {
+      "region": "us-east",
+      "timestamp": "2024-06-01T16:00:00+00:00",
+      "provenance": {
+        "source": "kubernetes",
+        "fetched_at": "2024-06-01T16:00:00+00:00",
+        "confidence": "medium",
+        "is_sandbox": true,
+        "sample_age_s": null
+      },
+      "spare_capacity_pct": null,
+      "energy": null,
+      "thermal": null,
+      "topology": null,
+      "nodes": {},
+      "services": {}
+    }
+  }
+}
