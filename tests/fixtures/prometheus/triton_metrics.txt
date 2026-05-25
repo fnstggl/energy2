@@ -1,0 +1,24 @@
+# HELP nv_inference_request_success Number of successful inference requests
+# TYPE nv_inference_request_success counter
+nv_inference_request_success{model="llama2_7b",version="1"} 45231
+# HELP nv_inference_request_failure Number of failed inference requests
+# TYPE nv_inference_request_failure counter
+nv_inference_request_failure{model="llama2_7b",version="1"} 12
+# HELP nv_inference_pending_request_count Pending request count
+# TYPE nv_inference_pending_request_count gauge
+nv_inference_pending_request_count{model="llama2_7b",version="1"} 5
+# HELP nv_inference_request_duration_us Inference request duration in microseconds
+# TYPE nv_inference_request_duration_us histogram
+nv_inference_request_duration_us_bucket{model="llama2_7b",version="1",le="1000"} 100
+nv_inference_request_duration_us_bucket{model="llama2_7b",version="1",le="5000"} 400
+nv_inference_request_duration_us_bucket{model="llama2_7b",version="1",le="10000"} 800
+nv_inference_request_duration_us_bucket{model="llama2_7b",version="1",le="+Inf"} 1000
+nv_inference_request_duration_us_sum{model="llama2_7b",version="1"} 6500000
+nv_inference_request_duration_us_count{model="llama2_7b",version="1"} 1000
+# HELP nv_inference_queue_duration_us Queue duration in microseconds
+# TYPE nv_inference_queue_duration_us histogram
+nv_inference_queue_duration_us_bucket{model="llama2_7b",version="1",le="100"} 200
+nv_inference_queue_duration_us_bucket{model="llama2_7b",version="1",le="500"} 700
+nv_inference_queue_duration_us_bucket{model="llama2_7b",version="1",le="+Inf"} 1000
+nv_inference_queue_duration_us_sum{model="llama2_7b",version="1"} 250000
+nv_inference_queue_duration_us_count{model="llama2_7b",version="1"} 1000

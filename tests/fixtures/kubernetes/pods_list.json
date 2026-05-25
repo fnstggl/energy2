@@ -1,0 +1,100 @@
+{
+  "apiVersion": "v1",
+  "kind": "PodList",
+  "items": [
+    {
+      "metadata": {
+        "name": "llm-server-abc-1",
+        "namespace": "prod",
+        "labels": {
+          "app": "llm-server",
+          "aurelius.io/priority": "3",
+          "aurelius.io/latency-sensitive": "true"
+        },
+        "annotations": {
+          "aurelius.io/sla-policy": "critical-inference",
+          "aurelius.io/migration-allowed": "false"
+        }
+      },
+      "spec": {
+        "nodeName": "gpu-node-1",
+        "containers": [
+          {
+            "name": "vllm",
+            "resources": {
+              "requests": {
+                "nvidia.com/gpu": "4",
+                "cpu": "16",
+                "memory": "128Gi"
+              },
+              "limits": {
+                "nvidia.com/gpu": "4"
+              }
+            }
+          }
+        ]
+      },
+      "status": {
+        "phase": "Running"
+      }
+    },
+    {
+      "metadata": {
+        "name": "batch-job-xyz-1",
+        "namespace": "batch",
+        "labels": {
+          "app": "batch-trainer",
+          "aurelius.io/priority": "1"
+        },
+        "annotations": {
+          "aurelius.io/workload-type": "batch_training",
+          "aurelius.io/communication-intensity": "high"
+        }
+      },
+      "spec": {
+        "nodeName": "gpu-node-2",
+        "containers": [
+          {
+            "name": "trainer",
+            "resources": {
+              "requests": {
+                "nvidia.com/gpu": "8"
+              },
+              "limits": {
+                "nvidia.com/gpu": "8"
+              }
+            }
+          }
+        ]
+      },
+      "status": {
+        "phase": "Running"
+      }
+    },
+    {
+      "metadata": {
+        "name": "pending-inference-1",
+        "namespace": "prod",
+        "labels": {
+          "app": "llm-server",
+          "aurelius.io/priority": "2"
+        }
+      },
+      "spec": {
+        "containers": [
+          {
+            "name": "vllm",
+            "resources": {
+              "requests": {
+                "nvidia.com/gpu": "2"
+              }
+            }
+          }
+        ]
+      },
+      "status": {
+        "phase": "Pending"
+      }
+    }
+  ]
+}

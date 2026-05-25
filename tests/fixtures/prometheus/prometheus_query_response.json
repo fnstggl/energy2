@@ -1,0 +1,26 @@
+{
+  "status": "success",
+  "data": {
+    "resultType": "vector",
+    "result": [
+      {
+        "metric": {
+          "gpu": "0",
+          "UUID": "GPU-abc123",
+          "node": "node-1",
+          "modelName": "NVIDIA H100 80GB HBM3"
+        },
+        "value": [1705320000, "75.5"]
+      },
+      {
+        "metric": {
+          "gpu": "1",
+          "UUID": "GPU-def456",
+          "node": "node-1",
+          "modelName": "NVIDIA H100 80GB HBM3"
+        },
+        "value": [1705320000, "82.0"]
+      }
+    ]
+  }
+}

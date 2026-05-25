@@ -1,0 +1,27 @@
+# HELP vllm:num_requests_running Number of requests currently running on GPU
+# TYPE vllm:num_requests_running gauge
+vllm:num_requests_running{model_name="meta-llama/Llama-2-7b-chat-hf"} 8
+# HELP vllm:num_requests_waiting Number of requests waiting to be processed
+# TYPE vllm:num_requests_waiting gauge
+vllm:num_requests_waiting{model_name="meta-llama/Llama-2-7b-chat-hf"} 12
+# HELP vllm:gpu_cache_usage_perc GPU KV-cache usage
+# TYPE vllm:gpu_cache_usage_perc gauge
+vllm:gpu_cache_usage_perc{model_name="meta-llama/Llama-2-7b-chat-hf"} 0.68
+# HELP vllm:prefix_cache_hit_rate Prefix cache hit rate
+# TYPE vllm:prefix_cache_hit_rate gauge
+vllm:prefix_cache_hit_rate{model_name="meta-llama/Llama-2-7b-chat-hf"} 0.45
+# HELP vllm:avg_generation_throughput_toks_per_s Average generation throughput
+# TYPE vllm:avg_generation_throughput_toks_per_s gauge
+vllm:avg_generation_throughput_toks_per_s{model_name="meta-llama/Llama-2-7b-chat-hf"} 3200.5
+# HELP vllm:request_success_total Total successful requests
+# TYPE vllm:request_success_total counter
+vllm:request_success_total{model_name="meta-llama/Llama-2-7b-chat-hf",finished_reason="stop"} 15234
+# HELP vllm:e2e_request_latency_seconds Histogram of E2E request latency in seconds
+# TYPE vllm:e2e_request_latency_seconds histogram
+vllm:e2e_request_latency_seconds_bucket{model_name="meta-llama/Llama-2-7b-chat-hf",le="0.1"} 100
+vllm:e2e_request_latency_seconds_bucket{model_name="meta-llama/Llama-2-7b-chat-hf",le="0.5"} 500
+vllm:e2e_request_latency_seconds_bucket{model_name="meta-llama/Llama-2-7b-chat-hf",le="1.0"} 900
+vllm:e2e_request_latency_seconds_bucket{model_name="meta-llama/Llama-2-7b-chat-hf",le="2.0"} 1200
+vllm:e2e_request_latency_seconds_bucket{model_name="meta-llama/Llama-2-7b-chat-hf",le="+Inf"} 1234
+vllm:e2e_request_latency_seconds_sum{model_name="meta-llama/Llama-2-7b-chat-hf"} 1234.5
+vllm:e2e_request_latency_seconds_count{model_name="meta-llama/Llama-2-7b-chat-hf"} 1234

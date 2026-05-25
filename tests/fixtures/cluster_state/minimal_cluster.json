@@ -1,0 +1,95 @@
+{
+  "timestamp": "2025-01-15T12:00:00+00:00",
+  "cluster_id": "test-cluster-1",
+  "regions": {
+    "us-east-1": {
+      "region_id": "us-east-1",
+      "energy_price_per_mwh": 45.2,
+      "day_ahead_price_per_mwh": 43.0,
+      "real_time_price_per_mwh": 45.2,
+      "carbon_intensity_gco2_per_kwh": 320.0,
+      "renewable_fraction_pct": 22.5,
+      "available_capacity_gpu": 64,
+      "total_capacity_gpu": 128
+    }
+  },
+  "nodes": {
+    "node-1": {
+      "node_id": "node-1",
+      "region_id": "us-east-1",
+      "zone": "us-east-1a",
+      "rack_id": "rack-01",
+      "instance_type": "p4d.24xlarge",
+      "gpu_count": 8,
+      "labels": {
+        "topology.kubernetes.io/region": "us-east-1",
+        "topology.kubernetes.io/zone": "us-east-1a"
+      },
+      "taints": [],
+      "ready": true,
+      "unschedulable": false,
+      "allocatable_gpu": 8
+    }
+  },
+  "gpus": {
+    "GPU-abc123": {
+      "gpu_id": "GPU-abc123",
+      "uuid": "GPU-abc123",
+      "node_id": "node-1",
+      "model": "NVIDIA H100",
+      "index": 0,
+      "utilization_pct": 75.5,
+      "sm_activity_pct": 72.0,
+      "memory_used_bytes": 42949672960,
+      "memory_total_bytes": 85899345920,
+      "power_watts": 380.0,
+      "temperature_c": 72.0,
+      "thermal_throttle_active": false,
+      "xid_error_count": 0,
+      "assigned_workload_ids": ["default/llm-server-abc"]
+    }
+  },
+  "services": {
+    "llm-server": {
+      "service_id": "llm-server",
+      "runtime": "vllm",
+      "requests_per_second": 42.5,
+      "tokens_per_second": 3200.0,
+      "ttft_p50_ms": 85.0,
+      "ttft_p95_ms": 180.0,
+      "ttft_p99_ms": 320.0,
+      "latency_p50_ms": 1200.0,
+      "latency_p95_ms": 2800.0,
+      "latency_p99_ms": 4500.0,
+      "queue_depth": 12,
+      "active_sequences": 8,
+      "kv_cache_usage_pct": 68.0,
+      "prefix_cache_hit_rate_pct": 45.0
+    }
+  },
+  "workloads": {
+    "default/llm-server-abc": {
+      "workload_id": "default/llm-server-abc",
+      "service_id": "llm-server",
+      "workload_type": "inference",
+      "priority_tier": 2,
+      "current_region": "us-east-1",
+      "current_node_ids": ["node-1"],
+      "current_gpu_ids": ["GPU-abc123"],
+      "gpu_count_required": 1,
+      "migration_allowed": false,
+      "latency_sensitive": true
+    }
+  },
+  "queues": {
+    "q-llm-server": {
+      "queue_id": "q-llm-server",
+      "service_id": "llm-server",
+      "pending_jobs": 12,
+      "queue_depth": 12,
+      "p95_wait_ms": 450.0,
+      "arrival_rate_per_sec": 45.0,
+      "service_rate_per_sec": 42.5
+    }
+  }
+}

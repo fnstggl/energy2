@@ -1,0 +1,75 @@
+"""Aurelius normalized cluster state layer.
+
+This package provides the canonical internal state models that all
+connectors (Prometheus, Kubernetes, topology, simulator) feed into.
+"""
+
+from .models import (
+    ClusterState,
+    CommunicationIntensity,
+    ConstraintAssessment,
+    ConstraintType,
+    EnergyState,
+    GPUState,
+    ImplementationMode,
+    InferenceServiceState,
+    LinkType,
+    MemoryIntensity,
+    MigrationEvent,
+    MigrationHistory,
+    NodeState,
+    Provenance,
+    QueueState,
+    Recommendation,
+    RegionState,
+    RuntimeType,
+    ThermalState,
+    TopologyLink,
+    TopologyNode,
+    TopologyState,
+    WorkloadState,
+    WorkloadType,
+)
+from .normalize import (
+    ensure_utc,
+    normalize_gpu_state,
+    normalize_inference_service,
+    normalize_queue_state,
+    validate_non_negative,
+    validate_percentage,
+)
+from .store import ClusterStateStore
+
+__all__ = [
+    "Provenance",
+    "ClusterState",
+    "RegionState",
+    "NodeState",
+    "GPUState",
+    "InferenceServiceState",
+    "WorkloadState",
+    "QueueState",
+    "TopologyNode",
+    "TopologyLink",
+    "TopologyState",
+    "EnergyState",
+    "ThermalState",
+    "MigrationEvent",
+    "MigrationHistory",
+    "ConstraintAssessment",
+    "Recommendation",
+    "LinkType",
+    "RuntimeType",
+    "WorkloadType",
+    "CommunicationIntensity",
+    "MemoryIntensity",
+    "ConstraintType",
+    "ImplementationMode",
+    "ClusterStateStore",
+    "normalize_gpu_state",
+    "normalize_inference_service",
+    "normalize_queue_state",
+    "validate_percentage",
+    "validate_non_negative",
+    "ensure_utc",
+]
