@@ -156,8 +156,8 @@ Forbidden:
 | 1 | Normalized state model | COMPLETE | `aurelius/state/`, 154 tests passing | See Phase 1 details below |
 | 2 | Prometheus-native connector | COMPLETE | `aurelius/connectors/`, 282 tests passing | See Phase 2+3 details below |
 | 3 | DCGM/vLLM/Triton/Ray adapters | COMPLETE | `aurelius/connectors/dcgm.py` etc., 282 tests passing | See Phase 2+3 details below |
-| 4 | Kubernetes connector | NOT_STARTED | None yet | Depends on Phase 1/2 |
-| 5 | Topology collector | NOT_STARTED | None yet | Depends on Phase 1 |
+| 4 | Kubernetes connector | COMPLETE | `aurelius/connectors/kubernetes.py`, 47 tests passing | See Phase 4+5 details below |
+| 5 | Topology collector | COMPLETE | `aurelius/connectors/topology.py`, 62 tests passing | See Phase 4+5 details below |
 | 6 | Synthetic cluster simulator | NOT_STARTED | None yet | Depends on state/connectors |
 | 7 | Constraint classifier | NOT_STARTED | None yet | Depends on Phase 1 and simulator fixtures |
 | 8 | Cost/risk/migration model | NOT_STARTED | None yet | Depends on classifier + SLA/state models |
@@ -503,4 +503,122 @@ ruff: All checks passed
 * No Kubernetes connector yet (Phase 4)
 * No topology collector yet (Phase 5)
 
-Next milestone: **Phase 4 — Kubernetes connector**
+Next milestone: ~~Phase 4 — Kubernetes connector~~ **COMPLETE** → **Phase 6 — Synthetic Cluster Simulator**
+
+---
+
+## Phase 4+5 Completion Evidence
+
+### Phase 4+5 Milestone Decision
+
+- **What this run implemented:** Phase 4 (Kubernetes connector) and Phase 5 (Topology collector) together, since both produce supplementary NodeState data that the same test suite can cover
+- **Why it was the correct next step:** Phase 1-3 verified (391 tests passing), no prior K8s or topology implementation existed, these are required foundations for Phase 6 (simulator needs fake K8s + fake topology endpoints)
+- **Prior dependencies verified:** Phase 1-3 tests all pass (282 tests, 10 intentional skips for missing optional deps)
+- **What was explicitly NOT attempted:** Synthetic simulator (Phase 6), constraint classifier (Phase 7), cost model (Phase 8), recommendation engine (Phase 9)
+
+### Files Changed
+
+| File | Role |
+|---|---|
+| `aurelius/connectors/kubernetes.py` | K8s read-only connector: `KubernetesConnector`, `FakeKubernetesConnector`, `K8sPlacementSnapshot`, `PodPlacement`, normalization helpers |
+| `aurelius/connectors/topology.py` | Topology collector: `parse_nvidia_smi_topo`, `parse_nvidia_smi_list`, `build_topology_state`, `NvidiaSmiTopologyCollector`, `FakeTopologyCollector`, `PlacementScorer`, `score_placement`, `rank_placements` |
+| `aurelius/connectors/__init__.py` | Added Phase 4+5 exports |
+| `tests/test_kubernetes_connector.py` | 47 tests for K8s connector |
+| `tests/test_topology_connector.py` | 62 tests for topology collector |
+| `tests/fixtures/kubernetes/node_list.json` | Fixture: 4 nodes (2 GPU, 1 CPU, 1 unschedulable) |
+| `tests/fixtures/kubernetes/pod_list.json` | Fixture: 7 pods (running, pending, succeeded, CPU-only) |
+| `tests/fixtures/topology/dgx_h100_8gpu_nvswitch.txt` | nvidia-smi topo -m fixture: DGX H100 NVSwitch (NV18) |
+| `tests/fixtures/topology/dgx_h100_inventory.txt` | nvidia-smi -L fixture: DGX H100 8 GPUs |
+| `tests/fixtures/topology/pcie_8gpu_dual_numa.txt` | nvidia-smi topo -m fixture: PCIe 8-GPU dual NUMA |
+| `tests/fixtures/topology/pcie_8gpu_inventory.txt` | nvidia-smi -L fixture: PCIe A100 8 GPUs |
+| `configs/connectors/kubernetes_rbac.yaml` | Minimal read-only RBAC for enterprise K8s deployments |
+
+### Plan vs Repo Reality
+
+**Plan said:**
+- Ingest Nodes, Pods, GPU resource requests/limits, labels/taints/topology labels
+- Normalize into NodeState, WorkloadState, PlacementState, QueueState where possible
+- Sandbox: fake K8s API responses; no live cluster required
+- Topology: parse nvidia-smi topo -m, nvidia-smi -L, placement scoring
+
+**Repo reality required:**
+- `WorkloadState` extension deferred to Phase 9 (same decision as Phase 1 — avoids breaking SLA evaluator)
+- `PlacementState` as a separate model is not yet needed: `K8sPlacementSnapshot.pods` contains all placement data needed by the simulator. A formal PlacementState can be added when Phase 7 (classifier) requires it.
+- `QueueState` from pending pods: pending pod count and GPU demand available from `K8sPlacementSnapshot.pending_gpu_pods`. Formal QueueState normalization deferred to Phase 6/7.
+- Topology: implemented `nvidia-smi topo -m` parser only (not NVML — optional dep); NV18 (H100 SXM NVSwitch) correctly maps to NVSWITCH
+- Kubernetes topology merge (zone/rack labels into NodeState): implemented directly in `normalize_node_dict` via configurable label keys
+
+### Tests Added
+
+| Test File | Tests | What It Proves |
+|---|---|---|
+| `tests/test_kubernetes_connector.py` | 47 | GPU qty parsing, topology label extraction, node normalization, pod normalization, GPU-allocated-per-node derivation, pending pod detection, taint normalization, FakeKubernetesConnector fixture mode, no-write-methods guarantee, partial snapshot behavior |
+| `tests/test_topology_connector.py` | 62 | _parse_link_token (NV18→NVSWITCH, all types), parse_nvidia_smi_topo (DGX H100 NVSwitch, PCIe dual-NUMA), NUMA affinity extraction, parse_nvidia_smi_list, build_topology_state (UUID translation, fallback to logical ID), _derive_interconnect_class, score_placement (NVSwitch > PCIe, same-NUMA > cross-NUMA, comm penalty, latency multiplier, conservative score when topology unavailable), rank_placements ordering, FakeTopologyCollector (text fixture, pre-built state), NvidiaSmiTopologyCollector graceful failure |
+
+### Commands Run
+
+```
+ruff check aurelius/connectors/kubernetes.py aurelius/connectors/topology.py aurelius/connectors/__init__.py --select=E,F,W
+python -m compileall aurelius/connectors/kubernetes.py aurelius/connectors/topology.py
+/root/.local/bin/pytest tests/test_kubernetes_connector.py tests/test_topology_connector.py -q
+/root/.local/bin/pytest tests/test_state_models.py tests/test_state_store.py tests/test_state_normalize.py tests/test_prometheus_connector.py tests/test_dcgm_adapter.py tests/test_vllm_triton_ray_adapters.py tests/test_kubernetes_connector.py tests/test_topology_connector.py -q
+```
+
+### Test Results
+
+```
+tests/test_kubernetes_connector.py: 47 passed
+tests/test_topology_connector.py: 62 passed
+Phase 1-5 full suite: 391 passed, 10 skipped, 0 failed
+
+ruff: All checks passed
+python -m compileall: No errors
+```
+
+### Pre-Existing Failures (Not Caused by This Run)
+
+6 failures in `test_sla_engine.py` and `test_sla_optimization.py` require `pyyaml` which is not installed in the pytest environment (this is a pre-existing env gap, not caused by Phase 4+5 changes). These tests are tracked as TESTED_WITH_ENV_GAPS.
+
+### Wiring Evidence
+
+Phase 4+5 are additive. The K8s connector and topology collector produce data structures that feed:
+- Phase 6 (simulator) via `FakeKubernetesConnector` + `FakeTopologyCollector` — **same code paths as real connectors**
+- Phase 7 (classifier) which consumes `NodeState`, `TopologyState`, pending pod signals
+- Phase 9 (recommendation engine) for topology-aware placement recommendations
+
+### Failure Mode Review
+
+**Kubernetes connector:**
+- `kubernetes` package not installed → `is_partial=True`, `missing_sources=["kubernetes-client-init"]`, never raises
+- List nodes fails → nodes dict empty, partial flag set
+- List pods fails → pods list empty, partial flag set
+- Malformed node/pod dict → returns None, node added to `missing_sources`, parse continues
+- GPU quantity string non-integer → `None` (not 0)
+- Node not in allocated_per_node map → `gpu_allocated=None` (not 0)
+
+**Topology collector:**
+- `nvidia-smi` not found → returns `None`, caller degrades gracefully
+- `nvidia-smi` timeout → returns `None`
+- No GPU pairs found in topo output → returns `None`
+- No UUID map → logical IDs (GPU0, GPU1) used as-is in `pair_levels` keys
+- GPU UUIDs not in `TopologyState.pair_levels` → `score_placement` returns 0.5 (conservative, not 0)
+- `topology=None` → `score_placement` returns 0.5
+
+### Open Limitations
+
+* Real K8s connector requires `kubernetes` package (not in pytest env; gated by `_K8S_AVAILABLE`)
+* Topology collector requires node-local nvidia-smi access; cloud-only deployments → topology=None
+* NVML-based topology (preferred over text parsing) is a future enhancement — interface exists
+* Formal `PlacementState` model deferred to Phase 7
+* `QueueState` from K8s pending pods deferred to Phase 7
+
+### Next Milestone
+
+**Phase 6 — Synthetic Cluster Simulator**
+
+The simulator must:
+1. Expose fake Prometheus, fake K8s API, and fake topology fixture endpoints
+2. Use the same connector interfaces (FakePrometheusClient, FakeKubernetesConnector, FakeTopologyCollector) as real deployments
+3. Simulate GPU utilization, thermal, queue, and latency dynamics
+4. Provide baseline comparisons (FIFO, current_price_only, greedy energy, SLA-aware)
+5. Produce ClusterState snapshots via the same normalization paths

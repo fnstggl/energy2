@@ -1,0 +1,90 @@
+---
+# Aurelius Kubernetes Read-Only RBAC
+#
+# Purpose: Minimal permissions for Aurelius Phase 4 Kubernetes connector.
+# Aurelius reads cluster state for orchestration recommendations only.
+# No mutations are performed.
+#
+# Install:
+#   kubectl apply -f kubernetes_rbac.yaml
+#
+# What Aurelius collects:
+#   - Node metadata: name, labels, taints, capacity/allocatable, conditions
+#   - Pod metadata: name, namespace, labels, owner references, phase
+#   - GPU resource requests from pod container resource limits
+#
+# What Aurelius does NOT collect:
+#   - Pod logs or environment variables
+#   - Secrets or ConfigMaps
+#   - Service accounts or RBAC resources
+#   - Any data that requires cluster-admin or elevated access
+#
+# What Aurelius does NOT do:
+#   - Create, modify, or delete any Kubernetes resources
+#   - Cordon, drain, or taint nodes
+#   - Trigger autoscaling
+#   - Write to any Kubernetes API
+
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: aurelius-reader
+  namespace: aurelius
+  labels:
+    app.kubernetes.io/name: aurelius
+    app.kubernetes.io/component: telemetry-connector
+
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: aurelius-cluster-reader
+  labels:
+    app.kubernetes.io/name: aurelius
+    app.kubernetes.io/component: telemetry-connector
+rules:
+  # Nodes: read GPU capacity, allocatable, labels, taints, conditions
+  - apiGroups: [""]
+    resources: ["nodes", "nodes/status"]
+    verbs: ["get", "list", "watch"]
+
+  # Pods: read placement, GPU requests, phase, namespace
+  - apiGroups: [""]
+    resources: ["pods"]
+    verbs: ["get", "list", "watch"]
+
+  # Optional: metrics-server for CPU/memory node metrics
+  # Note: GPU metrics come from DCGM, not metrics-server
+  # - apiGroups: ["metrics.k8s.io"]
+  #   resources: ["nodes", "pods"]
+  #   verbs: ["get", "list"]
+
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: aurelius-cluster-reader-binding
+  labels:
+    app.kubernetes.io/name: aurelius
+    app.kubernetes.io/component: telemetry-connector
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: aurelius-cluster-reader
+subjects:
+  - kind: ServiceAccount
+    name: aurelius-reader
+    namespace: aurelius
+
+---
+# Optional: Namespace-scoped Role if you want to restrict Aurelius to
+# specific namespaces only (use instead of ClusterRole above).
+# apiVersion: rbac.authorization.k8s.io/v1
+# kind: Role
+# metadata:
+#   name: aurelius-namespace-reader
+#   namespace: <target-namespace>
+# rules:
+#   - apiGroups: [""]
+#     resources: ["pods"]
+#     verbs: ["get", "list", "watch"]

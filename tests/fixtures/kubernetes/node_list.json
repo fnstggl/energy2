@@ -1,0 +1,143 @@
+[
+  {
+    "metadata": {
+      "name": "gpu-node-01",
+      "labels": {
+        "topology.kubernetes.io/region": "us-east-1",
+        "topology.kubernetes.io/zone": "us-east-1a",
+        "topology.aurelius.io/rack": "rack-A1",
+        "node.kubernetes.io/instance-type": "p4d.24xlarge",
+        "nvidia.com/gpu.product": "A100-SXM4-40GB",
+        "nvidia.com/gpu.count": "8",
+        "kubernetes.io/hostname": "gpu-node-01"
+      },
+      "ownerReferences": []
+    },
+    "spec": {
+      "unschedulable": false,
+      "taints": []
+    },
+    "status": {
+      "capacity": {
+        "cpu": "96",
+        "memory": "1143808Mi",
+        "nvidia.com/gpu": "8",
+        "pods": "250"
+      },
+      "allocatable": {
+        "cpu": "95",
+        "memory": "1132160Mi",
+        "nvidia.com/gpu": "8",
+        "pods": "250"
+      },
+      "conditions": [
+        {"type": "Ready", "status": "True"},
+        {"type": "MemoryPressure", "status": "False"}
+      ]
+    }
+  },
+  {
+    "metadata": {
+      "name": "gpu-node-02",
+      "labels": {
+        "topology.kubernetes.io/region": "us-east-1",
+        "topology.kubernetes.io/zone": "us-east-1b",
+        "topology.aurelius.io/rack": "rack-B1",
+        "node.kubernetes.io/instance-type": "p4d.24xlarge",
+        "nvidia.com/gpu.product": "A100-SXM4-40GB",
+        "nvidia.com/gpu.count": "8",
+        "kubernetes.io/hostname": "gpu-node-02"
+      },
+      "ownerReferences": []
+    },
+    "spec": {
+      "unschedulable": false,
+      "taints": [
+        {"key": "gpu-only", "value": "true", "effect": "NoSchedule"}
+      ]
+    },
+    "status": {
+      "capacity": {
+        "cpu": "96",
+        "memory": "1143808Mi",
+        "nvidia.com/gpu": "8",
+        "pods": "250"
+      },
+      "allocatable": {
+        "cpu": "95",
+        "memory": "1132160Mi",
+        "nvidia.com/gpu": "8",
+        "pods": "250"
+      },
+      "conditions": [
+        {"type": "Ready", "status": "True"}
+      ]
+    }
+  },
+  {
+    "metadata": {
+      "name": "cpu-node-01",
+      "labels": {
+        "topology.kubernetes.io/region": "us-east-1",
+        "topology.kubernetes.io/zone": "us-east-1a",
+        "node.kubernetes.io/instance-type": "m5.4xlarge",
+        "kubernetes.io/hostname": "cpu-node-01"
+      },
+      "ownerReferences": []
+    },
+    "spec": {
+      "unschedulable": false,
+      "taints": []
+    },
+    "status": {
+      "capacity": {
+        "cpu": "16",
+        "memory": "65536Mi",
+        "pods": "110"
+      },
+      "allocatable": {
+        "cpu": "15",
+        "memory": "64000Mi",
+        "pods": "110"
+      },
+      "conditions": [
+        {"type": "Ready", "status": "True"}
+      ]
+    }
+  },
+  {
+    "metadata": {
+      "name": "unschedulable-node-01",
+      "labels": {
+        "topology.kubernetes.io/region": "us-east-1",
+        "topology.kubernetes.io/zone": "us-east-1c",
+        "nvidia.com/gpu.product": "A100-SXM4-40GB",
+        "kubernetes.io/hostname": "unschedulable-node-01"
+      },
+      "ownerReferences": []
+    },
+    "spec": {
+      "unschedulable": true,
+      "taints": [
+        {"key": "node.kubernetes.io/unschedulable", "value": null, "effect": "NoSchedule"}
+      ]
+    },
+    "status": {
+      "capacity": {
+        "cpu": "96",
+        "memory": "1143808Mi",
+        "nvidia.com/gpu": "8",
+        "pods": "250"
+      },
+      "allocatable": {
+        "cpu": "95",
+        "memory": "1132160Mi",
+        "nvidia.com/gpu": "8",
+        "pods": "250"
+      },
+      "conditions": [
+        {"type": "Ready", "status": "False"}
+      ]
+    }
+  }
+]

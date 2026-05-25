@@ -1,0 +1,223 @@
+[
+  {
+    "metadata": {
+      "name": "llm-inference-7b-0",
+      "namespace": "inference",
+      "labels": {
+        "app": "llm-inference",
+        "model": "llama-7b",
+        "priority": "critical"
+      },
+      "ownerReferences": [
+        {"kind": "StatefulSet", "name": "llm-inference-7b"}
+      ]
+    },
+    "spec": {
+      "nodeName": "gpu-node-01",
+      "containers": [
+        {
+          "name": "vllm",
+          "resources": {
+            "limits": {
+              "nvidia.com/gpu": "4",
+              "cpu": "32",
+              "memory": "256Gi"
+            }
+          }
+        }
+      ]
+    },
+    "status": {
+      "phase": "Running",
+      "startTime": "2026-05-25T08:00:00+00:00"
+    }
+  },
+  {
+    "metadata": {
+      "name": "batch-embedding-job-0",
+      "namespace": "batch",
+      "labels": {
+        "app": "embedding-batch",
+        "priority": "batch"
+      },
+      "ownerReferences": [
+        {"kind": "Job", "name": "batch-embedding-job"}
+      ]
+    },
+    "spec": {
+      "nodeName": "gpu-node-01",
+      "containers": [
+        {
+          "name": "embedder",
+          "resources": {
+            "limits": {
+              "nvidia.com/gpu": "2",
+              "cpu": "8",
+              "memory": "64Gi"
+            }
+          }
+        }
+      ]
+    },
+    "status": {
+      "phase": "Running",
+      "startTime": "2026-05-25T10:30:00+00:00"
+    }
+  },
+  {
+    "metadata": {
+      "name": "training-job-0",
+      "namespace": "training",
+      "labels": {
+        "app": "distributed-training",
+        "priority": "standard"
+      },
+      "ownerReferences": [
+        {"kind": "Job", "name": "training-job"}
+      ]
+    },
+    "spec": {
+      "nodeName": "gpu-node-02",
+      "containers": [
+        {
+          "name": "trainer",
+          "resources": {
+            "limits": {
+              "nvidia.com/gpu": "8",
+              "cpu": "64",
+              "memory": "512Gi"
+            }
+          }
+        }
+      ]
+    },
+    "status": {
+      "phase": "Running",
+      "startTime": "2026-05-25T06:00:00+00:00"
+    }
+  },
+  {
+    "metadata": {
+      "name": "pending-inference-pod-0",
+      "namespace": "inference",
+      "labels": {
+        "app": "llm-inference",
+        "model": "llama-70b",
+        "priority": "critical"
+      },
+      "ownerReferences": [
+        {"kind": "Deployment", "name": "llm-inference-70b"}
+      ]
+    },
+    "spec": {
+      "nodeName": null,
+      "containers": [
+        {
+          "name": "vllm-70b",
+          "resources": {
+            "limits": {
+              "nvidia.com/gpu": "8",
+              "cpu": "64",
+              "memory": "512Gi"
+            }
+          }
+        }
+      ]
+    },
+    "status": {
+      "phase": "Pending",
+      "startTime": null
+    }
+  },
+  {
+    "metadata": {
+      "name": "pending-batch-pod-0",
+      "namespace": "batch",
+      "labels": {
+        "app": "batch-job",
+        "priority": "batch"
+      },
+      "ownerReferences": [
+        {"kind": "Job", "name": "batch-finetuning"}
+      ]
+    },
+    "spec": {
+      "nodeName": null,
+      "containers": [
+        {
+          "name": "finetuner",
+          "resources": {
+            "limits": {
+              "nvidia.com/gpu": "4",
+              "cpu": "32",
+              "memory": "256Gi"
+            }
+          }
+        }
+      ]
+    },
+    "status": {
+      "phase": "Pending",
+      "startTime": null
+    }
+  },
+  {
+    "metadata": {
+      "name": "cpu-only-pod-0",
+      "namespace": "default",
+      "labels": {
+        "app": "api-server"
+      },
+      "ownerReferences": [
+        {"kind": "Deployment", "name": "api-server"}
+      ]
+    },
+    "spec": {
+      "nodeName": "cpu-node-01",
+      "containers": [
+        {
+          "name": "api",
+          "resources": {
+            "limits": {
+              "cpu": "4",
+              "memory": "8Gi"
+            }
+          }
+        }
+      ]
+    },
+    "status": {
+      "phase": "Running",
+      "startTime": "2026-05-25T00:00:00+00:00"
+    }
+  },
+  {
+    "metadata": {
+      "name": "completed-job-pod-0",
+      "namespace": "batch",
+      "labels": {
+        "app": "completed-batch"
+      },
+      "ownerReferences": [
+        {"kind": "Job", "name": "completed-batch"}
+      ]
+    },
+    "spec": {
+      "nodeName": "gpu-node-01",
+      "containers": [
+        {
+          "name": "worker",
+          "resources": {
+            "limits": {
+              "nvidia.com/gpu": "2"
+            }
+          }
+        }
+      ]
+    },
+    "status": {
+      "phase": "Succeeded",
+      "startTime": "2026-05-24T20:00:00+00:00"
+    }
+  }
+]
