@@ -18,10 +18,9 @@ from pathlib import Path
 import pandas as pd
 import pytest
 
-# Add repo root and aurelius to path
+# Add repo root to path (aurelius is importable as aurelius.* from here)
 _REPO_ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(_REPO_ROOT))
-sys.path.insert(0, str(_REPO_ROOT / "aurelius"))
 
 from benchmarks.compare_against_previous import (
     compare,

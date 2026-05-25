@@ -1568,3 +1568,74 @@ The system is operationally complete for enterprise pilot readiness. No mandator
 If a next run is initiated, the highest-value optional improvement is:
 
 **PlacementScorer integration into the engine** — replace the `0.7/0.3` heuristic target/source topology scores in `engine.py` with real `PlacementScorer.score_placement()` calls. This would make topology-based recommendation decisions quantitatively correct rather than just directionally correct.
+
+---
+
+## Full-Suite Verification Audit (Routine Run 2026-05-25 — Second Pass)
+
+### Audit Goal
+
+Independent re-verification of the complete test suite, including the legacy energy-arbitrage benchmark harness (`tests/test_benchmark_harness.py`) that was not collected in prior runs due to an import path bug.
+
+### Bug Found and Fixed
+
+#### Bug 6: `test_benchmark_harness.py` sys.path collision with `aurelius/benchmarks/`
+
+**Root cause:** `tests/test_benchmark_harness.py` called:
+```python
+sys.path.insert(0, str(_REPO_ROOT))
+sys.path.insert(0, str(_REPO_ROOT / "aurelius"))
+```
+The second `insert(0, ...)` placed `aurelius/` before `_REPO_ROOT` in sys.path. When the test then did `from benchmarks.compare_against_previous import ...`, Python found `aurelius/benchmarks/` first (not `benchmarks/` at the repo root). `aurelius/benchmarks/__init__.py` uses `from ..constraints.engine import ...` which fails with "attempted relative import beyond top-level package" because the package is treated as top-level `benchmarks`, not as `aurelius.benchmarks`.
+
+**Impact:** All 44 tests in `test_benchmark_harness.py` failed at collection — they were never running, even in prior "passing" CI runs.
+
+**Fix:** Removed the `sys.path.insert(0, str(_REPO_ROOT / "aurelius"))` line. The `_REPO_ROOT` entry is sufficient — `aurelius.*` imports work through it, and `benchmarks.*` correctly finds `_REPO_ROOT/benchmarks/`.
+
+### Test Results (Post-Fix)
+
+```
+Full suite (non-live):   2194 passed, 8 skipped, 0 failed
+Constraint-aware phases: 838 passed, 0 skipped (pyyaml now available), 0 failed
+optimizer-regression-check: PASS (all 6 scenarios, 1 documented queue/latency mismatch)
+validate-connectors: 10/10 PASSED
+CLI smoke tests: constraint-report, simulate-constraint-scenario, self-metrics all pass
+ruff: no new violations
+```
+
+**Previous reported count (825 constraint-aware):** The 13 previously-skipped tests were pyyaml-dependent. With pyyaml now installed in the test environment, they pass — these were TESTED_WITH_ENV_GAPS items that are now COMPLETE.
+
+### Files Changed This Run
+
+| File | Change |
+|---|---|
+| `tests/test_benchmark_harness.py` | Removed stale `sys.path.insert(0, str(_REPO_ROOT / "aurelius"))` that caused benchmarks package collision |
+| `docs/COMPUTE_OPTIMIZATION_PROGRESS.md` | Added this audit section |
+
+### Independent Completeness Audit (updated)
+
+| Phase | Claimed Status | Repo-Reality After This Audit | Evidence | Gaps | Final Status |
+|---|---|---|---|---|---|
+| 0 | COMPLETE | COMPLETE | Plan doc exists | None | COMPLETE |
+| 1 | COMPLETE | COMPLETE | 154 model/store/normalize tests | None | COMPLETE |
+| 2 | COMPLETE | COMPLETE | Prometheus connector, 56 passed (10 now pass with requests) | None | COMPLETE |
+| 3 | COMPLETE | COMPLETE | DCGM/vLLM/Triton/Ray adapters | Triton/Ray p99 = None by design | COMPLETE |
+| 4 | COMPLETE | COMPLETE | K8s connector, 47 tests | kubernetes pkg in prod env | COMPLETE |
+| 5 | COMPLETE | COMPLETE | Topology collector, 62 tests | nvidia-smi not in CI | COMPLETE |
+| 6 | COMPLETE | COMPLETE | Simulator + fakes, 93 tests | Thermal EMA proxy | COMPLETE |
+| 7 | COMPLETE | COMPLETE | Classifier, 74 tests, 5/6 scenarios match | Thresholds heuristic | COMPLETE |
+| 8 | COMPLETE | COMPLETE | Cost model, 47 tests, state-conditioned | Governor in-memory | COMPLETE |
+| 9 | COMPLETE | COMPLETE | Engine, 53 tests, SLA+cost gates | BacktestEngine not wired (intentional) | COMPLETE |
+| 10 | COMPLETE | COMPLETE | 5 CLI commands, 58 tests | None | COMPLETE |
+| 11 | COMPLETE | COMPLETE | Benchmark framework, 58 tests, regression detection | Scenarios synthetic | COMPLETE |
+| 12 | COMPLETE | COMPLETE | Observability, 51 tests, CLI self-metrics | Observer caller-driven | COMPLETE |
+
+### System Status
+
+**Operationally complete for enterprise pilot readiness.** No mandatory implementation work remains.
+
+The only remaining optional improvements are:
+1. PlacementScorer integration into engine (replace 0.7/0.3 heuristic scores)
+2. MigrationGovernor Postgres persistence (in-memory sufficient for single-process)
+3. AureliusObserver auto-wired to engine (currently caller-driven)
+4. BacktestEngine wiring to ClusterState (legacy energy path is separate, not a gap)
