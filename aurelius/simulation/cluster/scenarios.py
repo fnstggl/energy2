@@ -106,9 +106,10 @@ def list_scenarios(version: str = "v1") -> list[str]:
 
     if scenario_dir.exists():
         for f in sorted(scenario_dir.glob("*.yaml")):
-            names.append(f.stem)
+            if not f.name.startswith("."):
+                names.append(f.stem)
         for f in sorted(scenario_dir.glob("*.json")):
-            if f.stem not in names:
+            if not f.name.startswith(".") and f.stem not in names:
                 names.append(f.stem)
 
     # Also include built-ins not covered by files

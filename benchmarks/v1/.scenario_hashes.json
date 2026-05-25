@@ -1,0 +1,8 @@
+{
+  "energy_price_arbitrage_multiregion.yaml": "d9012b4bf3200530",
+  "latency_tail_kvcache_pressure.yaml": "288f0b35f6f3c392",
+  "queue_surge_latency_sensitive.yaml": "bdd69fc6e240c9bb",
+  "thermal_hotspot_mixed_cluster.yaml": "afbc3473146db712",
+  "topology_fragmentation_h100.yaml": "2470b30c007ea219",
+  "underutilization_stranded_capacity.yaml": "a7e58599f4a47f28"
+}

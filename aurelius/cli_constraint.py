@@ -1,11 +1,14 @@
-"""CLI command implementations for constraint-aware orchestration (Phase 10).
+"""CLI command implementations for constraint-aware orchestration (Phase 10+11).
 
 Commands:
-  constraint-report         — Run classifier + engine on a scenario or snapshot
-  simulate-constraint-scenario — Run scenario, show baseline vs Aurelius table
-  telemetry-check           — Show which metrics are available/missing
-  topology-report           — Show topology graph summary and bad placements
-  validate-connectors       — Smoke-test all fake (sandbox) connectors
+  constraint-report             — Run classifier + engine on a scenario or snapshot
+  simulate-constraint-scenario  — Run scenario, show baseline vs Aurelius table
+  telemetry-check               — Show which metrics are available/missing
+  topology-report               — Show topology graph summary and bad placements
+  validate-connectors           — Smoke-test all fake (sandbox) connectors
+  benchmark-run                 — Multi-policy benchmark run on a scenario
+  benchmark-compare             — Compare two benchmark JSON files for regressions
+  optimizer-regression-check    — Check optimizer regression across all scenarios
 
 All commands are read-only and run in recommendation_only mode.
 No secrets are included in any report output.
@@ -32,8 +35,8 @@ def cmd_constraint_report(args) -> None:
     from aurelius.constraints import ConstraintAwareEngine
     from aurelius.reporting.constraint_report import (
         format_assessment_text,
-        format_recommendations_text,
         format_engine_result_json,
+        format_recommendations_text,
     )
 
     state = _load_state(args)
@@ -57,9 +60,9 @@ def cmd_constraint_report(args) -> None:
 
 def cmd_simulate_constraint_scenario(args) -> None:
     """Run a named scenario and show baseline vs Aurelius comparison table."""
-    from aurelius.simulation.cluster import ClusterSimulator, load_scenario, list_scenarios
     from aurelius.constraints import ConstraintAwareEngine
     from aurelius.reporting.constraint_report import format_scenario_comparison_table
+    from aurelius.simulation.cluster import ClusterSimulator, list_scenarios, load_scenario
 
     if getattr(args, "list", False):
         names = list_scenarios()
@@ -174,6 +177,188 @@ def cmd_validate_connectors(args) -> None:
 
 
 # ---------------------------------------------------------------------------
+# benchmark-run  (Phase 11)
+# ---------------------------------------------------------------------------
+
+def cmd_benchmark_run(args) -> None:
+    """Run multi-policy constraint-aware benchmark on a scenario and save report."""
+    from aurelius.benchmarks import ConstraintBenchmarkRunner
+    from aurelius.simulation.cluster.scenarios import list_scenarios
+
+    scenario_name = getattr(args, "scenario", None)
+    run_all = getattr(args, "all_scenarios", False)
+    seed = getattr(args, "seed", 42)
+    steps = getattr(args, "steps", 24)
+    output_dir = Path(getattr(args, "output_dir", "benchmarks/results"))
+    output_dir.mkdir(parents=True, exist_ok=True)
+    fmt = getattr(args, "format", "text")
+
+    runner = ConstraintBenchmarkRunner()
+
+    if run_all:
+        scenarios = list_scenarios()
+    elif scenario_name:
+        scenarios = [scenario_name]
+    else:
+        print("ERROR: provide --scenario or --all-scenarios", file=sys.stderr)
+        sys.exit(1)
+
+    all_results = {}
+    any_regression = False
+
+    for sc_name in scenarios:
+        print(f"\nRunning benchmark: {sc_name} (seed={seed}, steps={steps}) [SANDBOX]")
+        try:
+            result = runner.run_scenario(sc_name, seed=seed, steps=steps)
+        except Exception as exc:
+            print(f"  ERROR: {exc}", file=sys.stderr)
+            continue
+
+        all_results[sc_name] = result
+
+        # Print report
+        if fmt == "json":
+            print(json.dumps(result.to_dict(), indent=2))
+        else:
+            print(result.report.to_text())
+
+        # Save JSON
+        ts = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
+        json_path = output_dir / f"constraint_bench_{sc_name}_{ts}.json"
+        json_path.write_text(json.dumps(result.to_dict(), indent=2))
+        print(f"\nSaved: {json_path}")
+
+        if result.report.regression_flags:
+            any_regression = True
+
+    if any_regression:
+        print("\n⚠  Regression flags detected. Check reports above.", file=sys.stderr)
+        sys.exit(1)
+
+
+# ---------------------------------------------------------------------------
+# benchmark-compare  (Phase 11)
+# ---------------------------------------------------------------------------
+
+def cmd_benchmark_compare(args) -> None:
+    """Compare two constraint-aware benchmark JSON files for regressions."""
+    from aurelius.benchmarks import BenchmarkRegressionChecker
+
+    baseline_path = getattr(args, "baseline", None)
+    current_path = getattr(args, "current", None)
+
+    if not baseline_path or not current_path:
+        print("ERROR: --baseline and --current are required", file=sys.stderr)
+        sys.exit(1)
+
+    policy = getattr(args, "policy", "constraint_aware")
+    checker = BenchmarkRegressionChecker()
+
+    try:
+        result = checker.compare_files(baseline_path, current_path, policy=policy)
+    except FileNotFoundError as exc:
+        print(f"ERROR: {exc}", file=sys.stderr)
+        sys.exit(2)
+
+    print(result.to_text())
+
+    if not result.passed:
+        sys.exit(1)
+
+
+# ---------------------------------------------------------------------------
+# optimizer-regression-check  (Phase 11)
+# ---------------------------------------------------------------------------
+
+def cmd_optimizer_regression_check(args) -> None:
+    """Run all scenarios and check for safety/stability regressions.
+
+    Checks:
+      - No SLA violations increased vs FIFO baseline
+      - Migration churn stays bounded
+      - Scorecard weighted_score above minimum threshold
+      - Constraint classifier predicts expected primary constraint
+    """
+    from aurelius.benchmarks import ConstraintBenchmarkRunner
+    from aurelius.simulation.cluster.scenarios import list_scenarios
+
+    seed = getattr(args, "seed", 42)
+    steps = getattr(args, "steps", 24)
+    min_score = getattr(args, "min_score", 0.4)
+
+    runner = ConstraintBenchmarkRunner()
+    scenarios = list_scenarios()
+
+    print(f"Optimizer regression check — {len(scenarios)} scenarios, seed={seed}, steps={steps}")
+    print(f"Minimum scorecard threshold: {min_score}\n[SANDBOX]\n")
+
+    failures: list[str] = []
+    warnings: list[str] = []
+
+    for sc_name in scenarios:
+        try:
+            result = runner.run_scenario(sc_name, seed=seed, steps=steps)
+        except Exception as exc:
+            failures.append(f"{sc_name}: ERROR — {exc}")
+            continue
+
+        report = result.report
+        sc = report.scorecard
+
+        # SLA regression check
+        fifo_kpi = report.aggregated.get("fifo")
+        ca_kpi = report.aggregated.get("constraint_aware")
+        if fifo_kpi and ca_kpi:
+            if ca_kpi.total_sla_violations > fifo_kpi.total_sla_violations:
+                failures.append(
+                    f"{sc_name}: SLA regression — constraint_aware has "
+                    f"{ca_kpi.total_sla_violations} violations vs fifo "
+                    f"{fifo_kpi.total_sla_violations}"
+                )
+
+        # Migration churn check
+        if ca_kpi and ca_kpi.total_migrations > steps * 2:
+            warnings.append(
+                f"{sc_name}: HIGH migration churn ({ca_kpi.total_migrations} > threshold {steps * 2})"
+            )
+
+        # Scorecard threshold
+        if sc.weighted_score < min_score:
+            failures.append(
+                f"{sc_name}: scorecard {sc.weighted_score:.3f} < minimum {min_score}"
+            )
+
+        # Constraint match
+        if not report.constraint_match and report.expected_primary_constraint:
+            warnings.append(
+                f"{sc_name}: constraint mismatch — expected={report.expected_primary_constraint!r} "
+                f"observed={report.observed_dominant_constraint!r}"
+            )
+
+        status = "PASS" if sc_name not in [f.split(":")[0] for f in failures] else "FAIL"
+        print(f"  {status}  {sc_name:<50} score={sc.weighted_score:.3f}  "
+              f"SLA={ca_kpi.total_sla_violations if ca_kpi else 'N/A'}  "
+              f"mig={ca_kpi.total_migrations if ca_kpi else 'N/A'}  "
+              f"constraint={'MATCH' if report.constraint_match else 'MISMATCH'}")
+
+    print()
+    if warnings:
+        print("Warnings:")
+        for w in warnings:
+            print(f"  ⚠  {w}")
+        print()
+
+    if failures:
+        print("Failures:")
+        for f in failures:
+            print(f"  ✗  {f}")
+        print(f"\nResult: FAIL ({len(failures)} failure(s))")
+        sys.exit(1)
+    else:
+        print(f"Result: PASS — all {len(scenarios)} scenarios passed regression check")
+
+
+# ---------------------------------------------------------------------------
 # Shared helpers
 # ---------------------------------------------------------------------------
 
@@ -244,9 +429,12 @@ def _validate_fake_prometheus() -> dict:
 def _validate_dcgm_adapter() -> dict:
     name = "DCGMAdapter (via simulator text)"
     try:
-        from aurelius.simulation.cluster import ClusterSimulator, load_scenario
         from aurelius.connectors.dcgm import DCGMAdapter, dcgm_registry
-        from aurelius.connectors.prometheus import FakePrometheusClient, PrometheusTelemetryConnector
+        from aurelius.connectors.prometheus import (
+            FakePrometheusClient,
+            PrometheusTelemetryConnector,
+        )
+        from aurelius.simulation.cluster import ClusterSimulator, load_scenario
 
         scenario = load_scenario("energy_price_arbitrage_multiregion", seed_override=42)
         sim = ClusterSimulator(scenario.config, seed=42)
@@ -278,9 +466,12 @@ def _validate_dcgm_adapter() -> dict:
 def _validate_vllm_adapter() -> dict:
     name = "VLLMAdapter (via simulator text)"
     try:
-        from aurelius.simulation.cluster import ClusterSimulator, load_scenario
+        from aurelius.connectors.prometheus import (
+            FakePrometheusClient,
+            PrometheusTelemetryConnector,
+        )
         from aurelius.connectors.vllm import VLLMAdapter, vllm_registry
-        from aurelius.connectors.prometheus import FakePrometheusClient, PrometheusTelemetryConnector
+        from aurelius.simulation.cluster import ClusterSimulator, load_scenario
 
         scenario = load_scenario("queue_surge_latency_sensitive", seed_override=42)
         sim = ClusterSimulator(scenario.config, seed=42)
@@ -316,9 +507,12 @@ def _validate_vllm_adapter() -> dict:
 def _validate_triton_adapter() -> dict:
     name = "TritonAdapter (fixture)"
     try:
-        from aurelius.connectors.triton import TritonAdapter
         from aurelius.connectors.metric_mapping import triton_registry
-        from aurelius.connectors.prometheus import FakePrometheusClient, PrometheusTelemetryConnector
+        from aurelius.connectors.prometheus import (
+            FakePrometheusClient,
+            PrometheusTelemetryConnector,
+        )
+        from aurelius.connectors.triton import TritonAdapter
 
         fixture_text = (
             "# HELP nv_inference_request_success Triton successful requests\n"
@@ -347,9 +541,12 @@ def _validate_triton_adapter() -> dict:
 def _validate_ray_serve_adapter() -> dict:
     name = "RayServeAdapter (fixture)"
     try:
-        from aurelius.connectors.ray_serve import RayServeAdapter
         from aurelius.connectors.metric_mapping import ray_serve_registry
-        from aurelius.connectors.prometheus import FakePrometheusClient, PrometheusTelemetryConnector
+        from aurelius.connectors.prometheus import (
+            FakePrometheusClient,
+            PrometheusTelemetryConnector,
+        )
+        from aurelius.connectors.ray_serve import RayServeAdapter
 
         fixture_text = (
             "# HELP ray_serve_num_running_replicas Running replicas\n"
@@ -409,9 +606,9 @@ def _validate_kubernetes_connector() -> dict:
 def _validate_topology_parser() -> dict:
     name = "Topology parser (nvidia-smi topo)"
     try:
-        from aurelius.connectors.topology import parse_nvidia_smi_topo, build_topology_state
-        from aurelius.state.models import Provenance
+        from aurelius.connectors.topology import build_topology_state, parse_nvidia_smi_topo
         from aurelius.simulation.cluster import ClusterSimulator, load_scenario
+        from aurelius.state.models import Provenance
 
         scenario = load_scenario("topology_fragmentation_h100", seed_override=42)
         sim = ClusterSimulator(scenario.config, seed=42)
@@ -482,8 +679,8 @@ def _validate_simulator_state_roundtrip() -> dict:
 def _validate_classifier_on_simulator() -> dict:
     name = "ConstraintClassifier on simulator state"
     try:
-        from aurelius.simulation.cluster import ClusterSimulator, load_scenario
         from aurelius.constraints import ConstraintClassifier
+        from aurelius.simulation.cluster import ClusterSimulator, load_scenario
 
         scenario = load_scenario("energy_price_arbitrage_multiregion", seed_override=42)
         sim = ClusterSimulator(scenario.config, seed=42)
@@ -512,8 +709,8 @@ def _validate_classifier_on_simulator() -> dict:
 def _validate_engine_pipeline() -> dict:
     name = "Full engine pipeline (classifier → cost model → recommendations)"
     try:
-        from aurelius.simulation.cluster import ClusterSimulator, load_scenario
         from aurelius.constraints import ConstraintAwareEngine
+        from aurelius.simulation.cluster import ClusterSimulator, load_scenario
 
         scenario = load_scenario("queue_surge_latency_sensitive", seed_override=42)
         sim = ClusterSimulator(scenario.config, seed=42)

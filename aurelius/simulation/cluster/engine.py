@@ -1209,13 +1209,25 @@ class ClusterSimulator:
     ) -> bool:
         """Simulate workload migration to another region.
 
-        Returns True if migration was successful, False if blocked.
+        This is the benchmark feedback mechanism for optimizer policies.
+        Safety checks prevent invalid migrations:
+        - workload not found → False
+        - migration_allowed=False → False
+        - same region → False (no-op)
+        - unknown region → False
+        - insufficient capacity in target → False
+
+        Returns True if migration was applied, False if blocked.
         """
         cluster = self._cluster
         workload = cluster.workloads.get(workload_id)
         if workload is None:
             return False
         if not workload.migration_allowed:
+            return False
+        if workload.region_id == target_region_id:
+            return False
+        if target_region_id not in cluster.regions:
             return False
 
         old_region = workload.region_id
