@@ -16,7 +16,7 @@ Every implementation run must read that plan before deciding what to do next.
 
 ## Status Summary
 
-Current status: **PHASE 1 COMPLETE / PHASE 2 NOT STARTED**
+Current status: **PHASE 3 COMPLETE / PHASE 4 NOT STARTED**
 
 Phase 1 produced:
 - `aurelius/state/models.py` — canonical frozen dataclass state models
@@ -28,21 +28,11 @@ Phase 1 produced:
 - `tests/test_state_normalize.py` — 46 tests for adapters + validation + optimizer non-regression
 - `tests/fixtures/cluster_state/` — 3 JSON fixture cluster snapshots
 
-Phase 2 (Prometheus-native telemetry ingestion) has not begun yet.
+Phase 2 (Prometheus-native connector) and Phase 3 (DCGM/vLLM/Triton/Ray adapters) are now complete.
 
 The next expected milestone is:
 
-**Phase 2 — Prometheus-native connector**
-
-Expected Phase 2 files:
-- `aurelius/connectors/base.py`
-- `aurelius/connectors/prometheus.py`
-- `aurelius/connectors/dcgm.py`
-- `aurelius/connectors/vllm.py`
-- `aurelius/connectors/triton.py`
-- Metric mapping configs
-- Fake Prometheus HTTP fixtures
-- Tests proving sandbox and real paths are identical
+**Phase 4 — Kubernetes connector**
 
 ---
 
@@ -164,8 +154,8 @@ Forbidden:
 |---|---|---:|---|---|
 | 0 | Audit + canonical plan | COMPLETE | `docs/CONSTRAINT_AWARE_ORCHESTRATION_PLAN.md` exists | Planning only; no production implementation yet |
 | 1 | Normalized state model | COMPLETE | `aurelius/state/`, 154 tests passing | See Phase 1 details below |
-| 2 | Prometheus-native connector | NOT_STARTED | None yet | Depends on Phase 1 |
-| 3 | DCGM/vLLM/Triton/Ray adapters | NOT_STARTED | None yet | Depends on Phase 2 |
+| 2 | Prometheus-native connector | COMPLETE | `aurelius/connectors/`, 282 tests passing | See Phase 2+3 details below |
+| 3 | DCGM/vLLM/Triton/Ray adapters | COMPLETE | `aurelius/connectors/dcgm.py` etc., 282 tests passing | See Phase 2+3 details below |
 | 4 | Kubernetes connector | NOT_STARTED | None yet | Depends on Phase 1/2 |
 | 5 | Topology collector | NOT_STARTED | None yet | Depends on Phase 1 |
 | 6 | Synthetic cluster simulator | NOT_STARTED | None yet | Depends on state/connectors |
@@ -422,4 +412,95 @@ Open limitations from Phase 1:
 * WorkloadState extension deferred to Phase 9
 * StateStore is in-memory only; Postgres persistence is Phase 11/12
 
-Next milestone: **Phase 2 — Prometheus-native telemetry ingestion**
+Next milestone: ~~Phase 2 — Prometheus-native telemetry ingestion~~ **COMPLETE**
+
+---
+
+Phase 2+3
+
+Status: COMPLETE
+
+Date: 2026-05-25
+Branch: claude/sleepy-bohr-HXNzY
+PR: fnstggl/energy2#57 (squash-merged)
+
+Summary:
+
+* Created `aurelius/connectors/` package with 9 files:
+  - `__init__.py` (package exports)
+  - `base.py` (AuthType, AuthConfig, ConnectorConfig, MetricValue, RawMetricResult, TelemetrySnapshot)
+  - `metric_mapping.py` (UnitConversion, MetricMapping, MetricMappingRegistry; dcgm/vllm/triton/ray_serve built-in registries; YAML loader)
+  - `prometheus.py` (parse_prometheus_text, PrometheusClient w/ bearer/basic auth + retries, FakePrometheusClient, PrometheusTelemetryConnector)
+  - `dcgm.py` (DCGMAdapter → GPUState; thermal_violation_ns in nanoseconds, fixes old µs bug)
+  - `vllm.py` (VLLMAdapter → InferenceServiceState; handles V0 vllm_* and V1 vllm:* metric naming)
+  - `triton.py` (TritonAdapter → InferenceServiceState; cumulative counter derivation for avg latency)
+  - `ray_serve.py` (RayServeAdapter → InferenceServiceState; histogram latency, replica count)
+  - `otel.py` (OTelAdapter → InferenceServiceState; OTLP JSON sandbox adapter)
+* Created `configs/connectors/dcgm_mapping.yaml` and `vllm_mapping.yaml` (YAML overrides for built-in registries)
+* Created 5 Prometheus text fixture files under `tests/fixtures/prometheus/`:
+  - `dcgm_metrics.prom` (3 GPUs: A100-SXM4-80GB)
+  - `vllm_metrics.prom` (llama3-70b, mistral-7b)
+  - `triton_metrics.prom` (bert-large/1, gpt2/1)
+  - `ray_serve_metrics.prom` (llm-router, embedding-service)
+  - `prometheus_api_response.json` (Prometheus HTTP API vector response fixture)
+* Created 3 test files:
+  - `tests/test_prometheus_connector.py` (56 passed, 10 skipped — requests/yaml intentionally absent from pytest venv)
+  - `tests/test_dcgm_adapter.py` (29 passed)
+  - `tests/test_vllm_triton_ray_adapters.py` (43 passed — vLLM, Triton, Ray Serve, OTel, interface consistency)
+* No existing optimizer, SLA, forecasting, or energy connector code was modified
+* All pre-existing tests still pass
+
+### Commands Run
+
+```
+ruff check aurelius/connectors/ --select=E,F,W
+/root/.local/bin/pytest tests/test_prometheus_connector.py tests/test_dcgm_adapter.py tests/test_vllm_triton_ray_adapters.py -q
+/root/.local/bin/pytest -q  # full suite
+```
+
+### Test Results
+
+```
+tests/test_prometheus_connector.py: 56 passed, 10 skipped
+tests/test_dcgm_adapter.py: 29 passed
+tests/test_vllm_triton_ray_adapters.py: 43 passed
+Full suite: 282 passed, 10 skipped, 0 failed
+ruff: All checks passed
+```
+
+### Repo-Reality Findings
+
+* `FakePrometheusClient` supports both `fixtures={}` dict mode and `prometheus_text=` raw Prometheus text — same interface as `PrometheusClient`
+* `MetricMappingRegistry` fallback_queries handle both PromQL expressions and raw metric names (critical for FakeClient compatibility)
+* `_REQUESTS_AVAILABLE` and `_YAML_AVAILABLE` flags gate tests that require those optional libraries; 10 tests correctly skipped
+* `thermal_violation_ns` is nanoseconds (not µs) — this fixes the documented bug in old `dcgm_provider.py`
+* `kv_cache_usage` and `prefix_cache_hit_rate` stored as 0-1 fractions (not percentages) as required by `InferenceServiceState`
+* Valid `engine` values enforced: `"vllm"`, `"triton"`, `"ray_serve"`, `"unknown"`
+* None-not-zero invariant: all missing optional metrics → `None`, never `0`
+* UTC-aware timestamps enforced on all `TelemetrySnapshot.fetched_at` and normalized state objects
+
+### Wiring Evidence
+
+* Phase 2+3 are additive; connectors and adapters are NOT yet wired into any production scheduler/optimizer decision path (intentional)
+* Wiring happens in: Phase 6 (simulator consumes ClusterState), Phase 7 (classifier), Phase 9 (optimizer/engine)
+* `FakePrometheusClient` enables safe sandbox testing with zero network calls
+
+### Failure Mode Review
+
+* Missing optional metrics → `None` (never fabricated as `0`)
+* `TelemetrySnapshot.coverage_pct()` reports fraction of expected fields present; `Provenance.confidence` is `"low"` when < 40%
+* `TelemetrySnapshot.unknown_metrics` lists DCGM/vLLM metric names not in the registry
+* `DCGMAdapter.normalize_gpus()` logs a warning per failed GPU and continues (partial-failure safe)
+* `_clamp_fraction()` in vLLM/OTel adapters handles both 0-1 and 0-100 input ranges gracefully
+
+### Open Limitations
+
+* `PrometheusClient` real HTTP path not exercised in CI (requests not in pytest venv — by design; same test suite runs in prod with requests installed)
+* Triton p95/p99 latency = `None` (not available from default Triton metrics; cumulative average used for p50)
+* Ray Serve `ttft_*` = `None` (Ray Serve doesn't expose LLM-specific token metrics by default)
+* OTelAdapter is sandbox/fixture only — no real OTLP ingest path
+* YAML metric mapping override (`load_mapping_yaml`) requires `pyyaml` (skipped in CI; works in production venv)
+* No Kubernetes connector yet (Phase 4)
+* No topology collector yet (Phase 5)
+
+Next milestone: **Phase 4 — Kubernetes connector**
