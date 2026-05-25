@@ -1,4 +1,4 @@
-"""CLI command implementations for constraint-aware orchestration (Phase 10+11).
+"""CLI command implementations for constraint-aware orchestration (Phase 10+11+12).
 
 Commands:
   constraint-report             — Run classifier + engine on a scenario or snapshot
@@ -9,6 +9,7 @@ Commands:
   benchmark-run                 — Multi-policy benchmark run on a scenario
   benchmark-compare             — Compare two benchmark JSON files for regressions
   optimizer-regression-check    — Check optimizer regression across all scenarios
+  self-metrics                  — Export Aurelius internal metrics in Prometheus format
 
 All commands are read-only and run in recommendation_only mode.
 No secrets are included in any report output.
@@ -736,3 +737,67 @@ def _validate_engine_pipeline() -> dict:
         }
     except Exception as exc:
         return {"name": name, "passed": False, "error": str(exc)}
+
+
+# ---------------------------------------------------------------------------
+# self-metrics  (Phase 12)
+# ---------------------------------------------------------------------------
+
+def cmd_self_metrics(args) -> None:
+    """Export Aurelius internal operational metrics in Prometheus exposition format.
+
+    Runs the engine on a simulator scenario to populate the observer,
+    then prints the Prometheus text output.
+
+    In production, hook this to a /self-metrics HTTP endpoint (see API server).
+    All outputs are [SANDBOX] labeled when driven from the simulator.
+    """
+    from aurelius.constraints import AureliusObserver, ConstraintAwareEngine
+    from aurelius.simulation.cluster import ClusterSimulator, load_scenario
+
+    scenario_name = getattr(args, "scenario", "energy_price_arbitrage_multiregion") or \
+        "energy_price_arbitrage_multiregion"
+    steps = getattr(args, "steps", 10)
+    fmt = getattr(args, "format", "prometheus")
+
+    observer = AureliusObserver()
+    engine = ConstraintAwareEngine()
+
+    try:
+        scenario = load_scenario(scenario_name, seed_override=42)
+    except Exception as exc:
+        print(f"[ERROR] Could not load scenario {scenario_name!r}: {exc}", file=sys.stderr)
+        sys.exit(1)
+
+    sim = ClusterSimulator(scenario.config, seed=42)
+
+    # Simulate fake connector health (all healthy in sandbox)
+    observer.record_connector_health("dcgm", is_healthy=True)
+    observer.record_connector_health("vllm", is_healthy=True)
+    observer.record_connector_health("kubernetes", is_healthy=True)
+    observer.record_connector_health("topology", is_healthy=True)
+
+    for _ in range(steps):
+        sim.tick()
+        state = sim.get_cluster_state()
+        result = engine.run(state)
+        observer.record_engine_result(result)
+
+    if fmt == "json":
+        import json as _json
+        m = observer.get_metrics()
+        print(_json.dumps({
+            "constraints_detected": m.constraints_detected,
+            "recommendations_generated": m.recommendations_generated,
+            "recommendations_blocked_by_sla": m.recommendations_blocked_by_sla,
+            "estimated_net_savings_dollars": m.estimated_net_savings_dollars,
+            "confidence_current": m.confidence_current,
+            "connector_health": m.connector_health,
+            "stale_data_count": m.stale_data_count,
+            "total_engine_cycles": m.total_engine_cycles,
+        }, indent=2))
+    else:
+        print("[SANDBOX] Aurelius internal metrics (Prometheus text format)")
+        print("# Driven from simulator — for illustration only")
+        print()
+        print(observer.to_prometheus_text())

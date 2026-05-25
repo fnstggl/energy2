@@ -1179,6 +1179,7 @@ def main():
         cmd_benchmark_run,
         cmd_constraint_report,
         cmd_optimizer_regression_check,
+        cmd_self_metrics,
         cmd_simulate_constraint_scenario,
         cmd_telemetry_check,
         cmd_topology_report,
@@ -1926,6 +1927,18 @@ def main():
     orc_parser.add_argument("--min-score", type=float, default=0.4, dest="min_score",
                             help="Minimum scorecard weighted_score (default: 0.4)")
 
+    # --- self-metrics (Phase 12) ---
+    sm_parser = subparsers.add_parser(
+        "self-metrics",
+        help="[Phase 12] Export Aurelius internal metrics in Prometheus exposition format",
+    )
+    sm_parser.add_argument("--scenario", default="energy_price_arbitrage_multiregion",
+                           help="Scenario to drive the engine (default: energy_price_arbitrage_multiregion)")
+    sm_parser.add_argument("--steps", type=int, default=10,
+                           help="Simulator ticks to run (default: 10)")
+    sm_parser.add_argument("--format", choices=["prometheus", "json"], default="prometheus",
+                           help="Output format (default: prometheus)")
+
     # Parse arguments
     args = parser.parse_args()
 
@@ -1972,6 +1985,8 @@ def main():
         cmd_benchmark_compare(args)
     elif args.command == "optimizer-regression-check":
         cmd_optimizer_regression_check(args)
+    elif args.command == "self-metrics":
+        cmd_self_metrics(args)
     else:
         parser.print_help()
         sys.exit(1)

@@ -1,0 +1,140 @@
+# Aurelius Constraint-Aware Orchestration — Production Connector Config
+#
+# This file is a TEMPLATE. Copy and edit for your environment.
+# Never commit secrets (tokens, passwords) — use environment variables.
+#
+# Deploy guide: enterprisedocs/security-and-deployment.md
+# K8s RBAC:     configs/connectors/kubernetes_rbac.yaml
+#
+# Environment variables referenced (set in your runtime, e.g. Railway, Kubernetes secret):
+#   PROMETHEUS_BEARER_TOKEN   — Prometheus bearer token (optional)
+#   K8S_SERVICE_ACCOUNT_TOKEN — Kubernetes service account token (in-cluster auto-detected)
+#
+# All connectors are read-only. Aurelius never mutates cluster state.
+# Default mode: recommendation_only (no execution without explicit opt-in).
+
+# ---------------------------------------------------------------------------
+# Engine settings
+# ---------------------------------------------------------------------------
+engine:
+  implementation_mode: recommendation_only   # recommendation_only | dry_run | executable
+  confidence_floor: 0.25                     # below this, engine emits all KEEP (fail-safe)
+  hysteresis_count: 2                        # consecutive identical assessments before acting
+
+# ---------------------------------------------------------------------------
+# Prometheus / GPU telemetry connector
+# ---------------------------------------------------------------------------
+connectors:
+  prometheus:
+    base_url: http://prometheus.monitoring.svc:9090   # EDIT: your Prometheus URL
+    auth:
+      type: bearer                           # none | bearer | basic
+      token_env: PROMETHEUS_BEARER_TOKEN     # env var name (not the value)
+    tls_verify: true
+    timeout_s: 30
+    max_retries: 3
+    scrape_interval_s: 30
+    is_sandbox: false
+
+  # ---------------------------------------------------------------------------
+  # DCGM metric mapping
+  # Uses built-in mapping by default; override specific queries here.
+  # ---------------------------------------------------------------------------
+  dcgm:
+    mapping_file: configs/connectors/dcgm_mapping.yaml  # optional override
+    # Default built-in queries (from aurelius/connectors/metric_mapping.py):
+    #   gpu.utilization_pct: avg by (gpu, node) (DCGM_FI_DEV_GPU_UTIL)
+    #   gpu.power_watts: avg by (gpu, node) (DCGM_FI_DEV_POWER_USAGE)
+    #   gpu.temperature_c: avg by (gpu, node) (DCGM_FI_DEV_GPU_TEMP)
+    #   gpu.memory_used_bytes: avg by (gpu, node) (DCGM_FI_DEV_FB_USED)
+    #   gpu.xid_error_count: sum by (gpu, node) (DCGM_FI_DEV_XID_ERRORS)
+
+  # ---------------------------------------------------------------------------
+  # vLLM metric mapping
+  # ---------------------------------------------------------------------------
+  vllm:
+    mapping_file: configs/connectors/vllm_mapping.yaml  # optional override
+
+  # ---------------------------------------------------------------------------
+  # Kubernetes read-only connector
+  # ---------------------------------------------------------------------------
+  kubernetes:
+    # auth: auto-detected in-cluster (KUBERNETES_SERVICE_HOST env present)
+    # For out-of-cluster: set KUBECONFIG env var or use kubeconfig_path below
+    kubeconfig_path: null                     # null = in-cluster or KUBECONFIG env
+    namespace_allowlist:                      # empty = all namespaces (restrict for safety)
+      []
+      # - inference-prod
+      # - training-jobs
+    gpu_resource_names:                       # GPU resource types to detect
+      - nvidia.com/gpu
+    topology_labels:                          # node labels Aurelius reads for placement
+      region: topology.kubernetes.io/region
+      zone: topology.kubernetes.io/zone
+      rack: topology.kubernetes.io/rack       # optional custom label
+    is_sandbox: false
+
+  # ---------------------------------------------------------------------------
+  # Topology collector (nvidia-smi topo -m)
+  # Run on GPU nodes only; falls back to None if unavailable.
+  # ---------------------------------------------------------------------------
+  topology:
+    is_sandbox: false
+    # nvidia_smi_timeout_s: 10               # timeout for nvidia-smi commands (default 10)
+
+# ---------------------------------------------------------------------------
+# Constraint classifier settings
+# All thresholds are HEURISTIC — calibrated on synthetic scenarios only.
+# Tune per your cluster's observed behavior.
+# ---------------------------------------------------------------------------
+classifier:
+  # Energy bound
+  energy_price_percentile_threshold: 0.75    # top 25% of price → energy pressure
+  flexible_load_min_fraction: 0.15           # need ≥15% flexible load to act
+
+  # Thermal bound
+  thermal_temp_ratio_threshold: 0.85         # temp > 85% of 85°C limit
+  thermal_throttle_threshold: 0.05           # >5% GPUs throttling
+
+  # Queue bound
+  queue_wait_ratio_threshold: 0.5            # wait > 50% of SLA target
+
+  # Latency bound
+  latency_p99_ratio_threshold: 0.8           # p99 > 80% of SLA p99 target
+
+  # Communication bound
+  comm_nvlink_bw_threshold_pct: 60.0         # >60% NVLink bandwidth utilized
+  comm_sm_activity_ceiling: 0.5              # SM util < 50% while NVLink busy
+
+  # Memory bound (indirect)
+  memory_kv_cache_threshold: 0.85            # KV cache > 85%
+  memory_prefix_hit_floor: 0.3              # prefix hit rate < 30%
+
+  # Utilization bound
+  utilization_idle_gpu_threshold: 0.3        # >30% GPUs idle
+
+  # Confidence / staleness
+  max_acceptable_age_s: 300.0               # 5 min before staleness penalty
+  confidence_floor: 0.25                    # below this: binding_constraint=None
+  hysteresis_count: 2                       # ticks before constraint switches
+
+# ---------------------------------------------------------------------------
+# Migration governor (rate limiting)
+# ---------------------------------------------------------------------------
+governor:
+  min_migration_interval_s: 300             # 5 min between migrations per workload
+  max_migrations_per_hour: 2               # per workload
+  cluster_max_migrations_per_minute: 3     # cluster-wide rate limit
+  sla_violation_cooldown_s: 600           # 10 min cooldown after SLA violation
+  net_savings_threshold: 0.0              # no action if net expected savings ≤ 0
+
+# ---------------------------------------------------------------------------
+# Observability
+# Aurelius exports its own Prometheus metrics at /self-metrics (if API enabled)
+# or via `aurelius self-metrics` CLI command.
+# ---------------------------------------------------------------------------
+observability:
+  enabled: true
+  export_path: /self-metrics               # HTTP path on Aurelius API server
+  include_connector_health: true
+  include_savings_estimate: true

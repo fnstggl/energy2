@@ -8,11 +8,14 @@ Public interface:
     ConstraintConfig          — configurable thresholds (all marked # HEURISTIC)
     MigrationCostModel        — state-conditioned cost/risk estimator for candidate actions
     MigrationCostEstimate     — per-candidate cost/risk breakdown (with risk-factor explanation)
-    RiskInputs                — state-conditioned inputs (SLA policy, workload/dest state, telemetry)
+    RiskInputs                — state-conditioned inputs (SLA, workload/dest state, telemetry)
     CostModelConfig           — configurable risk weights/thresholds (all marked # HEURISTIC)
     ConstraintAwareEngine     — Phase 9: full recommendation pipeline
     EngineResult              — output of ConstraintAwareEngine.run()
     WorkloadDescriptor        — lightweight workload adapter for the engine
+    AureliusObserver          — Phase 12: thread-safe operational metrics collector
+    AureliusMetrics           — Phase 12: point-in-time metrics snapshot
+    ConnectorHealth           — Phase 12: per-connector health status
 """
 
 from .classifier import ConstraintClassifier, ConstraintConfig
@@ -24,6 +27,7 @@ from .cost_model import (
     RiskInputs,
 )
 from .engine import ConstraintAwareEngine, EngineResult, WorkloadDescriptor
+from .observability import AureliusMetrics, AureliusObserver, ConnectorHealth
 
 __all__ = [
     "ConstraintClassifier",
@@ -36,4 +40,7 @@ __all__ = [
     "ConstraintAwareEngine",
     "EngineResult",
     "WorkloadDescriptor",
+    "AureliusObserver",
+    "AureliusMetrics",
+    "ConnectorHealth",
 ]
