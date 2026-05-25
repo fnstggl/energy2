@@ -1058,6 +1058,23 @@ The objective is durable operational quality, not isolated benchmark wins.
 - **Risks:** double-counting between objective and risk terms — unit-test additivity.
 - **Do NOT build:** new ML predictors (heuristic + existing models only this phase).
 
+> **CORRECTION (risk model must be state-conditioned).** The first Phase 8 implementation
+> conditioned risk on a **static workload-class multiplier** (`risk = base_risk ×
+> workload_type_multiplier`; critical×2.5, batch×0.4). This is unsafe: the workload label
+> alone could block a safe migration or permit an unsafe one, irrespective of actual SLA
+> headroom or destination health. It has been **removed**. `MigrationCostModel.estimate()`
+> now derives risk from first principles across five **state-conditioned** families —
+> (1) SLA headroom (predicted metrics vs hard SLA bounds + active binding constraint),
+> (2) workload/runtime state, (3) destination state, (4) action-specific cost, and
+> (5) telemetry confidence — bundled in a new `RiskInputs` carrier and surfaced via
+> `risk_factors`/`dominant_risk_factors` for explainability. Workload priority influences
+> conservatism **only** through explicit SLA policy (tighter bounds ⇒ less headroom),
+> measured headroom, and the uncertainty buffer — never as a standalone multiplier. Hard
+> SLA breaches and `migration_allowed=false` always block, regardless of savings. The
+> `priority_tier`/`is_latency_sensitive` arguments are retained for observability but are
+> inert in the risk math. See "Phase 8/9 Risk Model Correction" in
+> `docs/COMPUTE_OPTIMIZATION_PROGRESS.md`.
+
 ### Phase 9 — Constraint-aware recommendation engine
 - **Add:** `aurelius/constraints/engine.py` — `ConstraintAwareEngine`: ClusterState → classifier → strategy selection → SLA-aware `JobScheduler` (with `sla_registry` WIRED) → ranked `Recommendation[]` (fail-safe `KEEP` on low confidence/missing data/blocked SLA).
 - **Modify (CRITICAL WIRING):** `aurelius/backtesting/engine.py` and the relevant CLI paths to pass `sla_registry`/`region_contexts`/`current_states` into `JobScheduler` (closing the §3 gap), behind a config flag defaulting to OFF (preserve existing behavior). `OptimizationConfig` gains `constraint_aware: bool=False` and `sla_config_path: Optional[str]`.
@@ -1174,7 +1191,7 @@ A later coding agent can follow this. **Each item is "done" only under the heade
 
 **Phase 7 — classifier:** [ ] `constraints/classifier.py` (8 families) · [ ] missing→`None`/`NONE` · [ ] hysteresis + tie-break · [ ] confidence math · [ ] no fabricated binding constraint · [ ] per-scenario tests.
 
-**Phase 8 — cost/risk/migration:** [ ] `constraints/cost_model.py` · [ ] migration penalty makes marginal/churny migrations net-negative · [ ] additivity with existing objective tested.
+**Phase 8 — cost/risk/migration:** [x] `constraints/cost_model.py` · [x] migration penalty makes marginal/churny migrations net-negative · [x] additivity with existing objective tested · [x] **risk is STATE-CONDITIONED (SLA headroom + destination + action + telemetry confidence); NO static workload-class multiplier** · [x] hard SLA breach / `migration_allowed=false` always block · [x] workload label inert in risk math (see correction note in §"Phase 8").
 
 **Phase 9 — engine + SLA wiring (CRITICAL):** [ ] `constraints/engine.py` · [ ] `sla_registry` wired into `BacktestEngine`/`JobScheduler` real path · [ ] `constraint_aware`/`sla_config_path` config flags (default OFF) · [ ] **regression: flag-OFF reproduces current numbers bit-for-bit** · [ ] memory-bound emits no KV-internal action (asserted) · [ ] communication-bound emits no NCCL/CUDA action (asserted) · [ ] HARD SLA enforced in real path.
 

@@ -150,7 +150,7 @@ Forbidden:
 | 5 | Topology collector | COMPLETE | `aurelius/connectors/topology.py`, 62 tests passing | See Phase 4+5 details below |
 | 6 | Synthetic cluster simulator | COMPLETE | `aurelius/simulation/cluster/`, 93 tests passing | See Phase 6 details below |
 | 7 | Constraint classifier | COMPLETE | `aurelius/constraints/classifier.py`, 74 tests passing | See Phase 7+8 details below |
-| 8 | Cost/risk/migration model | COMPLETE | `aurelius/constraints/cost_model.py`, 39 tests passing | See Phase 7+8 details below |
+| 8 | Cost/risk/migration model | COMPLETE (risk model corrected) | `aurelius/constraints/cost_model.py`, 47 tests passing | State-conditioned risk; static workload multipliers removed. See "Phase 8/9 Risk Model Correction" below |
 | 9 | Constraint-aware recommendation engine | COMPLETE | `aurelius/constraints/engine.py`, 53 tests passing | See Phase 9 details below |
 | 10 | CLI reports | NOT_STARTED | None yet | Depends on Phase 9 engine |
 | 11 | Validation + benchmarking loop | NOT_STARTED | None yet | Multi-run continuous improvement |
@@ -765,12 +765,18 @@ The simulator must:
 
 ### Cost Model Design (Phase 8)
 
+> **SUPERSEDED for risk computation** — the `risk_mult` per-workload-tier row below
+> describes the ORIGINAL Phase 8 design. It was corrected (see "Phase 8/9 Risk
+> Model Correction" at the end of this document). Static workload multipliers were
+> removed; risk is now state-conditioned. The governor / `should_keep` / `make_recommendation`
+> rows remain accurate.
+
 | Component | Implementation |
 |---|---|
-| `MigrationCostEstimate` | Frozen dataclass: gross savings, per-type penalties (cold-start, cache warmup, queue instability, topology degradation, SLA risk, thermal, failure retry), total penalty, net expected savings |
-| `MigrationCostModel.estimate()` | Conservative heuristics with `risk_mult` per workload tier; critical×2.5, batch×0.4 |
+| `MigrationCostEstimate` | Dataclass: gross savings, informational physical penalties (cold-start, cache warmup, queue instability, topology degradation, failure retry), state-conditioned risk buckets (SLA / destination / action / uncertainty / thermal), total penalty, net expected savings, **risk-factor explanation** |
+| `MigrationCostModel.estimate()` | ~~Conservative heuristics with `risk_mult` per workload tier; critical×2.5, batch×0.4~~ **CORRECTED:** state-conditioned risk from SLA headroom, destination health, action-specific cost, and telemetry confidence. No static workload multiplier |
 | `MigrationGovernor` | Per-workload: min interval (300s), hourly rate limit (2/hr); cluster: per-minute rate limit (3/min); SLA violation cooldown (600s) |
-| `should_keep()` | KEEP when: blocked by governor, net savings unknown, net ≤ 0, or confidence < 0.15 |
+| `should_keep()` | KEEP when: hard SLA breach, blocked by governor, net savings unknown, net ≤ 0, or confidence < 0.15 |
 | `make_recommendation()` | Always `recommendation_only` mode; delegates execution to Phase 9 |
 
 ### Commands Run
@@ -1102,3 +1108,111 @@ pytest (constraint-aware suite)
 - Benchmark outputs explicitly labeled `[SANDBOX]`
 - No secrets in logs or reports
 - Scenario lockfile prevents silent YAML drift in CI
+
+---
+
+## Phase 8/9 Risk Model Correction (state-conditioned migration risk)
+
+### Why this correction was required
+
+The original Phase 8 `MigrationCostModel` decided migration safety primarily from a
+**static workload-class multiplier**:
+
+```python
+# REMOVED (unsafe):
+if is_critical:
+    risk_mult = cfg.critical_workload_risk_multiplier   # 2.5×
+elif is_batch:
+    risk_mult = cfg.batch_workload_risk_multiplier      # 0.4×
+else:
+    risk_mult = 1.0
+cold_start_ms = base * risk_mult     # every penalty scaled by the label
+```
+
+This is not enterprise-grade. The workload *label* alone could block a perfectly safe
+migration (critical workload with huge SLA headroom and a warm, idle destination) or
+permit an unsafe one (batch workload migrating into a hot, full, distant region). Risk
+must be a function of **state**, not of a hardcoded label coefficient.
+
+### What changed
+
+`risk = base_risk × workload_type_multiplier` was **removed**. `CostModelConfig` no
+longer has `critical_workload_risk_multiplier` / `batch_workload_risk_multiplier`.
+`MigrationCostModel.estimate()` now computes risk from first principles across five
+state-conditioned families, each surfaced as an explicit penalty bucket and explained
+via `risk_factors` / `dominant_risk_factors`:
+
+| Risk family | Field | State inputs (all from `RiskInputs`, missing ⇒ uncertainty) |
+|---|---|---|
+| 1. SLA headroom | `sla_risk_penalty` | predicted p95/p99/queue/error/availability/capacity vs **hard SLA bounds**; plus the active binding constraint as a low-headroom proxy (migrations only) |
+| 2. Workload/runtime | (feeds 1, 3) | request rate, active sequences, latency sensitivity (via SLA tightness), queue depth, KV/cache pressure, prefix-cache affinity, `migration_allowed` policy |
+| 3. Destination state | `destination_risk_penalty` | spare capacity, thermal/throttling, destination p99/queue, memory pressure, topology quality, network distance |
+| 4. Action-specific | `action_risk_penalty` | cold-start, cache warmup (× cache affinity), lost batching (× active sequences), topology degradation, recent migration churn, rollback/failure probability |
+| 5. Telemetry confidence | `uncertainty_penalty` | missing metrics, stale metrics, sandbox provenance, low classifier confidence |
+
+`total_penalty = sla_risk + destination_risk + action_risk + uncertainty + thermal`, and
+`net_expected_savings = gross_savings − total_penalty`.
+
+### Where workload priority still (legitimately) enters
+
+Per the plan, workload priority may influence conservatism **only** through explicit SLA
+policy, measured SLA headroom, and the uncertainty buffer — never as a standalone
+multiplier:
+
+- A critical tier carries **tighter hard SLA bounds** (e.g. `max_p99=500ms`). The same
+  predicted latency therefore consumes more of its headroom ⇒ higher state-conditioned
+  SLA risk. This flows through `RiskInputs.sla_policy`, not through the label.
+- `priority_tier` / `is_latency_sensitive` arguments are retained for observability but
+  are **inert** in the risk math (recorded in the explanation only). With all state
+  inputs held identical, swapping the label does not change `total_penalty` or the
+  KEEP/act decision (proved by `test_workload_label_alone_does_not_change_decision`).
+
+### Hard gates (always block, regardless of savings)
+
+- Predicted breach of any hard SLA bound (`max_p95/p99/queue/error`, `min_availability`,
+  `required_capacity_buffer`) ⇒ `hard_sla_block=True` ⇒ KEEP.
+- `migration_allowed=false` on a migration ⇒ `hard_sla_block=True` ⇒ KEEP.
+- Governor cooldown / rate limits ⇒ `blocked_by_cooldown=True` ⇒ KEEP.
+
+### Wiring
+
+`aurelius/constraints/engine.py` now builds a `RiskInputs` per service — SLA policy,
+current `WorkloadState`, predicted post-action `WorkloadState` (via the existing
+`HeuristicPredictor`), destination `RegionContext`, prefix-cache hit rate, KV usage,
+active/queued requests, sample age — and passes it to `estimate()`. Recommendation mode
+remains `recommendation_only`.
+
+### Required behaviors (all covered by tests in `tests/test_migration_cost_model.py`)
+
+| Behavior | Test |
+|---|---|
+| Critical workload MAY migrate when headroom large + destination safe | `test_critical_migrates_with_large_headroom_and_safe_dest` |
+| Critical workload blocked when headroom small | `test_critical_blocked_with_small_headroom` |
+| Batch workload blocked when destination topology/thermal/queue risk high | `test_batch_blocked_with_hostile_destination` |
+| Missing telemetry raises uncertainty and can force KEEP | `test_missing_telemetry_increases_uncertainty_and_can_force_keep` |
+| Workload label alone does not change the decision when state identical | `test_workload_label_alone_does_not_change_decision` |
+| High savings rejected when a hard SLA bound is breached | `test_high_savings_rejected_when_hard_sla_breached` |
+| `migration_allowed=false` hard-blocks | `test_migration_allowed_false_hard_blocks` |
+| Cold-start penalty is label-independent | `test_cold_start_penalty_is_label_independent` |
+| Static multiplier config removed | `test_no_static_workload_multiplier_config` |
+| Risk-factor explanation present + buckets sum to total | `test_risk_factor_explanation_present` |
+
+### Test evidence
+
+```
+pytest tests/test_migration_cost_model.py            47 passed
+pytest tests/test_constraint_engine.py               53 passed
+pytest tests/test_constraint_classifier.py           74 passed
+pytest (all constraint/SLA/migration-touching suites) 290 passed
+ruff check aurelius/constraints/ tests/test_migration_cost_model.py   All checks passed
+```
+
+### Files changed
+
+| File | Change |
+|---|---|
+| `aurelius/constraints/cost_model.py` | Removed static workload multipliers; added `RiskInputs` + five state-conditioned risk families; added `hard_sla_block`, `risk_factors`, `dominant_risk_factors`, `sla_headroom_fraction`, `missing_signals`; `should_keep()` now hard-blocks on SLA breach |
+| `aurelius/constraints/engine.py` | Builds and passes `RiskInputs` (SLA policy, current/predicted `WorkloadState`, destination `RegionContext`, cache/load signals) to the cost model |
+| `aurelius/constraints/__init__.py` | Exported `RiskInputs`, `CostModelConfig` |
+| `tests/test_migration_cost_model.py` | Replaced label-multiplier tests with state-conditioned tests; added `TestStateConditionedRisk` |
+| `docs/CONSTRAINT_AWARE_ORCHESTRATION_PLAN.md`, `docs/COMPUTE_OPTIMIZATION_PROGRESS.md` | Documented the correction |

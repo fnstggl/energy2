@@ -1,11 +1,20 @@
-"""Tests for Phase 8 — Migration cost/risk model.
+"""Tests for Phase 8/9 — STATE-CONDITIONED migration cost/risk model.
+
+These tests prove the corrected risk model: risk is conditioned on observed/
+predicted state (SLA headroom, destination health, action-specific cost,
+telemetry confidence), NOT on a static workload-class multiplier.
 
 Tests prove:
-- High gross savings with catastrophic p99 penalty → KEEP (no-op)
-- Batch workloads can migrate when critical workloads cannot (risk multipliers)
-- Worse topology erases apparent energy savings
-- Thermal hotspot blocks consolidation
-- Repeated migrations are penalized by governor
+- High gross savings with a hard-SLA breach → KEEP (savings never override hard SLA)
+- A critical workload CAN migrate when SLA headroom is large and the destination is safe
+- A critical workload is blocked when SLA headroom is small
+- A batch workload is blocked when destination topology/thermal/queue risk is high
+- Missing telemetry increases the uncertainty buffer and can force KEEP
+- The workload-priority label ALONE does not change the decision when state is identical
+- The cold-start penalty is a physical/action property (not scaled by workload label)
+- Worse topology reduces net savings
+- Thermal hotspot penalizes consolidation
+- Repeated migrations are penalized by the governor
 - KEEP wins when net expected savings <= 0
 - Missing gross savings → low confidence, KEEP
 - Governor cooldown after SLA violation
@@ -23,8 +32,11 @@ from aurelius.constraints.cost_model import (
     MigrationCostEstimate,
     MigrationCostModel,
     MigrationGovernor,
+    RiskInputs,
 )
 from aurelius.sla.actions import ActionType
+from aurelius.sla.schema import HardSLA, PriorityTier, SLAPolicy
+from aurelius.sla.telemetry import RegionContext, WorkloadState
 from aurelius.state.models import (
     ClusterState,
     ConstraintAssessment,
@@ -84,6 +96,20 @@ def _make_assessment(
         rationale="test assessment",
         safe_action_types=[ActionType.KEEP.value],
         disallowed_action_types=[],
+    )
+
+
+def _policy(tier: PriorityTier, max_p99_ms: float, migration_allowed: bool | None = None) -> SLAPolicy:
+    """Build a raw SLAPolicy (tier defaults NOT merged) with explicit bounds.
+
+    Constructing SLAPolicy directly leaves every unset hard field at None, which
+    is exactly what these controlled tests want: only the bounds we set are
+    enforced, so the risk math is driven purely by the state we provide.
+    """
+    return SLAPolicy(
+        name=f"test:{tier.value}",
+        tier=tier,
+        hard=HardSLA(max_p99_latency_ms=max_p99_ms, migration_allowed=migration_allowed),
     )
 
 
@@ -293,7 +319,13 @@ class TestMigrationCostModel:
         keep, reason = model.should_keep(est)
         assert keep
 
-    def test_critical_workload_has_larger_cold_start_penalty(self):
+    def test_cold_start_penalty_is_label_independent(self):
+        """Cold-start is a physical/action property — it must NOT scale with the workload label.
+
+        (Corrected behavior: the old model multiplied cold-start by a static
+        critical×2.5 / batch×0.4 factor. That is removed; the same action incurs
+        the same physical cold-start regardless of the priority label.)
+        """
         model = MigrationCostModel()
         state = _make_state()
         assessment = _make_assessment()
@@ -315,39 +347,14 @@ class TestMigrationCostModel:
             is_latency_sensitive=False,
             priority_tier="batch",
         )
-        # Critical workload should have higher penalty than batch
-        assert est_critical.cold_start_penalty_ms > est_batch.cold_start_penalty_ms
+        # Identical action + identical state ⇒ identical physical cold-start penalty.
+        assert est_critical.cold_start_penalty_ms == est_batch.cold_start_penalty_ms
 
-    def test_batch_migrates_when_critical_does_not(self):
-        model = MigrationCostModel(config=CostModelConfig(
-            cold_start_p99_penalty_ms=500.0,
-            critical_workload_risk_multiplier=10.0,
-            batch_workload_risk_multiplier=0.1,
-        ))
-        state = _make_state()
-        assessment = _make_assessment()
-        est_critical = model.estimate(
-            workload_id="wl-critical",
-            action_type=ActionType.MIGRATE.value,
-            assessment=assessment,
-            state=state,
-            gross_savings=1.0,
-            is_latency_sensitive=True,
-            priority_tier="critical",
-        )
-        est_batch = model.estimate(
-            workload_id="wl-batch",
-            action_type=ActionType.MIGRATE.value,
-            assessment=assessment,
-            state=state,
-            gross_savings=1.0,
-            is_latency_sensitive=False,
-            priority_tier="batch",
-        )
-        # Critical: big penalty → not viable
-        # Batch: tiny penalty → viable
-        assert not est_critical.is_viable()
-        assert est_batch.is_viable()
+    def test_no_static_workload_multiplier_config(self):
+        """The unsafe static workload-class multipliers must no longer exist on the config."""
+        cfg = CostModelConfig()
+        assert not hasattr(cfg, "critical_workload_risk_multiplier")
+        assert not hasattr(cfg, "batch_workload_risk_multiplier")
 
     def test_topology_degradation_reduces_net_savings(self):
         model = MigrationCostModel()
@@ -683,25 +690,38 @@ class TestMakeRecommendation:
 class TestClassifierCostModelPipeline:
     """Verify the Phase 7→8 pipeline: assessment → cost estimate → recommendation."""
 
-    def test_energy_bound_migrate_batch_viable(self):
-        """Batch workload can migrate during energy-bound constraint."""
-        model = MigrationCostModel(config=CostModelConfig(
-            cold_start_p99_penalty_ms=100.0,
-            batch_workload_risk_multiplier=0.1,
-        ))
+    def test_energy_bound_migrate_viable_with_savings_and_headroom(self):
+        """Energy-bound migration with healthy savings + large SLA headroom is viable.
+
+        Driven by state (large headroom, safe destination, decent savings), not by
+        any workload label.
+        """
+        model = MigrationCostModel()
         state = _make_state()
-        assessment = _make_assessment(binding=ConstraintType.ENERGY, confidence=0.8)
+        assessment = _make_assessment(binding=ConstraintType.ENERGY, confidence=0.85)
+        current = WorkloadState(region="us-east", p99_latency_ms=400.0)
+        predicted = WorkloadState(region="us-west", p99_latency_ms=600.0)  # well under 5000ms cap
+        dest = RegionContext(region="us-west", spare_capacity_pct=70.0, baseline_p99_latency_ms=400.0)
+        ri = RiskInputs(
+            sla_policy=_policy(PriorityTier.STANDARD, max_p99_ms=5000.0),
+            current_state=current,
+            predicted_state=predicted,
+            dest_context=dest,
+            prefix_cache_hit_rate=0.2,
+            requests_running=4.0,
+        )
         est = model.estimate(
-            workload_id="batch-wl",
+            workload_id="energy-wl",
             action_type=ActionType.CHOOSE_CHEAPER_REGION.value,
             assessment=assessment,
             state=state,
             gross_savings=20.0,
-            is_latency_sensitive=False,
-            priority_tier="batch",
+            current_topology_score=0.7,
+            target_topology_score=0.6,
+            risk_inputs=ri,
         )
         rec = model.make_recommendation(
-            workload_id="batch-wl",
+            workload_id="energy-wl",
             action_type=ActionType.CHOOSE_CHEAPER_REGION.value,
             estimate=est,
             assessment=assessment,
@@ -709,25 +729,26 @@ class TestClassifierCostModelPipeline:
         assert not rec.is_noop, f"Expected action, got KEEP. est={est.to_dict()}"
         assert rec.binding_constraint == ConstraintType.ENERGY
 
-    def test_latency_bound_migrate_critical_blocked(self):
-        """Critical workload should not migrate during latency-bound constraint."""
-        model = MigrationCostModel(config=CostModelConfig(
-            cold_start_p99_penalty_ms=5000.0,
-            critical_workload_risk_multiplier=5.0,
-        ))
+    def test_latency_bound_migrate_blocked_by_active_constraint(self):
+        """Migrating a latency-bound workload for small savings is blocked.
+
+        The active LATENCY binding is state evidence of low SLA headroom, so the
+        state-conditioned SLA risk dominates the small expected savings — for ANY
+        workload, not just a labeled-critical one.
+        """
+        model = MigrationCostModel()
         state = _make_state()
         assessment = _make_assessment(binding=ConstraintType.LATENCY, confidence=0.85)
         est = model.estimate(
-            workload_id="critical-wl",
+            workload_id="latency-wl",
             action_type=ActionType.MIGRATE.value,
             assessment=assessment,
             state=state,
-            gross_savings=2.0,  # small savings
-            is_latency_sensitive=True,
-            priority_tier="critical",
+            gross_savings=2.0,  # small savings vs an active latency constraint
+            risk_inputs=RiskInputs(),
         )
         keep, reason = model.should_keep(est)
-        assert keep, f"Expected KEEP for critical workload during latency constraint; reason={reason}"
+        assert keep, f"Expected KEEP during active latency constraint; reason={reason}"
 
     def test_no_migration_storm_governor(self):
         """Multiple workloads migrating at once are rate-limited."""
@@ -754,3 +775,301 @@ class TestClassifierCostModelPipeline:
         )
         assert est3.blocked_by_cooldown
         assert not est3.is_viable()
+
+
+# ---------------------------------------------------------------------------
+# State-conditioned risk model (Phase 8/9 correction)
+# ---------------------------------------------------------------------------
+
+class TestStateConditionedRisk:
+    """The decision must be driven by SLA headroom + destination/action/telemetry
+    state, NOT by a static workload-class multiplier.
+    """
+
+    def test_critical_migrates_with_large_headroom_and_safe_dest(self):
+        """A critical workload MAY migrate when headroom is large and the destination is safe."""
+        model = MigrationCostModel()
+        state = _make_state()
+        assessment = _make_assessment(binding=ConstraintType.ENERGY, confidence=0.85)
+        # max_p99=2000ms, predicted=625ms ⇒ ~69% headroom (well within SLA).
+        current = WorkloadState(region="us-east", p99_latency_ms=500.0)
+        predicted = WorkloadState(region="us-west", p99_latency_ms=625.0, capacity_buffer_pct=60.0)
+        dest = RegionContext(
+            region="us-west",
+            spare_capacity_pct=70.0,
+            baseline_p99_latency_ms=300.0,  # destination not slower than source
+            thermally_stressed=False,
+            throttling=False,
+        )
+        ri = RiskInputs(
+            sla_policy=_policy(PriorityTier.CRITICAL, max_p99_ms=2000.0),
+            current_state=current,
+            predicted_state=predicted,
+            dest_context=dest,
+            prefix_cache_hit_rate=0.1,   # low cache affinity ⇒ little warmup loss
+            requests_running=4.0,        # low queue/load
+        )
+        est = model.estimate(
+            workload_id="crit-wl",
+            action_type=ActionType.MIGRATE.value,
+            assessment=assessment,
+            state=state,
+            gross_savings=25.0,
+            is_latency_sensitive=True,
+            priority_tier="critical",
+            current_topology_score=0.7,
+            target_topology_score=0.6,
+            risk_inputs=ri,
+        )
+        assert not est.hard_sla_block
+        assert est.sla_headroom_fraction is not None and est.sla_headroom_fraction > 0.5
+        assert est.is_viable(), f"Critical workload should migrate; est={est.to_dict()}"
+        keep, _ = model.should_keep(est)
+        assert not keep
+
+    def test_critical_blocked_with_small_headroom(self):
+        """A critical workload is blocked when SLA headroom is small (predicted near the cap)."""
+        model = MigrationCostModel()
+        state = _make_state()
+        assessment = _make_assessment(binding=ConstraintType.ENERGY, confidence=0.85)
+        # max_p99=500ms, predicted=490ms ⇒ ~2% headroom (tiny, but NOT a hard breach).
+        current = WorkloadState(region="us-east", p99_latency_ms=380.0)
+        predicted = WorkloadState(region="us-west", p99_latency_ms=490.0, capacity_buffer_pct=60.0)
+        dest = RegionContext(region="us-west", spare_capacity_pct=70.0, baseline_p99_latency_ms=380.0)
+        ri = RiskInputs(
+            sla_policy=_policy(PriorityTier.CRITICAL, max_p99_ms=500.0),
+            current_state=current,
+            predicted_state=predicted,
+            dest_context=dest,
+            prefix_cache_hit_rate=0.1,
+            requests_running=4.0,
+        )
+        est = model.estimate(
+            workload_id="crit-wl",
+            action_type=ActionType.MIGRATE.value,
+            assessment=assessment,
+            state=state,
+            gross_savings=8.0,
+            is_latency_sensitive=True,
+            priority_tier="critical",
+            current_topology_score=0.7,
+            target_topology_score=0.6,
+            risk_inputs=ri,
+        )
+        assert not est.hard_sla_block  # not a hard breach — blocked on thin headroom
+        assert est.sla_headroom_fraction is not None and est.sla_headroom_fraction < 0.1
+        assert est.sla_risk_penalty > 0
+        keep, reason = model.should_keep(est)
+        assert keep, f"Small headroom should block; est={est.to_dict()}"
+
+    def test_batch_blocked_with_hostile_destination(self):
+        """A batch workload is blocked when destination topology/thermal/queue risk is high."""
+        model = MigrationCostModel()
+        state = _make_state()
+        assessment = _make_assessment(binding=ConstraintType.ENERGY, confidence=0.85)
+        # Batch SLA is loose (huge headroom) — so SLA is NOT the blocker; the
+        # hostile destination + topology degradation is.
+        current = WorkloadState(region="us-east", p99_latency_ms=2000.0)
+        predicted = WorkloadState(region="us-west", p99_latency_ms=3000.0, capacity_buffer_pct=5.0)
+        dest = RegionContext(
+            region="us-west",
+            spare_capacity_pct=5.0,           # near-full
+            baseline_p99_latency_ms=4000.0,   # slower than source
+            thermally_stressed=True,
+            throttling=True,
+            network_rtt_ms=150.0,             # far away
+        )
+        ri = RiskInputs(
+            sla_policy=_policy(PriorityTier.BATCH, max_p99_ms=10000.0),
+            current_state=current,
+            predicted_state=predicted,
+            dest_context=dest,
+            prefix_cache_hit_rate=0.8,
+            requests_running=40.0,            # high in-flight load
+        )
+        est = model.estimate(
+            workload_id="batch-wl",
+            action_type=ActionType.MIGRATE.value,
+            assessment=assessment,
+            state=state,
+            gross_savings=8.0,
+            is_latency_sensitive=False,
+            priority_tier="batch",
+            current_topology_score=0.9,
+            target_topology_score=0.1,        # severe topology degradation
+            risk_inputs=ri,
+        )
+        assert est.sla_headroom_fraction is not None and est.sla_headroom_fraction > 0.5
+        assert est.destination_risk_penalty > 0
+        assert est.action_risk_penalty > 0
+        keep, reason = model.should_keep(est)
+        assert keep, f"Hostile destination should block batch migration; est={est.to_dict()}"
+
+    def test_missing_telemetry_increases_uncertainty_and_can_force_keep(self):
+        """Missing telemetry widens the uncertainty buffer and can force KEEP."""
+        model = MigrationCostModel()
+        state = _make_state()
+        assessment = _make_assessment(binding=ConstraintType.ENERGY, confidence=0.5)
+        # Full telemetry → viable at modest savings.
+        current = WorkloadState(region="us-east", p99_latency_ms=500.0)
+        predicted = WorkloadState(region="us-west", p99_latency_ms=700.0, capacity_buffer_pct=40.0)
+        dest = RegionContext(region="us-west", spare_capacity_pct=60.0, baseline_p99_latency_ms=500.0)
+        ri_full = RiskInputs(
+            sla_policy=_policy(PriorityTier.STANDARD, max_p99_ms=3000.0),
+            current_state=current,
+            predicted_state=predicted,
+            dest_context=dest,
+            prefix_cache_hit_rate=0.2,
+            requests_running=4.0,
+        )
+        est_full = model.estimate(
+            workload_id="wl",
+            action_type=ActionType.MIGRATE.value,
+            assessment=assessment,
+            state=state,
+            gross_savings=5.0,
+            current_topology_score=0.7,
+            target_topology_score=0.6,
+            risk_inputs=ri_full,
+        )
+        # No telemetry at all → maximal uncertainty buffer.
+        est_missing = model.estimate(
+            workload_id="wl",
+            action_type=ActionType.MIGRATE.value,
+            assessment=assessment,
+            state=state,
+            gross_savings=5.0,
+            risk_inputs=RiskInputs(),
+        )
+        assert est_missing.uncertainty_penalty > est_full.uncertainty_penalty
+        assert len(est_missing.missing_signals) > len(est_full.missing_signals)
+        keep_full, _ = model.should_keep(est_full)
+        keep_missing, reason = model.should_keep(est_missing)
+        assert not keep_full, f"Full telemetry should be viable; est={est_full.to_dict()}"
+        assert keep_missing, f"Missing telemetry should force KEEP; est={est_missing.to_dict()}"
+
+    def test_workload_label_alone_does_not_change_decision(self):
+        """With ALL state inputs identical, the priority label alone changes nothing."""
+        model = MigrationCostModel()
+        state = _make_state()
+        assessment = _make_assessment(binding=ConstraintType.ENERGY, confidence=0.8)
+        # Identical state for both estimates (same RiskInputs object, no SLA-policy
+        # difference) — only the priority label/latency-sensitivity flag differ.
+        ri = RiskInputs(
+            sla_policy=None,
+            current_state=WorkloadState(region="us-east", p99_latency_ms=500.0),
+            predicted_state=WorkloadState(region="us-west", p99_latency_ms=600.0),
+            dest_context=RegionContext(region="us-west", spare_capacity_pct=60.0),
+            prefix_cache_hit_rate=0.2,
+            requests_running=4.0,
+        )
+        common = dict(
+            workload_id="wl",
+            action_type=ActionType.MIGRATE.value,
+            assessment=assessment,
+            state=state,
+            gross_savings=10.0,
+            current_topology_score=0.7,
+            target_topology_score=0.5,
+            risk_inputs=ri,
+        )
+        est_critical = model.estimate(is_latency_sensitive=True, priority_tier="critical", **common)
+        est_batch = model.estimate(is_latency_sensitive=False, priority_tier="batch", **common)
+        # Every risk bucket and the net are identical — the label does not move risk.
+        assert est_critical.total_penalty == est_batch.total_penalty
+        assert est_critical.sla_risk_penalty == est_batch.sla_risk_penalty
+        assert est_critical.destination_risk_penalty == est_batch.destination_risk_penalty
+        assert est_critical.action_risk_penalty == est_batch.action_risk_penalty
+        assert est_critical.uncertainty_penalty == est_batch.uncertainty_penalty
+        assert est_critical.net_expected_savings == est_batch.net_expected_savings
+        assert model.should_keep(est_critical)[0] == model.should_keep(est_batch)[0]
+
+    def test_high_savings_rejected_when_hard_sla_breached(self):
+        """Very high expected savings is still rejected when state breaches a hard SLA bound."""
+        model = MigrationCostModel()
+        state = _make_state()
+        assessment = _make_assessment(binding=ConstraintType.ENERGY, confidence=0.9)
+        current = WorkloadState(region="us-east", p99_latency_ms=480.0)
+        predicted = WorkloadState(region="us-west", p99_latency_ms=900.0)  # > 500ms hard cap
+        dest = RegionContext(region="us-west", spare_capacity_pct=70.0)
+        ri = RiskInputs(
+            sla_policy=_policy(PriorityTier.CRITICAL, max_p99_ms=500.0),
+            current_state=current,
+            predicted_state=predicted,
+            dest_context=dest,
+        )
+        est = model.estimate(
+            workload_id="crit-wl",
+            action_type=ActionType.MIGRATE.value,
+            assessment=assessment,
+            state=state,
+            gross_savings=100.0,  # huge savings
+            is_latency_sensitive=True,
+            priority_tier="critical",
+            risk_inputs=ri,
+        )
+        assert est.hard_sla_block
+        assert not est.is_viable()
+        keep, reason = model.should_keep(est)
+        assert keep, f"Hard SLA breach must block regardless of savings; reason={reason}"
+
+    def test_migration_allowed_false_hard_blocks(self):
+        """SLA migration_allowed=false hard-blocks a migration regardless of savings."""
+        model = MigrationCostModel()
+        state = _make_state()
+        assessment = _make_assessment(binding=ConstraintType.ENERGY, confidence=0.9)
+        ri = RiskInputs(
+            sla_policy=_policy(PriorityTier.CRITICAL, max_p99_ms=5000.0, migration_allowed=False),
+            current_state=WorkloadState(region="us-east", p99_latency_ms=300.0),
+            predicted_state=WorkloadState(region="us-west", p99_latency_ms=350.0),
+            dest_context=RegionContext(region="us-west", spare_capacity_pct=80.0),
+        )
+        est = model.estimate(
+            workload_id="crit-wl",
+            action_type=ActionType.MIGRATE.value,
+            assessment=assessment,
+            state=state,
+            gross_savings=50.0,
+            risk_inputs=ri,
+        )
+        assert est.hard_sla_block
+        keep, _ = model.should_keep(est)
+        assert keep
+
+    def test_risk_factor_explanation_present(self):
+        """The estimate exposes which state factors drove the risk (explainability)."""
+        model = MigrationCostModel()
+        state = _make_state()
+        assessment = _make_assessment(binding=ConstraintType.ENERGY, confidence=0.8)
+        ri = RiskInputs(
+            sla_policy=_policy(PriorityTier.STANDARD, max_p99_ms=1000.0),
+            current_state=WorkloadState(region="us-east", p99_latency_ms=500.0),
+            predicted_state=WorkloadState(region="us-west", p99_latency_ms=900.0),  # tight headroom
+            dest_context=RegionContext(region="us-west", spare_capacity_pct=10.0, throttling=True),
+            prefix_cache_hit_rate=0.7,
+            requests_running=20.0,
+        )
+        est = model.estimate(
+            workload_id="wl",
+            action_type=ActionType.MIGRATE.value,
+            assessment=assessment,
+            state=state,
+            gross_savings=10.0,
+            current_topology_score=0.8,
+            target_topology_score=0.2,
+            risk_inputs=ri,
+        )
+        assert isinstance(est.risk_factors, dict) and est.risk_factors
+        assert est.dominant_risk_factors  # non-empty
+        # Each dominant factor is a real contributor.
+        for f in est.dominant_risk_factors:
+            assert f in est.risk_factors
+        # Buckets sum to the reported total penalty.
+        bucket_sum = (
+            est.sla_risk_penalty
+            + est.destination_risk_penalty
+            + est.action_risk_penalty
+            + est.uncertainty_penalty
+            + est.thermal_penalty
+        )
+        assert abs(bucket_sum - est.total_penalty) < 1e-9
