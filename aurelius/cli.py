@@ -1175,7 +1175,10 @@ def cmd_robustness_test(args):
 
 def main():
     from .cli_constraint import (
+        cmd_benchmark_compare,
+        cmd_benchmark_run,
         cmd_constraint_report,
+        cmd_optimizer_regression_check,
         cmd_simulate_constraint_scenario,
         cmd_telemetry_check,
         cmd_topology_report,
@@ -1883,10 +1886,45 @@ def main():
     )
 
     # --- validate-connectors ---
-    vc_parser = subparsers.add_parser(
+    subparsers.add_parser(
         "validate-connectors",
         help="Smoke-test all fake (sandbox) connectors via production code paths",
     )
+
+    # --- benchmark-run ---
+    br_parser = subparsers.add_parser(
+        "benchmark-run",
+        help="[Phase 11] Multi-policy constraint-aware benchmark on a scenario [SANDBOX]",
+    )
+    br_parser.add_argument("--scenario", help="Scenario name (or use --all-scenarios)")
+    br_parser.add_argument("--all-scenarios", action="store_true",
+                           dest="all_scenarios", help="Run all available scenarios")
+    br_parser.add_argument("--seed", type=int, default=42, help="Random seed (default: 42)")
+    br_parser.add_argument("--steps", type=int, default=24,
+                           help="Simulator ticks per run (default: 24)")
+    br_parser.add_argument("--output-dir", default="benchmarks/results",
+                           dest="output_dir", help="Directory for JSON output")
+    br_parser.add_argument("--format", choices=["text", "json"], default="text")
+
+    # --- benchmark-compare ---
+    bc_parser = subparsers.add_parser(
+        "benchmark-compare",
+        help="[Phase 11] Compare two benchmark JSON files for regressions",
+    )
+    bc_parser.add_argument("--baseline", required=True, help="Previous benchmark JSON")
+    bc_parser.add_argument("--current", required=True, help="New benchmark JSON")
+    bc_parser.add_argument("--policy", default="constraint_aware",
+                           help="Policy to compare (default: constraint_aware)")
+
+    # --- optimizer-regression-check ---
+    orc_parser = subparsers.add_parser(
+        "optimizer-regression-check",
+        help="[Phase 11] Check optimizer safety/stability across all scenarios [SANDBOX]",
+    )
+    orc_parser.add_argument("--seed", type=int, default=42)
+    orc_parser.add_argument("--steps", type=int, default=24)
+    orc_parser.add_argument("--min-score", type=float, default=0.4, dest="min_score",
+                            help="Minimum scorecard weighted_score (default: 0.4)")
 
     # Parse arguments
     args = parser.parse_args()
@@ -1928,6 +1966,12 @@ def main():
         cmd_topology_report(args)
     elif args.command == "validate-connectors":
         cmd_validate_connectors(args)
+    elif args.command == "benchmark-run":
+        cmd_benchmark_run(args)
+    elif args.command == "benchmark-compare":
+        cmd_benchmark_compare(args)
+    elif args.command == "optimizer-regression-check":
+        cmd_optimizer_regression_check(args)
     else:
         parser.print_help()
         sys.exit(1)

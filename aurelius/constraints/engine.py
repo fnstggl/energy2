@@ -733,6 +733,11 @@ class ConstraintAwareEngine:
             )
             sla_eval_dict = chosen_scored.evaluation.to_dict()
 
+        # Resolve target_region from the chosen action (None for non-migration actions)
+        final_target_region: Optional[str] = None
+        if not is_noop and chosen.target_region and chosen.target_region != service.region:
+            final_target_region = chosen.target_region
+
         recommendation = Recommendation(
             recommendation_id=str(uuid.uuid4()),
             workload_id=workload_id,
@@ -752,6 +757,7 @@ class ConstraintAwareEngine:
             rationale=rationale,
             is_noop=is_noop,
             implementation_mode=self.implementation_mode,
+            target_region=final_target_region,
         )
 
         return recommendation, rejected

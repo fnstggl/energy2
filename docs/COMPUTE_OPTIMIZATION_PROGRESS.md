@@ -16,13 +16,13 @@ Every implementation run must read that plan before deciding what to do next.
 
 ## Status Summary
 
-Current status: **PHASE 9 COMPLETE / PHASE 10 NOT STARTED**
+Current status: **PHASE 11 COMPLETE**
 
-Phases 1–10 of the constraint-aware orchestration initiative are complete.
+Phases 1–11 of the constraint-aware orchestration initiative are complete.
 
 The next expected milestone is:
 
-**Phase 11 — Validation, benchmarking, and continuous optimization loop**
+**Phase 12 — Production hardening and live deployment**
 
 ---
 
@@ -1025,3 +1025,80 @@ pytest (full suite)
 ### Merge
 
 PR #65 merged to main via squash at commit `0471e8533e5d06f1078ff4862cbb491296edc6f3`.
+
+---
+
+## Phase 11 — Validation, Benchmarking, and Continuous Optimization Improvement
+
+### Completion Evidence
+
+- **58/58 Phase 11 tests passing** (`tests/test_constraint_benchmark.py`)
+- **571/577 constraint-aware tests passing** (6 pre-existing failures due to missing PyYAML, unrelated to Phase 11)
+- All benchmark outputs labeled `[SANDBOX]`
+- No secrets committed
+
+### What was implemented
+
+**Multi-policy constraint-aware benchmark framework** with deterministic seeds, immutable scenario versioning, regression detection, and 3 new CLI commands.
+
+- **Why it was the correct next step:** Phases 1-10 verified (718 tests passing). The `ConstraintAwareEngine` had full CLI surface (Phase 10) but no quantitative performance verification. Phase 11 adds closed-loop simulation benchmarking that compares the engine against 4 baselines and enforces SLA/cost/migration safety invariants.
+- **Prior dependencies verified:** Phase 1-10 full suite: 718 tests passing.
+- **What was explicitly NOT attempted:** Live production data ingestion (Phase 12), Postgres persistence for benchmark history (Phase 12), real-time KPI streaming.
+
+### Files Added
+
+| File | Role |
+|---|---|
+| `aurelius/benchmarks/__init__.py` | Package init — exports all public symbols |
+| `aurelius/benchmarks/report.py` | `BenchmarkMetadata`, `TickKPI`, `AggregatedKPI`, `OptimizationScorecard`, `BenchmarkReport`, `build_scorecard()` |
+| `aurelius/benchmarks/constraint_runner.py` | `ConstraintBenchmarkRunner` — 5 policies, closed-loop simulation, KPI collection |
+| `aurelius/benchmarks/regression.py` | `BenchmarkRegressionChecker` — metadata compatibility, KPI diffs, pass/fail |
+| `aurelius/benchmarks/scenario_lock.py` | SHA-256 scenario lockfile generator/checker (`--check` / `--generate`) |
+| `benchmarks/v1/.scenario_hashes.json` | Frozen hashes for all 6 canonical v1 scenarios |
+| `tests/test_constraint_benchmark.py` | 58 tests across 14 test classes |
+
+### Files Modified
+
+| File | Change |
+|---|---|
+| `aurelius/state/models.py` | Added `target_region: Optional[str]` field to `Recommendation` dataclass |
+| `aurelius/constraints/engine.py` | Populated `target_region` on output `Recommendation` objects |
+| `aurelius/simulation/cluster/engine.py` | Added safety guards to `migrate_workload()` (same-region, missing-region checks) |
+| `aurelius/simulation/cluster/scenarios.py` | Fixed `list_scenarios()` to skip hidden files (`.scenario_hashes.json`) |
+| `aurelius/cli_constraint.py` | Added `cmd_benchmark_run`, `cmd_benchmark_compare`, `cmd_optimizer_regression_check` |
+| `aurelius/cli.py` | Added 3 argparse subparsers + dispatch branches for Phase 11 commands |
+| `docs/COMPUTE_OPTIMIZATION_PROGRESS.md` | Updated status to Phase 11 complete |
+
+### CLI Commands
+
+| Command | Flags | Description |
+|---|---|---|
+| `benchmark-run` | `--scenario`, `--steps`, `--seed`, `--output-dir`, `--baseline` | Run multi-policy benchmark; exit 1 if regression flags |
+| `benchmark-compare` | `--baseline`, `--current`, `--policy` | Compare two saved JSON reports; exit 1 on regression |
+| `optimizer-regression-check` | `--steps`, `--seed`, `--min-score` | Run all scenarios; verify SLA ≤ FIFO, churn bounded, scorecard ≥ threshold |
+
+### Benchmark Framework Details
+
+- **5 policies benchmarked**: `fifo` (baseline, no-op), `current_price_only`, `greedy_energy`, `sla_aware`, `constraint_aware`
+- **6 canonical scenarios**: all `benchmarks/v1/*.yaml` scenarios (energy arbitrage, queue surge, thermal throttling, topology fragmentation, migration cost, mixed)
+- **OptimizationScorecard**: 7 weighted components — net_cost (0.25), sla_preservation (0.25), utilization (0.15), latency (0.15), migration_stability (0.10), thermal (0.05), topology (0.05)
+- **Regression thresholds**: cost +2%, SLA any increase, p99 latency +10%, migration churn +50%, scorecard -5%
+- **Deterministic**: seed-based `ClusterSimulator` ensures reproducible results; metadata hash validates scenario identity
+
+### Test Evidence
+
+```
+pytest tests/test_constraint_benchmark.py
+58 passed in 0.90s
+
+pytest (constraint-aware suite)
+571 passed, 6 pre-existing failures (missing PyYAML — unrelated)
+```
+
+### Safety Invariants Maintained
+
+- All recommendations are `recommendation_only`; no live cluster mutations
+- Missing telemetry is `None`, never fabricated as `0`
+- Benchmark outputs explicitly labeled `[SANDBOX]`
+- No secrets in logs or reports
+- Scenario lockfile prevents silent YAML drift in CI

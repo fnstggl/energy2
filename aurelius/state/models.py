@@ -1159,6 +1159,7 @@ class Recommendation:
     rationale: str = ""
     is_noop: bool = False
     implementation_mode: str = "recommendation_only"  # "recommendation_only"|"dry_run"|"executable"
+    target_region: Optional[str] = None    # target region for migration actions (None = same region)
 
     _VALID_SLA_STATUS = frozenset({"satisfied", "corrected", "blocked", "unknown"})
     _VALID_IMPL_MODES = frozenset({"recommendation_only", "dry_run", "executable"})
@@ -1196,6 +1197,7 @@ class Recommendation:
             "rationale": self.rationale,
             "is_noop": self.is_noop,
             "implementation_mode": self.implementation_mode,
+            "target_region": self.target_region,
         }
 
     @classmethod
@@ -1221,4 +1223,5 @@ class Recommendation:
             rationale=d.get("rationale", ""),
             is_noop=d.get("is_noop", False),
             implementation_mode=d.get("implementation_mode", "recommendation_only"),
+            target_region=d.get("target_region"),
         )
