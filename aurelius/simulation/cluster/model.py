@@ -272,6 +272,9 @@ class SimRegion:
     current_energy_price: float = 50.0   # $/MWh
     current_carbon_intensity: Optional[float] = None
 
+    # Spike override — set by energy_price_spike event; prevents trace from clobbering it
+    price_spike_active: bool = False
+
     # Ambient temperature proxy (affects GPU cooling)
     ambient_temp_c: float = 22.0
     ambient_temp_trace: list[float] = field(default_factory=list)

@@ -158,15 +158,37 @@ class ClusterSimulator:
 
         return cluster
 
+    @staticmethod
+    def _parse_float_trace(raw: list[Any]) -> list[float]:
+        """Defensively parse a trace that may contain ints, floats, or
+        dash-separated strings (e.g. ``"200 - 210 - 220"``).
+
+        Strings are split on ' - ' and each token parsed as float.  This
+        handles YAML files where multiple values were written on one line
+        using dash notation instead of proper list items.
+        """
+        result: list[float] = []
+        for item in raw:
+            if isinstance(item, str):
+                for token in item.split(" - "):
+                    token = token.strip()
+                    if token:
+                        result.append(float(token))
+            else:
+                result.append(float(item))
+        return result
+
     def _build_region(self, r_cfg: dict[str, Any]) -> SimRegion:
         region_id = r_cfg["region_id"]
+        raw_carbon = r_cfg.get("carbon_intensity_trace", [])
+        raw_ambient = r_cfg.get("ambient_temp_trace", [])
         region = SimRegion(
             region_id=region_id,
-            energy_price_trace=r_cfg.get("energy_price_trace", [50.0]),
-            carbon_intensity_trace=r_cfg.get("carbon_intensity_trace", []),
-            current_energy_price=r_cfg.get("energy_price_trace", [50.0])[0],
-            ambient_temp_c=r_cfg.get("ambient_temp_c", 22.0),
-            ambient_temp_trace=r_cfg.get("ambient_temp_trace", []),
+            energy_price_trace=self._parse_float_trace(r_cfg.get("energy_price_trace", [50.0])),
+            carbon_intensity_trace=self._parse_float_trace(raw_carbon),
+            current_energy_price=self._parse_float_trace(r_cfg.get("energy_price_trace", [50.0]))[0],
+            ambient_temp_c=float(r_cfg.get("ambient_temp_c", 22.0)),
+            ambient_temp_trace=self._parse_float_trace(raw_ambient),
             network_latency_to=r_cfg.get("network_latency_to", {}),
         )
 
@@ -449,7 +471,14 @@ class ClusterSimulator:
                 for region in cluster.regions.values():
                     if region_id and region.region_id != region_id:
                         continue
-                    region.current_energy_price *= multiplier
+                    # Multiply the current trace price (set this tick before events run)
+                    if region.energy_price_trace:
+                        base_idx = (tick - 1) % len(region.energy_price_trace)
+                        base_price = region.energy_price_trace[base_idx]
+                    else:
+                        base_price = region.current_energy_price
+                    region.current_energy_price = base_price * multiplier
+                    region.price_spike_active = True
 
             elif etype == "energy_price_spike_end":
                 region_id = event.get("region_id")
@@ -457,6 +486,7 @@ class ClusterSimulator:
                 for region in cluster.regions.values():
                     if region_id and region.region_id != region_id:
                         continue
+                    region.price_spike_active = False
                     if region.energy_price_trace:
                         idx = (tick - 1) % len(region.energy_price_trace)
                         region.current_energy_price = region.energy_price_trace[idx]
@@ -510,8 +540,9 @@ class ClusterSimulator:
         for region in cluster.regions.values():
             if region.energy_price_trace:
                 idx = (tick - 1) % len(region.energy_price_trace)
-                # Only update if not spike-overridden (events handle that separately)
-                region.current_energy_price = region.energy_price_trace[idx]
+                # Only update from trace when no spike event is overriding the price
+                if not region.price_spike_active:
+                    region.current_energy_price = region.energy_price_trace[idx]
             if region.carbon_intensity_trace:
                 idx = (tick - 1) % len(region.carbon_intensity_trace)
                 region.current_carbon_intensity = region.carbon_intensity_trace[idx]

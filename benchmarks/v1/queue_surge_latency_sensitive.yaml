@@ -65,8 +65,8 @@ workloads:
     workload_type: inference
     priority_tier: latency_sensitive
     region_id: us-east
-    gpu_count_required: 2
-    target_util_pct: 65.0
+    gpu_count_required: 1
+    target_util_pct: 50.0
     communication_intensity: low
     migration_allowed: false
     latency_sensitive: true

@@ -16,7 +16,7 @@ Every implementation run must read that plan before deciding what to do next.
 
 ## Status Summary
 
-Current status: **PHASE 6 COMPLETE / PHASE 7 NOT STARTED**
+Current status: **PHASE 7 COMPLETE / PHASE 8 NOT STARTED**
 
 Phase 1 produced:
 - `aurelius/state/models.py` — canonical frozen dataclass state models
@@ -159,7 +159,7 @@ Forbidden:
 | 4 | Kubernetes connector | COMPLETE | `aurelius/connectors/kubernetes.py`, 47 tests passing | See Phase 4+5 details below |
 | 5 | Topology collector | COMPLETE | `aurelius/connectors/topology.py`, 62 tests passing | See Phase 4+5 details below |
 | 6 | Synthetic cluster simulator | COMPLETE | `aurelius/simulation/cluster/`, 93 tests passing | See Phase 6 details below |
-| 7 | Constraint classifier | NOT_STARTED | None yet | Depends on Phase 1 and simulator fixtures |
+| 7 | Constraint classifier | COMPLETE | `aurelius/constraints/`, 68 tests passing | See Phase 7 details below |
 | 8 | Cost/risk/migration model | NOT_STARTED | None yet | Depends on classifier + SLA/state models |
 | 9 | Constraint-aware recommendation engine | NOT_STARTED | None yet | Requires SLA wiring audit |
 | 10 | CLI reports | NOT_STARTED | None yet | Depends on classifier/engine |
@@ -727,3 +727,123 @@ The simulator must:
 3. Simulate GPU utilization, thermal, queue, and latency dynamics
 4. Provide baseline comparisons (FIFO, current_price_only, greedy energy, SLA-aware)
 5. Produce ClusterState snapshots via the same normalization paths
+
+Next milestone: ~~Phase 7 — Constraint Classifier~~ **COMPLETE** → **Phase 8 — Cost/Risk/Migration Model**
+
+---
+
+## Phase 7 Completion Evidence
+
+### Phase 7 Milestone Decision
+
+- **What this run implemented:** Phase 7 — Constraint Classifier (`aurelius/constraints/` package)
+- **Why it was the correct next step:** Phases 1-6 verified (1861+ tests passing). The classifier is the first component that consumes `ClusterState` and produces actionable `ConstraintAssessment` outputs. Required before Phase 8 (cost model) and Phase 9 (recommendation engine).
+- **Prior dependencies verified:** All Phase 1-6 tests pass. Three simulator bugs were fixed as part of pre-Phase-7 verification: YAML trace parsing, energy spike event overwrite, communication scorer false-positive.
+- **What was explicitly NOT attempted:** Cost/risk model (Phase 8), recommendation engine (Phase 9), CLI reports (Phase 10).
+
+### Files Added
+
+| File | Role |
+|---|---|
+| `aurelius/constraints/__init__.py` | Package exports: `ConstraintClassifier`, `ConstraintConfig`, `ScorerResult` |
+| `aurelius/constraints/classifier.py` | Main Phase 7 implementation: 8 per-family scorers, `ConstraintClassifier` with hysteresis, trust-boundary action tables |
+| `tests/test_constraint_classifier.py` | 68 tests covering all constraint families, missing-signal behavior, hysteresis, trust-boundary invariants, simulator scenario integration |
+
+### Files Modified (Bugs Fixed)
+
+| File | Change |
+|---|---|
+| `aurelius/simulation/cluster/engine.py` | Added `_parse_float_trace()`, fixed energy spike event (`price_spike_active` flag), fixed `_update_energy_prices()` to respect spike flag, fixed `_update_queues()` to use `queue_time_p95_ms` |
+| `aurelius/simulation/cluster/model.py` | Added `price_spike_active: bool = False` to `SimRegion` |
+| `aurelius/connectors/base.py` | Fixed `basic_credentials()` to return `None` when password env var is unset |
+| `benchmarks/v1/energy_price_arbitrage_multiregion.yaml` | Fixed `carbon_intensity_trace` and `ambient_temp_trace` from malformed dash-separated strings to proper YAML lists |
+| `benchmarks/v1/queue_surge_latency_sensitive.yaml` | Reduced `critical-wl` from 2 GPUs/65% util to 1 GPU/50% util so 5× surge creates real queue pressure |
+| `tests/test_constraint_classifier.py` | Added `numa_affinity` arg to `TopologyState` fixture constructors; updated energy scenario test to use `assess_region("us-east")` with calibrated thresholds |
+
+### Constraint Families Implemented
+
+| Family | Primary Signals | Score=1.0 condition |
+|---|---|---|
+| ENERGY | `energy.price_per_mwh` (required primary), `energy.price_percentile` (enrichment) | price ≥ `energy_very_high_price_mwh` |
+| THERMAL | `thermal.throttling_fraction`, `thermal.max_gpu_temp_c`, per-GPU temp/clocks | >20% GPUs throttling AND temp >critical |
+| QUEUE | `service.requests_waiting`, `service.queue_time_p95_ms` (falls back from p99) | queue saturated + wait >30s |
+| LATENCY | `service.p99_latency_ms`, `service.ttft_p99_ms`, `service.error_rate_pct` | p99 >5s AND TTFT >3s |
+| COMMUNICATION | NVLink TX+RX (primary, multiplicative with SM idle), PCIe (secondary) | high NVLink traffic AND low SM activity |
+| MEMORY | `service.kv_cache_usage`, `service.prefix_cache_hit_rate`, GPU HBM, preemptions | KV >85% AND prefix hit <30% |
+| TOPOLOGY | `topology.pair_levels` weak fraction | all GPU pairs on weak interconnects |
+| UTILIZATION | `gpu.util_pct` avg + idle fraction | avg util <5% AND >30% GPUs idle |
+
+### Design Invariants
+
+- **Missing primary signal → `score=None`**: Energy scorer returns `None` if `price_per_mwh` is absent even if percentile is present
+- **Trust boundaries**: MEMORY binding never emits `modify_kv_cache_internals` or `modify_memory_allocator`; COMMUNICATION binding never emits `split_communicating_workloads`
+- **Hysteresis**: Current binding exits only when score drops below `hysteresis_off=0.35`; new binding enters only when score exceeds `hysteresis_on=0.55` AND leads by >0.10 margin
+- **Confidence floor**: No binding declared when `confidence < confidence_floor=0.30`
+- **Communication constraint**: Multiplicative formula — requires BOTH high NVLink bandwidth AND low SM utilization (avoiding false positives on healthy NVSwitch clusters)
+
+### Tests Added
+
+| Test Class | Tests | What It Proves |
+|---|---|---|
+| `TestEnergyConstraint` | 6 | High/low/spike price detection, percentile enrichment, missing primary signal → no score |
+| `TestThermalConstraint` | 5 | Throttle fraction triggers thermal, temp-only path, low temp no pressure, per-GPU signals |
+| `TestQueueConstraint` | 5 | Queue depth, wait time, surge triggers QUEUE, no fabrication when absent |
+| `TestLatencyConstraint` | 5 | p99 breach, TTFT breach, error rate, safe actions include `preserve_affinity` |
+| `TestCommunicationConstraint` | 5 | High NVLink + low SM → bound, high NVLink + high SM → NOT bound, trust boundary |
+| `TestMemoryConstraint` | 5 | KV cache high, low prefix hit, HBM pressure, trust boundary (no KV internals) |
+| `TestTopologyConstraint` | 3 | Weak links trigger topology, NVSwitch no pressure, missing topology → no score |
+| `TestUtilizationConstraint` | 4 | Low util binds, high util no bind, idle GPU fraction, empty GPUs no score |
+| `TestHysteresis` | 5 | Sticky above off threshold, switches when clearly ahead, confidence floor blocks |
+| `TestConfidenceFloor` | 3 | Low confidence → None binding, partial state penalty |
+| `TestMissingSignals` | 4 | Empty cluster, empty region, all-None signals, no fabrication |
+| `TestTrustBoundary` | 4 | Memory binding disallows KV internals, comm binding disallows NCCL/CUDA |
+| `TestSimulatorScenarios` | 6 | Each scenario identifies expected binding constraint (energy→us-east regional, thermal, queue, utilization, + "no certainty" empty-tick test) |
+| `TestAssessRegion` | 3 | Per-region API, unknown region, multi-region independence |
+| `TestJSONRoundTrip` | 3 | `ConstraintAssessment.to_dict()` round-trips correctly |
+| `TestMultiRegion` | 4 | Cluster-level takes max across regions, independent per-region assessments |
+| `TestReset` | 2 | `reset()` clears hysteresis state |
+
+### Commands Run
+
+```
+python -m pytest tests/test_constraint_classifier.py -q
+python -m pytest --ignore=tests/test_phase4_reporting.py -q  # full suite
+```
+
+### Test Results
+
+```
+tests/test_constraint_classifier.py: 68 passed, 0 failed
+Full suite (excl. matplotlib-dependent test): 1861 passed, 5 pre-existing LightGBM failures, 0 new failures
+ruff: All checks passed
+```
+
+### Pre-Existing Failures (Not Caused by This Run)
+
+5 failures in `test_forecaster_v5.py`, `test_ml_forecaster_v2.py`, `test_weather_features.py` — all require LightGBM which is not installed in this environment. Pre-existing before Phase 7.
+
+### Wiring Evidence
+
+- `ConstraintClassifier.assess(cluster_state)` → `ConstraintAssessment` is the first component that consumes `ClusterState` and produces actionable outputs
+- `ConstraintClassifier.assess_region(cluster_state, region_id)` → per-region `ConstraintAssessment` for regional constraint detection (e.g., energy spike in one region)
+- All 6 simulator scenarios produce `ClusterState` snapshots that feed the classifier at each tick — end-to-end smoke test for the full Phase 1→6→7 vertical slice
+- NOT yet wired into any production optimizer/scheduler path (intentional; Phase 9 target)
+
+### Failure Mode Review
+
+- **No EnergyState → `score=None`**: Energy scorer does not fabricate a score from zero data
+- **price_per_mwh absent (only percentile) → `score=None`**: Secondary enrichment never substitutes for primary signal
+- **queue_time_p99_ms absent → falls back to p95**: Robustly uses whichever wait-time percentile is available
+- **Confidence below floor → `binding=None`**: No constraint declared when data coverage is too low
+- **Empty cluster → returns assessment with `binding=None`, `confidence=0.0`**: Never crashes
+- **Partial state (`is_partial=True`) → confidence × 0.70 penalty**: Proportional confidence reduction
+- **TopologyState absent → `score=None` for topology**: No fabricated topology assessment
+
+### Open Limitations
+
+- All thresholds are marked `# HEURISTIC`; calibration from real telemetry traces is Phase 11 work
+- Communication scorer requires both NVLink AND SM signals; if only NVLink is available, `missing.append("gpu.sm_active_ratio")` and no comm score is emitted
+- Mixed-constraint scenarios (simultaneous thermal + queue + energy) not yet tested as integration benchmarks
+- Classifier produces one binding constraint; multi-binding scenarios (e.g., thermal AND queue simultaneously) are represented in `scores` dict but only the highest-scoring family becomes `binding_constraint`
+- No time-series trend detection (rising slope) yet — all scoring is instantaneous snapshot
+- `assess_region()` vs `assess()` distinction requires caller to choose; Phase 9 recommendation engine should use per-region assessment for regional decisions

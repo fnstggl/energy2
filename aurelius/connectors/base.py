@@ -49,7 +49,9 @@ class AuthConfig:
             return None
         if self.username is None or self.password_env is None:
             return None
-        password = os.environ.get(self.password_env, "")
+        password = os.environ.get(self.password_env)
+        if password is None:
+            return None
         return (self.username, password)
 
     @classmethod
