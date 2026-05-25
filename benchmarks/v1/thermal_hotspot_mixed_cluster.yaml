@@ -1,0 +1,87 @@
+scenario_name: thermal_hotspot_mixed_cluster
+version: "v1"
+simulator_version: "1.0.0"
+scenario_version: "v1"
+description: >
+  A subset of nodes runs hot/throttling under sustained load.
+  Expected: spread/reroute reduces throttling and protects p99 without violating residency SLA.
+  Workloads should prefer cool-rack over hot-rack.
+
+seed: 42
+tick_duration_hours: 1.0
+expected_primary_constraint: thermal_bound
+expected_events:
+  - thermal_hotspot
+validation_rules:
+  - metric: thermal_throttle_gpu_count
+    comparison: lt
+    baseline: fifo
+    note: "Aurelius should reduce throttled GPU count by spreading"
+
+regions:
+  - region_id: us-east
+    energy_price_trace:
+      - 55.0
+    ambient_temp_c: 28.0
+    ambient_temp_trace:
+      - 28 - 28 - 29 - 30 - 32 - 34 - 35 - 35
+      - 34 - 33 - 32 - 30 - 30 - 31 - 32 - 33
+      - 33 - 32 - 30 - 29 - 28 - 28 - 27 - 27
+    nodes:
+      - node_id: hot-node0
+        gpu_type: a100-sxm4-80gb
+        gpu_count: 4
+        topology_class: nvswitch
+        rack_id: hot-rack
+        zone: us-east-1a
+        instance_type: p4d.24xlarge
+
+      - node_id: hot-node1
+        gpu_type: a100-sxm4-80gb
+        gpu_count: 4
+        topology_class: nvswitch
+        rack_id: hot-rack
+        zone: us-east-1a
+        instance_type: p4d.24xlarge
+
+      - node_id: cool-node0
+        gpu_type: a100-sxm4-80gb
+        gpu_count: 4
+        topology_class: nvswitch
+        rack_id: cool-rack
+        zone: us-east-1b
+        instance_type: p4d.24xlarge
+
+    queues:
+      - queue_id: us-east-q0
+        service_id: llm-inference
+        base_arrival_rate_per_sec: 1.5
+        diurnal_amplitude: 0.3
+
+workloads:
+  - workload_id: hot-wl-0
+    service_id: llm-inference
+    workload_type: inference
+    priority_tier: standard
+    region_id: us-east
+    gpu_count_required: 4
+    target_util_pct: 85.0
+    communication_intensity: low
+    migration_allowed: true
+    latency_sla_p99_ms: 5000.0
+
+events:
+  - tick: 6
+    type: thermal_hotspot
+    node_id: hot-node0
+    extra_heat_c: 20.0
+  - tick: 6
+    type: thermal_hotspot
+    node_id: hot-node1
+    extra_heat_c: 20.0
+  - tick: 18
+    type: thermal_hotspot_end
+    node_id: hot-node0
+  - tick: 18
+    type: thermal_hotspot_end
+    node_id: hot-node1

@@ -1,0 +1,65 @@
+scenario_name: topology_fragmentation_h100
+version: "v1"
+simulator_version: "1.0.0"
+scenario_version: "v1"
+description: >
+  Multi-GPU collective training workload placed across poor interconnect (PCIe multi-NUMA)
+  vs good interconnect (NVSwitch). Expected: placement recommendation moves workload onto
+  NVLink-connected GPUs, improving effective topology score and reducing communication penalty.
+  No NCCL/CUDA internals are modified.
+
+seed: 42
+tick_duration_hours: 1.0
+expected_primary_constraint: topology_bound
+expected_events: []
+validation_rules:
+  - metric: mean_topology_score
+    comparison: gt
+    baseline: fifo
+    note: "Aurelius should improve topology quality for high-comm workload"
+  - disallowed_actions:
+      - modify_nccl
+      - modify_cuda
+    note: "No collective algorithm internals may be modified"
+
+regions:
+  - region_id: us-east
+    energy_price_trace:
+      - 50.0
+    ambient_temp_c: 22.0
+    nodes:
+      - node_id: nvswitch-node
+        gpu_type: h100-sxm5-80gb
+        gpu_count: 8
+        topology_class: nvswitch
+        rack_id: us-east-rack0
+        zone: us-east-1a
+        instance_type: p5.48xlarge
+
+      - node_id: pcie-node
+        gpu_type: h100-sxm5-80gb
+        gpu_count: 8
+        topology_class: pcie_multi_numa
+        rack_id: us-east-rack1
+        zone: us-east-1a
+        instance_type: p5e.48xlarge
+
+    queues:
+      - queue_id: us-east-q0
+        service_id: distributed-training
+        base_arrival_rate_per_sec: 0.1
+        diurnal_amplitude: 0.1
+
+workloads:
+  - workload_id: training-wl-bad-topo
+    service_id: distributed-training
+    workload_type: batch_training
+    priority_tier: batch
+    region_id: us-east
+    gpu_count_required: 4
+    target_util_pct: 80.0
+    communication_intensity: high
+    memory_intensity: high
+    migration_allowed: true
+
+events: []

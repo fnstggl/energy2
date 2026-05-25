@@ -1,0 +1,67 @@
+scenario_name: latency_tail_kvcache_pressure
+version: "v1"
+simulator_version: "1.0.0"
+scenario_version: "v1"
+description: >
+  Rising p99/TTFT with high KV-cache usage under steady arrivals.
+  Expected: scale/spread reduces tail; migration is correctly NOT recommended
+  for the critical service (memory_bound_indirect → no KV-internal action).
+
+seed: 42
+tick_duration_hours: 1.0
+expected_primary_constraint: memory_bound_indirect
+expected_events:
+  - kv_cache_pressure
+validation_rules:
+  - metric: ttft_p99_ms
+    comparison: lt
+    baseline: fifo
+    note: "Aurelius should reduce TTFT tail via spread/prewarming"
+  - disallowed_actions:
+      - migrate_critical_workload
+      - control_kv_cache_internals
+    note: "Critical workload must not be migrated; KV cache internals must not be touched"
+
+regions:
+  - region_id: us-east
+    energy_price_trace:
+      - 50.0
+    ambient_temp_c: 22.0
+    nodes:
+      - node_id: us-east-node0
+        gpu_type: h100-sxm5-80gb
+        gpu_count: 4
+        topology_class: nvswitch
+        rack_id: us-east-rack0
+        zone: us-east-1a
+        instance_type: p5.48xlarge
+    queues:
+      - queue_id: us-east-q0
+        service_id: llm-critical
+        base_arrival_rate_per_sec: 1.5
+        diurnal_amplitude: 0.1
+
+workloads:
+  - workload_id: llm-critical-wl
+    service_id: llm-critical
+    workload_type: inference
+    priority_tier: critical
+    region_id: us-east
+    gpu_count_required: 4
+    target_util_pct: 75.0
+    memory_intensity: high
+    migration_allowed: false
+    latency_sensitive: true
+    latency_sla_p99_ms: 2000.0
+    kv_cache_usage_frac: 0.3
+    prefix_cache_hit_rate_frac: 0.6
+
+events:
+  - tick: 6
+    type: kv_cache_pressure
+    service_id: llm-critical
+    kv_cache_usage_frac: 0.92
+    prefix_cache_hit_rate_frac: 0.08
+  - tick: 18
+    type: kv_cache_pressure_end
+    service_id: llm-critical
