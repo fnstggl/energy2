@@ -150,7 +150,7 @@ Forbidden:
 | 5 | Topology collector | COMPLETE | `aurelius/connectors/topology.py`, 62 tests passing | See Phase 4+5 details below |
 | 6 | Synthetic cluster simulator | COMPLETE | `aurelius/simulation/cluster/`, 93 tests passing | See Phase 6 details below |
 | 7 | Constraint classifier | COMPLETE | `aurelius/constraints/classifier.py`, 74 tests passing | See Phase 7+8 details below |
-| 8 | Cost/risk/migration model | COMPLETE (risk model corrected) | `aurelius/constraints/cost_model.py`, 47 tests passing | State-conditioned risk; static workload multipliers removed. See "Phase 8/9 Risk Model Correction" below |
+| 8 | Cost/risk/migration model | COMPLETE (risk model corrected + audited) | `aurelius/constraints/cost_model.py`, 47 tests passing | State-conditioned risk; static workload multipliers removed; code-level audit passed (7/7). See "Phase 8/9 Risk Model Correction" below |
 | 9 | Constraint-aware recommendation engine | COMPLETE | `aurelius/constraints/engine.py`, 53 tests passing | See Phase 9 details below |
 | 10 | CLI reports | NOT_STARTED | None yet | Depends on Phase 9 engine |
 | 11 | Validation + benchmarking loop | NOT_STARTED | None yet | Multi-run continuous improvement |
@@ -1216,3 +1216,32 @@ ruff check aurelius/constraints/ tests/test_migration_cost_model.py   All checks
 | `aurelius/constraints/__init__.py` | Exported `RiskInputs`, `CostModelConfig` |
 | `tests/test_migration_cost_model.py` | Replaced label-multiplier tests with state-conditioned tests; added `TestStateConditionedRisk` |
 | `docs/CONSTRAINT_AWARE_ORCHESTRATION_PLAN.md`, `docs/COMPUTE_OPTIMIZATION_PROGRESS.md` | Documented the correction |
+
+### Phase 8/9 Risk Model Audit (code-level verification)
+
+The merged correction (commit `6d93fbd`, squash of PR #68) was audited from the
+**implementation**, not only from passing tests. All seven required properties were
+verified:
+
+| # | Property | Verified from code |
+|---|---|---|
+| 1 | No static workload-class multiplier affects risk decisions | `is_critical`/`is_batch` and the `*_workload_risk_multiplier` config fields are gone (the only `workload_risk_multiplier` strings remaining are in a docstring NOTE documenting their removal). The four risk-family methods (`_sla_headroom_risk`, `_destination_risk`, `_action_risk`, `_uncertainty_risk`) take **no** priority/latency label parameters. `total_penalty = sla + destination + action + uncertainty + thermal`; weights are constants × state-derived fractions. |
+| 2 | Priority/latency labels affect risk only via SLA policy / headroom / uncertainty | `priority_tier` / `is_latency_sensitive` appear only as `estimate()` params, in docstrings, and in the explanation string — never in a penalty term. In the engine, `priority_tier` is derived **from** the resolved SLA policy tier (not vice-versa) and is passed only for observability. Runtime: two estimates identical in state but differing in label produce **identical** `total_penalty` and `net_expected_savings`. |
+| 3 | Critical workloads can migrate when state is safe | Runtime: critical tier, large headroom (0.69), safe warm destination, low cache affinity ⇒ `is_viable=True`, net **+22.4**; dominant factors are state/action (`cold_start`, `lost_batching`), not the label. |
+| 4 | Batch workloads blocked when state is unsafe | Runtime: batch tier, hostile destination (thermal+throttling, 5% spare, far, slower) + severe topology degradation ⇒ `should_keep=True`; dominant factors `dest_thermal`, `dest_higher_latency`, `lost_batching`. |
+| 5 | Missing telemetry increases uncertainty | Runtime: `uncertainty_penalty` 0.18 (full telemetry) → 2.60 (no telemetry); `missing_signals` 0 → 6; can flip a marginal action to KEEP. |
+| 6 | Recommendation outputs explain dominant risk factors | `MigrationCostEstimate` carries `risk_factors` + `dominant_risk_factors` + per-bucket penalties + `sla_headroom_fraction`; `make_recommendation()` and the engine both embed `estimate.explanation` (containing "Dominant risk factors: …") in the `Recommendation.rationale`. |
+| 7 | Existing optimizer behavior unchanged outside constraint-aware paths | The merge changed **only** `aurelius/constraints/` (3 files) + 2 docs + `tests/test_migration_cost_model.py`. The energy optimizer (`aurelius/optimization/scheduler.py`) imports its **own** `aurelius/optimization/constraints.py::ConstraintBuilder` — a different module, untouched. `MigrationCostModel` / `RiskInputs` are used only within the additive constraint-aware path (dedicated CLI + benchmark runner), never by the optimizer/backtester. Optimizer/SLA regression suites pass unchanged. |
+
+**Audit commands**
+
+```
+git diff --name-only c39c2b1 6d93fbd          # scope: constraints/ + docs + 1 test only
+grep -nE "priority_tier|is_latency_sensitive|is_critical|is_batch" aurelius/constraints/cost_model.py
+pytest tests/test_migration_cost_model.py::TestStateConditionedRisk -v   # 8 passed
+pytest tests/test_sla_engine.py tests/test_sla_optimization.py tests/test_constraint_engine.py   # 100 passed
+```
+
+**Conclusion:** the correction is real and structurally enforced — risk is state-conditioned,
+the workload label is inert in the risk math, hard SLA breaches always block, and the change
+is isolated to the additive constraint-aware path. Phase 8/9 risk model is **corrected and audited**.
