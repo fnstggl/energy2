@@ -16,7 +16,7 @@ Every implementation run must read that plan before deciding what to do next.
 
 ## Status Summary
 
-Current status: **PHASE 3 COMPLETE / PHASE 4 NOT STARTED**
+Current status: **PHASE 6 COMPLETE / PHASE 7 NOT STARTED**
 
 Phase 1 produced:
 - `aurelius/state/models.py` — canonical frozen dataclass state models
@@ -158,7 +158,7 @@ Forbidden:
 | 3 | DCGM/vLLM/Triton/Ray adapters | COMPLETE | `aurelius/connectors/dcgm.py` etc., 282 tests passing | See Phase 2+3 details below |
 | 4 | Kubernetes connector | COMPLETE | `aurelius/connectors/kubernetes.py`, 47 tests passing | See Phase 4+5 details below |
 | 5 | Topology collector | COMPLETE | `aurelius/connectors/topology.py`, 62 tests passing | See Phase 4+5 details below |
-| 6 | Synthetic cluster simulator | NOT_STARTED | None yet | Depends on state/connectors |
+| 6 | Synthetic cluster simulator | COMPLETE | `aurelius/simulation/cluster/`, 93 tests passing | See Phase 6 details below |
 | 7 | Constraint classifier | NOT_STARTED | None yet | Depends on Phase 1 and simulator fixtures |
 | 8 | Cost/risk/migration model | NOT_STARTED | None yet | Depends on classifier + SLA/state models |
 | 9 | Constraint-aware recommendation engine | NOT_STARTED | None yet | Requires SLA wiring audit |
@@ -614,7 +614,112 @@ Phase 4+5 are additive. The K8s connector and topology collector produce data st
 
 ### Next Milestone
 
-**Phase 6 — Synthetic Cluster Simulator**
+~~Phase 6 — Synthetic Cluster Simulator~~ **COMPLETE** → **Phase 7 — Constraint Classifier**
+
+---
+
+## Phase 6 Completion Evidence
+
+### Phase 6 Milestone Decision
+
+- **What this run implemented:** Phase 6 — Synthetic Cluster Simulator
+- **Why it was the correct next step:** Phases 1-5 verified (484 tests passing, 10 intentional skips). Phase 6 is the prerequisite for Phase 7 (constraint classifier needs labeled benchmark fixtures) and Phase 11 (benchmarking loop).
+- **Prior dependencies verified:** All Phase 1-5 tests pass. `ClusterState`, all connector interfaces, and `FakeKubernetesConnector`/`FakeTopologyCollector` are verified before simulator was built.
+- **What was explicitly NOT attempted:** Constraint classifier (Phase 7), cost/risk/migration model (Phase 8), recommendation engine (Phase 9).
+
+### Files Added
+
+| File | Role |
+|---|---|
+| `aurelius/simulation/cluster/__init__.py` | Package exports: `ClusterSimulator`, `SimulatorTick`, all model classes, `load_scenario`, `list_scenarios` |
+| `aurelius/simulation/cluster/engine.py` | `ClusterSimulator`: seeded RNG, EMA thermal (α=0.25), M/M/1 queue, topology penalty, KV cache proxy, cold-start warmup, migration, `get_cluster_state()` → `ClusterState` |
+| `aurelius/simulation/cluster/model.py` | Mutable state: `SimGPU`, `SimNode`, `SimQueue`, `SimWorkload`, `SimRegion`, `SimCluster`; `GPU_PROFILES` (H100 SXM5, A100 SXM4/PCIe, L4) |
+| `aurelius/simulation/cluster/scenarios.py` | `load_scenario()` with YAML fallback to built-in Python dicts; `list_scenarios()` |
+| `aurelius/simulation/cluster/fakes/__init__.py` | Package init |
+| `aurelius/simulation/cluster/fakes/prometheus_text.py` | `generate_dcgm_metrics_text()` (DCGM format), `generate_vllm_metrics_text()` (vLLM V1 format with histogram buckets) |
+| `aurelius/simulation/cluster/fakes/kubernetes_payloads.py` | `generate_node_list()` → V1NodeList, `generate_pod_list()` → V1PodList |
+| `aurelius/simulation/cluster/fakes/topology_text.py` | `generate_topo_text()` → nvidia-smi topo -m, `generate_gpu_list_text()` → nvidia-smi -L |
+| `benchmarks/v1/energy_price_arbitrage_multiregion.yaml` | Scenario 1: `energy_bound` |
+| `benchmarks/v1/thermal_hotspot_mixed_cluster.yaml` | Scenario 2: `thermal_bound` |
+| `benchmarks/v1/queue_surge_latency_sensitive.yaml` | Scenario 3: `queue_bound` |
+| `benchmarks/v1/latency_tail_kvcache_pressure.yaml` | Scenario 4: `memory_bound_indirect` |
+| `benchmarks/v1/topology_fragmentation_h100.yaml` | Scenario 5: `topology_bound` |
+| `benchmarks/v1/underutilization_stranded_capacity.yaml` | Scenario 6: `utilization_bound` |
+| `tests/test_cluster_simulator.py` | 61 simulator tests |
+| `tests/test_fake_connectors.py` | 32 fake connector tests |
+
+### Files Modified
+
+| File | Change |
+|---|---|
+| `aurelius/simulation/__init__.py` | Wrapped optional `pandas`-dependent imports in `try/except ImportError` to prevent test environment failures |
+
+### Plan vs Repo Reality
+
+**Plan said:**
+- Discrete-event simulator at hourly ticks
+- EMA thermal model (α=0.25), throttle >83°C
+- M/M/1 queue latency approximation with diurnal modulation
+- Fake DCGM Prometheus text, vLLM metrics, K8s payloads, topology text
+- 6 frozen benchmark scenarios covering all 6 constraint archetypes
+- `ClusterState` output with `is_sandbox=True`
+- Deterministic replay via seeded RNG
+
+**Repo reality matched plan exactly.** One addition not in the plan:
+- `SimulatorTick` also includes pre-built `dcgm_texts`, `vllm_texts`, `k8s_node_list`, `k8s_pod_list`, `topology_texts` dict so callers don't need to call each fake generator separately
+
+### Tests Added
+
+| Test File | Tests | What It Proves |
+|---|---|---|
+| `tests/test_cluster_simulator.py` | 61 | Determinism (same seed → identical cost), thermal throttling (EMA lag, throttle detection), queue/TTFT/TPOT latency model, migration cold-start (2-tick warmup), KV cache proxy, topology score, all 6 scenarios runnable, `ClusterState` field mapping (all required fields present, `is_sandbox=True`, UTC timestamps), tick metrics, cost accounting |
+| `tests/test_fake_connectors.py` | 32 | Production `DCGMAdapter.normalize_gpus()` parses simulator DCGM text (throttle detection, memory, power, temperature); production `parse_nvidia_smi_topo` identifies NV18 links from simulator topology text; production `FakeKubernetesConnector` parses simulator V1NodeList; vLLM metrics text parses correctly; K8s pod list has running + pending pods; topology matrix format is correct |
+
+### Commands Run
+
+```
+ruff check aurelius/simulation/cluster/ tests/test_cluster_simulator.py tests/test_fake_connectors.py --select=E,F,W
+pytest tests/test_cluster_simulator.py tests/test_fake_connectors.py tests/test_state_models.py tests/test_state_store.py tests/test_state_normalize.py tests/test_prometheus_connector.py tests/test_dcgm_adapter.py tests/test_vllm_triton_ray_adapters.py tests/test_kubernetes_connector.py tests/test_topology_connector.py -q
+```
+
+### Test Results
+
+```
+tests/test_cluster_simulator.py: 61 passed
+tests/test_fake_connectors.py: 32 passed
+Phase 1-6 full suite: 484 passed, 10 skipped, 0 failed
+ruff: All checks passed
+```
+
+### Wiring Evidence
+
+Phase 6 is the first phase that exercises the full vertical slice of the connector boundary. Specifically:
+
+- `ClusterSimulator.get_cluster_state()` produces a canonical `ClusterState` (Phase 1 model) with `is_sandbox=True`
+- `ClusterSimulator.get_dcgm_metrics_text(node_id)` produces Prometheus text that **production `DCGMAdapter`** parses unchanged (verified by `test_fake_connectors.py`)
+- `ClusterSimulator.get_topology_text(node_id)` produces nvidia-smi text that **production `parse_nvidia_smi_topo`** parses unchanged (verified)
+- `ClusterSimulator.get_kubernetes_node_list()` produces V1NodeList that **production `FakeKubernetesConnector`** parses unchanged (verified)
+- The simulator does NOT wire into any production optimizer/scheduler path — this is intentional; wiring happens in Phase 9
+
+### Failure Mode Review
+
+- **Seeded RNG:** `reset()` restores exact initial state; identical total_energy_cost diff < 1e-9 across runs
+- **Missing GPU profile:** Falls back to `a100-sxm4-80gb` (never KeyErrors)
+- **Missing scenario YAML:** Falls back to built-in Python dicts; no filesystem dependency in CI
+- **Thermal throttle:** 1-tick lag due to EMA; `thermal_throttle_active` never set without temperature data
+- **Queue saturation:** M/M/1 `rho` clamped to 0.99 to avoid division by zero; saturated queue gets `mean_wait_s = 60.0`
+- **Migration to unknown region:** No-op (does not crash)
+- **Cold-start:** `kv_cache_usage` resets to 0.05, warmup ticks decrement each tick; full throughput restored after 2 ticks
+- **`is_sandbox=True`:** All `Provenance` objects from simulator carry this flag; downstream consumer can exclude from economic claims
+
+### Open Limitations
+
+- Thermal model is EMA proxy (not physics); aggressive throttle events may not match real GPU behavior exactly
+- M/M/1 queue is a rough approximation; real vLLM uses continuous batching with different saturation dynamics
+- KV cache proxy tracks memory pressure monotonically (never decreases below current high-water mark); real KV cache can evict
+- Communication bandwidth is a proxy (fraction of NVLink/PCIe TDP); actual NCCL behavior varies by collective type
+- Simulator `tick_duration_hours=1.0` by default; sub-hourly simulation would require smaller SLA/latency sensitivity
+- 6 scenarios cover known constraint archetypes; mixed-constraint scenarios (e.g., simultaneous thermal + queue) are not yet frozen benchmarks
 
 The simulator must:
 1. Expose fake Prometheus, fake K8s API, and fake topology fixture endpoints
