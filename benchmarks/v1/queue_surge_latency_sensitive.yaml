@@ -1,0 +1,95 @@
+scenario_name: queue_surge_latency_sensitive
+version: "v1"
+simulator_version: "1.0.0"
+scenario_version: "v1"
+description: >
+  Arrival burst on a latency-sensitive inference service.
+  Expected: reroute/spread cuts queue wait and p95 without breaching capacity buffer.
+  Critical workload migration is blocked by SLA.
+
+seed: 42
+tick_duration_hours: 1.0
+expected_primary_constraint: queue_bound
+expected_events:
+  - queue_surge
+validation_rules:
+  - metric: queue_wait_p95_ms
+    comparison: lt
+    baseline: fifo
+    note: "Aurelius should reduce p95 queue wait during surge"
+  - metric: sla_violations
+    comparison: lte
+    baseline: fifo
+    note: "SLA violations must not increase vs FIFO"
+
+regions:
+  - region_id: us-east
+    energy_price_trace:
+      - 50.0
+    ambient_temp_c: 22.0
+    nodes:
+      - node_id: us-east-node0
+        gpu_type: h100-sxm5-80gb
+        gpu_count: 4
+        topology_class: nvswitch
+        rack_id: us-east-rack0
+        zone: us-east-1a
+        instance_type: p5.48xlarge
+    queues:
+      - queue_id: us-east-q0
+        service_id: critical-inference
+        base_arrival_rate_per_sec: 2.0
+        diurnal_amplitude: 0.2
+
+  - region_id: us-west
+    energy_price_trace:
+      - 48.0
+    ambient_temp_c: 20.0
+    nodes:
+      - node_id: us-west-node0
+        gpu_type: h100-sxm5-80gb
+        gpu_count: 4
+        topology_class: nvswitch
+        rack_id: us-west-rack0
+        zone: us-west-2a
+        instance_type: p5.48xlarge
+    queues:
+      - queue_id: us-west-q0
+        service_id: critical-inference-west
+        base_arrival_rate_per_sec: 0.5
+        diurnal_amplitude: 0.2
+
+workloads:
+  - workload_id: critical-wl
+    service_id: critical-inference
+    workload_type: inference
+    priority_tier: latency_sensitive
+    region_id: us-east
+    gpu_count_required: 2
+    target_util_pct: 65.0
+    communication_intensity: low
+    migration_allowed: false
+    latency_sensitive: true
+    latency_sla_p99_ms: 2000.0
+    queue_sla_p95_ms: 500.0
+
+  - workload_id: critical-wl-west
+    service_id: critical-inference-west
+    workload_type: inference
+    priority_tier: latency_sensitive
+    region_id: us-west
+    gpu_count_required: 2
+    target_util_pct: 40.0
+    communication_intensity: low
+    migration_allowed: false
+    latency_sensitive: true
+    latency_sla_p99_ms: 2000.0
+
+events:
+  - tick: 8
+    type: queue_surge
+    service_id: critical-inference
+    multiplier: 5.0
+  - tick: 16
+    type: queue_surge_end
+    service_id: critical-inference

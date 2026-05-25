@@ -1,0 +1,161 @@
+scenario_name: energy_price_arbitrage_multiregion
+version: "v1"
+simulator_version: "1.0.0"
+scenario_version: "v1"
+description: >
+  Anti-correlated regional energy price traces with flexible batch job mix.
+  Expected: defer/route reduces cost vs current_price_only without SLA violations.
+  Flexible batch workload should migrate to cheaper region during price spike.
+  Critical inference workload must NOT migrate regardless of price.
+
+seed: 42
+tick_duration_hours: 1.0
+expected_primary_constraint: energy_bound
+expected_events:
+  - energy_price_spike
+validation_rules:
+  - metric: total_energy_cost
+    comparison: lt
+    baseline: current_price_only
+    note: "Aurelius should reduce energy cost by deferring/migrating flexible batch"
+  - metric: sla_violations
+    comparison: lte
+    baseline: current_price_only
+    note: "SLA violations must not increase"
+
+regions:
+  - region_id: us-east
+    energy_price_trace:
+      - 45  # 00:00
+      - 48  # 01:00
+      - 52  # 02:00
+      - 80  # 03:00 - price climbing
+      - 110 # 04:00
+      - 95  # 05:00
+      - 70  # 06:00
+      - 55  # 07:00
+      - 48  # 08:00
+      - 45  # 09:00
+      - 43  # 10:00
+      - 42  # 11:00
+      - 48  # 12:00
+      - 55  # 13:00
+      - 62  # 14:00
+      - 75  # 15:00
+      - 120 # 16:00 - afternoon peak
+      - 140 # 17:00 - spike triggered here by event
+      - 130 # 18:00
+      - 100 # 19:00
+      - 75  # 20:00
+      - 60  # 21:00
+      - 52  # 22:00
+      - 48  # 23:00
+    carbon_intensity_trace:
+      - 200 - 210 - 220 - 250 - 280 - 260 - 240 - 220
+      - 210 - 200 - 195 - 190 - 200 - 220 - 240 - 260
+      - 280 - 300 - 280 - 250 - 230 - 210 - 205 - 200
+    ambient_temp_c: 22.0
+    network_latency_to:
+      us-west: 70
+      eu-west: 100
+    nodes:
+      - node_id: us-east-node0
+        gpu_type: a100-sxm4-80gb
+        gpu_count: 4
+        topology_class: nvswitch
+        rack_id: us-east-rack0
+        zone: us-east-1a
+        instance_type: p4d.24xlarge
+      - node_id: us-east-node1
+        gpu_type: a100-sxm4-80gb
+        gpu_count: 4
+        topology_class: nvswitch
+        rack_id: us-east-rack0
+        zone: us-east-1b
+        instance_type: p4d.24xlarge
+    queues:
+      - queue_id: us-east-q0
+        service_id: batch-llm-east
+        base_arrival_rate_per_sec: 0.5
+        diurnal_amplitude: 0.3
+
+  - region_id: us-west
+    energy_price_trace:
+      - 60  # anti-correlated to us-east
+      - 55
+      - 50
+      - 48
+      - 45
+      - 42
+      - 40
+      - 42
+      - 45
+      - 50
+      - 55
+      - 60
+      - 58
+      - 52
+      - 48
+      - 45
+      - 43
+      - 42
+      - 45
+      - 50
+      - 55
+      - 60
+      - 62
+      - 62
+    carbon_intensity_trace:
+      - 150 - 140 - 130 - 120 - 110 - 120 - 130 - 140
+      - 150 - 155 - 160 - 158 - 155 - 150 - 145 - 140
+      - 135 - 130 - 135 - 140 - 145 - 150 - 152 - 150
+    ambient_temp_c: 18.0
+    network_latency_to:
+      us-east: 70
+      eu-west: 140
+    nodes:
+      - node_id: us-west-node0
+        gpu_type: a100-sxm4-80gb
+        gpu_count: 4
+        topology_class: nvswitch
+        rack_id: us-west-rack0
+        zone: us-west-2a
+        instance_type: p4d.24xlarge
+    queues:
+      - queue_id: us-west-q0
+        service_id: batch-llm-west
+        base_arrival_rate_per_sec: 0.3
+        diurnal_amplitude: 0.3
+
+workloads:
+  - workload_id: batch-wl-east
+    service_id: batch-llm-east
+    workload_type: batch_training
+    priority_tier: batch
+    region_id: us-east
+    gpu_count_required: 4
+    target_util_pct: 75.0
+    communication_intensity: medium
+    migration_allowed: true
+    latency_sensitive: false
+
+  - workload_id: inference-wl-east
+    service_id: inference-svc-east
+    workload_type: inference
+    priority_tier: standard
+    region_id: us-east
+    gpu_count_required: 2
+    target_util_pct: 60.0
+    communication_intensity: low
+    migration_allowed: false
+    latency_sensitive: true
+    latency_sla_p99_ms: 3000.0
+
+events:
+  - tick: 16
+    type: energy_price_spike
+    region_id: us-east
+    multiplier: 2.5
+  - tick: 20
+    type: energy_price_spike_end
+    region_id: us-east

@@ -1,0 +1,109 @@
+scenario_name: underutilization_stranded_capacity
+version: "v1"
+simulator_version: "1.0.0"
+scenario_version: "v1"
+description: >
+  Many half-idle allocated GPUs across several nodes (stranded capacity pattern).
+  Expected: consolidation recommendation raises mean GPU utilization and frees nodes
+  without SLA breach. CONSOLIDATE must be suppressed if it would breach capacity buffers.
+
+seed: 42
+tick_duration_hours: 1.0
+expected_primary_constraint: utilization_bound
+expected_events: []
+validation_rules:
+  - metric: mean_gpu_util_pct
+    comparison: gt
+    baseline: fifo
+    note: "Aurelius should improve GPU utilization by consolidating sparse workloads"
+  - metric: sla_violations
+    comparison: lte
+    baseline: fifo
+    note: "Consolidation must not cause SLA violations"
+
+regions:
+  - region_id: us-east
+    energy_price_trace:
+      - 55.0
+    ambient_temp_c: 22.0
+    nodes:
+      - node_id: sparse-node0
+        gpu_type: a100-sxm4-80gb
+        gpu_count: 4
+        topology_class: nvswitch
+        rack_id: us-east-rack0
+        zone: us-east-1a
+        instance_type: p4d.24xlarge
+
+      - node_id: sparse-node1
+        gpu_type: a100-sxm4-80gb
+        gpu_count: 4
+        topology_class: nvswitch
+        rack_id: us-east-rack0
+        zone: us-east-1a
+        instance_type: p4d.24xlarge
+
+      - node_id: sparse-node2
+        gpu_type: a100-sxm4-80gb
+        gpu_count: 4
+        topology_class: nvswitch
+        rack_id: us-east-rack0
+        zone: us-east-1b
+        instance_type: p4d.24xlarge
+
+      - node_id: sparse-node3
+        gpu_type: a100-sxm4-80gb
+        gpu_count: 4
+        topology_class: nvswitch
+        rack_id: us-east-rack1
+        zone: us-east-1b
+        instance_type: p4d.24xlarge
+
+    queues:
+      - queue_id: us-east-q0
+        service_id: sparse-inference
+        base_arrival_rate_per_sec: 0.3
+        diurnal_amplitude: 0.2
+
+workloads:
+  - workload_id: sparse-wl-0
+    service_id: sparse-inference
+    workload_type: inference
+    priority_tier: flexible
+    region_id: us-east
+    gpu_count_required: 1
+    target_util_pct: 20.0
+    communication_intensity: low
+    migration_allowed: true
+
+  - workload_id: sparse-wl-1
+    service_id: sparse-inference
+    workload_type: inference
+    priority_tier: flexible
+    region_id: us-east
+    gpu_count_required: 1
+    target_util_pct: 22.0
+    communication_intensity: low
+    migration_allowed: true
+
+  - workload_id: sparse-wl-2
+    service_id: sparse-inference
+    workload_type: inference
+    priority_tier: flexible
+    region_id: us-east
+    gpu_count_required: 1
+    target_util_pct: 18.0
+    communication_intensity: low
+    migration_allowed: true
+
+  - workload_id: sparse-wl-3
+    service_id: sparse-inference
+    workload_type: inference
+    priority_tier: flexible
+    region_id: us-east
+    gpu_count_required: 1
+    target_util_pct: 21.0
+    communication_intensity: low
+    migration_allowed: true
+
+events: []
