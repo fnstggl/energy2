@@ -1,0 +1,51 @@
+# HELP vllm:num_requests_running Number of requests currently running on GPU
+# TYPE vllm:num_requests_running gauge
+vllm:num_requests_running{model_name="llama3-70b"} 8
+vllm:num_requests_running{model_name="mistral-7b"} 24
+# HELP vllm:num_requests_waiting Number of requests waiting to be processed
+# TYPE vllm:num_requests_waiting gauge
+vllm:num_requests_waiting{model_name="llama3-70b"} 3
+vllm:num_requests_waiting{model_name="mistral-7b"} 12
+# HELP vllm:gpu_cache_usage_perc GPU KV cache usage percentage
+# TYPE vllm:gpu_cache_usage_perc gauge
+vllm:gpu_cache_usage_perc{model_name="llama3-70b"} 0.78
+vllm:gpu_cache_usage_perc{model_name="mistral-7b"} 0.45
+# HELP vllm:gpu_prefix_cache_hit_rate Prefix cache hit rate
+# TYPE vllm:gpu_prefix_cache_hit_rate gauge
+vllm:gpu_prefix_cache_hit_rate{model_name="llama3-70b"} 0.62
+vllm:gpu_prefix_cache_hit_rate{model_name="mistral-7b"} 0.31
+# HELP vllm:request_success_total Total number of successful requests
+# TYPE vllm:request_success_total counter
+vllm:request_success_total{model_name="llama3-70b"} 10234
+vllm:request_success_total{model_name="mistral-7b"} 52847
+# HELP vllm:generation_tokens_total Total number of generation tokens
+# TYPE vllm:generation_tokens_total counter
+vllm:generation_tokens_total{model_name="llama3-70b"} 4829341
+vllm:generation_tokens_total{model_name="mistral-7b"} 12847293
+# HELP vllm:request_first_token_seconds Time to first token (histogram)
+# TYPE vllm:request_first_token_seconds histogram
+vllm:request_first_token_seconds_bucket{model_name="llama3-70b",le="0.05"} 12
+vllm:request_first_token_seconds_bucket{model_name="llama3-70b",le="0.1"} 145
+vllm:request_first_token_seconds_bucket{model_name="llama3-70b",le="0.25"} 3421
+vllm:request_first_token_seconds_bucket{model_name="llama3-70b",le="0.5"} 7823
+vllm:request_first_token_seconds_bucket{model_name="llama3-70b",le="1.0"} 9854
+vllm:request_first_token_seconds_bucket{model_name="llama3-70b",le="+Inf"} 10234
+vllm:request_first_token_seconds_sum{model_name="llama3-70b"} 2831.4
+vllm:request_first_token_seconds_count{model_name="llama3-70b"} 10234
+vllm:request_first_token_seconds_bucket{model_name="mistral-7b",le="0.05"} 8234
+vllm:request_first_token_seconds_bucket{model_name="mistral-7b",le="0.1"} 24123
+vllm:request_first_token_seconds_bucket{model_name="mistral-7b",le="0.25"} 48291
+vllm:request_first_token_seconds_bucket{model_name="mistral-7b",le="0.5"} 51234
+vllm:request_first_token_seconds_bucket{model_name="mistral-7b",le="1.0"} 52634
+vllm:request_first_token_seconds_bucket{model_name="mistral-7b",le="+Inf"} 52847
+vllm:request_first_token_seconds_sum{model_name="mistral-7b"} 4123.7
+vllm:request_first_token_seconds_count{model_name="mistral-7b"} 52847
+# HELP vllm:e2e_request_latency_seconds End-to-end request latency (histogram)
+# TYPE vllm:e2e_request_latency_seconds histogram
+vllm:e2e_request_latency_seconds_bucket{model_name="llama3-70b",le="0.5"} 234
+vllm:e2e_request_latency_seconds_bucket{model_name="llama3-70b",le="1.0"} 2341
+vllm:e2e_request_latency_seconds_bucket{model_name="llama3-70b",le="2.0"} 6823
+vllm:e2e_request_latency_seconds_bucket{model_name="llama3-70b",le="5.0"} 9987
+vllm:e2e_request_latency_seconds_bucket{model_name="llama3-70b",le="+Inf"} 10234
+vllm:e2e_request_latency_seconds_sum{model_name="llama3-70b"} 18234.5
+vllm:e2e_request_latency_seconds_count{model_name="llama3-70b"} 10234

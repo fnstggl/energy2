@@ -1,0 +1,28 @@
+{
+  "status": "success",
+  "data": {
+    "resultType": "vector",
+    "result": [
+      {
+        "metric": {
+          "__name__": "DCGM_FI_DEV_GPU_UTIL",
+          "gpu": "0",
+          "UUID": "GPU-aaaa-bbbb-cccc-0000",
+          "node": "node-01",
+          "modelName": "A100-SXM4-80GB"
+        },
+        "value": [1716600000.0, "72.5"]
+      },
+      {
+        "metric": {
+          "__name__": "DCGM_FI_DEV_GPU_UTIL",
+          "gpu": "1",
+          "UUID": "GPU-aaaa-bbbb-cccc-0001",
+          "node": "node-01",
+          "modelName": "A100-SXM4-80GB"
+        },
+        "value": [1716600000.0, "88.0"]
+      }
+    ]
+  }
+}

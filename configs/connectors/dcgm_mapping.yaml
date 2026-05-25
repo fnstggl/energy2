@@ -1,0 +1,127 @@
+# DCGM/dcgm-exporter metric mapping for Aurelius
+# Overrides or supplements the built-in dcgm_registry() defaults.
+# See aurelius/connectors/metric_mapping.py for field semantics.
+#
+# To use with a real deployment:
+#   from aurelius.connectors.metric_mapping import load_mapping_yaml
+#   registry = load_mapping_yaml("configs/connectors/dcgm_mapping.yaml")
+
+gpu.util_pct:
+  query: "DCGM_FI_DEV_GPU_UTIL"
+  unit: pct
+  labels: [gpu, node, UUID, modelName]
+  description: "GPU utilization %"
+
+gpu.sm_active_ratio:
+  query: "DCGM_FI_PROF_GR_ENGINE_ACTIVE"
+  unit: none
+  labels: [gpu, node, UUID]
+
+gpu.tensor_active_ratio:
+  query: "DCGM_FI_PROF_PIPE_TENSOR_ACTIVE"
+  unit: none
+  labels: [gpu, node, UUID]
+
+gpu.dram_active_ratio:
+  query: "DCGM_FI_PROF_DRAM_ACTIVE"
+  unit: none
+  labels: [gpu, node, UUID]
+
+gpu.mem_used_mb:
+  query: "DCGM_FI_DEV_FB_USED"
+  unit: none
+  labels: [gpu, node, UUID]
+  description: "GPU framebuffer used (MiB)"
+
+gpu.mem_free_mb:
+  query: "DCGM_FI_DEV_FB_FREE"
+  unit: none
+  labels: [gpu, node, UUID]
+
+gpu.mem_reserved_mb:
+  query: "DCGM_FI_DEV_FB_RESERVED"
+  unit: none
+  labels: [gpu, node, UUID]
+
+gpu.power_w:
+  query: "DCGM_FI_DEV_POWER_USAGE"
+  unit: watts
+  labels: [gpu, node, UUID]
+
+gpu.power_limit_w:
+  query: "DCGM_FI_DEV_POWER_MGMT_LIMIT"
+  unit: watts
+  labels: [gpu, node, UUID]
+
+gpu.temp_c:
+  query: "DCGM_FI_DEV_GPU_TEMP"
+  unit: none
+  labels: [gpu, node, UUID]
+
+gpu.mem_temp_c:
+  query: "DCGM_FI_DEV_MEMORY_TEMP"
+  unit: none
+  labels: [gpu, node, UUID]
+
+gpu.sm_clock_mhz:
+  query: "DCGM_FI_DEV_SM_CLOCK"
+  unit: none
+  labels: [gpu, node, UUID]
+
+gpu.clocks_event_reasons:
+  query: "DCGM_FI_DEV_CLOCKS_EVENT_REASONS"
+  fallback_queries:
+    - "DCGM_FI_DEV_CLOCK_THROTTLE_REASONS"
+  unit: none
+  labels: [gpu, node, UUID]
+  description: "Clock throttle reason bitmask (supports both naming conventions)"
+
+gpu.power_violation_ns:
+  query: "DCGM_FI_DEV_POWER_VIOLATION"
+  unit: none
+  labels: [gpu, node, UUID]
+
+gpu.thermal_violation_ns:
+  query: "DCGM_FI_DEV_THERMAL_VIOLATION"
+  unit: none
+  labels: [gpu, node, UUID]
+
+gpu.ecc_sbe_total:
+  query: "DCGM_FI_DEV_ECC_SBE_VOL_TOTAL"
+  unit: none
+  labels: [gpu, node, UUID]
+
+gpu.ecc_dbe_total:
+  query: "DCGM_FI_DEV_ECC_DBE_VOL_TOTAL"
+  unit: none
+  labels: [gpu, node, UUID]
+
+gpu.xid_last:
+  query: "DCGM_FI_DEV_XID_ERRORS"
+  unit: none
+  labels: [gpu, node, UUID]
+
+gpu.xid_count_window:
+  query: "DCGM_EXP_XID_ERRORS_COUNT"
+  unit: none
+  labels: [gpu, node, UUID]
+
+gpu.pcie_tx_bytes_per_s:
+  query: "DCGM_FI_PROF_PCIE_TX_BYTES"
+  unit: bytes
+  labels: [gpu, node, UUID]
+
+gpu.pcie_rx_bytes_per_s:
+  query: "DCGM_FI_PROF_PCIE_RX_BYTES"
+  unit: bytes
+  labels: [gpu, node, UUID]
+
+gpu.nvlink_tx_bytes_per_s:
+  query: "DCGM_FI_PROF_NVLINK_TX_BYTES"
+  unit: bytes
+  labels: [gpu, node, UUID]
+
+gpu.nvlink_rx_bytes_per_s:
+  query: "DCGM_FI_PROF_NVLINK_RX_BYTES"
+  unit: bytes
+  labels: [gpu, node, UUID]

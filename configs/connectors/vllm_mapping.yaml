@@ -1,0 +1,98 @@
+# vLLM Prometheus metric mapping for Aurelius
+# Supports both vLLM V0 (vllm_*) and V1 (vllm:*) metric naming via fallback_queries.
+# See aurelius/connectors/metric_mapping.py for field semantics.
+#
+# Reference: https://docs.vllm.ai/en/stable/serving/metrics.html
+
+inference.requests_per_second:
+  query: "rate(vllm:request_success_total[1m])"
+  fallback_queries:
+    - "rate(vllm_request_success_total[1m])"
+  unit: none
+  labels: [model_name]
+
+inference.tokens_per_second:
+  query: "rate(vllm:generation_tokens_total[1m])"
+  fallback_queries:
+    - "rate(vllm_generation_tokens_total[1m])"
+  unit: none
+  labels: [model_name]
+
+inference.ttft_p50_ms:
+  query: "histogram_quantile(0.50, sum(rate(vllm:request_first_token_seconds_bucket[5m])) by (le, model_name))"
+  fallback_queries:
+    - "histogram_quantile(0.50, sum(rate(vllm_request_first_token_seconds_bucket[5m])) by (le, model_name))"
+  unit: seconds_to_ms
+  labels: [model_name]
+
+inference.ttft_p95_ms:
+  query: "histogram_quantile(0.95, sum(rate(vllm:request_first_token_seconds_bucket[5m])) by (le, model_name))"
+  fallback_queries:
+    - "histogram_quantile(0.95, sum(rate(vllm_request_first_token_seconds_bucket[5m])) by (le, model_name))"
+  unit: seconds_to_ms
+  labels: [model_name]
+
+inference.ttft_p99_ms:
+  query: "histogram_quantile(0.99, sum(rate(vllm:request_first_token_seconds_bucket[5m])) by (le, model_name))"
+  unit: seconds_to_ms
+  labels: [model_name]
+
+inference.tpot_p50_ms:
+  query: "histogram_quantile(0.50, sum(rate(vllm:time_per_output_token_seconds_bucket[5m])) by (le, model_name))"
+  unit: seconds_to_ms
+  labels: [model_name]
+
+inference.tpot_p95_ms:
+  query: "histogram_quantile(0.95, sum(rate(vllm:time_per_output_token_seconds_bucket[5m])) by (le, model_name))"
+  unit: seconds_to_ms
+  labels: [model_name]
+
+inference.tpot_p99_ms:
+  query: "histogram_quantile(0.99, sum(rate(vllm:time_per_output_token_seconds_bucket[5m])) by (le, model_name))"
+  unit: seconds_to_ms
+  labels: [model_name]
+
+inference.e2e_p50_ms:
+  query: "histogram_quantile(0.50, sum(rate(vllm:e2e_request_latency_seconds_bucket[5m])) by (le, model_name))"
+  unit: seconds_to_ms
+  labels: [model_name]
+
+inference.e2e_p95_ms:
+  query: "histogram_quantile(0.95, sum(rate(vllm:e2e_request_latency_seconds_bucket[5m])) by (le, model_name))"
+  unit: seconds_to_ms
+  labels: [model_name]
+
+inference.e2e_p99_ms:
+  query: "histogram_quantile(0.99, sum(rate(vllm:e2e_request_latency_seconds_bucket[5m])) by (le, model_name))"
+  unit: seconds_to_ms
+  labels: [model_name]
+
+inference.queue_depth:
+  query: "vllm:num_requests_waiting"
+  fallback_queries:
+    - "vllm_num_requests_waiting"
+  unit: none
+  labels: [model_name]
+
+inference.active_sequences:
+  query: "vllm:num_requests_running"
+  fallback_queries:
+    - "vllm_num_requests_running"
+  unit: none
+  labels: [model_name]
+
+inference.kv_cache_usage_pct:
+  query: "vllm:gpu_cache_usage_perc * 100"
+  fallback_queries:
+    - "vllm_gpu_cache_usage_perc * 100"
+  unit: pct
+  labels: [model_name]
+  description: "KV cache usage percentage (0-100)"
+
+inference.prefix_cache_hit_rate_pct:
+  query: "vllm:gpu_prefix_cache_hit_rate * 100"
+  fallback_queries:
+    - "vllm_gpu_prefix_cache_hit_rate * 100"
+  unit: pct
+  labels: [model_name]
+  description: "Prefix cache hit rate percentage (0-100)"

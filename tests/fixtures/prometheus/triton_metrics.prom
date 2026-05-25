@@ -1,0 +1,48 @@
+# HELP nv_inference_count Number of inference requests received
+# TYPE nv_inference_count counter
+nv_inference_count{model="bert-large",version="1"} 48291
+nv_inference_count{model="gpt2",version="1"} 12847
+# HELP nv_inference_exec_count Number of model executions performed
+# TYPE nv_inference_exec_count counter
+nv_inference_exec_count{model="bert-large",version="1"} 48291
+nv_inference_exec_count{model="gpt2",version="1"} 12847
+# HELP nv_inference_request_success Number of successful inference requests
+# TYPE nv_inference_request_success counter
+nv_inference_request_success{model="bert-large",version="1"} 47923
+nv_inference_request_success{model="gpt2",version="1"} 12831
+# HELP nv_inference_request_failure Number of failed inference requests
+# TYPE nv_inference_request_failure counter
+nv_inference_request_failure{model="bert-large",version="1"} 368
+nv_inference_request_failure{model="gpt2",version="1"} 16
+# HELP nv_inference_queue_duration_us Cumulative queue duration in microseconds
+# TYPE nv_inference_queue_duration_us counter
+nv_inference_queue_duration_us{model="bert-large",version="1"} 9234871
+nv_inference_queue_duration_us{model="gpt2",version="1"} 2341823
+# HELP nv_inference_compute_infer_duration_us Cumulative compute infer duration in microseconds
+# TYPE nv_inference_compute_infer_duration_us counter
+nv_inference_compute_infer_duration_us{model="bert-large",version="1"} 182934712
+nv_inference_compute_infer_duration_us{model="gpt2",version="1"} 38291047
+# HELP nv_inference_compute_input_duration_us Cumulative compute input duration in microseconds
+# TYPE nv_inference_compute_input_duration_us counter
+nv_inference_compute_input_duration_us{model="bert-large",version="1"} 4821934
+nv_inference_compute_input_duration_us{model="gpt2",version="1"} 1234567
+# HELP nv_inference_compute_output_duration_us Cumulative compute output duration in microseconds
+# TYPE nv_inference_compute_output_duration_us counter
+nv_inference_compute_output_duration_us{model="bert-large",version="1"} 1923847
+nv_inference_compute_output_duration_us{model="gpt2",version="1"} 489234
+# HELP nv_inference_pending_request_count Number of pending requests
+# TYPE nv_inference_pending_request_count gauge
+nv_inference_pending_request_count{model="bert-large",version="1"} 5
+nv_inference_pending_request_count{model="gpt2",version="1"} 0
+# HELP nv_gpu_utilization GPU utilization %
+# TYPE nv_gpu_utilization gauge
+nv_gpu_utilization{gpu_uuid="GPU-aaaa-0000"} 82.3
+nv_gpu_utilization{gpu_uuid="GPU-bbbb-0001"} 47.1
+# HELP nv_gpu_memory_used_bytes GPU memory used in bytes
+# TYPE nv_gpu_memory_used_bytes gauge
+nv_gpu_memory_used_bytes{gpu_uuid="GPU-aaaa-0000"} 68719476736
+nv_gpu_memory_used_bytes{gpu_uuid="GPU-bbbb-0001"} 21474836480
+# HELP nv_gpu_memory_total_bytes Total GPU memory in bytes
+# TYPE nv_gpu_memory_total_bytes gauge
+nv_gpu_memory_total_bytes{gpu_uuid="GPU-aaaa-0000"} 85899345920
+nv_gpu_memory_total_bytes{gpu_uuid="GPU-bbbb-0001"} 85899345920

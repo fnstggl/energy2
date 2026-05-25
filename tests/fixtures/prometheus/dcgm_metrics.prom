@@ -1,0 +1,55 @@
+# HELP DCGM_FI_DEV_GPU_UTIL GPU utilization (in %)
+# TYPE DCGM_FI_DEV_GPU_UTIL gauge
+DCGM_FI_DEV_GPU_UTIL{gpu="0",UUID="GPU-aaaa-bbbb-cccc-0000",node="node-01",modelName="A100-SXM4-80GB"} 72.5
+DCGM_FI_DEV_GPU_UTIL{gpu="1",UUID="GPU-aaaa-bbbb-cccc-0001",node="node-01",modelName="A100-SXM4-80GB"} 88.0
+DCGM_FI_DEV_GPU_UTIL{gpu="0",UUID="GPU-dddd-eeee-ffff-0000",node="node-02",modelName="H100-SXM5-80GB"} 45.2
+# HELP DCGM_FI_DEV_FB_USED Framebuffer memory used (in MB)
+# TYPE DCGM_FI_DEV_FB_USED gauge
+DCGM_FI_DEV_FB_USED{gpu="0",UUID="GPU-aaaa-bbbb-cccc-0000",node="node-01"} 61440
+DCGM_FI_DEV_FB_USED{gpu="1",UUID="GPU-aaaa-bbbb-cccc-0001",node="node-01"} 77824
+DCGM_FI_DEV_FB_USED{gpu="0",UUID="GPU-dddd-eeee-ffff-0000",node="node-02"} 20480
+# HELP DCGM_FI_DEV_FB_FREE Framebuffer memory free (in MB)
+# TYPE DCGM_FI_DEV_FB_FREE gauge
+DCGM_FI_DEV_FB_FREE{gpu="0",UUID="GPU-aaaa-bbbb-cccc-0000",node="node-01"} 20480
+DCGM_FI_DEV_FB_FREE{gpu="1",UUID="GPU-aaaa-bbbb-cccc-0001",node="node-01"} 4096
+DCGM_FI_DEV_FB_FREE{gpu="0",UUID="GPU-dddd-eeee-ffff-0000",node="node-02"} 61440
+# HELP DCGM_FI_DEV_POWER_USAGE Power usage (in W)
+# TYPE DCGM_FI_DEV_POWER_USAGE gauge
+DCGM_FI_DEV_POWER_USAGE{gpu="0",UUID="GPU-aaaa-bbbb-cccc-0000",node="node-01"} 285.3
+DCGM_FI_DEV_POWER_USAGE{gpu="1",UUID="GPU-aaaa-bbbb-cccc-0001",node="node-01"} 398.7
+DCGM_FI_DEV_POWER_USAGE{gpu="0",UUID="GPU-dddd-eeee-ffff-0000",node="node-02"} 175.1
+# HELP DCGM_FI_DEV_GPU_TEMP GPU temperature (in C)
+# TYPE DCGM_FI_DEV_GPU_TEMP gauge
+DCGM_FI_DEV_GPU_TEMP{gpu="0",UUID="GPU-aaaa-bbbb-cccc-0000",node="node-01"} 63.0
+DCGM_FI_DEV_GPU_TEMP{gpu="1",UUID="GPU-aaaa-bbbb-cccc-0001",node="node-01"} 78.5
+DCGM_FI_DEV_GPU_TEMP{gpu="0",UUID="GPU-dddd-eeee-ffff-0000",node="node-02"} 51.2
+# HELP DCGM_FI_DEV_XID_ERRORS XID errors
+# TYPE DCGM_FI_DEV_XID_ERRORS gauge
+DCGM_FI_DEV_XID_ERRORS{gpu="0",UUID="GPU-aaaa-bbbb-cccc-0000",node="node-01"} 0
+DCGM_FI_DEV_XID_ERRORS{gpu="1",UUID="GPU-aaaa-bbbb-cccc-0001",node="node-01"} 0
+DCGM_FI_DEV_XID_ERRORS{gpu="0",UUID="GPU-dddd-eeee-ffff-0000",node="node-02"} 0
+# HELP DCGM_FI_DEV_CLOCKS_EVENT_REASONS Clock throttle reasons bitmask
+# TYPE DCGM_FI_DEV_CLOCKS_EVENT_REASONS gauge
+DCGM_FI_DEV_CLOCKS_EVENT_REASONS{gpu="0",UUID="GPU-aaaa-bbbb-cccc-0000",node="node-01"} 0
+DCGM_FI_DEV_CLOCKS_EVENT_REASONS{gpu="1",UUID="GPU-aaaa-bbbb-cccc-0001",node="node-01"} 32
+DCGM_FI_DEV_CLOCKS_EVENT_REASONS{gpu="0",UUID="GPU-dddd-eeee-ffff-0000",node="node-02"} 0
+# HELP DCGM_FI_DEV_ECC_SBE_VOL_TOTAL Total single-bit ECC errors
+# TYPE DCGM_FI_DEV_ECC_SBE_VOL_TOTAL gauge
+DCGM_FI_DEV_ECC_SBE_VOL_TOTAL{gpu="0",UUID="GPU-aaaa-bbbb-cccc-0000",node="node-01"} 0
+DCGM_FI_DEV_ECC_SBE_VOL_TOTAL{gpu="1",UUID="GPU-aaaa-bbbb-cccc-0001",node="node-01"} 0
+DCGM_FI_DEV_ECC_SBE_VOL_TOTAL{gpu="0",UUID="GPU-dddd-eeee-ffff-0000",node="node-02"} 0
+# HELP DCGM_FI_DEV_ECC_DBE_VOL_TOTAL Total double-bit ECC errors
+# TYPE DCGM_FI_DEV_ECC_DBE_VOL_TOTAL gauge
+DCGM_FI_DEV_ECC_DBE_VOL_TOTAL{gpu="0",UUID="GPU-aaaa-bbbb-cccc-0000",node="node-01"} 0
+DCGM_FI_DEV_ECC_DBE_VOL_TOTAL{gpu="1",UUID="GPU-aaaa-bbbb-cccc-0001",node="node-01"} 0
+DCGM_FI_DEV_ECC_DBE_VOL_TOTAL{gpu="0",UUID="GPU-dddd-eeee-ffff-0000",node="node-02"} 0
+# HELP DCGM_FI_PROF_PCIE_TX_BYTES PCIe TX bytes per second
+# TYPE DCGM_FI_PROF_PCIE_TX_BYTES gauge
+DCGM_FI_PROF_PCIE_TX_BYTES{gpu="0",UUID="GPU-aaaa-bbbb-cccc-0000",node="node-01"} 1073741824
+DCGM_FI_PROF_PCIE_TX_BYTES{gpu="1",UUID="GPU-aaaa-bbbb-cccc-0001",node="node-01"} 536870912
+DCGM_FI_PROF_PCIE_TX_BYTES{gpu="0",UUID="GPU-dddd-eeee-ffff-0000",node="node-02"} 268435456
+# HELP DCGM_FI_PROF_PCIE_RX_BYTES PCIe RX bytes per second
+# TYPE DCGM_FI_PROF_PCIE_RX_BYTES gauge
+DCGM_FI_PROF_PCIE_RX_BYTES{gpu="0",UUID="GPU-aaaa-bbbb-cccc-0000",node="node-01"} 2147483648
+DCGM_FI_PROF_PCIE_RX_BYTES{gpu="1",UUID="GPU-aaaa-bbbb-cccc-0001",node="node-01"} 1073741824
+DCGM_FI_PROF_PCIE_RX_BYTES{gpu="0",UUID="GPU-dddd-eeee-ffff-0000",node="node-02"} 536870912

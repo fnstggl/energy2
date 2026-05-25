@@ -1,0 +1,38 @@
+# HELP ray_serve_deployment_replica_count Number of replicas per deployment
+# TYPE ray_serve_deployment_replica_count gauge
+ray_serve_deployment_replica_count{deployment="llm-router",application="prod"} 4
+ray_serve_deployment_replica_count{deployment="embedding-service",application="prod"} 2
+# HELP ray_serve_deployment_queued_queries Number of queued queries
+# TYPE ray_serve_deployment_queued_queries gauge
+ray_serve_deployment_queued_queries{deployment="llm-router",application="prod"} 7
+ray_serve_deployment_queued_queries{deployment="embedding-service",application="prod"} 0
+# HELP ray_serve_num_ongoing_requests_total Total number of ongoing requests
+# TYPE ray_serve_num_ongoing_requests_total counter
+ray_serve_num_ongoing_requests_total{deployment="llm-router",application="prod"} 182341
+ray_serve_num_ongoing_requests_total{deployment="embedding-service",application="prod"} 48291
+# HELP ray_serve_num_http_requests_total Total number of HTTP requests
+# TYPE ray_serve_num_http_requests_total counter
+ray_serve_num_http_requests_total{deployment="llm-router",application="prod",status_code="200"} 181923
+ray_serve_num_http_requests_total{deployment="llm-router",application="prod",status_code="500"} 418
+ray_serve_num_http_requests_total{deployment="embedding-service",application="prod",status_code="200"} 48234
+ray_serve_num_http_requests_total{deployment="embedding-service",application="prod",status_code="500"} 57
+# HELP ray_serve_num_http_error_requests_total Total number of HTTP error requests
+# TYPE ray_serve_num_http_error_requests_total counter
+ray_serve_num_http_error_requests_total{deployment="llm-router",application="prod"} 418
+ray_serve_num_http_error_requests_total{deployment="embedding-service",application="prod"} 57
+# HELP ray_serve_request_latency_ms Request latency histogram in ms
+# TYPE ray_serve_request_latency_ms histogram
+ray_serve_request_latency_ms_bucket{deployment="llm-router",application="prod",le="10"} 234
+ray_serve_request_latency_ms_bucket{deployment="llm-router",application="prod",le="50"} 4821
+ray_serve_request_latency_ms_bucket{deployment="llm-router",application="prod",le="100"} 42831
+ray_serve_request_latency_ms_bucket{deployment="llm-router",application="prod",le="500"} 178234
+ray_serve_request_latency_ms_bucket{deployment="llm-router",application="prod",le="2000"} 181234
+ray_serve_request_latency_ms_bucket{deployment="llm-router",application="prod",le="+Inf"} 182341
+ray_serve_request_latency_ms_sum{deployment="llm-router",application="prod"} 12834721
+ray_serve_request_latency_ms_count{deployment="llm-router",application="prod"} 182341
+ray_serve_request_latency_ms_bucket{deployment="embedding-service",application="prod",le="5"} 12341
+ray_serve_request_latency_ms_bucket{deployment="embedding-service",application="prod",le="10"} 38291
+ray_serve_request_latency_ms_bucket{deployment="embedding-service",application="prod",le="25"} 47821
+ray_serve_request_latency_ms_bucket{deployment="embedding-service",application="prod",le="+Inf"} 48291
+ray_serve_request_latency_ms_sum{deployment="embedding-service",application="prod"} 482341
+ray_serve_request_latency_ms_count{deployment="embedding-service",application="prod"} 48291
