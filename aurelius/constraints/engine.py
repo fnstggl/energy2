@@ -39,7 +39,7 @@ from ..state.models import (
     Recommendation,
 )
 from .classifier import ConstraintClassifier, ConstraintConfig
-from .cost_model import CostModelConfig, MigrationCostModel
+from .cost_model import CostModelConfig, MigrationCostModel, RiskInputs
 
 logger = logging.getLogger(__name__)
 
@@ -654,6 +654,27 @@ class ConstraintAwareEngine:
             current_topo_score = 0.7  # HEURISTIC: decent within-region topology
             target_topo_score = 0.3   # HEURISTIC: cross-region = worse topology
 
+        # Build state-conditioned risk inputs for the chosen action. The cost
+        # model derives risk from these observed/predicted states rather than from
+        # any static workload-class multiplier.
+        dest_ctx = (
+            region_contexts.get(chosen.target_region)
+            if chosen.target_region and chosen.target_region != service.region
+            else None
+        )
+        predicted_ws = self._selector.predictor.predict(chosen, current_ws, dest_ctx)
+        risk_inputs = RiskInputs(
+            sla_policy=sla_policy,
+            current_state=current_ws,
+            predicted_state=predicted_ws,
+            dest_context=dest_ctx,
+            prefix_cache_hit_rate=service.prefix_cache_hit_rate,
+            kv_cache_usage=service.kv_cache_usage,
+            requests_running=service.requests_running,
+            requests_waiting=service.requests_waiting,
+            sample_age_s=service.provenance.sample_age_s,
+        )
+
         cost_estimate = self.cost_model.estimate(
             workload_id=workload_id,
             action_type=chosen.action_type.value,
@@ -665,6 +686,7 @@ class ConstraintAwareEngine:
             current_topology_score=current_topo_score,
             target_topology_score=target_topo_score,
             now=state.timestamp,
+            risk_inputs=risk_inputs,
         )
 
         # Cost model gate: veto the chosen action if net savings ≤ 0
