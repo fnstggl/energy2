@@ -16,13 +16,13 @@ Every implementation run must read that plan before deciding what to do next.
 
 ## Status Summary
 
-Current status: **PHASE 8 COMPLETE / PHASE 9 NOT STARTED**
+Current status: **PHASE 9 COMPLETE / PHASE 10 NOT STARTED**
 
-Phase 7 (Constraint Classifier) and Phase 8 (Migration Cost/Risk Model) are now complete.
+Phases 1–9 of the constraint-aware orchestration initiative are complete.
 
 The next expected milestone is:
 
-**Phase 9 — Constraint-aware recommendation engine**
+**Phase 10 — CLI reports (constraint-report, simulate-constraint-scenario, telemetry-check, topology-report, validate-connectors)**
 
 ---
 
@@ -151,8 +151,8 @@ Forbidden:
 | 6 | Synthetic cluster simulator | COMPLETE | `aurelius/simulation/cluster/`, 93 tests passing | See Phase 6 details below |
 | 7 | Constraint classifier | COMPLETE | `aurelius/constraints/classifier.py`, 74 tests passing | See Phase 7+8 details below |
 | 8 | Cost/risk/migration model | COMPLETE | `aurelius/constraints/cost_model.py`, 39 tests passing | See Phase 7+8 details below |
-| 9 | Constraint-aware recommendation engine | NOT_STARTED | None yet | Requires SLA wiring audit |
-| 10 | CLI reports | NOT_STARTED | None yet | Depends on classifier/engine |
+| 9 | Constraint-aware recommendation engine | COMPLETE | `aurelius/constraints/engine.py`, 53 tests passing | See Phase 9 details below |
+| 10 | CLI reports | NOT_STARTED | None yet | Depends on Phase 9 engine |
 | 11 | Validation + benchmarking loop | NOT_STARTED | None yet | Multi-run continuous improvement |
 | 12 | Production hardening | NOT_STARTED | None yet | Final enterprise pilot readiness |
 
@@ -819,13 +819,155 @@ python -m compileall: No errors
 - Phase 9 (recommendation engine) has not yet wired the classifier+cost model into optimizer decisions
 - CLI reporting commands not yet built (Phase 10)
 
-### Next Milestone
+### Next Milestone (after Phase 9)
 
-**Phase 9 — Constraint-aware recommendation engine**
+**Phase 10 — CLI reports**
 
-Requires:
-- Wire `ConstraintClassifier` → `MigrationCostModel` → `Recommendation` into the main scheduler/optimizer path
-- Implement per-constraint action selection logic (8 constraint families → allowed action types)
+---
+
+## Phase 9 Completion Evidence
+
+### Phase 9 Milestone Decision
+
+- **What this run implemented:** Phase 9 — Constraint-aware recommendation engine
+- **Why it was the correct next step:** Phases 1-8 verified (597 tests passing, 10 intentional skips). The classifier produced `ConstraintAssessment` and the cost model produced `MigrationCostEstimate`, but no engine wired them together into `Recommendation` objects.
+- **Prior dependencies verified:** Phase 1-8 full suite: 597 tests passing, 10 intentional skips (unchanged).
+- **What was explicitly NOT attempted:** CLI reports (Phase 10), benchmarking loop (Phase 11), production hardening (Phase 12), BacktestEngine wiring, WorkloadState extension.
+
+### Files Added
+
+| File | Role |
+|---|---|
+| `aurelius/constraints/engine.py` | `ConstraintAwareEngine`, `EngineResult`, `WorkloadDescriptor`; per-constraint candidate generators; state adapters (`_service_to_sla_workload_state`, `_build_region_contexts`, `_cheaper_regions`) |
+| `tests/test_constraint_engine.py` | 53 tests for all safety invariants |
+
+### Files Modified
+
+| File | Change |
+|---|---|
+| `aurelius/constraints/__init__.py` | Added `ConstraintAwareEngine`, `EngineResult`, `WorkloadDescriptor` exports |
+
+### Engine Design
+
+The `ConstraintAwareEngine` pipeline for each `ClusterState` snapshot:
+
+1. `ConstraintClassifier.assess(state)` → `ConstraintAssessment`
+2. Low-confidence check → KEEP all (fail-safe)
+3. Per-service: generate constraint-appropriate candidate `OptimizationAction`s
+4. Filter disallowed actions from `ConstraintAssessment.disallowed_action_types`
+5. `SLAAwareActionSelector.select()` → `SLADecision` (SLA gate)
+6. `MigrationCostModel.estimate()` + `should_keep()` → cost gate
+7. Emit `Recommendation` in `recommendation_only` mode
+
+Per-constraint candidate generators:
+- **ENERGY:** `CHOOSE_CHEAPER_REGION` + `DEFER`
+- **THERMAL:** `SPREAD` + `REROUTE` (never `CONSOLIDATE` — classifier disallows it)
+- **QUEUE:** `SCALE_REPLICAS` + `SPREAD` (never `CONSOLIDATE`)
+- **LATENCY:** `SCALE_REPLICAS` only (never `MIGRATE` — disallowed for latency-bound)
+- **COMMUNICATION:** `CHANGE_PLACEMENT` + `SPREAD`
+- **MEMORY:** `SPREAD` + `SCALE_REPLICAS` (no KV cache internals)
+- **TOPOLOGY:** `CHANGE_PLACEMENT` + `CONSOLIDATE`
+- **UTILIZATION:** `CONSOLIDATE`
+- **NONE:** KEEP (no candidates generated)
+
+### Plan vs Repo Reality
+
+**Plan said:**
+- Wire `ConstraintClassifier` → `MigrationCostModel` → `Recommendation` into main scheduler/optimizer path
+- Implement per-constraint action selection (8 families → allowed action types)
 - SLA evaluator wiring: `SLARegistry.evaluate()` gates action selection
 - Audit `BacktestEngine` to consume `ClusterState` + `ConstraintAssessment`
-- Extend `WorkloadState` (deferred from Phase 1) to carry `service_id`, `gpu_uuids`, `comm_bytes_per_s`
+- Extend `WorkloadState` (deferred from Phase 1)
+
+**Repo reality required:**
+- `BacktestEngine` wiring deferred — the backtest engine is part of the legacy energy-arbitrage path; wiring it to ClusterState requires a deeper SLA evaluator refactor that belongs in Phase 10/11 (it would change existing backtest behavior, violating the "preserve old optimizer behavior" invariant).
+- `WorkloadState` extension (add `service_id`, `gpu_uuids`, `comm_bytes_per_s`) deferred — the engine uses `InferenceServiceState` directly as the per-service unit; extending `WorkloadState` is still needed for Phase 10 but not required for Phase 9 to work correctly.
+- `SLARegistry` is wired via `engine.run(state, sla_registry=registry)` — same interface as the existing `SLAAwareActionSelector`.
+
+### Tests Added
+
+| Test Class | Count | What It Proves |
+|---|---|---|
+| `TestEngineInstantiation` | 3 | Default init, custom modes, invalid mode raises |
+| `TestEmptyState` | 3 | Empty ClusterState → no recommendations, no crash, to_dict works |
+| `TestRecommendationInvariants` | 6 | recommendation_only mode, dry_run mode, is_sandbox propagation, timestamp matches state, unique IDs, workload IDs match services, confidence in [0,1] |
+| `TestLowConfidenceFallback` | 2 | High confidence_floor → all KEEP, rationale mentions floor |
+| `TestEnergyBound` | 5 | binding constraint check, service gets migration or KEEP, cheaper_regions helper sorted, empty when no cheaper, empty when price unknown |
+| `TestThermalBound` | 3 | Runs without error, no CONSOLIDATE, service gets SPREAD/REROUTE/KEEP |
+| `TestQueueBound` | 2 | Runs, service gets SCALE/SPREAD/KEEP, no CONSOLIDATE |
+| `TestLatencyBound` | 3 | Runs, never emits MIGRATE, service gets SCALE/KEEP |
+| `TestUtilizationBound` | 2 | Runs, service gets CONSOLIDATE/KEEP |
+| `TestSLAGate` | 4 | migration_allowed=False blocks migration, allowed_regions enforced, no registry = no block, blocked actions in rejected list |
+| `TestCostModelGate` | 2 | High threshold → KEEP, rejected list has entries |
+| `TestNoopCounts` | 3 | noop_count matches is_noop, noop+actionable=total, low confidence all noop |
+| `TestMultipleServices` | 2 | Each service gets one recommendation, services get independent recommendations |
+| `TestDeterminism` | 2 | Fresh engines produce same result, hysteresis_count=1 stabilizes |
+| `TestAdapters` | 5 | service→WorkloadState mapping, None region, region contexts thermal, energy, empty cluster |
+| `TestWorkloadDescriptor` | 2 | job_id, default workload_type |
+| `TestSerialization` | 2 | EngineResult.to_dict, Recommendation.to_dict required keys |
+
+### Commands Run
+
+```
+ruff check aurelius/constraints/engine.py aurelius/constraints/__init__.py tests/test_constraint_engine.py --select=E,F,W
+python -m compileall aurelius/constraints/
+pytest tests/test_constraint_engine.py -q
+pytest tests/test_state_models.py tests/test_state_store.py tests/test_state_normalize.py tests/test_prometheus_connector.py tests/test_dcgm_adapter.py tests/test_vllm_triton_ray_adapters.py tests/test_kubernetes_connector.py tests/test_topology_connector.py tests/test_cluster_simulator.py tests/test_fake_connectors.py tests/test_constraint_classifier.py tests/test_migration_cost_model.py tests/test_constraint_engine.py -q
+pytest tests/test_scheduler.py tests/test_safety_gate.py -q
+```
+
+### Test Results
+
+```
+tests/test_constraint_engine.py: 53 passed
+Phase 1-9 full suite:            650 passed, 10 skipped, 0 failed
+Existing optimizer tests:        20 passed (unchanged)
+
+ruff: All checks passed (new files only)
+python -m compileall: No errors
+```
+
+### Wiring Evidence
+
+Phase 9 is additive. The `ConstraintAwareEngine` produces `Recommendation` objects from `ClusterState` — it is NOT yet wired into the `BacktestEngine` or existing energy-arbitrage CLI paths (intentional; those are Phase 10/11 targets).
+
+What IS wired in Phase 9:
+- `ConstraintClassifier.assess(ClusterState)` → `ConstraintAssessment` (Phase 7)
+- `MigrationCostModel.estimate(...)` + `should_keep()` (Phase 8)
+- `SLAAwareActionSelector.select()` via `SLARegistry` (existing SLA engine)
+- `Recommendation` output with `implementation_mode="recommendation_only"` (Phase 1 model)
+
+What remains unwired until later phases:
+- `BacktestEngine` still uses legacy energy-arbitrage path (Phase 11)
+- CLI `constraint-report` command (Phase 10)
+- `MigrationGovernor.record_migration()` not called in engine (engine is recommendation-only; execution layer must call this)
+
+### Failure Mode Review
+
+- **Low confidence:** `confidence < confidence_floor` → all services get KEEP (fail-safe, no crash)
+- **Empty ClusterState:** `state.all_services` empty → empty recommendations, no crash
+- **SLA blocks migration:** `migration_allowed=False` → no migration action emitted, falls back to KEEP or non-migration action
+- **Cost model blocks action:** `net_expected_savings ≤ 0` → KEEP emitted, blocked action added to `rejected` list
+- **Unknown region:** `service.region=None` → candidates use "unknown" as target_region fallback
+- **No cheaper regions:** `_cheaper_regions()` returns `[]` → only DEFER candidate generated for ENERGY-bound
+- **is_sandbox propagation:** `state.provenance.is_sandbox=True` → all `Recommendation.provenance.is_sandbox=True`
+- **Classifier disallowed actions:** e.g. `CONSOLIDATE` during THERMAL → filtered from candidates before SLA gate
+
+### Open Limitations
+
+- All candidate generators use HEURISTIC gross savings estimates (not calibrated on real telemetry)
+- `WorkloadDescriptor.workload_type` is hardcoded to `"realtime_inference"` — Phase 10 should derive from `InferenceServiceState.engine` or K8s labels
+- `current_topo_score` / `target_topo_score` are crude proxies (0.7/0.3 heuristics) — Phase 10 should use real `PlacementScorer.score_placement()`
+- `BacktestEngine` not yet wired to `ClusterState` — deferred to Phase 11
+- `MigrationGovernor` is in-memory only — Phase 11/12 should persist to Postgres
+
+### Next Milestone
+
+**Phase 10 — CLI reports**
+
+Implement:
+- `aurelius constraint-report` — run classifier on live/simulator state, print assessment
+- `aurelius simulate-constraint-scenario` — run a named scenario, compare baselines
+- `aurelius telemetry-check` — check connector coverage
+- `aurelius topology-report` — topology graph summary and bad placements
+- `aurelius validate-connectors` — smoke test all fake connectors via same code paths
