@@ -38,17 +38,21 @@ from . import migration as mig
 from . import serving
 from . import thermal as therm
 from . import topology as topo
+from . import utilization as util
 from .cache_model import WorkloadCacheState
 from .calibration import (
+    flexibility_multiplier,
     kv_value,
     migration_value,
     nvlink_generation_for_model,
     power_class_for_model,
     resolve_comm_profile,
     resolve_fabric_regime,
+    resolve_workload_class,
     serving_value,
     thermal_value,
     topology_value,
+    utilization_value,
 )
 from .migration_model import WorkloadMigrationState
 from .model import (
@@ -69,6 +73,7 @@ from .topology_model import (
     NodeFabricState,
     WorkloadTopologyState,
 )
+from .utilization_model import GPUUtilizationState, WorkloadUtilizationState
 
 # EnergyState and ThermalState are used for region-level context
 # (not directly emitted per-GPU in this version)
@@ -168,6 +173,26 @@ class TickMetrics:
     comm_latency_p99_ms_max: Optional[float] = None
     cross_rack_workload_count: int = 0
     low_topology_telemetry_count: int = 0
+    # Utilization / fragmentation / bin-packing realism KPIs
+    mean_effective_util: Optional[float] = None
+    mean_sm_util: Optional[float] = None
+    dram_active_max: Optional[float] = None
+    fragmentation_score_max: Optional[float] = None
+    topology_fragmentation_max: Optional[float] = None
+    stranded_gpu_count: int = 0
+    packing_density_max: Optional[float] = None
+    consolidation_risk_max: Optional[float] = None
+    unsafe_consolidation_count: int = 0
+    queue_amplification_max: Optional[float] = None
+    batching_gain_mean: Optional[float] = None
+    util_throughput_penalty_pct_mean: Optional[float] = None
+    underutilized_gpu_count: int = 0
+    utilization_paradox_count: int = 0
+    scheduler_bound_count: int = 0
+    memory_bound_count: int = 0
+    bin_packing_risk_max: Optional[float] = None
+    packing_migration_vetoes: int = 0
+    low_util_telemetry_count: int = 0
     is_sandbox: bool = True
 
 
@@ -211,6 +236,10 @@ class ClusterSimulator:
         # stream that the thermal/serving/migration layers depend on — preserving
         # their deterministic replay while keeping topology behaviour seedable.
         self._topo_rng = random.Random((self.seed * 2654435761 + 0x7070) & 0xFFFFFFFF)
+        # Dedicated RNG for the utilization/fragmentation/packing layer (same
+        # rationale as the topology RNG: do not perturb the shared stream).
+        self._util_rng = random.Random((self.seed * 40503 + 0x05A1) & 0xFFFFFFFF)
+        self._region_util: dict[str, Any] = {}
         self._cluster = self._build_initial_cluster()
         self._base_time = datetime(2024, 1, 1, 0, 0, 0, tzinfo=timezone.utc)
         self._tick_metrics: list[TickMetrics] = []
@@ -219,6 +248,7 @@ class ClusterSimulator:
         """Reset to initial state (same seed → identical replay)."""
         self._rng = random.Random(self.seed)
         self._topo_rng = random.Random((self.seed * 2654435761 + 0x7070) & 0xFFFFFFFF)
+        self._util_rng = random.Random((self.seed * 40503 + 0x05A1) & 0xFFFFFFFF)
         self._cluster = self._build_initial_cluster()
         self._tick_metrics = []
 
@@ -332,6 +362,12 @@ class ClusterSimulator:
             # First-class per-GPU fabric state (NVLink generation, PCIe gen,
             # NUMA/socket attachment derived from the node's topology class).
             gpu.fabric = self._build_gpu_fabric(gpu, idx, gpu_count, topology_class)
+            # First-class multi-dimensional per-GPU utilization state.
+            gu = GPUUtilizationState()
+            gu.memory.reserve_frac = utilization_value(
+                "vram_headroom_frac", self._serving_config or None
+            )
+            gpu.utilization = gu
             gpus.append(gpu)
 
         # Build topology links
@@ -486,6 +522,13 @@ class ClusterSimulator:
             pdb_min_available=w_cfg.get("pdb_min_available", 0),
             comm_profile=w_cfg.get("comm_profile"),
             comm_message_bytes=w_cfg.get("comm_message_bytes", 4 * 1024 * 1024),
+            workload_class=w_cfg.get("workload_class"),
+            flexibility=w_cfg.get("flexibility"),
+            sharing_policy=w_cfg.get("sharing_policy", "exclusive"),
+            sharing_tenants=w_cfg.get("sharing_tenants", 1),
+            admissible_domains=w_cfg.get("admissible_domains", []),
+            output_len_cv=w_cfg.get("output_len_cv", 0.5),
+            vram_requirement_bytes=w_cfg.get("vram_requirement_bytes"),
         )
 
         # Place workload onto GPUs in the target region
@@ -526,6 +569,21 @@ class ClusterSimulator:
         ts.collective.participants = max(1, workload.gpu_count_required)
         ts.sync.sync_heavy = prof.sync_heavy
         workload.topology = ts
+
+        # Initialize first-class utilization / packing / consolidation state. The
+        # workload class is resolved from an explicit name or inferred; flexibility
+        # defaults to the class's flexibility unless explicitly overridden.
+        wclass = resolve_workload_class(
+            workload.workload_class, workload.workload_type,
+            workload.communication_intensity, workload.memory_intensity,
+        )
+        us = WorkloadUtilizationState()
+        us.workload_class = wclass.name
+        flex = workload.flexibility or wclass.flexibility
+        us.flexibility.flexibility = flex
+        us.flexibility.multiplier = flexibility_multiplier(flex)
+        us.continuous_batching.output_len_cv = workload.output_len_cv
+        workload.util = us
         return workload
 
     def _place_workload(self, workload: SimWorkload, cluster: SimCluster) -> None:
@@ -570,6 +628,7 @@ class ClusterSimulator:
         self._update_kv_cache(cluster)
         self._update_migration(cluster)
         self._update_topology(cluster)
+        self._update_utilization(cluster)
         self._update_queues(cluster)
         self._update_cost_accounting(cluster)
 
@@ -620,6 +679,7 @@ class ClusterSimulator:
             self._update_kv_cache(cluster)
             self._update_migration(cluster)
             self._update_topology(cluster)
+            self._update_utilization(cluster)
             self._update_queues(cluster)
             self._update_cost_accounting(cluster)
             ts = self._tick_timestamp(cluster.tick)
@@ -1095,6 +1155,195 @@ class ClusterSimulator:
             ts.collective.amplification = max(1.0, ts.collective.amplification)
             _ = penalty  # used by migration veto / reporting paths
 
+    def _update_utilization(self, cluster: SimCluster) -> None:
+        """Multi-dimensional utilization / fragmentation / packing evolution.
+
+        Runs after _update_topology and before _update_queues so the queue
+        physics see this tick's roofline throughput cap and queue amplification.
+        Per GPU: SM / DRAM-bandwidth / scheduler / PCIe / KV dimensions →
+        U_gpu = min(...), underutilization + utilization-paradox flags. Per
+        workload: continuous-batching gain, cross-node shard penalty, queue
+        amplification, consolidation benefit + risk. Per region: packing density,
+        multidimensional + topology-aware fragmentation, stranded capacity,
+        schedulability, bin-packing risk. See utilization.py.
+
+        Reads LAST tick's queue state (active sequences / depth) so the pre/post
+        order stays deterministic. The default well-provisioned case is neutral
+        (compute-bound → throughput factor 1.0).
+        """
+        cfg = self._serving_config or None
+        region_util: dict[str, dict[str, Any]] = {}
+
+        # --- Per-GPU multi-dimensional utilization ---------------------------
+        for region in cluster.regions.values():
+            for node in region.nodes:
+                nf = node.node_fabric
+                pcie_press = nf.congestion.pcie_congestion if nf is not None else 0.0
+                tier = util.util_telemetry_confidence(
+                    *(self._gpu_telemetry_flags(node)), self._gpu_stale_ticks(node)
+                )
+                for gpu in node.gpus:
+                    gu = gpu.utilization
+                    if gu is None:
+                        continue
+                    wid = gpu.assigned_workload_id
+                    wl = cluster.workloads.get(wid) if wid else None
+                    sm = max(0.0, min(1.0, gpu.utilization_pct / 100.0))
+                    wclass = (
+                        resolve_workload_class(
+                            wl.workload_class, wl.workload_type,
+                            wl.communication_intensity, wl.memory_intensity)
+                        if wl is not None else None
+                    )
+                    mem_bpt = wclass.mem_bytes_per_token if wclass else 1.0
+                    batch_occ = self._workload_batch_occupancy(wl, region, cluster) if wl else 0.0
+                    active_seqs = self._workload_active_seqs(wl, region) if wl else 0.0
+                    noise = self._util_rng.gauss(
+                        0.0, utilization_value("util_noise_frac", cfg)
+                    )
+                    dram_demand = util.dram_bandwidth_demand(mem_bpt, batch_occ, cfg) * (
+                        1.0 + noise
+                    )
+                    mem_cap = util.memory_bandwidth_cap(dram_demand, cfg)
+                    sched_cap = util.scheduler_cap(active_seqs, cfg)
+                    p_cap = util.pcie_cap(pcie_press, cfg)
+                    eff, bottleneck = util.effective_utilization(sm, mem_cap, sched_cap, p_cap)
+
+                    gu.sm.sm_util = sm
+                    gu.mem.dram_active = min(1.0, dram_demand)
+                    gu.mem.mem_copy_util = min(1.0, dram_demand * 0.5)
+                    gu.mem.saturated = mem_cap < 1.0
+                    gu.dram.pressure = min(1.0, dram_demand)
+                    gu.dram.regime = (
+                        "saturated" if mem_cap < 1.0 else
+                        ("elevated" if dram_demand > 0.5 else "nominal")
+                    )
+                    gu.scheduler.active_sequences = active_seqs
+                    gu.scheduler.pressure = min(1.0, active_seqs / max(
+                        1.0, utilization_value("scheduler_capacity_seqs", cfg)))
+                    gu.scheduler.saturated = sched_cap < 1.0
+                    gu.pcie.pressure = pcie_press
+                    gu.pcie.saturated = p_cap < 1.0
+                    # KV / VRAM headroom from the cache layer + memory footprint.
+                    kv_occ = (
+                        wl.cache.pressure.pressure if (wl and wl.cache) else 0.0
+                    )
+                    kv_hr, kv_supp = util.kv_headroom(kv_occ, cfg)
+                    gu.kv.occupancy = kv_occ
+                    gu.kv.headroom_frac = kv_hr
+                    gu.kv.admission_suppressed = kv_supp
+                    used_frac = (
+                        gpu.memory_used_bytes / max(1, gpu.profile.memory_total_bytes)
+                    )
+                    vram_hr, over = util.vram_headroom(used_frac, cfg)
+                    gu.memory.used_frac = used_frac
+                    gu.memory.headroom_frac = vram_hr
+                    gu.memory.over_reserve = over
+                    gu.batching.occupancy = batch_occ
+                    gu.sharing.shared = (wl.sharing_policy != "exclusive") if wl else False
+                    gu.sharing.mode = (
+                        wl.sharing_policy if (wl and wl.sharing_policy != "exclusive")
+                        else "none"
+                    )
+                    gu.sharing.tenants = wl.sharing_tenants if wl else 1
+                    gu.sharing.interference_frac = util.sharing_interference(
+                        gu.sharing.tenants, gu.sharing.mode, cfg
+                    )
+                    gu.telemetry.tier = tier
+                    gu.effective_util = eff
+                    gu.bottleneck = bottleneck
+                    gu.underutilized = util.underutilized(sm, cfg) if wl else True
+                    gu.utilization_paradox = util.utilization_paradox(
+                        sm, gu.mem.dram_active, cfg
+                    )
+
+            # --- Per-region fragmentation / density / stranded capacity -------
+            region_util[region.region_id] = self._compute_region_packing(region, cluster)
+
+        self._region_util = region_util
+
+        # --- Per-workload packing / batching / consolidation ------------------
+        for wl in cluster.workloads.values():
+            us = wl.util
+            if us is None:
+                continue
+            wclass = resolve_workload_class(
+                wl.workload_class, wl.workload_type,
+                wl.communication_intensity, wl.memory_intensity,
+            )
+            gpus = self._workload_gpus(wl, cluster)
+            node_ids = set(wl.node_ids)
+            # Cross-node sharding penalty.
+            us.cross_node_shard.node_count = max(1, len(node_ids))
+            us.cross_node_shard.sharded = len(node_ids) > 1
+            us.cross_node_shard.shard_penalty_frac = util.cross_node_shard_penalty(
+                len(node_ids), wclass.topology_sensitivity, cfg
+            )
+            us.topology_feasibility.cross_node = len(node_ids) > 1
+            us.topology_feasibility.requires_locality = wclass.topology_sensitivity > 0.6
+            # Effective util throughput factor = tightest cap across its GPUs.
+            factors = [
+                util.util_throughput_factor(
+                    util.memory_bandwidth_cap(g.utilization.mem.dram_active, cfg)
+                    if g.utilization else 1.0,
+                    1.0 - (g.utilization.scheduler.pressure if g.utilization else 0.0)
+                    if (g.utilization and g.utilization.scheduler.saturated) else 1.0,
+                    util.pcie_cap(g.utilization.pcie.pressure, cfg)
+                    if g.utilization else 1.0,
+                ) for g in gpus
+            ]
+            us.util_throughput_factor = min(factors) if factors else 1.0
+            us.roofline_bottleneck = (
+                gpus[0].utilization.bottleneck if gpus and gpus[0].utilization else "compute"
+            )
+            # Continuous-batching gain (informational; diminishing returns).
+            kv_press = wl.cache.pressure.pressure if wl.cache else 0.0
+            sched_press = max(
+                (g.utilization.scheduler.pressure for g in gpus if g.utilization),
+                default=0.0,
+            )
+            batch_occ = self._workload_batch_occupancy(
+                wl, cluster.regions.get(wl.region_id), cluster
+            )
+            us.continuous_batching.active_sequences = self._workload_active_seqs(
+                wl, cluster.regions.get(wl.region_id)
+            )
+            us.continuous_batching.prefill_decode_interference = min(1.0, batch_occ)
+            us.consolidation.benefit = util.consolidation_benefit(batch_occ, cfg)
+            gain = util.batching_gain(
+                wl.output_len_cv, batch_occ, kv_press, sched_press, cfg
+            )
+            for g in gpus:
+                if g.utilization is not None:
+                    g.utilization.batching.gain = gain
+                    g.utilization.batching.collapsed = (
+                        kv_press > 0.9 or sched_press > 0.9
+                    )
+            # Queue amplification from per-replica oversubscription (aggressive
+            # packing leaves less slack to absorb bursts). Raw GPU allocation is
+            # healthy; oversubscription is what destabilizes queues.
+            rinfo = region_util.get(wl.region_id, {})
+            density = rinfo.get("density", 0.0)
+            amp, unstable = util.queue_amplification(batch_occ, cfg)
+            us.queue_amp.amplification = amp
+            us.queue_amp.unstable = unstable
+            # Consolidation risk (drivers: cross-domain / queue / thermal / KV / sched).
+            ts = wl.topology
+            cross_domain = us.cross_node_shard.shard_penalty_frac
+            queue_pressure = min(1.0, density)
+            inv_temp_margin = self._workload_inv_temp_margin(wl, cluster)
+            risk = util.consolidation_risk(
+                cross_domain, queue_pressure, inv_temp_margin, kv_press, sched_press, cfg
+            )
+            us.consolidation.cross_domain = cross_domain
+            us.consolidation.queue_pressure = queue_pressure
+            us.consolidation.thermal_pressure = inv_temp_margin
+            us.consolidation.kv_pressure = kv_press
+            us.consolidation.scheduler_pressure = sched_press
+            us.consolidation.risk = risk
+            us.consolidation.unsafe = util.packing_unsafe(risk, cfg)
+            _ = ts
+
     def _update_queues(self, cluster: SimCluster) -> None:
         """Update queue state with the inference-serving realism layer.
 
@@ -1169,6 +1418,24 @@ class ClusterSimulator:
                 sync_slow = ts.sync.slowdown_frac if ts is not None else 0.0
                 tokens_per_sec *= max(0.05, 1.0 - sync_slow)
 
+                # Utilization roofline throughput cap: when the workload is
+                # memory-bandwidth / scheduler / PCIe bound, throughput is pinned
+                # below the compute-driven rate (utilization paradox). Neutral
+                # (factor 1.0) for the default compute-bound case. Cross-node
+                # sharding + GPU-sharing interference further suppress it.
+                us = workload.util
+                if us is not None:
+                    tokens_per_sec *= us.util_throughput_factor
+                    tokens_per_sec *= max(0.05, 1.0 - us.cross_node_shard.shard_penalty_frac)
+                wl_gpus_share = self._workload_gpus(workload, cluster)
+                interference = max(
+                    (g.utilization.sharing.interference_frac
+                     for g in wl_gpus_share if g.utilization is not None),
+                    default=0.0,
+                )
+                if interference > 0.0:
+                    tokens_per_sec *= max(0.1, 1.0 - interference)
+
                 replicas = max(1, len(workload.gpu_ids))
 
                 # Active sequences (offered concurrency) drive batching + contention.
@@ -1223,6 +1490,10 @@ class ClusterSimulator:
                 else:
                     proxy_sat = 1.0
                 mean_wait_s = min(60.0, mean_wait_s * proxy_sat)
+                # Packing-density queue amplification: a densely packed region
+                # has less slack to absorb bursts, amplifying wait superlinearly.
+                if us is not None:
+                    mean_wait_s = min(60.0, mean_wait_s * us.queue_amp.amplification)
                 mean_wait_ms = mean_wait_s * 1000.0
 
                 p95_mult, p99_mult = serving.tail_multipliers(rho, cfg)
@@ -1695,6 +1966,57 @@ class ClusterSimulator:
                 if nf.telemetry.tier == "low":
                     low_telemetry += 1
 
+        # Utilization / fragmentation / bin-packing KPIs.
+        eff_utils: list[float] = []
+        sm_utils: list[float] = []
+        dram_actives: list[float] = []
+        underutil_count = 0
+        paradox_count = 0
+        sched_bound = 0
+        mem_bound = 0
+        low_util_tel = 0
+        for region in cluster.regions.values():
+            for node in region.nodes:
+                for gpu in node.gpus:
+                    gu = gpu.utilization
+                    if gu is None:
+                        continue
+                    eff_utils.append(gu.effective_util)
+                    sm_utils.append(gu.sm.sm_util)
+                    dram_actives.append(gu.mem.dram_active)
+                    if gpu.assigned_workload_id is not None and gu.underutilized:
+                        underutil_count += 1
+                    if gu.utilization_paradox:
+                        paradox_count += 1
+                    if gu.bottleneck == "sched":
+                        sched_bound += 1
+                    elif gu.bottleneck == "mem":
+                        mem_bound += 1
+                    if gu.telemetry.tier == "low":
+                        low_util_tel += 1
+        cons_risks: list[float] = []
+        queue_amps: list[float] = []
+        batch_gains: list[float] = []
+        util_pens: list[float] = []
+        unsafe_cons = 0
+        for wl in cluster.workloads.values():
+            u = wl.util
+            if u is None:
+                continue
+            cons_risks.append(u.consolidation.risk)
+            queue_amps.append(u.queue_amp.amplification)
+            util_pens.append(1.0 - u.util_throughput_factor)
+            if u.consolidation.unsafe:
+                unsafe_cons += 1
+            gpus0 = self._workload_gpus(wl, cluster)
+            if gpus0 and gpus0[0].utilization is not None:
+                batch_gains.append(gpus0[0].utilization.batching.gain)
+        frag_scores = [r.get("fragmentation", 0.0) for r in self._region_util.values()]
+        topo_frags = [r.get("topology_fragmentation", 0.0) for r in self._region_util.values()]
+        densities = [r.get("density", 0.0) for r in self._region_util.values()]
+        bp_risks = [r.get("bin_packing_risk", 0.0) for r in self._region_util.values()]
+        stranded_total = sum(r.get("stranded", 0) for r in self._region_util.values())
+
         return TickMetrics(
             tick=cluster.tick,
             timestamp=ts,
@@ -1780,6 +2102,34 @@ class ClusterSimulator:
             comm_latency_p99_ms_max=max(comm_p99s) if comm_p99s else None,
             cross_rack_workload_count=cross_rack_count,
             low_topology_telemetry_count=low_telemetry,
+            mean_effective_util=(
+                sum(eff_utils) / len(eff_utils) if eff_utils else None
+            ),
+            mean_sm_util=sum(sm_utils) / len(sm_utils) if sm_utils else None,
+            dram_active_max=max(dram_actives) if dram_actives else None,
+            fragmentation_score_max=max(frag_scores) if frag_scores else None,
+            topology_fragmentation_max=max(topo_frags) if topo_frags else None,
+            stranded_gpu_count=stranded_total,
+            packing_density_max=max(densities) if densities else None,
+            consolidation_risk_max=max(cons_risks) if cons_risks else None,
+            unsafe_consolidation_count=unsafe_cons,
+            queue_amplification_max=max(queue_amps) if queue_amps else None,
+            batching_gain_mean=sum(batch_gains) / len(batch_gains) if batch_gains else None,
+            util_throughput_penalty_pct_mean=(
+                100.0 * sum(util_pens) / len(util_pens) if util_pens else None
+            ),
+            underutilized_gpu_count=underutil_count,
+            utilization_paradox_count=paradox_count,
+            scheduler_bound_count=sched_bound,
+            memory_bound_count=mem_bound,
+            bin_packing_risk_max=max(bp_risks) if bp_risks else None,
+            packing_migration_vetoes=sum(
+                1 for wl in cluster.workloads.values()
+                if wl.migration is not None
+                and wl.migration.migration.last_veto_reason in (
+                    "packing_unsafe_consolidation", "packing_fragmented_destination")
+            ),
+            low_util_telemetry_count=low_util_tel,
         )
 
     # ------------------------------------------------------------------
@@ -1926,6 +2276,131 @@ class ClusterSimulator:
                 if node.node_id in node_ids and node.node_fabric is not None:
                     load = max(load, node.node_fabric.congestion.nvlink_congestion)
         return load
+
+    # ------------------------------------------------------------------
+    # Utilization / fragmentation / packing helpers
+    # ------------------------------------------------------------------
+
+    def _gpu_telemetry_flags(self, node: SimNode) -> tuple[bool, bool, bool]:
+        """(gpu_util_visible, dram_visible, scheduler_visible) for a node.
+
+        Reuses the node fabric telemetry visibility flags (config-driven) so a
+        scenario modelling missing topology telemetry also degrades utilization
+        packing confidence.
+        """
+        nf = node.node_fabric
+        if nf is None:
+            return True, True, True
+        return nf.telemetry.nvlink_visible, nf.telemetry.pcie_visible, nf.telemetry.nic_visible
+
+    def _gpu_stale_ticks(self, node: SimNode) -> int:
+        nf = node.node_fabric
+        return nf.telemetry.stale_ticks if nf is not None else 0
+
+    def _workload_queue(self, workload: SimWorkload, region: Optional[SimRegion]):
+        if region is None:
+            return None
+        for q in region.queues:
+            if q.service_id == workload.service_id:
+                return q
+        return None
+
+    def _workload_active_seqs(
+        self, workload: SimWorkload, region: Optional[SimRegion]
+    ) -> float:
+        """Total active sequences for the workload's service (last tick)."""
+        q = self._workload_queue(workload, region)
+        return float(q.active_sequences) if q is not None else 0.0
+
+    def _workload_batch_occupancy(
+        self, workload: SimWorkload, region: Optional[SimRegion], cluster: SimCluster
+    ) -> float:
+        """Batch occupancy = active-per-replica / batching knee, clamped to [0,1]."""
+        active = self._workload_active_seqs(workload, region)
+        replicas = max(1, len(workload.gpu_ids))
+        knee = serving_value("batch_efficiency_knee", self._serving_config or None)
+        return max(0.0, min(1.0, (active / replicas) / max(1.0, knee)))
+
+    def _workload_inv_temp_margin(
+        self, workload: SimWorkload, cluster: SimCluster
+    ) -> float:
+        """Inverse thermal margin (0 cool → 1 at/over throttle) across the GPUs."""
+        gpus = self._workload_gpus(workload, cluster)
+        worst = 0.0
+        for g in gpus:
+            onset = therm.power_class_for_model(g.profile.model_name).throttle_onset_c
+            margin = (g.temperature_c - (onset - 15.0)) / 15.0
+            worst = max(worst, max(0.0, min(1.0, margin)))
+        return worst
+
+    def _compute_region_packing(
+        self, region: SimRegion, cluster: SimCluster
+    ) -> dict[str, Any]:
+        """Compute density / fragmentation / stranded capacity for a region.
+
+        Fragmentation is multidimensional: a free GPU is schedulable only if it
+        has VRAM headroom AND belongs to a rack that has a free contiguous block
+        large enough for a representative multi-GPU demand. Free-but-unusable
+        GPUs are stranded (topology-isolated / VRAM-isolated).
+        """
+        cfg = self._serving_config or None
+        total = 0
+        allocated = 0
+        free = 0
+        schedulable = 0
+        vram_isolated = 0
+        topology_isolated = 0
+        free_by_rack: dict[str, int] = {}
+        # Representative domain demand: the largest multi-GPU workload here.
+        demand = max(
+            (w.gpu_count_required for w in cluster.workloads.values()
+             if w.region_id == region.region_id), default=1
+        )
+        safe_ceiling = 1.0 - utilization_value("vram_headroom_frac", cfg)
+        for node in region.nodes:
+            for gpu in node.gpus:
+                total += 1
+                if gpu.assigned_workload_id is not None:
+                    allocated += 1
+                    continue
+                free += 1
+                used_frac = gpu.memory_used_bytes / max(1, gpu.profile.memory_total_bytes)
+                has_vram = used_frac <= safe_ceiling
+                if not has_vram:
+                    vram_isolated += 1
+                    continue
+                free_by_rack[node.rack_id] = free_by_rack.get(node.rack_id, 0) + 1
+        # A free GPU is schedulable for the demand only if its rack has a block
+        # of at least `demand` free GPUs (topology-local placement).
+        for rack_id, cnt in free_by_rack.items():
+            if cnt >= demand:
+                schedulable += cnt
+            else:
+                topology_isolated += cnt
+        frag = util.fragmentation_score(free, schedulable)
+        free_by_domain = dict(free_by_rack)
+        demand_by_domain = {r: demand for r in free_by_rack}
+        topo_frag = util.topology_fragmentation_score(free_by_domain, demand_by_domain)
+        density = allocated / total if total else 0.0
+        stranded = util.stranded_breakdown(topology_isolated, vram_isolated, 0, 0)
+        bp_risk, bp_unsafe = util.bin_packing_risk(frag, density, demand, cfg)
+        return {
+            "total": total,
+            "allocated": allocated,
+            "free": free,
+            "schedulable": schedulable,
+            "density": density,
+            "fragmentation": frag,
+            "topology_fragmentation": topo_frag,
+            "fragmentation_regime": util.fragmentation_regime(frag, cfg),
+            "stranded": stranded,
+            "topology_isolated": topology_isolated,
+            "vram_isolated": vram_isolated,
+            "largest_feasible": max(free_by_rack.values()) if free_by_rack else 0,
+            "demand": demand,
+            "bin_packing_risk": bp_risk,
+            "bin_packing_unsafe": bp_unsafe,
+        }
 
     def _workload_telemetry_tier(
         self, workload: SimWorkload, cluster: SimCluster
@@ -2390,6 +2865,22 @@ class ClusterSimulator:
         # Thermal governor: veto migrating INTO a hot destination zone.
         if target_region_id is not None and self._dest_zone_too_hot(target_region_id):
             return "thermal_hot_destination"
+        # Packing/consolidation governor: veto when the workload's current
+        # consolidation risk is already unsafe (cross-node sharding + queue +
+        # thermal + KV + scheduler pressure), or when a low-flexibility job would
+        # land in a destination region whose bin-packing risk is unsafe. Free GPUs
+        # are NOT universally schedulable. Checked before the topology governor so
+        # an already-unstable workload is pinned with the packing reason.
+        us = workload.util
+        if us is not None and us.consolidation.unsafe:
+            return "packing_unsafe_consolidation"
+        if (
+            target_region_id is not None and us is not None
+            and us.flexibility.multiplier < 0.5
+        ):
+            rinfo = (self._region_util or {}).get(target_region_id, {})
+            if rinfo.get("bin_packing_unsafe"):
+                return "packing_fragmented_destination"
         # Topology governor: veto moving a communication-sensitive / sync-heavy
         # workload across fabric domains (the move breaks NVLink/NVSwitch/rack
         # locality). A cross-region move is the worst case (distance 6). Missing

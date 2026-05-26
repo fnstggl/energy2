@@ -137,6 +137,10 @@ class SimGPU:
     # lazily by the engine to avoid an import cycle.
     fabric: Optional[Any] = None
 
+    # First-class multi-dimensional per-GPU utilization state (SM / DRAM-bandwidth
+    # / scheduler / PCIe / KV bottleneck). Constructed lazily by the engine.
+    utilization: Optional[Any] = None
+
     # Assigned workload (one workload per GPU for simplicity)
     assigned_workload_id: Optional[str] = None
 
@@ -279,6 +283,20 @@ class SimWorkload:
     # (gradient/activation/expert payload). Order-of-magnitude proxy.
     comm_message_bytes: int = 4 * 1024 * 1024  # 4 MiB default
 
+    # Utilization / fragmentation / packing realism (drives utilization.py).
+    # workload_class names an entry in calibration.WORKLOAD_CLASS_PROFILES; None →
+    # inferred from workload_type + comm/memory intensity. flexibility (low|
+    # medium|high) overrides the class default. sharing_policy controls GPU
+    # sharing; admissible_domains restricts placement; output_len_cv drives the
+    # continuous-batching gain; vram_requirement_bytes defaults to memory_required.
+    workload_class: Optional[str] = None
+    flexibility: Optional[str] = None
+    sharing_policy: str = "exclusive"   # exclusive | mig | time_slice | fractional
+    sharing_tenants: int = 1
+    admissible_domains: list[str] = field(default_factory=list)
+    output_len_cv: float = 0.5          # coefficient of variation of output length
+    vram_requirement_bytes: Optional[int] = None
+
     # SLA
     sla_policy_id: Optional[str] = None
     latency_sla_p99_ms: Optional[float] = None   # None = no hard SLA
@@ -319,6 +337,10 @@ class SimWorkload:
     # First-class topology / communication state (mutable; updated each tick).
     # Constructed lazily by the engine.
     topology: Optional[Any] = None
+
+    # First-class utilization / packing / consolidation state (mutable; updated
+    # each tick). Constructed lazily by the engine.
+    util: Optional[Any] = None
 
     # Computed per tick
     effective_tokens_per_second: float = 0.0

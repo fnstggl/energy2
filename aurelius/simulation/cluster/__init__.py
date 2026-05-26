@@ -33,6 +33,7 @@ from .topology_model import (
     NodeFabricState,
     WorkloadTopologyState,
 )
+from .utilization_model import GPUUtilizationState, WorkloadUtilizationState
 
 __all__ = [
     "ClusterSimulator",
@@ -50,4 +51,6 @@ __all__ = [
     "GPUFabricState",
     "NodeFabricState",
     "WorkloadTopologyState",
+    "GPUUtilizationState",
+    "WorkloadUtilizationState",
 ]

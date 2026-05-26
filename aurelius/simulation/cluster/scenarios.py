@@ -1328,4 +1328,382 @@ _BUILTIN_SCENARIOS: dict[str, dict[str, Any]] = {
         ],
         "events": [],
     },
+
+    # -----------------------------------------------------------------------
+    # 15. DRAM-bound inference (utilization paradox)
+    # -----------------------------------------------------------------------
+    # A memory-bandwidth-bound inference service: moderate SM utilization yet
+    # high DRAM_ACTIVE → effective throughput is pinned by memory bandwidth, not
+    # compute. The GPU looks "underutilized" (low SM) but is NOT a safe packing
+    # candidate (it is busy moving KV bytes). The utilization paradox.
+    "dram_bound_inference": {
+        "scenario_name": "dram_bound_inference",
+        "description": (
+            "Memory-bandwidth-bound inference: low SM utilization + high "
+            "DRAM_ACTIVE. Expected: utilization paradox, memory-bound throughput "
+            "cap, NOT a safe packing target. Utilization-dominant."
+        ),
+        "seed": 42,
+        "tick_duration_hours": 1.0,
+        "expected_primary_constraint": "utilization_bound",
+        "expected_events": [],
+        "scenario_version": "v1",
+        "simulator_version": "1.0.0",
+        "regions": [
+            {
+                "region_id": "us-east",
+                "energy_price_trace": [55.0] * 24,
+                "ambient_temp_c": 22.0,
+                "nodes": [
+                    {
+                        "node_id": "dram-node0",
+                        "gpu_type": "a100-sxm4-80gb",
+                        "gpu_count": 4,
+                        "topology_class": "nvswitch",
+                        "rack_id": "us-east-rack0",
+                        "zone": "us-east-1a",
+                    }
+                ],
+                "queues": [
+                    {
+                        "queue_id": "us-east-q0",
+                        "service_id": "dram-inference",
+                        "base_arrival_rate_per_sec": 12.0,
+                        "diurnal_amplitude": 0.3,
+                    }
+                ],
+            }
+        ],
+        "workloads": [
+            {
+                "workload_id": "dram-wl",
+                "service_id": "dram-inference",
+                "workload_type": "inference",
+                "priority_tier": "standard",
+                "region_id": "us-east",
+                "gpu_count_required": 4,
+                "target_util_pct": 45.0,
+                "communication_intensity": "low",
+                "memory_intensity": "high",
+                "workload_class": "memory_heavy",
+                "migration_allowed": True,
+            }
+        ],
+        "events": [],
+    },
+
+    # -----------------------------------------------------------------------
+    # 16. Scheduler-bound inference
+    # -----------------------------------------------------------------------
+    # Very high concurrency drives the active-sequence count past the scheduler
+    # capacity: admission + scheduling overhead binds before compute, so the GPU
+    # is scheduler-bound (low effective throughput at high offered load).
+    "scheduler_bound_inference": {
+        "scenario_name": "scheduler_bound_inference",
+        "description": (
+            "Very high concurrency exceeds scheduler capacity → scheduler-bound "
+            "throughput cap. Expected: scheduler bottleneck dominates, effective "
+            "utilization below compute. Utilization-dominant."
+        ),
+        "seed": 5,
+        "tick_duration_hours": 1.0,
+        "expected_primary_constraint": "utilization_bound",
+        "expected_events": ["queue_surge"],
+        "scenario_version": "v1",
+        "simulator_version": "1.0.0",
+        "regions": [
+            {
+                "region_id": "us-east",
+                "energy_price_trace": [55.0] * 24,
+                "ambient_temp_c": 22.0,
+                "nodes": [
+                    {
+                        "node_id": "sched-node0",
+                        "gpu_type": "a100-sxm4-80gb",
+                        "gpu_count": 2,
+                        "topology_class": "nvswitch",
+                        "rack_id": "us-east-rack0",
+                        "zone": "us-east-1a",
+                    }
+                ],
+                "queues": [
+                    {
+                        "queue_id": "us-east-q0",
+                        "service_id": "sched-inference",
+                        "base_arrival_rate_per_sec": 120.0,
+                        "diurnal_amplitude": 0.2,
+                    }
+                ],
+            }
+        ],
+        "workloads": [
+            {
+                "workload_id": "sched-wl",
+                "service_id": "sched-inference",
+                "workload_type": "inference",
+                "priority_tier": "standard",
+                "region_id": "us-east",
+                "gpu_count_required": 2,
+                "target_util_pct": 60.0,
+                "communication_intensity": "low",
+                "workload_class": "standard_inference",
+                "migration_allowed": True,
+            }
+        ],
+        "events": [
+            {"tick": 6, "type": "queue_surge", "region_id": "us-east",
+             "service_id": "sched-inference", "multiplier": 3.0},
+            {"tick": 18, "type": "queue_surge_end", "region_id": "us-east",
+             "service_id": "sched-inference"},
+        ],
+    },
+
+    # -----------------------------------------------------------------------
+    # 17. Fragmentation / stranded capacity
+    # -----------------------------------------------------------------------
+    # Free GPUs scattered as 1-GPU fragments across racks while a 4-GPU job needs
+    # a contiguous topology-local block. The cluster looks underutilized yet
+    # cannot place the large job → stranded capacity, high fragmentation.
+    "fragmentation_stranded_capacity": {
+        "scenario_name": "fragmentation_stranded_capacity",
+        "description": (
+            "Free GPUs scattered as single-GPU fragments across racks; a 4-GPU "
+            "job cannot be placed. Expected: high fragmentation, stranded capacity "
+            "despite free GPUs. Free GPUs are NOT universally schedulable."
+        ),
+        "seed": 42,
+        "tick_duration_hours": 1.0,
+        "expected_primary_constraint": "utilization_bound",
+        "expected_events": [],
+        "scenario_version": "v1",
+        "simulator_version": "1.0.0",
+        "regions": [
+            {
+                "region_id": "us-east",
+                "energy_price_trace": [55.0] * 24,
+                "ambient_temp_c": 22.0,
+                "nodes": [
+                    {
+                        "node_id": "big-node0",
+                        "gpu_type": "a100-sxm4-80gb",
+                        "gpu_count": 4,
+                        "topology_class": "nvswitch",
+                        "rack_id": "us-east-rackA",
+                        "zone": "us-east-1a",
+                    },
+                ] + [
+                    {
+                        "node_id": f"frag-node{i}",
+                        "gpu_type": "a100-sxm4-80gb",
+                        "gpu_count": 2,
+                        "topology_class": "nvswitch",
+                        "rack_id": f"us-east-rack{chr(66 + i)}",
+                        "zone": "us-east-1a",
+                    }
+                    for i in range(3)
+                ],
+                "queues": [
+                    {
+                        "queue_id": "us-east-q0",
+                        "service_id": "frag-big",
+                        "base_arrival_rate_per_sec": 0.5,
+                        "diurnal_amplitude": 0.2,
+                    }
+                ],
+            }
+        ],
+        "workloads": [
+            # Large 4-GPU job occupies the only contiguous block (defines demand).
+            {
+                "workload_id": "frag-big-wl",
+                "service_id": "frag-big",
+                "workload_type": "inference",
+                "priority_tier": "standard",
+                "region_id": "us-east",
+                "gpu_count_required": 4,
+                "target_util_pct": 60.0,
+                "communication_intensity": "low",
+                "migration_allowed": True,
+            },
+        ] + [
+            # Single-GPU jobs occupy one GPU on each 2-GPU fragment node, leaving
+            # 1 free GPU per rack — none can host another 4-GPU job.
+            {
+                "workload_id": f"frag-small-{i}",
+                "service_id": f"frag-small-{i}",
+                "workload_type": "inference",
+                "priority_tier": "flexible",
+                "region_id": "us-east",
+                "gpu_count_required": 1,
+                "target_util_pct": 30.0,
+                "communication_intensity": "low",
+                "migration_allowed": True,
+            }
+            for i in range(3)
+        ],
+        "events": [],
+    },
+
+    # -----------------------------------------------------------------------
+    # 18. Unsafe aggressive consolidation
+    # -----------------------------------------------------------------------
+    # A communication-heavy workload sharded across nodes under queue + thermal
+    # pressure. Consolidation risk climbs into the unsafe regime; the packing
+    # governor vetoes further consolidation / cross-region migration.
+    "unsafe_aggressive_consolidation": {
+        "scenario_name": "unsafe_aggressive_consolidation",
+        "description": (
+            "Communication-heavy workload sharded across nodes under queue + "
+            "thermal pressure. Expected: consolidation risk enters the unsafe "
+            "regime; packing governor vetoes risky migrations. Utilization-dominant."
+        ),
+        "seed": 9,
+        "tick_duration_hours": 1.0,
+        "expected_primary_constraint": "utilization_bound",
+        "expected_events": ["queue_surge"],
+        "scenario_version": "v1",
+        "simulator_version": "1.0.0",
+        "regions": [
+            {
+                "region_id": "us-east",
+                "energy_price_trace": [90.0] * 24,
+                "ambient_temp_c": 30.0,
+                "network_latency_to": {"us-west": 70},
+                "nodes": [
+                    {
+                        "node_id": "cons-node0",
+                        "gpu_type": "h100-sxm5-80gb",
+                        "gpu_count": 4,
+                        "topology_class": "nvswitch",
+                        "rack_id": "us-east-rack0",
+                        "zone": "us-east-1a",
+                        "cooling_regime": "weak_airflow",
+                    },
+                    {
+                        "node_id": "cons-node1",
+                        "gpu_type": "h100-sxm5-80gb",
+                        "gpu_count": 4,
+                        "topology_class": "nvswitch",
+                        "rack_id": "us-east-rack1",
+                        "zone": "us-east-1b",
+                        "cooling_regime": "weak_airflow",
+                    },
+                ],
+                "queues": [
+                    {
+                        "queue_id": "us-east-q0",
+                        "service_id": "cons-svc",
+                        "base_arrival_rate_per_sec": 6.0,
+                        "diurnal_amplitude": 0.3,
+                    }
+                ],
+            },
+            {
+                "region_id": "us-west",
+                "energy_price_trace": [35.0] * 24,
+                "ambient_temp_c": 18.0,
+                "network_latency_to": {"us-east": 70},
+                "nodes": [
+                    {
+                        "node_id": "west-node0",
+                        "gpu_type": "h100-sxm5-80gb",
+                        "gpu_count": 8,
+                        "topology_class": "nvswitch",
+                        "rack_id": "us-west-rack0",
+                        "zone": "us-west-2a",
+                    }
+                ],
+                "queues": [
+                    {
+                        "queue_id": "us-west-q0",
+                        "service_id": "cons-svc-west",
+                        "base_arrival_rate_per_sec": 0.1,
+                        "diurnal_amplitude": 0.2,
+                    }
+                ],
+            },
+        ],
+        "workloads": [
+            {
+                "workload_id": "cons-wl",
+                "service_id": "cons-svc",
+                "workload_type": "inference",
+                "priority_tier": "latency_sensitive",
+                "region_id": "us-east",
+                "gpu_count_required": 8,
+                "target_util_pct": 80.0,
+                "communication_intensity": "high",
+                "comm_profile": "tensor_parallel",
+                "workload_class": "comm_heavy",
+                "flexibility": "low",
+                "migration_allowed": True,
+            }
+        ],
+        "events": [
+            {"tick": 6, "type": "queue_surge", "region_id": "us-east",
+             "service_id": "cons-svc", "multiplier": 3.0},
+        ],
+    },
+
+    # -----------------------------------------------------------------------
+    # 19. Partial utilization telemetry
+    # -----------------------------------------------------------------------
+    # GPU_UTIL + DRAM telemetry is partial/stale. Packing confidence drops and the
+    # packing governor becomes more conservative (missing != schedulable).
+    "partial_utilization_telemetry": {
+        "scenario_name": "partial_utilization_telemetry",
+        "description": (
+            "Partial / stale utilization + DRAM telemetry. Expected: lowered "
+            "packing confidence, more conservative consolidation. Missing "
+            "telemetry must NOT be read as schedulable."
+        ),
+        "seed": 11,
+        "tick_duration_hours": 1.0,
+        "expected_primary_constraint": "utilization_bound",
+        "expected_events": [],
+        "scenario_version": "v1",
+        "simulator_version": "1.0.0",
+        "regions": [
+            {
+                "region_id": "us-east",
+                "energy_price_trace": [55.0] * 24,
+                "ambient_temp_c": 22.0,
+                "nodes": [
+                    {
+                        "node_id": "blind-util-node0",
+                        "gpu_type": "a100-sxm4-80gb",
+                        "gpu_count": 4,
+                        "topology_class": "nvswitch",
+                        "rack_id": "us-east-rack0",
+                        "zone": "us-east-1a",
+                        "nvlink_telemetry_visible": False,
+                        "pcie_telemetry_visible": False,
+                        "topology_stale_ticks": 6,
+                    }
+                ],
+                "queues": [
+                    {
+                        "queue_id": "us-east-q0",
+                        "service_id": "blind-util-svc",
+                        "base_arrival_rate_per_sec": 2.0,
+                        "diurnal_amplitude": 0.3,
+                    }
+                ],
+            }
+        ],
+        "workloads": [
+            {
+                "workload_id": "blind-util-wl",
+                "service_id": "blind-util-svc",
+                "workload_type": "inference",
+                "priority_tier": "standard",
+                "region_id": "us-east",
+                "gpu_count_required": 2,
+                "target_util_pct": 55.0,
+                "communication_intensity": "low",
+                "migration_allowed": True,
+            }
+        ],
+        "events": [],
+    },
 }

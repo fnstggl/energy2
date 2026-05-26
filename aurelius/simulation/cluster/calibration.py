@@ -1404,16 +1404,407 @@ def resolve_comm_profile(
     return WORKLOAD_COMM_PROFILES["comm_light_inference"]
 
 
+# ---------------------------------------------------------------------------
+# Utilization / fragmentation / bin-packing parameter registry
+# ---------------------------------------------------------------------------
+# Added for the utilization-realism upgrade (driven by utilization.py). These
+# model multi-dimensional GPU utilization (SM / DRAM-bandwidth / scheduler /
+# PCIe / KV), a roofline-style token-throughput ceiling, continuous-batching
+# gains with diminishing returns, KV/VRAM headroom, multidimensional +
+# topology-aware fragmentation, stranded capacity, saturating consolidation
+# benefit with nonlinear risk, queue amplification under packing, GPU-sharing
+# interference, and utilization telemetry confidence. As elsewhere, the great
+# majority are HEURISTIC/INFERRED priors anchored to documented behaviour (e.g.
+# the ~5% VRAM headroom rule, inference vs training utilization regimes); NONE
+# are MEASURED on a live cluster. They make "free GPUs" often unusable, packing
+# nonlinearly risky, and utilization a multidimensional systems problem.
+
+UTILIZATION_PARAMS: dict[str, CalibratedParam] = {
+    # --- Utilization regimes (triangular priors) --------------------------
+    "inference_util_min": _h(
+        0.40,
+        "Lower vertex of the inference compute-utilization triangular prior. "
+        "Inference often runs at moderate SM utilization (memory/queue bound). "
+        "Calibrate from real DCGM GPU_UTIL distributions per workload.",
+        source_type=INFERRED, source="inference GPU utilization is moderate (memory-bound)",
+        confidence="low",
+    ),
+    "inference_util_mode": _h(
+        0.55,
+        "Mode of the inference compute-utilization triangular prior. NOT a "
+        "universal target. Calibrate from real serving telemetry.",
+        source_type=INFERRED, source="inference GPU utilization mode",
+        confidence="low",
+    ),
+    "inference_util_max": _h(
+        0.70,
+        "Upper vertex of the inference compute-utilization triangular prior. "
+        "Calibrate from real saturated-serving telemetry.",
+        source_type=INFERRED, source="inference GPU utilization ceiling",
+        confidence="low",
+    ),
+    "training_util_min": _h(
+        0.85,
+        "Lower vertex of the training active-utilization triangular prior. "
+        "Training targets very high sustained SM utilization. Calibrate from "
+        "real training-job DCGM telemetry.",
+        source_type=INFERRED, source="training targets high sustained utilization",
+        confidence="medium",
+    ),
+    "training_util_mode": _h(
+        0.90,
+        "Mode of the training active-utilization triangular prior. Calibrate "
+        "from real training telemetry.",
+        source_type=INFERRED, source="training utilization mode", confidence="medium",
+    ),
+    "training_util_max": _h(
+        0.95,
+        "Upper vertex of the training active-utilization triangular prior. "
+        "Sustained >95% is rare (comm/sync bubbles). Calibrate per job.",
+        source_type=INFERRED, source="training utilization ceiling", confidence="medium",
+    ),
+
+    # --- Roofline ceilings (dimensionless utilization caps) ---------------
+    "mem_bw_saturation_onset": _h(
+        0.75,
+        "Memory-bandwidth utilization fraction above which effective token "
+        "throughput is bandwidth-bound (decode is memory-bound). Operational "
+        "heuristic; calibrate from real DRAM_ACTIVE-vs-throughput curves.",
+        source_type=INFERRED, source="LLM decode is memory-bandwidth-bound (roofline)",
+        confidence="low",
+    ),
+    "scheduler_capacity_seqs": _h(
+        256.0,
+        "Active-sequence count at which the scheduler/service limit S_sched "
+        "begins to bind (admission + scheduling overhead). Calibrate from real "
+        "scheduler saturation tests per engine.",
+        source_type=INFERRED, source="continuous-batching scheduler admission limit",
+        confidence="low",
+    ),
+    "pcie_pressure_onset": _h(
+        0.70,
+        "PCIe transfer-pressure fraction above which host<->device staging "
+        "suppresses effective occupancy (weight/activation/KV paging). "
+        "Calibrate from real PCIe counters.",
+        source_type=INFERRED, source="PCIe staging suppresses occupancy",
+        confidence="low",
+    ),
+
+    # --- Continuous batching gain -----------------------------------------
+    "batching_gain_cv_coeff": _h(
+        1.5,
+        "Coefficient a in gain = 1 + a*CV(output_len). Higher output-length "
+        "variance → more continuous-batching headroom. Calibrate from real "
+        "output-length distributions + throughput.",
+        source_type=INFERRED, source="continuous batching benefits from length variance",
+        confidence="low",
+    ),
+    "batching_gain_common_max": _h(
+        8.0,
+        "Cap on the COMMON continuous-batching throughput-gain regime (~1.5-8x). "
+        "Beyond this requires highly favorable conditions. Calibrate from real "
+        "vs naive-static-batching throughput.",
+        source_type=BENCHMARK_DERIVED,
+        source="vLLM/continuous-batching common 1.5-8x over static batching",
+        confidence="low",
+    ),
+    "batching_gain_vendor_max": _h(
+        23.0,
+        "Long-tail OPTIMISTIC batching gain achievable ONLY under highly "
+        "favorable vendor-benchmark conditions. NOT a typical operating point. "
+        "Treat as an upper bound, not a target.",
+        source_type=BENCHMARK_DERIVED,
+        source="vendor continuous-batching benchmark (up to ~23x, favorable)",
+        confidence="low",
+    ),
+
+    # --- KV / VRAM headroom -----------------------------------------------
+    "vram_headroom_frac": _h(
+        0.05,
+        "Fraction of VRAM kept as reserve headroom (~5%). Aggressive packing "
+        "near 100% occupancy becomes unstable (allocator stalls, preemption). "
+        "gpu_memory_utilization = 1.0 is NOT safe. Calibrate per engine.",
+        source_type=INFERRED, source="~5% VRAM reserve headroom (vLLM operational rule)",
+        confidence="medium",
+    ),
+    "safe_occupancy_max": _h(
+        0.95,
+        "Safe upper bound on VRAM/KV occupancy before admission suppression + "
+        "preemption risk rises. Calibrate from real OOM/preemption incidents.",
+        source_type=INFERRED, source="safe KV/VRAM occupancy ceiling",
+        confidence="medium",
+    ),
+
+    # --- Fragmentation / stranded capacity --------------------------------
+    "fragmentation_elevated": _h(
+        0.30,
+        "Fragmentation score (1 - schedulable/free) above which scheduling "
+        "starts failing for large/topology-constrained jobs. Operational "
+        "heuristic. Calibrate from real bin-packing failure rates.",
+        source_type=INFERRED, source="cluster fragmentation degrades schedulability",
+        confidence="low",
+    ),
+    "fragmentation_critical": _h(
+        0.60,
+        "Fragmentation score above which large multi-GPU / cross-domain jobs are "
+        "effectively unschedulable despite free capacity (stranded islands). "
+        "Calibrate from real scheduler reject rates.",
+        source_type=INFERRED, source="severe fragmentation strands capacity",
+        confidence="low",
+    ),
+
+    # --- Consolidation benefit + risk -------------------------------------
+    "consolidation_benefit_max": _h(
+        0.6,
+        "Max fractional idle-capacity benefit B_max from consolidation (saturating "
+        "curve benefit = B_max*(1-exp(-k*frac))). Returns diminish. Calibrate "
+        "from real consolidation savings.",
+        source_type=INFERRED, source="diminishing returns from consolidation",
+        confidence="low",
+    ),
+    "consolidation_benefit_k": _h(
+        3.0,
+        "Saturation rate k in the consolidation benefit curve. Higher = benefit "
+        "saturates earlier in consolidation fraction. Calibrate from real curves.",
+        source_type=INFERRED, source="consolidation benefit saturation",
+        confidence="low",
+    ),
+    "consolidation_risk_cross_domain": _h(
+        0.30,
+        "Risk weight r1 on cross-domain (cross-node/rack) traffic in the "
+        "consolidation-risk sum. Cross-node sharding is the dominant packing "
+        "risk. Heuristic policy lever.",
+        source_type=HEURISTIC, confidence="low",
+    ),
+    "consolidation_risk_queue": _h(
+        0.25,
+        "Risk weight r2 on p95 queue pressure in the consolidation-risk sum. "
+        "Heuristic policy lever.",
+        source_type=HEURISTIC, confidence="low",
+    ),
+    "consolidation_risk_thermal": _h(
+        0.15,
+        "Risk weight r3 on inverse thermal margin in the consolidation-risk sum. "
+        "Heuristic policy lever.",
+        source_type=HEURISTIC, confidence="low",
+    ),
+    "consolidation_risk_kv": _h(
+        0.15,
+        "Risk weight r4 on KV pressure in the consolidation-risk sum. Heuristic "
+        "policy lever.",
+        source_type=HEURISTIC, confidence="low",
+    ),
+    "consolidation_risk_scheduler": _h(
+        0.15,
+        "Risk weight r5 on scheduler pressure in the consolidation-risk sum. "
+        "Heuristic policy lever.",
+        source_type=HEURISTIC, confidence="low",
+    ),
+    "packing_unsafe_risk": _h(
+        0.55,
+        "Consolidation-risk threshold above which a packing/consolidation "
+        "migration is vetoed as unsafe. Operational heuristic; calibrate from "
+        "real post-consolidation incident rates.",
+        source_type=HEURISTIC, confidence="low",
+    ),
+
+    # --- Queue amplification under packing --------------------------------
+    "queue_amp_onset": _h(
+        0.70,
+        "Packing-density fraction above which queue waiting time amplifies "
+        "superlinearly (less slack to absorb bursts). Calibrate from real "
+        "density-vs-p95 curves.",
+        source_type=INFERRED, source="reduced slack amplifies queueing",
+        confidence="low",
+    ),
+    "queue_amp_convexity": _h(
+        2.0,
+        "Convexity of queue amplification past the packing-density onset "
+        "(1/(1-density))^k. Calibrate from real saturation curves.",
+        source_type=INFERRED, source="queueing amplification convexity",
+        confidence="low",
+    ),
+
+    # --- Underutilization / utilization paradox ---------------------------
+    "underutilization_sm_threshold": _h(
+        0.50,
+        "Compute (SM) utilization below which a GPU is flagged underutilized "
+        "(packing opportunity — but NOT a guarantee of safe consolidation). "
+        "Calibrate from real idle-detection policies.",
+        source_type=INFERRED, source="sustained low SM utilization = packing candidate",
+        confidence="low",
+    ),
+    "paradox_dram_high": _h(
+        0.70,
+        "DRAM_ACTIVE fraction that, combined with LOW SM utilization, signals the "
+        "utilization paradox (high resource use, low throughput — memory-bound). "
+        "Calibrate from real DRAM_ACTIVE-vs-GPU_UTIL telemetry.",
+        source_type=INFERRED, source="DRAM-bound: high DRAM_ACTIVE + low SM",
+        confidence="low",
+    ),
+
+    # --- GPU sharing interference -----------------------------------------
+    "gpu_sharing_interference": _h(
+        0.20,
+        "Throughput/latency interference fraction when GPUs are shared "
+        "(MIG/time-slice/fractional). Sharing is NOT free — it adds variance + "
+        "scheduler complexity. Calibrate from real co-located interference.",
+        source_type=INFERRED, source="MIG/time-slice co-location interference",
+        confidence="low",
+    ),
+
+    # --- Telemetry confidence + stochastic variation ----------------------
+    "util_telemetry_missing_risk": _h(
+        0.5,
+        "Conservatism inflation when utilization/DRAM/scheduler telemetry is "
+        "missing or stale (missing != schedulable). Heuristic policy lever; "
+        "suppresses risky packing.",
+        source_type=HEURISTIC, confidence="low",
+    ),
+    "util_noise_frac": _h(
+        0.05,
+        "Std-dev of multiplicative per-tick noise on the utilization dimensions "
+        "(DRAM/scheduler/PCIe) so utilization is NOT one deterministic curve. "
+        "Calibrate from real per-tick utilization variance.",
+        source_type=HEURISTIC, confidence="low",
+    ),
+}
+
+
+# ---------------------------------------------------------------------------
+# Resource placement domains (admissible placement scopes)
+# ---------------------------------------------------------------------------
+# Ordered finest → coarsest. A job declares admissible domains; fragmentation is
+# computed per domain (free-but-unschedulable capacity is stranded). These are
+# operational placement scopes, NOT a measured hardware enumeration.
+
+RESOURCE_DOMAINS: list[str] = [
+    "mig_slice",
+    "shared_pool",
+    "numa",
+    "socket",
+    "nvlink",
+    "nvswitch",
+    "node",
+    "rack",
+    "cluster_zone",
+]
+
+
+@dataclass(frozen=True)
+class WorkloadClassProfile:
+    """Utilization / topology / batching / flexibility character of a workload class.
+
+    util_target is the SM-utilization prior; mem_bytes_per_token scales the
+    DRAM-bandwidth dimension (memory-heavy classes bottleneck on bandwidth);
+    topology_sensitivity / batching_sensitivity / flexibility / sla_class drive
+    packing feasibility and consolidation safety. Priors, NOT measured.
+    """
+    name: str
+    util_target: float
+    mem_bytes_per_token: float       # relative DRAM-bandwidth demand per token
+    topology_sensitivity: float      # 0-1, higher = needs locality
+    batching_sensitivity: float      # 0-1, higher = batching helps more
+    flexibility: str                 # low | medium | high
+    sla_class: str                   # latency_critical | standard | batch
+    source: str = "workload-class character (inferred)"
+    source_type: str = INFERRED
+    confidence: str = "low"
+
+
+WORKLOAD_CLASS_PROFILES: dict[str, WorkloadClassProfile] = {
+    "latency_critical_inference": WorkloadClassProfile(
+        "latency_critical_inference", 0.50, 1.0, 0.6, 0.5, "low", "latency_critical",
+        source="latency-critical serving: moderate util, queue-sensitive"),
+    "standard_inference": WorkloadClassProfile(
+        "standard_inference", 0.55, 1.0, 0.4, 0.7, "medium", "standard",
+        source="standard serving: batching-friendly, medium flexibility"),
+    "batch_inference": WorkloadClassProfile(
+        "batch_inference", 0.65, 1.1, 0.2, 0.9, "high", "batch",
+        source="batch/offline inference: throughput-oriented, flexible"),
+    "embeddings": WorkloadClassProfile(
+        "embeddings", 0.55, 1.3, 0.3, 0.6, "medium", "standard",
+        source="embedding service: memory-traffic-heavy, medium flexibility"),
+    "fine_tuning": WorkloadClassProfile(
+        "fine_tuning", 0.80, 1.2, 0.7, 0.5, "medium", "standard",
+        source="fine-tuning: high util, topology-sensitive, medium flexibility"),
+    "training": WorkloadClassProfile(
+        "training", 0.90, 1.2, 0.9, 0.4, "low", "batch",
+        source="training: very high util, topology+comm sensitive, low flexibility"),
+    "comm_heavy": WorkloadClassProfile(
+        "comm_heavy", 0.70, 1.0, 0.95, 0.4, "low", "standard",
+        source="communication-heavy: locality-critical, low flexibility"),
+    "memory_heavy": WorkloadClassProfile(
+        "memory_heavy", 0.45, 2.2, 0.4, 0.5, "medium", "standard",
+        source="memory-bandwidth-bound: low SM, high DRAM (utilization paradox)"),
+}
+
+DEFAULT_WORKLOAD_CLASS = "standard_inference"
+
+
+# Workload-flexibility class → consolidation/migration freedom multiplier.
+# low = pinned (latency-critical / comm-heavy / TP / training); high = freely
+# movable (batch / async). Tunable heuristic, NOT a measured policy.
+FLEXIBILITY_CLASSES: dict[str, float] = {
+    "low": 0.2,
+    "medium": 0.6,
+    "high": 1.0,
+}
+
+
+def utilization_value(name: str, config: dict | None = None) -> float:
+    """Return a utilization parameter's value, allowing per-run config override.
+
+    Mirrors ``thermal_value`` for the UTILIZATION_PARAMS registry so every
+    utilization / fragmentation / packing assumption is configurable:
+    ``config={'vram_headroom_frac': 0.10}``.
+    """
+    if config and name in config:
+        return float(config[name])
+    return float(UTILIZATION_PARAMS[name].value)
+
+
+def resolve_workload_class(
+    name: str | None, workload_type: str | None = None,
+    communication_intensity: str | None = None, memory_intensity: str | None = None,
+) -> WorkloadClassProfile:
+    """Resolve a workload class profile.
+
+    Explicit ``name`` wins; otherwise inferred from workload_type +
+    communication/memory intensity so existing scenarios keep working without a
+    workload_class.
+    """
+    if name and name in WORKLOAD_CLASS_PROFILES:
+        return WORKLOAD_CLASS_PROFILES[name]
+    wt = (workload_type or "").lower()
+    if (memory_intensity or "").lower() == "high":
+        return WORKLOAD_CLASS_PROFILES["memory_heavy"]
+    if (communication_intensity or "").lower() == "high":
+        return WORKLOAD_CLASS_PROFILES["comm_heavy"]
+    if wt in ("batch_training", "training"):
+        return WORKLOAD_CLASS_PROFILES["training"]
+    if wt == "fine_tuning":
+        return WORKLOAD_CLASS_PROFILES["fine_tuning"]
+    if wt == "embedding":
+        return WORKLOAD_CLASS_PROFILES["embeddings"]
+    return WORKLOAD_CLASS_PROFILES[DEFAULT_WORKLOAD_CLASS]
+
+
+def flexibility_multiplier(flexibility: str | None) -> float:
+    """Return the consolidation/migration freedom multiplier for a flexibility class."""
+    return FLEXIBILITY_CLASSES.get((flexibility or "medium").lower(), 0.6)
+
+
 # Combined registry: every tunable constant is inspectable in one place.
 ALL_PARAMS: dict[str, CalibratedParam] = {
     **SERVING_PARAMS, **KV_CACHE_PARAMS, **MIGRATION_PARAMS, **THERMAL_PARAMS,
-    **TOPOLOGY_PARAMS,
+    **TOPOLOGY_PARAMS, **UTILIZATION_PARAMS,
 }
 
 
 def calibration_table() -> list[dict[str, Any]]:
     """Inspectable list of ALL serving + KV-cache + migration + thermal +
-    topology params."""
+    topology + utilization params."""
     rows: list[dict[str, Any]] = []
     for group, registry in (
         ("serving", SERVING_PARAMS),
@@ -1421,6 +1812,7 @@ def calibration_table() -> list[dict[str, Any]]:
         ("migration", MIGRATION_PARAMS),
         ("thermal", THERMAL_PARAMS),
         ("topology", TOPOLOGY_PARAMS),
+        ("utilization", UTILIZATION_PARAMS),
     ):
         for k, v in sorted(registry.items()):
             rows.append({"name": k, "group": group, **v.to_dict()})
@@ -1548,4 +1940,23 @@ def workload_comm_profile_table() -> list[dict[str, Any]]:
             "confidence": p.confidence,
         }
         for p in sorted(WORKLOAD_COMM_PROFILES.values(), key=lambda x: -x.comm_weight)
+    ]
+
+
+def workload_class_table() -> list[dict[str, Any]]:
+    """Inspectable workload-class profile table with provenance."""
+    return [
+        {
+            "name": p.name,
+            "util_target": p.util_target,
+            "mem_bytes_per_token": p.mem_bytes_per_token,
+            "topology_sensitivity": p.topology_sensitivity,
+            "batching_sensitivity": p.batching_sensitivity,
+            "flexibility": p.flexibility,
+            "sla_class": p.sla_class,
+            "source": p.source,
+            "source_type": p.source_type,
+            "confidence": p.confidence,
+        }
+        for p in sorted(WORKLOAD_CLASS_PROFILES.values(), key=lambda x: -x.util_target)
     ]

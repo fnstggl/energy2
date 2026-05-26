@@ -426,6 +426,23 @@ def _aggregate_kpis(policy_name: str, tick_kpis: list[TickKPI]) -> AggregatedKPI
     cl_vals = [
         k.comm_latency_p99_ms_max for k in tick_kpis if k.comm_latency_p99_ms_max is not None
     ]
+    eu_vals = [k.mean_effective_util for k in tick_kpis if k.mean_effective_util is not None]
+    da_vals = [k.dram_active_max for k in tick_kpis if k.dram_active_max is not None]
+    fr_vals = [
+        k.fragmentation_score_max for k in tick_kpis if k.fragmentation_score_max is not None
+    ]
+    pd_vals = [k.packing_density_max for k in tick_kpis if k.packing_density_max is not None]
+    cr_vals = [
+        k.consolidation_risk_max for k in tick_kpis if k.consolidation_risk_max is not None
+    ]
+    qa_vals = [
+        k.queue_amplification_max for k in tick_kpis if k.queue_amplification_max is not None
+    ]
+    up_vals = [
+        k.util_throughput_penalty_pct_mean for k in tick_kpis
+        if k.util_throughput_penalty_pct_mean is not None
+    ]
+    bp_vals = [k.bin_packing_risk_max for k in tick_kpis if k.bin_packing_risk_max is not None]
 
     return AggregatedKPI(
         policy_name=policy_name,
@@ -476,6 +493,22 @@ def _aggregate_kpis(policy_name: str, tick_kpis: list[TickKPI]) -> AggregatedKPI
         total_collective_instability=sum(k.collective_instability_count for k in tick_kpis),
         total_topology_migration_vetoes=sum(k.topology_migration_vetoes for k in tick_kpis),
         comm_latency_p99_ms_max=max(cl_vals) if cl_vals else None,
+        mean_effective_util=sum(eu_vals) / len(eu_vals) if eu_vals else None,
+        dram_active_max=max(da_vals) if da_vals else None,
+        fragmentation_score_max=max(fr_vals) if fr_vals else None,
+        stranded_gpu_count_max=max((k.stranded_gpu_count for k in tick_kpis), default=0),
+        packing_density_max=max(pd_vals) if pd_vals else None,
+        consolidation_risk_max=max(cr_vals) if cr_vals else None,
+        total_unsafe_consolidation=max(
+            (k.unsafe_consolidation_count for k in tick_kpis), default=0
+        ),
+        queue_amplification_max=max(qa_vals) if qa_vals else None,
+        util_throughput_penalty_pct_mean=sum(up_vals) / len(up_vals) if up_vals else None,
+        total_utilization_paradox=max(
+            (k.utilization_paradox_count for k in tick_kpis), default=0
+        ),
+        bin_packing_risk_max=max(bp_vals) if bp_vals else None,
+        total_packing_migration_vetoes=sum(k.packing_migration_vetoes for k in tick_kpis),
     )
 
 
@@ -528,6 +561,18 @@ def _tick_metrics_to_kpi(tm: TickMetrics) -> TickKPI:
         collective_instability_count=tm.collective_instability_count,
         topology_migration_vetoes=tm.topology_migration_vetoes,
         comm_latency_p99_ms_max=tm.comm_latency_p99_ms_max,
+        mean_effective_util=tm.mean_effective_util,
+        dram_active_max=tm.dram_active_max,
+        fragmentation_score_max=tm.fragmentation_score_max,
+        stranded_gpu_count=tm.stranded_gpu_count,
+        packing_density_max=tm.packing_density_max,
+        consolidation_risk_max=tm.consolidation_risk_max,
+        unsafe_consolidation_count=tm.unsafe_consolidation_count,
+        queue_amplification_max=tm.queue_amplification_max,
+        util_throughput_penalty_pct_mean=tm.util_throughput_penalty_pct_mean,
+        utilization_paradox_count=tm.utilization_paradox_count,
+        bin_packing_risk_max=tm.bin_packing_risk_max,
+        packing_migration_vetoes=tm.packing_migration_vetoes,
     )
 
 

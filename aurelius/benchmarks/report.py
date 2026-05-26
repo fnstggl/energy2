@@ -141,6 +141,19 @@ class TickKPI:
     collective_instability_count: int = 0
     topology_migration_vetoes: int = 0
     comm_latency_p99_ms_max: Optional[float] = None
+    # Utilization / fragmentation / bin-packing realism KPIs (optional)
+    mean_effective_util: Optional[float] = None
+    dram_active_max: Optional[float] = None
+    fragmentation_score_max: Optional[float] = None
+    stranded_gpu_count: int = 0
+    packing_density_max: Optional[float] = None
+    consolidation_risk_max: Optional[float] = None
+    unsafe_consolidation_count: int = 0
+    queue_amplification_max: Optional[float] = None
+    util_throughput_penalty_pct_mean: Optional[float] = None
+    utilization_paradox_count: int = 0
+    bin_packing_risk_max: Optional[float] = None
+    packing_migration_vetoes: int = 0
 
     def to_dict(self) -> dict[str, Any]:
         return {
@@ -191,6 +204,18 @@ class TickKPI:
             "collective_instability_count": self.collective_instability_count,
             "topology_migration_vetoes": self.topology_migration_vetoes,
             "comm_latency_p99_ms_max": self.comm_latency_p99_ms_max,
+            "mean_effective_util": self.mean_effective_util,
+            "dram_active_max": self.dram_active_max,
+            "fragmentation_score_max": self.fragmentation_score_max,
+            "stranded_gpu_count": self.stranded_gpu_count,
+            "packing_density_max": self.packing_density_max,
+            "consolidation_risk_max": self.consolidation_risk_max,
+            "unsafe_consolidation_count": self.unsafe_consolidation_count,
+            "queue_amplification_max": self.queue_amplification_max,
+            "util_throughput_penalty_pct_mean": self.util_throughput_penalty_pct_mean,
+            "utilization_paradox_count": self.utilization_paradox_count,
+            "bin_packing_risk_max": self.bin_packing_risk_max,
+            "packing_migration_vetoes": self.packing_migration_vetoes,
         }
 
 
@@ -249,6 +274,19 @@ class AggregatedKPI:
     total_collective_instability: int = 0
     total_topology_migration_vetoes: int = 0
     comm_latency_p99_ms_max: Optional[float] = None
+    # Utilization / fragmentation / bin-packing realism KPIs (optional)
+    mean_effective_util: Optional[float] = None
+    dram_active_max: Optional[float] = None
+    fragmentation_score_max: Optional[float] = None
+    stranded_gpu_count_max: int = 0
+    packing_density_max: Optional[float] = None
+    consolidation_risk_max: Optional[float] = None
+    total_unsafe_consolidation: int = 0
+    queue_amplification_max: Optional[float] = None
+    util_throughput_penalty_pct_mean: Optional[float] = None
+    total_utilization_paradox: int = 0
+    bin_packing_risk_max: Optional[float] = None
+    total_packing_migration_vetoes: int = 0
 
     def to_dict(self) -> dict[str, Any]:
         return {
@@ -371,6 +409,41 @@ class AggregatedKPI:
                 round(self.comm_latency_p99_ms_max, 1)
                 if self.comm_latency_p99_ms_max is not None else None
             ),
+            "mean_effective_util": (
+                round(self.mean_effective_util, 3)
+                if self.mean_effective_util is not None else None
+            ),
+            "dram_active_max": (
+                round(self.dram_active_max, 3) if self.dram_active_max is not None else None
+            ),
+            "fragmentation_score_max": (
+                round(self.fragmentation_score_max, 3)
+                if self.fragmentation_score_max is not None else None
+            ),
+            "stranded_gpu_count_max": self.stranded_gpu_count_max,
+            "packing_density_max": (
+                round(self.packing_density_max, 3)
+                if self.packing_density_max is not None else None
+            ),
+            "consolidation_risk_max": (
+                round(self.consolidation_risk_max, 3)
+                if self.consolidation_risk_max is not None else None
+            ),
+            "total_unsafe_consolidation": self.total_unsafe_consolidation,
+            "queue_amplification_max": (
+                round(self.queue_amplification_max, 2)
+                if self.queue_amplification_max is not None else None
+            ),
+            "util_throughput_penalty_pct_mean": (
+                round(self.util_throughput_penalty_pct_mean, 2)
+                if self.util_throughput_penalty_pct_mean is not None else None
+            ),
+            "total_utilization_paradox": self.total_utilization_paradox,
+            "bin_packing_risk_max": (
+                round(self.bin_packing_risk_max, 3)
+                if self.bin_packing_risk_max is not None else None
+            ),
+            "total_packing_migration_vetoes": self.total_packing_migration_vetoes,
         }
 
 
