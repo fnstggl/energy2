@@ -36,8 +36,15 @@ from ...state.models import (
 from . import kv_cache as kvc
 from . import migration as mig
 from . import serving
+from . import thermal as therm
 from .cache_model import WorkloadCacheState
-from .calibration import kv_value, migration_value, serving_value
+from .calibration import (
+    kv_value,
+    migration_value,
+    power_class_for_model,
+    serving_value,
+    thermal_value,
+)
 from .migration_model import WorkloadMigrationState
 from .model import (
     GPU_PROFILES,
@@ -51,6 +58,7 @@ from .model import (
     SimulatorConfig,
     SimWorkload,
 )
+from .thermal_model import GPUThermalState, RackThermalState
 
 # EnergyState and ThermalState are used for region-level context
 # (not directly emitted per-GPU in this version)
@@ -124,6 +132,17 @@ class TickMetrics:
     warm_pool_occupancy_mean: Optional[float] = None
     rollback_count: int = 0
     overload_events: int = 0
+    # Thermal / cooling / power realism KPIs
+    max_gpu_temp_c: Optional[float] = None
+    max_rack_inlet_c: Optional[float] = None
+    thermal_slowdown_pct_mean: Optional[float] = None
+    power_slowdown_pct_mean: Optional[float] = None
+    thermal_throttle_events: int = 0
+    hotspot_severity_max: Optional[float] = None
+    rack_density_kw_max: Optional[float] = None
+    thermal_excursions: int = 0
+    cooling_alarms: int = 0
+    thermal_migration_vetoes: int = 0
     is_sandbox: bool = True
 
 
@@ -257,24 +276,34 @@ class ClusterSimulator:
 
         profile = GPU_PROFILES.get(gpu_type, GPU_PROFILES["a100-sxm4-80gb"])
 
+        power_class = power_class_for_model(profile.model_name)
         gpus = []
         for idx in range(gpu_count):
             gpu_id = f"{node_id}-gpu{idx}"
             gpu_uuid = f"GPU-{uuid.uuid4().hex[:8].upper()}"
+            t0 = self._rng.uniform(32.0, 38.0)
             gpu = SimGPU(
                 gpu_id=gpu_id,
                 gpu_index=idx,
                 uuid=gpu_uuid,
                 node_id=node_id,
                 profile=profile,
-                temperature_c=self._rng.uniform(32.0, 38.0),
+                temperature_c=t0,
                 power_watts=profile.base_power_watts * 0.1,  # idle
+                power_cap_watts=power_class.p_max_w,
             )
+            # First-class per-GPU thermal state.
+            gt = GPUThermalState()
+            gt.inertia.temp_c = t0
+            gt.power_class = power_class.name
+            gt.power_throttle.power_cap_w = power_class.p_max_w
+            gpu.thermal = gt
             gpus.append(gpu)
 
         # Build topology links
         links = self._build_topology_links(gpus, topology_class)
 
+        cooling_regime = node_cfg.get("cooling_regime", "air")
         node = SimNode(
             node_id=node_id,
             region_id=region_id,
@@ -282,14 +311,21 @@ class ClusterSimulator:
             rack_id=rack_id,
             instance_type=node_cfg.get("instance_type", f"gpu.{gpu_count}x{gpu_type}"),
             gpus=gpus,
-            topology_links=links,
+            cooling_regime=cooling_regime,
             labels={
                 "topology.kubernetes.io/region": region_id,
                 "topology.kubernetes.io/zone": zone,
                 "gpu-type": gpu_type,
                 "topology-class": topology_class,
+                "cooling-regime": cooling_regime,
             },
+            topology_links=links,
         )
+        # First-class per-rack thermal state.
+        rt = RackThermalState()
+        rt.cooling_regime = cooling_regime
+        rt.zone.regime = cooling_regime
+        node.rack_thermal = rt
         return node
 
     def _build_topology_links(
@@ -560,7 +596,9 @@ class ClusterSimulator:
                     for node in region.nodes:
                         if node_id and node.node_id != node_id:
                             continue
-                        node.rack_heat_delta_c += extra_heat
+                        # Event-driven inlet heat (e.g. cooling fault); added to
+                        # inlet in _update_thermal and decayed gradually.
+                        node.event_heat_c += extra_heat
 
             elif etype == "thermal_hotspot_end":
                 node_id = event.get("node_id")
@@ -568,7 +606,7 @@ class ClusterSimulator:
                     for node in region.nodes:
                         if node_id and node.node_id != node_id:
                             continue
-                        node.rack_heat_delta_c = 0.0
+                        node.event_heat_c = 0.0
 
             elif etype == "workload_util_change":
                 workload_id = event.get("workload_id")
@@ -649,10 +687,16 @@ class ClusterSimulator:
                     gpu.utilization_pct = util
                     gpu.sm_activity_pct = util * self._rng.uniform(0.9, 1.0)
 
-                    # Power: base + (util/100) * (tdp - base)
-                    p = gpu.profile.base_power_watts
-                    tdp = gpu.profile.max_power_watts
-                    gpu.power_watts = p * 0.1 + (util / 100.0) * (tdp - p * 0.1)
+                    # Board power: saturating curve by GPU class + workload kind
+                    # (utilization alone does NOT linearly predict heat).
+                    pclass = therm.power_class_for_model(gpu.profile.model_name)
+                    wkind = workload.workload_type if workload is not None else "inference"
+                    gpu.power_watts = therm.board_power_watts(
+                        util / 100.0, pclass, wkind, self._serving_config or None
+                    )
+                    gpu.power_cap_watts = pclass.p_max_w
+                    if gpu.thermal is not None:
+                        gpu.thermal.board_power_w = gpu.power_watts
 
                     # Memory usage
                     if workload is not None:
@@ -688,42 +732,120 @@ class ClusterSimulator:
                         gpu.nvlink_rx_bytes_per_sec = 0.0
 
     def _update_thermal(self, cluster: SimCluster) -> None:
-        """Update GPU temperatures and detect throttling using low-pass filter."""
+        """Thermal evolution with inertia, rack density, hotspots, cooling regimes.
+
+        Replaces the instantaneous EMA with a lumped-capacitance ODE per GPU
+        (T_{t+1} = T_t + a·P − b·(T−T_amb) + ε), rack-level kW density regimes,
+        persistent hotspots that recover gradually, cooling-regime-dependent
+        recovery, and CONTINUOUS thermal/power slowdown (not a binary flag).
+        See aurelius/simulation/cluster/thermal.py.
+        """
+        cfg = self._serving_config or None
         for region in cluster.regions.values():
-            # Accumulate rack heat from high-power nodes
+            # Aggregate power per rack_id (a rack holds multiple nodes) so density
+            # reflects the whole rack, not a single node.
+            rack_power_w: dict[str, float] = {}
             for node in region.nodes:
-                total_node_power = sum(g.power_watts for g in node.gpus)
-                max_node_power = sum(g.profile.max_power_watts for g in node.gpus)
-                if max_node_power > 0:
-                    power_fraction = total_node_power / max_node_power
-                else:
-                    power_fraction = 0.0
+                rack_power_w[node.rack_id] = rack_power_w.get(node.rack_id, 0.0) + sum(
+                    g.power_watts for g in node.gpus
+                )
 
-                # Rack heat builds when load is high, decays when load is low
-                if power_fraction > 0.7:
-                    node.rack_heat_delta_c += _RACK_HEAT_ALPHA * (power_fraction - 0.7) * 20
-                else:
-                    node.rack_heat_delta_c = max(0.0, node.rack_heat_delta_c - _RACK_HEAT_DECAY * 5)
+            for node in region.nodes:
+                rt = node.rack_thermal
+                regime = therm.resolve_cooling_regime(
+                    node.cooling_regime if rt is None else rt.cooling_regime
+                )
 
-                node.rack_heat_delta_c = min(node.rack_heat_delta_c, 25.0)
+                # Rack power density (kW, whole rack) → density regime.
+                job_powers = [g.power_watts for g in node.gpus]
+                rack_kw_jobs = rack_power_w.get(node.rack_id, sum(job_powers)) / 1000.0
+                density_regime = therm.rack_density_regime(rack_kw_jobs, regime, cfg)
+                rack_kw = therm.rack_heat_kw(
+                    [rack_power_w.get(node.rack_id, sum(job_powers))], density_regime, cfg
+                )
 
-                ambient = region.ambient_temp_c + node.rack_heat_delta_c
+                # Sustained power fraction (mean board power vs cap).
+                caps = [max(1.0, g.power_cap_watts) for g in node.gpus]
+                sustained = (
+                    sum(g.power_watts for g in node.gpus) / sum(caps) if caps else 0.0
+                )
 
+                # Hotspot risk + persistence (hotspots linger, recover slowly).
+                airflow_quality = rt.airflow.quality if rt is not None else 1.0
+                risk = therm.hotspot_risk(rack_kw, airflow_quality, sustained, regime, cfg)
+                prev_hot = rt.hotspot.severity if rt is not None else 0.0
+                hot = therm.hotspot_step(prev_hot, risk, cfg)
+
+                # Local inlet temperature: ambient + recirculation + variance +
+                # any event-driven heat (a sustained cooling fault persists until
+                # its _end event; GPU recovery lag comes from thermal inertia).
+                base_ambient = region.ambient_temp_c + node.event_heat_c
+                inlet = therm.inlet_temperature(base_ambient, hot, regime, self._rng, cfg)
+
+                # Back-compat rack-heat proxy (kept for any legacy readers).
+                node.rack_heat_delta_c = max(0.0, inlet - region.ambient_temp_c)
+
+                peak_temp = 0.0
                 for gpu in node.gpus:
-                    util_frac = gpu.utilization_pct / 100.0
-                    # Target temp = ambient + util * (TDP temp rise)
-                    # degrees at full load above 20°C ambient
-                    tdp_rise = gpu.profile.throttle_temp_c - 20.0
-                    t_target = ambient + util_frac * tdp_rise
-                    t_target = min(t_target, _MAX_REALISTIC_TEMP_C)
-
-                    # Low-pass filter (EMA)
-                    gpu.temperature_c = (
-                        _THERMAL_ALPHA * t_target + (1 - _THERMAL_ALPHA) * gpu.temperature_c
+                    pclass = therm.power_class_for_model(gpu.profile.model_name)
+                    # Thermal inertia ODE step toward the local inlet.
+                    t_next = therm.temperature_step(
+                        gpu.temperature_c, gpu.power_watts, inlet, pclass, regime,
+                        self._rng, cfg,
                     )
+                    gpu.temperature_c = t_next
+                    if gpu.thermal is not None:
+                        gpu.thermal.inertia.temp_c = t_next
+                        gpu.thermal.inertia.last_power_w = gpu.power_watts
 
-                    # Throttling detection
-                    gpu.thermal_throttle_active = gpu.temperature_c > _THROTTLE_TEMP_C
+                    # Continuous thermal + power slowdown.
+                    s_thermal = therm.thermal_slowdown_frac(t_next, pclass, cfg)
+                    s_power = therm.power_slowdown_frac(
+                        gpu.power_watts, gpu.power_cap_watts, cfg
+                    )
+                    gpu.thermal_slowdown_frac = s_thermal
+                    gpu.power_slowdown_frac = s_power
+                    # Derived bool kept for back-compat (connector/metrics).
+                    gpu.thermal_throttle_active = s_thermal > 0.0
+                    if gpu.thermal is not None:
+                        gpu.thermal.thermal_throttle.slowdown_frac = s_thermal
+                        gpu.thermal.power_throttle.slowdown_frac = s_power
+                        if s_thermal > 0.0:
+                            gpu.thermal.thermal_throttle.throttle_events += 1
+                    peak_temp = max(peak_temp, t_next)
+
+                # Persist rack thermal state + violations/telemetry.
+                if rt is not None:
+                    rt.density.rack_kw = rack_kw
+                    rt.density.regime = density_regime
+                    rt.hotspot.severity = hot
+                    rt.hotspot.risk = risk
+                    rt.hotspot.persisted_ticks = (
+                        rt.hotspot.persisted_ticks + 1 if hot > 0.3 else 0
+                    )
+                    rt.ambient.ambient_c = base_ambient
+                    rt.ambient.inlet_c = inlet
+                    rt.peak_gpu_temp_c = peak_temp
+                    # Airflow degrades under sustained critical density, recovers slowly.
+                    if density_regime == therm.RackDensityRegime.CRITICAL:
+                        rt.airflow.quality = max(0.3, rt.airflow.quality - 0.1)
+                        rt.airflow.instability = min(1.0, rt.airflow.instability + 0.15)
+                    else:
+                        rt.airflow.quality = min(1.0, rt.airflow.quality + 0.05)
+                        rt.airflow.instability = max(0.0, rt.airflow.instability - 0.1)
+                    rt.zone.zone_utilization = min(1.0, rack_kw / max(
+                        1.0, thermal_value("rack_density_critical_kw", cfg) * regime.density_mult
+                    ))
+                    # Thermal excursion: any GPU past its throttle onset.
+                    excursion = any(
+                        g.thermal_slowdown_frac > 0.0 for g in node.gpus
+                    )
+                    rt.violation.last_tick_excursion = excursion
+                    if excursion:
+                        rt.violation.excursions += 1
+                    if density_regime == therm.RackDensityRegime.CRITICAL:
+                        rt.violation.cooling_alarms += 1
+                    rt.migration_risk.risk = max(risk, min(1.0, hot))
 
     def _update_queues(self, cluster: SimCluster) -> None:
         """Update queue state with the inference-serving realism layer.
@@ -774,6 +896,15 @@ class ClusterSimulator:
                     profile.tokens_per_sec_at_full_util if profile is not None else 1000.0
                 )
                 tokens_per_sec = base_tps_per_gpu * (gpu_util / 100.0) * warmup_factor
+
+                # Continuous thermal + power slowdown (NOT a binary throttle):
+                # throughput = base · (1 − s_thermal − s_power), using the worst
+                # GPU in the workload. Sustained heat materially cuts throughput.
+                wl_gpus = self._workload_gpus(workload, cluster)
+                s_thermal = max((g.thermal_slowdown_frac for g in wl_gpus), default=0.0)
+                s_power = max((g.power_slowdown_frac for g in wl_gpus), default=0.0)
+                thermal_tput = therm.throughput_factor(s_thermal, s_power)
+                tokens_per_sec *= thermal_tput
 
                 # Topology penalty for multi-GPU comm-heavy workloads.
                 topo_penalty = 1.0 - (1.0 - workload.topology_score) * {
@@ -873,12 +1004,9 @@ class ClusterSimulator:
                 queue.ttft_p99_ms = ttft_p50 * p99_mult * tail_mult
 
                 # Decomposed TPOT: base × throttle + per-replica decode contention.
-                throttle_factor = 1.0
-                for gpu in self._workload_gpus(workload, cluster):
-                    if gpu.thermal_throttle_active:
-                        throttle_factor = max(
-                            throttle_factor, 1.0 + (gpu.temperature_c - _THROTTLE_TEMP_C) / 20.0
-                        )
+                # Throttle factor scales with the CONTINUOUS thermal+power slowdown
+                # (slower clocks → higher inter-token latency), not a binary flag.
+                throttle_factor = 1.0 / max(0.05, therm.throughput_factor(s_thermal, s_power))
                 tpot_p50 = serving.tpot_ms(_BASE_TPOT_MS, active_per_replica, throttle_factor, cfg)
                 queue.tpot_p50_ms = tpot_p50
                 queue.tpot_p95_ms = tpot_p50 * 2.0
@@ -1208,6 +1336,40 @@ class ClusterSimulator:
                 warm_occ.append(m.warm_pool.occupancy)
             rollback_count += m.rollout.rollback_count
             overload_events += m.migration.overload_events
+            if m.migration.last_veto_reason == "thermal_hot_destination":
+                pass  # veto reasons aggregated below via thermal_vetoes
+
+        # Thermal / cooling / power KPIs aggregated across GPUs + racks.
+        gpu_temps: list[float] = []
+        s_thermals: list[float] = []
+        s_powers: list[float] = []
+        throttle_events = 0
+        inlet_temps: list[float] = []
+        hotspots: list[float] = []
+        rack_kws: list[float] = []
+        thermal_excursions = 0
+        cooling_alarms = 0
+        thermal_vetoes = 0
+        for region in cluster.regions.values():
+            for node in region.nodes:
+                for gpu in node.gpus:
+                    gpu_temps.append(gpu.temperature_c)
+                    s_thermals.append(gpu.thermal_slowdown_frac)
+                    s_powers.append(gpu.power_slowdown_frac)
+                    if gpu.thermal_slowdown_frac > 0.0:
+                        throttle_events += 1
+                rt = node.rack_thermal
+                if rt is not None:
+                    inlet_temps.append(rt.ambient.inlet_c)
+                    hotspots.append(rt.hotspot.severity)
+                    rack_kws.append(rt.density.rack_kw)
+                    thermal_excursions += rt.violation.excursions
+                    cooling_alarms += rt.violation.cooling_alarms
+                    thermal_vetoes += rt.migration_risk.veto_count
+        for wl in cluster.workloads.values():
+            m = wl.migration
+            if m is not None and m.migration.last_veto_reason == "thermal_hot_destination":
+                thermal_vetoes += 1
 
         mean_util = sum(util_values) / len(util_values) if util_values else 0.0
         p99_lat = max(p99_values) if p99_values else None
@@ -1271,6 +1433,20 @@ class ClusterSimulator:
             warm_pool_occupancy_mean=sum(warm_occ) / len(warm_occ) if warm_occ else None,
             rollback_count=rollback_count,
             overload_events=overload_events,
+            max_gpu_temp_c=max(gpu_temps) if gpu_temps else None,
+            max_rack_inlet_c=max(inlet_temps) if inlet_temps else None,
+            thermal_slowdown_pct_mean=(
+                100.0 * sum(s_thermals) / len(s_thermals) if s_thermals else None
+            ),
+            power_slowdown_pct_mean=(
+                100.0 * sum(s_powers) / len(s_powers) if s_powers else None
+            ),
+            thermal_throttle_events=throttle_events,
+            hotspot_severity_max=max(hotspots) if hotspots else None,
+            rack_density_kw_max=max(rack_kws) if rack_kws else None,
+            thermal_excursions=thermal_excursions,
+            cooling_alarms=cooling_alarms,
+            thermal_migration_vetoes=thermal_vetoes,
         )
 
     # ------------------------------------------------------------------
@@ -1674,9 +1850,11 @@ class ClusterSimulator:
         cfg = self._serving_config or None
         migstate = workload.migration
 
-        # PodDisruptionBudget / governor veto — block BEFORE mutating anything.
+        # PodDisruptionBudget / governor / thermal veto — block BEFORE mutating.
         if migstate is not None:
-            veto = self._migration_veto(workload, respect_governor=respect_governor)
+            veto = self._migration_veto(
+                workload, target_region_id, respect_governor=respect_governor
+            )
             if veto is not None:
                 migstate.migration.veto_count += 1
                 migstate.migration.last_veto_reason = veto
@@ -1770,13 +1948,15 @@ class ClusterSimulator:
     # ------------------------------------------------------------------
 
     def _migration_veto(
-        self, workload: SimWorkload, *, respect_governor: bool
+        self, workload: SimWorkload, target_region_id: Optional[str] = None,
+        *, respect_governor: bool,
     ) -> Optional[str]:
         """Return a veto reason if this migration should be blocked, else None.
 
         PDB unavailability ALWAYS blocks (drain stall). The remaining governor
-        checks only apply when ``respect_governor`` is set (cache-aware policies);
-        naive policies pass them by and pay the realistic cost instead.
+        checks (incl. the thermal veto on migrating INTO a hot zone) only apply
+        when ``respect_governor`` is set (cache/thermal-aware policies); naive
+        policies pass them by and pay the realistic cost instead.
         """
         m = workload.migration
         if m is None:
@@ -1785,6 +1965,9 @@ class ClusterSimulator:
             return "pdb_unavailable"
         if not respect_governor:
             return None
+        # Thermal governor: veto migrating INTO a hot destination zone.
+        if target_region_id is not None and self._dest_zone_too_hot(target_region_id):
+            return "thermal_hot_destination"
         cluster = self._cluster
         cfg = self._serving_config or None
         # Aggregate queue depth for this workload's service in its current region.
@@ -1811,6 +1994,29 @@ class ClusterSimulator:
             scale_from_zero=m.coldstart.scale_from_zero,
             config=cfg,
         )
+
+    def _dest_zone_too_hot(self, target_region_id: str) -> bool:
+        """True if every rack in the destination region is thermally hot.
+
+        Uses the thermal governor: if the coolest available rack is still above
+        the hot-veto temperature (or strongly hotspotted), migrating in is unsafe.
+        Missing thermal telemetry lowers the effective threshold (≠ safe).
+        """
+        cfg = self._serving_config or None
+        region = self._cluster.regions.get(target_region_id)
+        if region is None:
+            return False
+        any_rack = False
+        for node in region.nodes:
+            rt = node.rack_thermal
+            if rt is None:
+                continue
+            any_rack = True
+            if not therm.thermal_migration_blocked(
+                rt.peak_gpu_temp_c, rt.hotspot.severity, rt.telemetry.tier, cfg
+            ):
+                return False  # found a cool-enough rack → not blocked
+        return any_rack  # all racks hot (and at least one existed)
 
     def _apply_migration_cost(
         self, workload: SimWorkload, old_region: str, target_region_id: str

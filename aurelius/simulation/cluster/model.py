@@ -124,6 +124,15 @@ class SimGPU:
     pcie_rx_bytes_per_sec: float = 0.0
     pcie_tx_bytes_per_sec: float = 0.0
 
+    # Continuous thermal/power slowdown (0 = none). Replaces the binary throttle
+    # for throughput effects; thermal_throttle_active is kept as a derived bool.
+    thermal_slowdown_frac: float = 0.0
+    power_slowdown_frac: float = 0.0
+    power_cap_watts: float = 0.0
+
+    # First-class per-GPU thermal state (mutable). Constructed lazily by engine.
+    thermal: Optional[Any] = None
+
     # Assigned workload (one workload per GPU for simplicity)
     assigned_workload_id: Optional[str] = None
 
@@ -159,6 +168,13 @@ class SimNode:
 
     # Rack heat accumulation (affects GPU ambient temp)
     rack_heat_delta_c: float = 0.0
+    # Event-driven extra heat (thermal_hotspot events); decays each tick.
+    event_heat_c: float = 0.0
+
+    # Cooling regime (air | liquid | hybrid | hot_aisle_containment | weak_airflow)
+    cooling_regime: str = "air"
+    # First-class per-rack thermal state (mutable). Constructed lazily by engine.
+    rack_thermal: Optional[Any] = None
 
     # Labels (matches K8s topology.kubernetes.io/zone etc.)
     labels: dict[str, str] = field(default_factory=dict)

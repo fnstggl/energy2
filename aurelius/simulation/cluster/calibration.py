@@ -716,21 +716,308 @@ def resolve_engine_profile(name: str | None) -> EngineStartupProfile:
     )
 
 
+# ---------------------------------------------------------------------------
+# Thermal / cooling / power parameter registry
+# ---------------------------------------------------------------------------
+# Added for the thermal-realism upgrade (driven by thermal.py). These model GPU
+# board power saturation, thermal inertia, rack-level heat accumulation, hotspot
+# formation, cooling regimes, and continuous thermal/power slowdown. As before,
+# most are HEURISTIC/INFERRED priors anchored to documented behaviour (e.g. the
+# ~30-40 kW/rack air-cooling envelope, H100 ~83°C throttle onset); none are
+# MEASURED on a live cluster. They make dense placement thermally risky and
+# cooling regimes matter.
+
+THERMAL_PARAMS: dict[str, CalibratedParam] = {
+    # --- Board power curve ------------------------------------------------
+    "power_curve_k": _h(
+        4.0,
+        "Saturation rate k in P(u)=P_idle+(P_max-P_idle)(1-exp(-k·u)). Higher = "
+        "power saturates earlier in utilization. Calibrate from real power-vs-util "
+        "curves per GPU.",
+        source_type=INFERRED, source="GPU board power saturates with utilization",
+    ),
+    "power_idle_frac": _h(
+        0.30,
+        "Idle board power as a fraction of TDP (P_idle = frac·P_max). Calibrate "
+        "from real idle draw per GPU class.",
+        source_type=INFERRED, source="GPU idle power ≈ 25-35% of TDP",
+        confidence="medium",
+    ),
+    # workload power multipliers (relative draw at equal utilization)
+    "power_mult_inference": _h(
+        1.0, "Power multiplier for inference workloads (reference).",
+        source_type=INFERRED, source="workload-dependent board power",
+    ),
+    "power_mult_training": _h(
+        1.15, "Training draws more sustained board power than inference at equal "
+        "util (dense matmul + comm). Calibrate from real job power.",
+        source_type=INFERRED, source="training is power-denser than inference",
+    ),
+    "power_mult_memory_bound": _h(
+        0.85, "Memory-bound workloads draw less compute power at equal util. "
+        "Calibrate from real memory-bound job power.",
+        source_type=INFERRED, source="memory-bound jobs are less power-dense",
+    ),
+
+    # --- Thermal inertia (temperature evolution) -------------------------
+    "thermal_alpha": _h(
+        0.039,
+        "Heat-accumulation coefficient a in T_{t+1}=T_t+a·P−b·(T−T_amb)+ε (°C per "
+        "watt per tick). Calibrated so a full-power A100 (400W, air) settles ~50°C "
+        "above inlet (≈72°C @ 22°C inlet) with b below. Per-GPU-class alpha in "
+        "GPU_POWER_CLASSES overrides this. Calibrate from real heat-up curves.",
+        source_type=INFERRED, source="lumped-capacitance thermal model",
+    ),
+    "thermal_beta_air": _h(
+        0.30,
+        "Cooling coefficient b for AIR cooling (fraction of (T−T_amb) removed per "
+        "tick). b≈0.3 gives a ~3-4 tick thermal time constant (inertia / recovery "
+        "lag). Lower b = slower recovery. Calibrate from real cool-down curves.",
+        source_type=INFERRED, source="Newton's law of cooling (air)",
+    ),
+    "thermal_noise_c": _h(
+        0.4,
+        "Std-dev of per-tick thermal noise ε (°C). Board-to-board variation. "
+        "Calibrate from real per-GPU temperature variance.",
+    ),
+
+    # --- Rack density / hotspots -----------------------------------------
+    "rack_density_elevated_kw": _h(
+        20.0,
+        "Per-rack kW above which hotspot probability and airflow instability start "
+        "rising (air cooling). Operational heuristic (~20 kW), NOT universal.",
+        source_type=INFERRED, source="air-cooled rack envelope (~15-25 kW)",
+        confidence="medium",
+    ),
+    "rack_density_critical_kw": _h(
+        30.0,
+        "Per-rack kW above which hotspot/throttle risk rises sharply (air). "
+        "Operational heuristic (~30 kW), NOT universal.",
+        source_type=INFERRED, source="air-cooled rack limit (~30-40 kW)",
+        confidence="medium",
+    ),
+    "hotspot_persistence": _h(
+        0.85,
+        "Per-tick persistence of an existing hotspot (EMA retention). High = "
+        "hotspots linger after load drops (recovery lag). Calibrate from real "
+        "hotspot decay.",
+        source_type=INFERRED, source="thermal recirculation persistence",
+    ),
+    "hotspot_recirc_penalty_c": _h(
+        8.0,
+        "Max extra inlet °C from recirculation in a saturated/critical-density "
+        "rack. Calibrate from real hot-aisle recirculation.",
+    ),
+    "airflow_penalty_c": _h(
+        4.0,
+        "Max extra °C from degraded airflow at full density. Calibrate from real "
+        "airflow-vs-temperature data.",
+    ),
+
+    # --- Throttling (continuous slowdown) --------------------------------
+    "thermal_slowdown_max": _h(
+        0.3,
+        "Max thermal throughput slowdown fraction s_thermal as temperature goes "
+        "from throttle-onset to max. NOT a binary flag. Real GPUs typically lose "
+        "~10-30% throughput to clock throttling before hard limits. Calibrate "
+        "from real clock-throttle-vs-temp curves.",
+        source_type=INFERRED, source="GPU clock throttling above thermal limit",
+        confidence="medium",
+    ),
+    "power_slowdown_max": _h(
+        0.3,
+        "Max power-cap throughput slowdown fraction s_power when board power is "
+        "pinned at the cap. Calibrate from real power-capped throughput.",
+        source_type=INFERRED, source="power-cap clock reduction",
+    ),
+    "inlet_variance_c": _h(
+        1.5,
+        "Std-dev of local inlet temperature variation across a rack (°C). "
+        "Calibrate from real inlet sensor spread.",
+    ),
+
+    # --- Thermal telemetry / migration risk ------------------------------
+    "thermal_telemetry_missing_risk": _h(
+        0.5,
+        "Risk inflation when thermal telemetry is missing/stale (missing ≠ safe). "
+        "Heuristic policy lever; raises migration conservatism.",
+        source_type=HEURISTIC, confidence="low",
+    ),
+    "thermal_migration_hot_veto_c": _h(
+        78.0,
+        "Destination rack inlet/GPU °C above which migrating INTO the zone is "
+        "vetoed by the thermal governor. Below the throttle onset to leave "
+        "headroom. Calibrate from real safe-inlet targets.",
+        source_type=INFERRED, source="leave thermal headroom below throttle onset",
+        confidence="medium",
+    ),
+}
+
+
+# ---------------------------------------------------------------------------
+# GPU power/thermal classes
+# ---------------------------------------------------------------------------
+
+@dataclass(frozen=True)
+class GPUPowerClass:
+    """Per-GPU-class power + thermal response (distinct, NOT one-size-fits-all)."""
+    name: str
+    p_max_w: float
+    throttle_onset_c: float
+    max_temp_c: float
+    alpha: float            # heat-accumulation coefficient (overrides default)
+    source: str = "vendor datasheet (TDP / throttle temp)"
+    source_type: str = DOCUMENTED
+    confidence: str = "medium"
+
+
+# TDP / throttle temps are datasheet values; alpha (thermal response) is inferred
+# and calibrated so each class settles ~50-55°C above inlet at full power (with
+# the air beta), leaving headroom to throttle when inlet/hotspots push it up.
+GPU_POWER_CLASSES: dict[str, GPUPowerClass] = {
+    "h100-sxm": GPUPowerClass("h100-sxm", 700.0, 83.0, 90.0, 0.0223,
+                              source="NVIDIA H100 SXM5 700W TDP, ~83-87°C throttle"),
+    "h100-pcie": GPUPowerClass("h100-pcie", 350.0, 83.0, 90.0, 0.0446,
+                               source="NVIDIA H100 PCIe 350W TDP"),
+    "a100": GPUPowerClass("a100", 400.0, 83.0, 90.0, 0.039,
+                          source="NVIDIA A100 SXM 400W TDP"),
+    "l40s": GPUPowerClass("l40s", 350.0, 87.0, 92.0, 0.0446,
+                          source="NVIDIA L40S 350W TDP"),
+    "l4": GPUPowerClass("l4", 72.0, 80.0, 90.0, 0.217,
+                        source="NVIDIA L4 72W TDP"),
+}
+
+DEFAULT_POWER_CLASS = "a100"
+
+
+# ---------------------------------------------------------------------------
+# Cooling-regime profiles
+# ---------------------------------------------------------------------------
+
+@dataclass(frozen=True)
+class CoolingRegime:
+    """Cooling regime: alters recovery rate, hotspot variance, density tolerance.
+
+    beta_mult scales the cooling coefficient (higher = faster recovery, more
+    headroom); hotspot_mult scales hotspot probability/variance; density_mult
+    scales the kW thresholds at which a rack enters elevated/critical regimes.
+    Liquid cooling improves all three but does NOT eliminate thermal risk.
+    """
+    name: str
+    beta_mult: float
+    hotspot_mult: float
+    density_mult: float
+    inlet_variance_mult: float
+    source: str = "cooling engineering (air vs liquid vs hybrid)"
+    source_type: str = INFERRED
+    confidence: str = "low"
+
+
+COOLING_REGIMES: dict[str, CoolingRegime] = {
+    "air": CoolingRegime("air", 1.0, 1.0, 1.0, 1.0,
+                         source="baseline air cooling", confidence="medium"),
+    "liquid": CoolingRegime("liquid", 2.2, 0.35, 2.5, 0.4,
+                            source="direct-to-chip liquid cooling (higher heat "
+                            "transfer, higher density tolerance, residual risk)"),
+    "hybrid": CoolingRegime("hybrid", 1.5, 0.6, 1.6, 0.7,
+                            source="rear-door / hybrid air+liquid"),
+    "hot_aisle_containment": CoolingRegime("hot_aisle_containment", 1.2, 0.8, 1.3, 0.85,
+                                           source="hot-aisle containment (better "
+                                           "air management)"),
+    "weak_airflow": CoolingRegime("weak_airflow", 0.6, 1.8, 0.6, 1.6,
+                                  source="degraded/weak airflow environment"),
+}
+
+DEFAULT_COOLING_REGIME = "air"
+
+
+def thermal_value(name: str, config: dict | None = None) -> float:
+    """Return a thermal parameter's value, allowing per-run config override."""
+    if config and name in config:
+        return float(config[name])
+    return float(THERMAL_PARAMS[name].value)
+
+
+def resolve_power_class(name: str | None) -> GPUPowerClass:
+    """Resolve a GPU power class by name (default A100)."""
+    return GPU_POWER_CLASSES.get(
+        (name or DEFAULT_POWER_CLASS).lower(), GPU_POWER_CLASSES[DEFAULT_POWER_CLASS]
+    )
+
+
+def power_class_for_model(model_name: str) -> GPUPowerClass:
+    """Map a GPUProfile.model_name to a power class (substring heuristic)."""
+    m = (model_name or "").lower()
+    if "h100" in m and "pcie" in m:
+        return GPU_POWER_CLASSES["h100-pcie"]
+    if "h100" in m:
+        return GPU_POWER_CLASSES["h100-sxm"]
+    if "l40" in m:
+        return GPU_POWER_CLASSES["l40s"]
+    if "l4" in m:
+        return GPU_POWER_CLASSES["l4"]
+    return GPU_POWER_CLASSES["a100"]
+
+
+def resolve_cooling_regime(name: str | None) -> CoolingRegime:
+    """Resolve a cooling regime by name (default air)."""
+    return COOLING_REGIMES.get(
+        (name or DEFAULT_COOLING_REGIME).lower(), COOLING_REGIMES[DEFAULT_COOLING_REGIME]
+    )
+
+
 # Combined registry: every tunable constant is inspectable in one place.
-ALL_PARAMS: dict[str, CalibratedParam] = {**SERVING_PARAMS, **KV_CACHE_PARAMS, **MIGRATION_PARAMS}
+ALL_PARAMS: dict[str, CalibratedParam] = {
+    **SERVING_PARAMS, **KV_CACHE_PARAMS, **MIGRATION_PARAMS, **THERMAL_PARAMS,
+}
 
 
 def calibration_table() -> list[dict[str, Any]]:
-    """Inspectable list of ALL serving + KV-cache + migration parameters."""
+    """Inspectable list of ALL serving + KV-cache + migration + thermal params."""
     rows: list[dict[str, Any]] = []
     for group, registry in (
         ("serving", SERVING_PARAMS),
         ("kv_cache", KV_CACHE_PARAMS),
         ("migration", MIGRATION_PARAMS),
+        ("thermal", THERMAL_PARAMS),
     ):
         for k, v in sorted(registry.items()):
             rows.append({"name": k, "group": group, **v.to_dict()})
     return rows
+
+
+def cooling_regime_table() -> list[dict[str, Any]]:
+    """Inspectable cooling-regime comparison table."""
+    return [
+        {
+            "name": r.name,
+            "beta_mult": r.beta_mult,
+            "hotspot_mult": r.hotspot_mult,
+            "density_mult": r.density_mult,
+            "inlet_variance_mult": r.inlet_variance_mult,
+            "source": r.source,
+            "source_type": r.source_type,
+            "confidence": r.confidence,
+        }
+        for r in sorted(COOLING_REGIMES.values(), key=lambda x: x.name)
+    ]
+
+
+def power_class_table() -> list[dict[str, Any]]:
+    """Inspectable GPU power-class table with provenance."""
+    return [
+        {
+            "name": c.name,
+            "p_max_w": c.p_max_w,
+            "throttle_onset_c": c.throttle_onset_c,
+            "max_temp_c": c.max_temp_c,
+            "alpha": c.alpha,
+            "source": c.source,
+            "source_type": c.source_type,
+            "confidence": c.confidence,
+        }
+        for c in sorted(GPU_POWER_CLASSES.values(), key=lambda x: x.name)
+    ]
 
 
 def model_profile_table() -> list[dict[str, Any]]:

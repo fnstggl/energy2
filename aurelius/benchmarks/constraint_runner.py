@@ -399,6 +399,13 @@ def _aggregate_kpis(policy_name: str, tick_kpis: list[TickKPI]) -> AggregatedKPI
     startup_vals = [
         k.startup_latency_s_max for k in tick_kpis if k.startup_latency_s_max is not None
     ]
+    gtemp_vals = [k.max_gpu_temp_c for k in tick_kpis if k.max_gpu_temp_c is not None]
+    sth_vals = [
+        k.thermal_slowdown_pct_mean for k in tick_kpis
+        if k.thermal_slowdown_pct_mean is not None
+    ]
+    hot_vals2 = [k.hotspot_severity_max for k in tick_kpis if k.hotspot_severity_max is not None]
+    rkw_vals = [k.rack_density_kw_max for k in tick_kpis if k.rack_density_kw_max is not None]
 
     return AggregatedKPI(
         policy_name=policy_name,
@@ -431,6 +438,13 @@ def _aggregate_kpis(policy_name: str, tick_kpis: list[TickKPI]) -> AggregatedKPI
         total_rollbacks=tick_kpis[-1].rollback_count if tick_kpis else 0,
         total_overload_events=tick_kpis[-1].overload_events if tick_kpis else 0,
         startup_latency_s_max=max(startup_vals) if startup_vals else None,
+        max_gpu_temp_c=max(gtemp_vals) if gtemp_vals else None,
+        thermal_slowdown_pct_mean=sum(sth_vals) / len(sth_vals) if sth_vals else None,
+        total_thermal_throttle_events=sum(k.thermal_throttle_events for k in tick_kpis),
+        hotspot_severity_max=max(hot_vals2) if hot_vals2 else None,
+        rack_density_kw_max=max(rkw_vals) if rkw_vals else None,
+        total_thermal_excursions=tick_kpis[-1].thermal_excursions if tick_kpis else 0,
+        total_thermal_migration_vetoes=sum(k.thermal_migration_vetoes for k in tick_kpis),
     )
 
 
@@ -466,6 +480,13 @@ def _tick_metrics_to_kpi(tm: TickMetrics) -> TickKPI:
         rollback_count=tm.rollback_count,
         overload_events=tm.overload_events,
         startup_latency_s_max=tm.startup_latency_s_max,
+        max_gpu_temp_c=tm.max_gpu_temp_c,
+        thermal_slowdown_pct_mean=tm.thermal_slowdown_pct_mean,
+        thermal_throttle_events=tm.thermal_throttle_events,
+        hotspot_severity_max=tm.hotspot_severity_max,
+        rack_density_kw_max=tm.rack_density_kw_max,
+        thermal_excursions=tm.thermal_excursions,
+        thermal_migration_vetoes=tm.thermal_migration_vetoes,
     )
 
 

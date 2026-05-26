@@ -122,6 +122,14 @@ class TickKPI:
     rollback_count: int = 0
     overload_events: int = 0
     startup_latency_s_max: Optional[float] = None
+    # Thermal / cooling / power realism KPIs (optional)
+    max_gpu_temp_c: Optional[float] = None
+    thermal_slowdown_pct_mean: Optional[float] = None
+    thermal_throttle_events: int = 0
+    hotspot_severity_max: Optional[float] = None
+    rack_density_kw_max: Optional[float] = None
+    thermal_excursions: int = 0
+    thermal_migration_vetoes: int = 0
 
     def to_dict(self) -> dict[str, Any]:
         return {
@@ -155,6 +163,13 @@ class TickKPI:
             "rollback_count": self.rollback_count,
             "overload_events": self.overload_events,
             "startup_latency_s_max": self.startup_latency_s_max,
+            "max_gpu_temp_c": self.max_gpu_temp_c,
+            "thermal_slowdown_pct_mean": self.thermal_slowdown_pct_mean,
+            "thermal_throttle_events": self.thermal_throttle_events,
+            "hotspot_severity_max": self.hotspot_severity_max,
+            "rack_density_kw_max": self.rack_density_kw_max,
+            "thermal_excursions": self.thermal_excursions,
+            "thermal_migration_vetoes": self.thermal_migration_vetoes,
         }
 
 
@@ -193,6 +208,14 @@ class AggregatedKPI:
     total_rollbacks: int = 0
     total_overload_events: int = 0
     startup_latency_s_max: Optional[float] = None
+    # Thermal / cooling / power realism KPIs (optional)
+    max_gpu_temp_c: Optional[float] = None
+    thermal_slowdown_pct_mean: Optional[float] = None
+    total_thermal_throttle_events: int = 0
+    hotspot_severity_max: Optional[float] = None
+    rack_density_kw_max: Optional[float] = None
+    total_thermal_excursions: int = 0
+    total_thermal_migration_vetoes: int = 0
 
     def to_dict(self) -> dict[str, Any]:
         return {
@@ -259,6 +282,24 @@ class AggregatedKPI:
                 round(self.startup_latency_s_max, 1)
                 if self.startup_latency_s_max is not None else None
             ),
+            "max_gpu_temp_c": (
+                round(self.max_gpu_temp_c, 1) if self.max_gpu_temp_c is not None else None
+            ),
+            "thermal_slowdown_pct_mean": (
+                round(self.thermal_slowdown_pct_mean, 2)
+                if self.thermal_slowdown_pct_mean is not None else None
+            ),
+            "total_thermal_throttle_events": self.total_thermal_throttle_events,
+            "hotspot_severity_max": (
+                round(self.hotspot_severity_max, 3)
+                if self.hotspot_severity_max is not None else None
+            ),
+            "rack_density_kw_max": (
+                round(self.rack_density_kw_max, 2)
+                if self.rack_density_kw_max is not None else None
+            ),
+            "total_thermal_excursions": self.total_thermal_excursions,
+            "total_thermal_migration_vetoes": self.total_thermal_migration_vetoes,
         }
 
 

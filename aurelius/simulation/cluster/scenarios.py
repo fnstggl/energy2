@@ -847,6 +847,132 @@ _BUILTIN_SCENARIOS: dict[str, dict[str, Any]] = {
     },
 
     # -----------------------------------------------------------------------
+    # 4f. Rack-density overload (AIR) — dense H100 rack overheats + throttles
+    # -----------------------------------------------------------------------
+    # A single rack packed with many H100 nodes at high utilization pushes the
+    # rack well past the air-cooling kW envelope → critical density, persistent
+    # hotspots, sustained thermal throttling. The same layout under LIQUID
+    # cooling (next scenario) stays safe — cooling regime matters.
+    "rack_density_overload_air": {
+        "scenario_name": "rack_density_overload_air",
+        "description": (
+            "Dense H100 rack (air-cooled) at high utilization exceeds the air kW "
+            "envelope → critical density, hotspots, sustained throttling. "
+            "Expected: thermal-dominant; spreading/consolidation must respect heat."
+        ),
+        "seed": 42,
+        "tick_duration_hours": 1.0,
+        "expected_primary_constraint": "thermal_bound",
+        "expected_events": [],
+        "scenario_version": "v1",
+        "simulator_version": "1.0.0",
+        "regions": [
+            {
+                "region_id": "us-east",
+                "energy_price_trace": [55.0] * 24,
+                "ambient_temp_c": 26.0,
+                "nodes": [
+                    {
+                        "node_id": f"dense-node{i}",
+                        "gpu_type": "h100-sxm5-80gb",
+                        "gpu_count": 8,
+                        "topology_class": "nvswitch",
+                        "rack_id": "dense-rack",   # all nodes share ONE rack
+                        "zone": "us-east-1a",
+                        "cooling_regime": "air",
+                    }
+                    for i in range(8)              # 8 nodes × 8 H100 × 700W ≈ 45 kW
+                ],
+                "queues": [
+                    {
+                        "queue_id": "us-east-q0",
+                        "service_id": "dense-inference",
+                        "base_arrival_rate_per_sec": 0.5,
+                        "diurnal_amplitude": 0.1,
+                    }
+                ],
+            }
+        ],
+        "workloads": [
+            {
+                "workload_id": "dense-wl",
+                "service_id": "dense-inference",
+                "workload_type": "inference",
+                "priority_tier": "standard",
+                "region_id": "us-east",
+                "gpu_count_required": 32,          # pack the rack densely
+                "target_util_pct": 90.0,
+                "communication_intensity": "low",
+                "migration_allowed": False,
+                "latency_sla_p99_ms": 8000.0,
+                "engine_runtime": "vllm",
+            }
+        ],
+        "events": [],
+    },
+
+    # -----------------------------------------------------------------------
+    # 4g. Rack-density LIQUID-cooled — same dense layout stays safe
+    # -----------------------------------------------------------------------
+    "rack_density_liquid_cooled": {
+        "scenario_name": "rack_density_liquid_cooled",
+        "description": (
+            "Same dense H100 rack as rack_density_overload_air but LIQUID-cooled: "
+            "higher density tolerance + faster recovery keep temps and throttling "
+            "far lower. Expected: liquid materially beats air on thermal stability."
+        ),
+        "seed": 42,
+        "tick_duration_hours": 1.0,
+        "expected_primary_constraint": "thermal_bound",
+        "expected_events": [],
+        "scenario_version": "v1",
+        "simulator_version": "1.0.0",
+        "regions": [
+            {
+                "region_id": "us-east",
+                "energy_price_trace": [55.0] * 24,
+                "ambient_temp_c": 26.0,
+                "nodes": [
+                    {
+                        "node_id": f"dense-node{i}",
+                        "gpu_type": "h100-sxm5-80gb",
+                        "gpu_count": 8,
+                        "topology_class": "nvswitch",
+                        "rack_id": "dense-rack",
+                        "zone": "us-east-1a",
+                        "cooling_regime": "liquid",
+                    }
+                    for i in range(8)
+                ],
+                "queues": [
+                    {
+                        "queue_id": "us-east-q0",
+                        "service_id": "dense-inference",
+                        "base_arrival_rate_per_sec": 0.5,
+                        "diurnal_amplitude": 0.1,
+                    }
+                ],
+            }
+        ],
+        "workloads": [
+            {
+                "workload_id": "dense-wl",
+                "service_id": "dense-inference",
+                "workload_type": "inference",
+                "priority_tier": "standard",
+                "region_id": "us-east",
+                "gpu_count_required": 32,
+                "target_util_pct": 90.0,
+                "communication_intensity": "low",
+                "migration_allowed": False,
+                "latency_sla_p99_ms": 8000.0,
+                "engine_runtime": "vllm",
+            }
+        ],
+        "events": [],
+    },
+
+    # -----------------------------------------------------------------------
     # 5. Topology fragmentation — H100 NVSwitch vs PCIe
     # -----------------------------------------------------------------------
     "topology_fragmentation_h100": {
