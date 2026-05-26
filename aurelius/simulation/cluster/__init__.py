@@ -17,6 +17,7 @@ Usage:
     cluster_state = sim.get_cluster_state()
 """
 
+from .energy_model import RegionEnergyState, WorkloadEnergyState
 from .engine import ClusterSimulator, SimulatorTick
 from .model import (
     SimCluster,
@@ -53,4 +54,6 @@ __all__ = [
     "WorkloadTopologyState",
     "GPUUtilizationState",
     "WorkloadUtilizationState",
+    "RegionEnergyState",
+    "WorkloadEnergyState",
 ]

@@ -342,6 +342,13 @@ class SimWorkload:
     # each tick). Constructed lazily by the engine.
     util: Optional[Any] = None
 
+    # First-class energy / carbon / arbitrage state (shift window, churn,
+    # net-savings accounting). Constructed lazily by the engine.
+    energy: Optional[Any] = None
+    # Objective weights: objective = alpha*cost + beta*carbon.
+    alpha_cost: float = 1.0
+    beta_carbon: float = 0.0
+
     # Computed per tick
     effective_tokens_per_second: float = 0.0
     effective_requests_per_second: float = 0.0
@@ -360,11 +367,24 @@ class SimRegion:
     carbon_intensity_trace: list[float] = field(default_factory=list)
 
     # Current state
-    current_energy_price: float = 50.0   # $/MWh
+    current_energy_price: float = 50.0   # $/MWh (day-ahead / planning signal)
     current_carbon_intensity: Optional[float] = None
+
+    # Day-ahead vs real-time settlement (realtime == day-ahead when basis is
+    # disabled, preserving deterministic pricing). realtime is what realized
+    # consumption actually pays. Updated each tick by _update_energy.
+    day_ahead_price: float = 50.0
+    realtime_price: float = 50.0
+
+    # First-class energy/carbon market state (DA/RT basis, LMP components, carbon
+    # forecast, spare capacity, telemetry). Constructed lazily by the engine.
+    energy_state: Optional[Any] = None
 
     # Spike override — set by energy_price_spike event; prevents trace from clobbering it
     price_spike_active: bool = False
+    # Congestion override — set by energy congestion events for the LMP model.
+    congestion_active: bool = False
+    grid_stress_active: bool = False
 
     # Ambient temperature proxy (affects GPU cooling)
     ambient_temp_c: float = 22.0

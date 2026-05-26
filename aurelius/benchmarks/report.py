@@ -154,6 +154,18 @@ class TickKPI:
     utilization_paradox_count: int = 0
     bin_packing_risk_max: Optional[float] = None
     packing_migration_vetoes: int = 0
+    # Energy / carbon / arbitrage realism KPIs (optional)
+    day_ahead_price_mean: Optional[float] = None
+    real_time_price_mean: Optional[float] = None
+    da_rt_basis_max: Optional[float] = None
+    lmp_congestion_max: Optional[float] = None
+    carbon_intensity_mean: Optional[float] = None
+    net_savings_sum: Optional[float] = None
+    gross_savings_sum: Optional[float] = None
+    energy_migration_vetoes: int = 0
+    energy_actions_rejected: int = 0
+    churn_penalty_max: Optional[float] = None
+    low_energy_telemetry_count: int = 0
 
     def to_dict(self) -> dict[str, Any]:
         return {
@@ -216,6 +228,17 @@ class TickKPI:
             "utilization_paradox_count": self.utilization_paradox_count,
             "bin_packing_risk_max": self.bin_packing_risk_max,
             "packing_migration_vetoes": self.packing_migration_vetoes,
+            "day_ahead_price_mean": self.day_ahead_price_mean,
+            "real_time_price_mean": self.real_time_price_mean,
+            "da_rt_basis_max": self.da_rt_basis_max,
+            "lmp_congestion_max": self.lmp_congestion_max,
+            "carbon_intensity_mean": self.carbon_intensity_mean,
+            "net_savings_sum": self.net_savings_sum,
+            "gross_savings_sum": self.gross_savings_sum,
+            "energy_migration_vetoes": self.energy_migration_vetoes,
+            "energy_actions_rejected": self.energy_actions_rejected,
+            "churn_penalty_max": self.churn_penalty_max,
+            "low_energy_telemetry_count": self.low_energy_telemetry_count,
         }
 
 
@@ -287,6 +310,17 @@ class AggregatedKPI:
     total_utilization_paradox: int = 0
     bin_packing_risk_max: Optional[float] = None
     total_packing_migration_vetoes: int = 0
+    # Energy / carbon / arbitrage realism KPIs (optional)
+    day_ahead_price_mean: Optional[float] = None
+    real_time_price_mean: Optional[float] = None
+    da_rt_basis_max: Optional[float] = None
+    lmp_congestion_max: Optional[float] = None
+    carbon_intensity_mean: Optional[float] = None
+    total_net_savings: Optional[float] = None
+    total_gross_savings: Optional[float] = None
+    total_energy_migration_vetoes: int = 0
+    total_energy_actions_rejected: int = 0
+    churn_penalty_max: Optional[float] = None
 
     def to_dict(self) -> dict[str, Any]:
         return {
@@ -444,6 +478,39 @@ class AggregatedKPI:
                 if self.bin_packing_risk_max is not None else None
             ),
             "total_packing_migration_vetoes": self.total_packing_migration_vetoes,
+            "day_ahead_price_mean": (
+                round(self.day_ahead_price_mean, 2)
+                if self.day_ahead_price_mean is not None else None
+            ),
+            "real_time_price_mean": (
+                round(self.real_time_price_mean, 2)
+                if self.real_time_price_mean is not None else None
+            ),
+            "da_rt_basis_max": (
+                round(self.da_rt_basis_max, 2) if self.da_rt_basis_max is not None else None
+            ),
+            "lmp_congestion_max": (
+                round(self.lmp_congestion_max, 2)
+                if self.lmp_congestion_max is not None else None
+            ),
+            "carbon_intensity_mean": (
+                round(self.carbon_intensity_mean, 1)
+                if self.carbon_intensity_mean is not None else None
+            ),
+            "total_net_savings": (
+                round(self.total_net_savings, 4)
+                if self.total_net_savings is not None else None
+            ),
+            "total_gross_savings": (
+                round(self.total_gross_savings, 4)
+                if self.total_gross_savings is not None else None
+            ),
+            "total_energy_migration_vetoes": self.total_energy_migration_vetoes,
+            "total_energy_actions_rejected": self.total_energy_actions_rejected,
+            "churn_penalty_max": (
+                round(self.churn_penalty_max, 4)
+                if self.churn_penalty_max is not None else None
+            ),
         }
 
 

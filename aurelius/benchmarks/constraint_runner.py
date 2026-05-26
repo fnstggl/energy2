@@ -118,18 +118,20 @@ def _apply_price_only(
     if not regions:
         return None
 
-    # Find cheapest region by real_time_price or day_ahead_price from EnergyState
+    # Plan on the DAY-AHEAD price (the signal available at scheduling time).
+    # Realized consumption settles at the real-time price, so a DA planner can be
+    # wrong under an RT basis blowout — that is the realism this exposes.
     def price(r):
         if r.energy is not None:
-            p = (r.energy.real_time_price_per_mwh
-                 if r.energy.real_time_price_per_mwh is not None
-                 else r.energy.day_ahead_price_per_mwh)
+            p = (r.energy.day_ahead_price_per_mwh
+                 if r.energy.day_ahead_price_per_mwh is not None
+                 else r.energy.real_time_price_per_mwh)
             if p is not None:
                 return p
         # Fall back to sim cluster price for this region
         sim_r = sim._cluster.regions.get(r.region)
         if sim_r is not None:
-            return sim_r.current_energy_price
+            return sim_r.day_ahead_price
         return float("inf")
 
     cheapest = min(regions.values(), key=price)
@@ -176,14 +178,14 @@ def _apply_greedy_energy(
 
     def price(r):
         if r.energy is not None:
-            p = (r.energy.real_time_price_per_mwh
-                 if r.energy.real_time_price_per_mwh is not None
-                 else r.energy.day_ahead_price_per_mwh)
+            p = (r.energy.day_ahead_price_per_mwh
+                 if r.energy.day_ahead_price_per_mwh is not None
+                 else r.energy.real_time_price_per_mwh)
             if p is not None:
                 return p
         sim_r = sim._cluster.regions.get(r.region)
         if sim_r is not None:
-            return sim_r.current_energy_price
+            return sim_r.day_ahead_price
         return float("inf")
 
     cheapest = min(regions.values(), key=price)
@@ -200,8 +202,8 @@ def _apply_greedy_energy(
         sim_region = sim._cluster.regions.get(wl.region_id)
         if sim_region is None:
             continue
-        # Use sim region price directly (already updated by simulator tick)
-        sim_price = sim_region.current_energy_price
+        # Plan on the day-ahead price (settles at real-time).
+        sim_price = sim_region.day_ahead_price
         if sim_price <= cheapest_price_val * 1.005:
             continue
         src = wl.region_id
@@ -443,6 +445,14 @@ def _aggregate_kpis(policy_name: str, tick_kpis: list[TickKPI]) -> AggregatedKPI
         if k.util_throughput_penalty_pct_mean is not None
     ]
     bp_vals = [k.bin_packing_risk_max for k in tick_kpis if k.bin_packing_risk_max is not None]
+    da_vals2 = [k.day_ahead_price_mean for k in tick_kpis if k.day_ahead_price_mean is not None]
+    rt_vals2 = [k.real_time_price_mean for k in tick_kpis if k.real_time_price_mean is not None]
+    basis_vals = [k.da_rt_basis_max for k in tick_kpis if k.da_rt_basis_max is not None]
+    lc_vals = [k.lmp_congestion_max for k in tick_kpis if k.lmp_congestion_max is not None]
+    ci_vals = [k.carbon_intensity_mean for k in tick_kpis if k.carbon_intensity_mean is not None]
+    ns_vals2 = [k.net_savings_sum for k in tick_kpis if k.net_savings_sum is not None]
+    gs_vals = [k.gross_savings_sum for k in tick_kpis if k.gross_savings_sum is not None]
+    cpen_vals = [k.churn_penalty_max for k in tick_kpis if k.churn_penalty_max is not None]
 
     return AggregatedKPI(
         policy_name=policy_name,
@@ -509,6 +519,16 @@ def _aggregate_kpis(policy_name: str, tick_kpis: list[TickKPI]) -> AggregatedKPI
         ),
         bin_packing_risk_max=max(bp_vals) if bp_vals else None,
         total_packing_migration_vetoes=sum(k.packing_migration_vetoes for k in tick_kpis),
+        day_ahead_price_mean=sum(da_vals2) / len(da_vals2) if da_vals2 else None,
+        real_time_price_mean=sum(rt_vals2) / len(rt_vals2) if rt_vals2 else None,
+        da_rt_basis_max=max(basis_vals) if basis_vals else None,
+        lmp_congestion_max=max(lc_vals) if lc_vals else None,
+        carbon_intensity_mean=sum(ci_vals) / len(ci_vals) if ci_vals else None,
+        total_net_savings=sum(ns_vals2) if ns_vals2 else None,
+        total_gross_savings=sum(gs_vals) if gs_vals else None,
+        total_energy_migration_vetoes=sum(k.energy_migration_vetoes for k in tick_kpis),
+        total_energy_actions_rejected=sum(k.energy_actions_rejected for k in tick_kpis),
+        churn_penalty_max=max(cpen_vals) if cpen_vals else None,
     )
 
 
@@ -573,6 +593,17 @@ def _tick_metrics_to_kpi(tm: TickMetrics) -> TickKPI:
         utilization_paradox_count=tm.utilization_paradox_count,
         bin_packing_risk_max=tm.bin_packing_risk_max,
         packing_migration_vetoes=tm.packing_migration_vetoes,
+        day_ahead_price_mean=tm.day_ahead_price_mean,
+        real_time_price_mean=tm.real_time_price_mean,
+        da_rt_basis_max=tm.da_rt_basis_max,
+        lmp_congestion_max=tm.lmp_congestion_max,
+        carbon_intensity_mean=tm.carbon_intensity_mean,
+        net_savings_sum=tm.net_savings_sum,
+        gross_savings_sum=tm.gross_savings_sum,
+        energy_migration_vetoes=tm.energy_migration_vetoes,
+        energy_actions_rejected=tm.energy_actions_rejected,
+        churn_penalty_max=tm.churn_penalty_max,
+        low_energy_telemetry_count=tm.low_energy_telemetry_count,
     )
 
 
