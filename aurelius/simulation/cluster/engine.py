@@ -1002,12 +1002,14 @@ class ClusterSimulator:
         }
         base_score = score_map.get(best_link_type, 0.25)
 
-        # Communication intensity multiplier: poor topology hurts high-comm more
+        # Communication intensity multiplier: poor topology hurts high-comm more.
         comm_weight = {"low": 0.3, "medium": 0.6, "high": 1.0}.get(
             workload.communication_intensity, 0.3
         )
-        # Weighted score: high-comm workloads get a stronger penalty for bad topology
-        return base_score * (1.0 - comm_weight) + base_score * comm_weight
+        # Penalty scales with both topology badness (1 - base_score) and comm
+        # intensity: a perfect link (base_score=1.0) is never penalized, while a
+        # poor link penalizes high-comm workloads far more than low-comm ones.
+        return base_score * (1.0 - comm_weight * (1.0 - base_score))
 
     # ------------------------------------------------------------------
     # Connector data generators (fake connector payloads)

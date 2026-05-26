@@ -16,15 +16,135 @@ Every implementation run must read that plan before deciding what to do next.
 
 ## Status Summary
 
-Current status: **PHASE 12 COMPLETE**
+Current status: **PHASE 12 COMPLETE (components) — NOT PILOT-READY (system)**
 
-Phases 1–12 of the constraint-aware orchestration initiative are complete.
+Phases 1–12 built the constraint-aware *components* (state model, connectors,
+simulator, classifier, cost model, engine, CLI, reporting, benchmark, hardening),
+and their unit tests pass. **However, an independent end-to-end audit
+(2026-05-26) found that the system is not yet enterprise-pilot-ready.** The
+prior "enterprise-pilot-ready" claim was an overclaim. The corrected verdict is
+**READY_FOR_SIM_ONLY_DEMO**. See **"Independent Audit Findings (2026-05-26)"**
+below for evidence. The three blocking gaps:
 
-The system is now enterprise-pilot-ready for the constraint-aware GPU orchestration layer.
+1. **Real telemetry cannot drive the engine.** No code assembles connector
+   output (Prometheus/DCGM/vLLM/Triton/Ray/K8s/topology) into a `ClusterState`.
+   The only `ClusterState` producer is the simulator. The connectors are
+   high-quality, fail-safe *components* that dead-end at leaf objects.
+2. **No demonstrated KPI improvement.** In all 6 canonical benchmark scenarios
+   the `constraint_aware` policy is byte-identical to `fifo` — it makes zero
+   KPI-changing interventions, because the benchmark only applies cross-region
+   migrations and the simulator only models `migrate_workload` (SPREAD / SCALE /
+   CONSOLIDATE / DEFER / REROUTE are computed but never applied or simulated).
+3. **Decisions are top-label-driven, not multi-constraint.** The engine acts
+   only on `binding_constraint`; meaningful secondary constraints are ignored
+   (e.g. it will CONSOLIDATE into warm nodes when utilization out-scores a real
+   secondary thermal signal — adversarial cases C2/D/E/G fail).
 
-**No further mandatory phases remain.**
+Phase-12 component work is complete; the **next mandatory work is a pilot-readiness
+phase** (connector→ClusterState assembler, multi-constraint action conditioning,
+and a benchmark that exercises non-migration actions). Optional future work is at
+the bottom of this tracker.
 
-Optional future work is documented at the bottom of this tracker.
+---
+
+## Independent Audit Findings (2026-05-26)
+
+An audit-first run independently re-verified the constraint-aware system against
+repo reality (not docs/test claims). Commands run: `python -m compileall aurelius`
+(clean); full suite `2194 passed, 12 failed, 13 skipped` (the 12 failures are all
+legacy energy/ML/API tests failing only because optional deps `lightgbm`/`fastapi`
+are absent — env gaps, not constraint-aware regressions; the constraint-aware
+suite is 100% green). A full benchmark (`benchmark-run --all-scenarios`), all CLI
+`--help` smokes, a constraint-report, and a 7-case adversarial multi-constraint
+harness were run.
+
+**Verdict: READY_FOR_SIM_ONLY_DEMO** (not pilot-ready). Evidence:
+
+### Gap 1 — Connectors are not wired into `ClusterState` (IMPLEMENTED_BUT_NOT_WIRED)
+- The only `ClusterState(...)` producers in source are the simulator
+  (`aurelius/simulation/cluster/engine.py:1198`) and the classifier's internal
+  region re-scoping (`aurelius/constraints/classifier.py:706`), plus
+  `ClusterState.from_dict` for loading a pre-existing JSON snapshot.
+- Connectors (`prometheus`, `dcgm`, `vllm`, `triton`, `ray_serve`, `kubernetes`,
+  `topology`) emit canonical *leaf* objects (`GPUState`, `InferenceServiceState`,
+  `NodeState`, `TopologyState`) but **no code aggregates them into a
+  `RegionState`/`ClusterState`.** Their only non-test caller is the
+  `validate-connectors` diagnostic, which inspects shapes and discards the objects.
+- Consequence: real Prometheus/DCGM/K8s/vLLM telemetry **cannot drive the engine
+  today**; the constraint-aware pipeline has only ever run on the simulator.
+- The connectors themselves are high quality: read-only K8s (RBAC get/list/watch
+  only), missing-metric→None (never fabricated 0), failure→partial/unknown, and
+  no secret logging (auth via env-var names resolved at call time). This gap is
+  the missing *assembler*, not the connectors.
+
+### Gap 2 — Benchmark shows zero KPI improvement for the constraint-aware policy
+- In **all 6** canonical scenarios, `constraint_aware` KPIs are **byte-identical
+  to `fifo`** (cost, SLA violations, migrations, p99). It makes no
+  KPI-changing intervention anywhere.
+- Cause (a): `aurelius/benchmarks/constraint_runner.py:_apply_constraint_aware`
+  only applies recommendations whose action is a cross-region migration
+  (`CHOOSE_CHEAPER_REGION`/`MIGRATE`/`CHANGE_PLACEMENT` with a target region).
+  SPREAD, SCALE_REPLICAS, CONSOLIDATE, DEFER, REROUTE are computed but never
+  applied.
+- Cause (b): the simulator's only mutation method is `migrate_workload` — it does
+  **not model** spread/scale/consolidate/reroute/defer, so for 5 of 6 constraint
+  families the benchmark cannot demonstrate improvement even in principle.
+- Cause (c): in the one family it can affect (energy), the state-conditioned cost
+  model vetoed every candidate migration → 0 migrations. (Meanwhile naive
+  `current_price_only`/`greedy_energy` baselines do cut energy cost — but at the
+  cost of 60 000–180 000 ms queue waits in the simulator.)
+- Consequence: there is **no benchmark evidence** that constraint-aware
+  optimization improves cost/token, p99, utilization, or SLA over baselines.
+
+### Gap 3 — Decisions are top-label-driven, not genuinely multi-constraint
+- The classifier computes a full 8-family score vector, but the engine generates
+  candidates and applies disallowed-actions **only** from the single
+  `binding_constraint`. There is no `secondary_constraints` concept; the score
+  vector is consumed only for display, the binding-score SLA proxy, and the narrow
+  `CONSOLIDATE + binding==THERMAL` cost term.
+- Adversarial harness (7 cases): **A, B, C1, F behave correctly** — but only
+  because an SLA-risk constraint out-scored the cost constraint and won the single
+  binding label. **C2, D, E, G fail:**
+  - C2: util-dominant binding + secondary thermal (78 °C) → recommends
+    `CONSOLIDATE` (net +7.3) into warm nodes; secondary thermal ignored.
+  - D: topology binding + severe secondary thermal (score 0.92, throttling) →
+    `change_placement` with no thermal consideration or tradeoff explanation.
+  - E: energy binding → migrates to a destination with 3 % spare + PCIe (net +69);
+    destination-risk penalty too small to block.
+  - G: missing destination telemetry → still migrates (net +84); uncertainty
+    buffer dwarfed by inflated synthetic gross savings.
+- Root cause of E/G: soft penalties are capped (sum of risk weights = 24.0), so
+  any action with gross savings > 24 can never be vetoed by soft penalties alone.
+
+### Gap 4 — Simulator realism is dev-grade and optimizer-friendly
+- Telemetry is always perfect (`confidence="high"`, `is_partial=False`,
+  `sample_age_s=None`) — the classifier's missing-signal / staleness / fail-safe
+  paths are never exercised by the sim.
+- `migrate_workload` has no network-transfer cost, no dropped in-flight requests,
+  no rollback risk (only a 2-tick warmup) → migrations are cheaper than reality.
+- Queue arrivals are a smooth diurnal sinusoid (not bursty/Poisson); latency tails
+  use fixed p95=p50×2.5 / p99=p50×5 multipliers (no nonlinear blow-up near
+  saturation).
+- Scenarios are answer-keyed (`expected_primary_constraint` hand-set) and energy
+  spikes are clean 2.5× anti-correlated traces → easy arbitrage.
+- Bug fixed in this run: `_compute_topology_score` (engine.py:1010) had a
+  dead-code weight (`base*(1-w)+base*w == base`) so comm-intensity never affected
+  the topology KPI; now `base_score*(1 - comm_weight*(1-base_score))`.
+
+### Doc-claim corrections
+- "enterprise-pilot-ready" → **READY_FOR_SIM_ONLY_DEMO**.
+- "What is production-ready" list below: the connector/topology entries are
+  **IMPLEMENTED_BUT_NOT_WIRED** (parse real-shaped fixtures and emit canonical
+  leaf types, but are not assembled into `ClusterState`). "Supports real
+  Prometheus/Kubernetes/DCGM/vLLM/Triton/Ray" is PROVEN_BY_UNIT_TESTS_ONLY at the
+  parsing layer, OVERCLAIMED at the end-to-end layer.
+
+### Exact next task (highest priority)
+Build the connector→`ClusterState` assembler (`build_cluster_state(...)` that
+aggregates connector leaf objects into `RegionState`/`ClusterState`, marking
+absent sources via `is_partial`/`missing_sources`) and an integration test that
+drives the classifier from fixture-backed connector output end-to-end. This
+unblocks every other claim (real telemetry, calibration, shadow pilot).
 
 ---
 
@@ -1438,11 +1558,18 @@ The observer is NOT yet wired into the engine's auto-recording path. Callers mus
 
 ### What is production-ready
 
+> **Audit correction (2026-05-26):** "production-ready" here means "unit-tested
+> component," not "wired into the end-to-end path." Per the Independent Audit
+> Findings above, the connector/topology/ingestion entries are
+> **IMPLEMENTED_BUT_NOT_WIRED** — they parse real-shaped fixtures and emit
+> canonical leaf objects but are not assembled into a `ClusterState`, so they do
+> not yet drive the engine with live telemetry.
+
 - Normalized ClusterState model (energy, thermal, topology, GPU, inference, queue)
-- Prometheus-native ingestion with fake server for offline testing
-- DCGM, vLLM, Triton, Ray Serve, OTel adapters
-- Kubernetes read-only connector (with RBAC config)
-- nvidia-smi topology parser and placement scorer
+- Prometheus-native ingestion with fake server for offline testing *(not wired to ClusterState)*
+- DCGM, vLLM, Triton, Ray Serve, OTel adapters *(emit leaf objects; not assembled into ClusterState)*
+- Kubernetes read-only connector (with RBAC config) *(not wired to ClusterState)*
+- nvidia-smi topology parser and placement scorer *(not wired to ClusterState)*
 - Synthetic cluster simulator (6 canonical scenarios, deterministic)
 - Constraint classifier (8 families, staleness-aware, hysteresis)
 - State-conditioned migration cost/risk model (SLA-hard-gate, no static multipliers)
