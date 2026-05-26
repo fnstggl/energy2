@@ -376,13 +376,17 @@ def cmd_optimizer_regression_check(args) -> None:
 # ---------------------------------------------------------------------------
 
 def _load_state(args):
-    """Load ClusterState from --scenario or --snapshot args."""
+    """Load ClusterState from --config, --scenario, or --snapshot args."""
     from aurelius.simulation.cluster import ClusterSimulator, load_scenario
 
     scenario_name = getattr(args, "scenario", None)
     snapshot_path = getattr(args, "snapshot", None)
+    config_path = getattr(args, "config", None)
     seed = getattr(args, "seed", 42)
     steps = getattr(args, "steps", 1)
+
+    if config_path:
+        return _assemble_state_from_config(config_path)
 
     if scenario_name:
         scenario = load_scenario(scenario_name, seed_override=seed)
@@ -407,6 +411,125 @@ def _load_state(args):
 
     print("ERROR: provide --scenario or --snapshot", file=sys.stderr)
     sys.exit(1)
+
+
+def _assemble_state_from_config(config_path):
+    """Assemble a ClusterState from a connector-fixture config via real adapters.
+
+    Proves the audit's missing path: connector fixtures → production adapters →
+    build_cluster_state → ClusterState (consumed by classifier/engine).
+
+    Config JSON schema (all optional except a source):
+      {
+        "from_scenario": "thermal_hotspot_mixed_cluster",  # source fixture text
+        "steps": 8,
+        "seed": 42,
+        "default_region": "us-east",
+        "nodes": [{"node_id": "hot-node0", "region": "us-east"}],
+        "services": [{"service_id": "llm-inference", "region": "us-east"}],
+        # OR point at on-disk Prometheus exposition text:
+        "dcgm_text_files": [{"path": "...", "node_id": "...", "region": "..."}],
+        "vllm_text_files": [{"path": "...", "service_id_prefix": "...", "region": "..."}]
+      }
+    """
+    from aurelius.connectors.dcgm import DCGMAdapter
+    from aurelius.connectors.metric_mapping import dcgm_registry, vllm_registry
+    from aurelius.connectors.prometheus import FakePrometheusClient
+    from aurelius.connectors.vllm import VLLMAdapter
+    from aurelius.state import build_cluster_state
+
+    path = Path(config_path)
+    if not path.exists():
+        print(f"ERROR: config file not found: {path}", file=sys.stderr)
+        sys.exit(1)
+    try:
+        cfg = json.loads(path.read_text())
+    except Exception as exc:
+        print(f"ERROR: failed to parse config: {exc}", file=sys.stderr)
+        sys.exit(1)
+
+    now = datetime.now(tz=timezone.utc)
+    default_region = cfg.get("default_region")
+    gpu_states = []
+    services = []
+    source_metadata = {}
+
+    # Build a per-(node/service) DCGM/vLLM text source.
+    def _dcgm_from_text(text, node_id, region):
+        client = FakePrometheusClient(prometheus_text=text)
+        snap = client.fetch_snapshot(dcgm_registry(), source=f"dcgm:{node_id}")
+        return DCGMAdapter(client).normalize_gpus(snap, node_id=node_id,
+                                                  region=region, timestamp=now)
+
+    def _vllm_from_text(text, prefix, region):
+        client = FakePrometheusClient(prometheus_text=text)
+        snap = client.fetch_snapshot(vllm_registry(), source=f"vllm:{prefix}")
+        svcs = VLLMAdapter(client).normalize_all_services(snap,
+                                                          service_id_prefix=prefix,
+                                                          timestamp=now)
+        # vLLM services carry no region; tag with the configured region.
+        from dataclasses import replace as _replace
+        return [_replace(s, region=region) for s in svcs] if region else svcs
+
+    scenario_name = cfg.get("from_scenario")
+    if scenario_name:
+        from aurelius.simulation.cluster import ClusterSimulator, load_scenario
+        sc = load_scenario(scenario_name, seed_override=cfg.get("seed", 42))
+        sim = ClusterSimulator(sc.config, seed=cfg.get("seed", 42))
+        warm = max(0, int(cfg.get("steps", 1)) - 1)
+        if warm:
+            sim.run_metrics_only(warm)
+        for node in cfg.get("nodes", []):
+            try:
+                text = sim.get_dcgm_prometheus_text(node["node_id"])
+                gpu_states.extend(_dcgm_from_text(text, node["node_id"],
+                                                  node.get("region", default_region)))
+                source_metadata[f"dcgm:{node['node_id']}"] = {"present": True}
+            except Exception as exc:
+                source_metadata[f"dcgm:{node['node_id']}"] = {
+                    "present": False, "error": type(exc).__name__}
+        for svc in cfg.get("services", []):
+            try:
+                text = sim.get_vllm_prometheus_text(svc["service_id"])
+                services.extend(_vllm_from_text(text, svc["service_id"],
+                                                svc.get("region", default_region)))
+                source_metadata[f"vllm:{svc['service_id']}"] = {"present": True}
+            except Exception as exc:
+                source_metadata[f"vllm:{svc['service_id']}"] = {
+                    "present": False, "error": type(exc).__name__}
+
+    for entry in cfg.get("dcgm_text_files", []):
+        try:
+            text = Path(entry["path"]).read_text()
+            gpu_states.extend(_dcgm_from_text(text, entry["node_id"],
+                                              entry.get("region", default_region)))
+            source_metadata[f"dcgm:{entry['node_id']}"] = {"present": True}
+        except Exception as exc:
+            source_metadata[f"dcgm:{entry.get('node_id', '?')}"] = {
+                "present": False, "error": type(exc).__name__}
+
+    for entry in cfg.get("vllm_text_files", []):
+        try:
+            text = Path(entry["path"]).read_text()
+            services.extend(_vllm_from_text(text, entry.get("service_id_prefix", "vllm"),
+                                            entry.get("region", default_region)))
+            source_metadata[f"vllm:{entry.get('service_id_prefix', 'vllm')}"] = {"present": True}
+        except Exception as exc:
+            source_metadata[f"vllm:{entry.get('service_id_prefix', '?')}"] = {
+                "present": False, "error": type(exc).__name__}
+
+    if not gpu_states and not services:
+        print("ERROR: config produced no telemetry (need from_scenario/nodes/services "
+              "or dcgm_text_files/vllm_text_files)", file=sys.stderr)
+        sys.exit(1)
+
+    return build_cluster_state(
+        timestamp=now,
+        gpu_states=gpu_states or None,
+        inference_services=services or None,
+        source_metadata=source_metadata,
+        default_region=default_region,
+    )
 
 
 def _write_or_print(text: str, output_path) -> None:

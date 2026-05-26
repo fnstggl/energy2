@@ -1792,6 +1792,11 @@ def main():
         help="Path to a ClusterState JSON snapshot file",
     )
     cr_parser.add_argument(
+        "--config", type=str, default=None,
+        help="Path to a connector-fixture config JSON; assembles a ClusterState "
+             "from real connector adapters (DCGM/vLLM/...) via build_cluster_state",
+    )
+    cr_parser.add_argument(
         "--steps", type=int, default=1,
         help="Number of simulator ticks to run before assessment (default: 1)",
     )
@@ -1846,6 +1851,11 @@ def main():
     tc_parser.add_argument(
         "--snapshot", type=str, default=None,
         help="Path to a ClusterState JSON snapshot file",
+    )
+    tc_parser.add_argument(
+        "--config", type=str, default=None,
+        help="Path to a connector-fixture config JSON (assembles ClusterState "
+             "from real connector adapters)",
     )
     tc_parser.add_argument(
         "--steps", type=int, default=1,

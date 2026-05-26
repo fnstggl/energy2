@@ -8,6 +8,10 @@ Connectors (Prometheus, DCGM, vLLM, Kubernetes, topology) are not built here;
 they will normalize their outputs into ClusterState in later phases.
 """
 
+from aurelius.state.assemble import (
+    build_cluster_state,
+    build_cluster_state_from_connectors,
+)
 from aurelius.state.models import (
     ClusterState,
     ConstraintAssessment,
@@ -52,6 +56,9 @@ __all__ = [
     "ThermalState",
     "TopologyLinkType",
     "TopologyState",
+    # Assembler
+    "build_cluster_state",
+    "build_cluster_state_from_connectors",
     # Normalize utilities
     "adapt_gpu_metrics",
     "adapt_queue_state",

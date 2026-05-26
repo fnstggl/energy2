@@ -232,7 +232,7 @@ def _apply_sla_aware(
     for rec in er.recommendations:
         if rec.is_noop:
             continue
-        if rec.action_type != "CHOOSE_CHEAPER_REGION":
+        if rec.action_type != "choose_cheaper_region":  # ActionType.value (lowercase)
             continue
         target_region = rec.target_region
         if target_region is None:
@@ -254,41 +254,83 @@ def _apply_sla_aware(
     return er
 
 
+def _service_region(sim: ClusterSimulator, service_id: str) -> Optional[str]:
+    for wl in sim._cluster.workloads.values():
+        if wl.service_id == service_id or wl.workload_id == service_id:
+            return wl.region_id
+    return None
+
+
 def _apply_constraint_aware(
     sim: ClusterSimulator,
     state: ClusterState,
     engine: ConstraintAwareEngine,
     migration_log: list,
 ) -> Optional[EngineResult]:
-    """Run full ConstraintAwareEngine and apply all safe migration recommendations.
+    """Run the full ConstraintAwareEngine and apply EVERY safe recommendation type.
 
-    rec.workload_id is the service_id; rec.target_region is the destination region.
-    Only actions with a cross-region target_region trigger simulator migrations.
+    rec.workload_id is the service_id. Cross-region migrations use migrate_workload;
+    operational actions (SCALE/SPREAD/DEFER/CONSOLIDATE/REROUTE) use the simulator's
+    Mission-3 action methods so the constraint-aware policy is measured on
+    thermal/queue/utilization/latency scenarios, not only energy migrations.
+
+    NOTE: action_type values are ActionType.value (lowercase). The prior
+    implementation compared against UPPERCASE names that never matched — so it
+    silently applied nothing (constraint_aware was byte-identical to FIFO).
     """
     er = engine.run(state)
+
+    migration_acts = {"choose_cheaper_region", "migrate_workload", "choose_lower_carbon_region"}
 
     for rec in er.recommendations:
         if rec.is_noop:
             continue
-        # Only apply actions that result in a cross-region migration
-        if rec.action_type not in ("CHOOSE_CHEAPER_REGION", "MIGRATE", "CHANGE_PLACEMENT"):
-            continue
-        target_region = rec.target_region
-        if target_region is None:
-            continue
+        at = rec.action_type
         svc_id = rec.workload_id
-        for wl in sim._cluster.workloads.values():
-            if wl.service_id == svc_id and wl.migration_allowed:
-                src = wl.region_id
-                migrated = sim.migrate_workload(wl.workload_id, target_region)
-                if migrated:
-                    migration_log.append({
-                        "tick": str(sim._cluster.tick),
-                        "workload_id": wl.workload_id,
-                        "from": src,
-                        "to": target_region,
-                    })
-                break
+        applied = False
+
+        if at in migration_acts and rec.target_region:
+            for wl in sim._cluster.workloads.values():
+                if wl.service_id == svc_id and wl.migration_allowed:
+                    src = wl.region_id
+                    if sim.migrate_workload(wl.workload_id, rec.target_region):
+                        migration_log.append({
+                            "tick": str(sim._cluster.tick), "workload_id": wl.workload_id,
+                            "from": src, "to": rec.target_region, "action": at,
+                        })
+                        applied = True
+                    break
+        elif at == "change_placement" and rec.target_region \
+                and rec.target_region != _service_region(sim, svc_id):
+            for wl in sim._cluster.workloads.values():
+                if wl.service_id == svc_id and wl.migration_allowed:
+                    sim.migrate_workload(wl.workload_id, rec.target_region)
+                    applied = True
+                    break
+        elif at == "scale_replicas":
+            applied = sim.add_replica(svc_id)
+        elif at == "spread_workloads":
+            applied = sim.spread_workload(svc_id)
+        elif at == "reroute_workload":
+            if rec.target_region and rec.target_region != _service_region(sim, svc_id):
+                for wl in sim._cluster.workloads.values():
+                    if wl.service_id == svc_id and wl.migration_allowed:
+                        sim.migrate_workload(wl.workload_id, rec.target_region)
+                        applied = True
+                        break
+            else:
+                applied = sim.spread_workload(svc_id)
+        elif at == "defer_workload":
+            applied = sim.defer_flexible_workload(svc_id)
+        elif at == "consolidate_workloads":
+            region = _service_region(sim, svc_id)
+            if region:
+                applied = sim.consolidate_low_priority(region, svc_id)
+
+        if applied and at not in migration_acts:
+            migration_log.append({
+                "tick": str(sim._cluster.tick), "workload_id": svc_id, "action": at,
+            })
 
     return er
 

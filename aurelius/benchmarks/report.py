@@ -237,7 +237,23 @@ def build_scorecard(
     else:
         net_cost = 0.5
 
-    if constraint_aware.total_energy_cost > fifo.total_energy_cost * 1.02:
+    # Flag a COST regression on EFFICIENCY (cost per token), not absolute cost:
+    # acting on a constraint (e.g. scaling replicas to clear a queue) legitimately
+    # raises total energy while serving proportionally more tokens. Absolute cost
+    # alone would false-flag those throughput-positive wins.
+    def _cost_per_token(k: AggregatedKPI) -> Optional[float]:
+        return k.total_energy_cost / k.total_tokens if k.total_tokens > 0 else None
+
+    ca_cpt = _cost_per_token(constraint_aware)
+    fifo_cpt = _cost_per_token(fifo)
+    if ca_cpt is not None and fifo_cpt is not None and fifo_cpt > 0:
+        if ca_cpt > fifo_cpt * 1.02:
+            flags.append(
+                f"COST_REGRESSION: constraint_aware cost/token {ca_cpt:.3e} "
+                f"> fifo {fifo_cpt:.3e} (efficiency, throughput-normalized)"
+            )
+    elif constraint_aware.total_energy_cost > fifo.total_energy_cost * 1.02:
+        # No token signal — fall back to absolute cost.
         flags.append("COST_REGRESSION: constraint_aware costs more than fifo")
 
     # SLA preservation: 1 - violation_rate (lower is better)

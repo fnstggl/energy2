@@ -22,18 +22,6 @@ from dataclasses import dataclass
 from datetime import datetime, timedelta, timezone
 from typing import Any, Optional
 
-from .model import (
-    GPU_PROFILES,
-    GPUProfile,
-    SimCluster,
-    SimGPU,
-    SimNode,
-    SimQueue,
-    SimRegion,
-    SimTopologyLink,
-    SimWorkload,
-    SimulatorConfig,
-)
 from ...state.models import (
     ClusterState,
     EnergyState,
@@ -44,6 +32,18 @@ from ...state.models import (
     RegionState,
     TopologyLinkType,
     TopologyState,
+)
+from .model import (
+    GPU_PROFILES,
+    GPUProfile,
+    SimCluster,
+    SimGPU,
+    SimNode,
+    SimQueue,
+    SimRegion,
+    SimTopologyLink,
+    SimulatorConfig,
+    SimWorkload,
 )
 
 # EnergyState and ThermalState are used for region-level context
@@ -1002,12 +1002,14 @@ class ClusterSimulator:
         }
         base_score = score_map.get(best_link_type, 0.25)
 
-        # Communication intensity multiplier: poor topology hurts high-comm more
+        # Communication intensity multiplier: poor topology hurts high-comm more.
         comm_weight = {"low": 0.3, "medium": 0.6, "high": 1.0}.get(
             workload.communication_intensity, 0.3
         )
-        # Weighted score: high-comm workloads get a stronger penalty for bad topology
-        return base_score * (1.0 - comm_weight) + base_score * comm_weight
+        # Penalty scales with both topology badness (1 - base_score) and comm
+        # intensity: a perfect link (base_score=1.0) is never penalized, while a
+        # poor link penalizes high-comm workloads far more than low-comm ones.
+        return base_score * (1.0 - comm_weight * (1.0 - base_score))
 
     # ------------------------------------------------------------------
     # Connector data generators (fake connector payloads)
@@ -1329,6 +1331,162 @@ class ClusterSimulator:
         cluster.migration_count += 1
 
         return True
+
+    # ------------------------------------------------------------------
+    # Non-migration action application (Mission 3)
+    # ------------------------------------------------------------------
+    #
+    # These let the benchmark apply the FULL set of safe recommendations against
+    # simulated state — not only cross-region migrations — so the constraint-aware
+    # policy can actually be measured on thermal/queue/utilization/latency
+    # scenarios. Each action mutates SimCluster state; the NEXT tick's physics
+    # (_update_thermal / _update_queues / _update_cost_accounting) then reflect it.
+    #
+    # Realism is intentionally CONSERVATIVE; semantics + confidence are documented
+    # per action below. None of these mutate a real cluster — they exist only in
+    # the simulator/benchmark harness. In real/customer environments Aurelius
+    # remains recommendation_only.
+
+    def _resolve_workload(
+        self, service_id: str, region_id: Optional[str] = None
+    ) -> Optional[SimWorkload]:
+        cluster = self._cluster
+        if service_id in cluster.workloads:
+            wl = cluster.workloads[service_id]
+            if region_id is None or wl.region_id == region_id:
+                return wl
+        for wl in cluster.workloads.values():
+            if wl.service_id == service_id and (region_id is None or wl.region_id == region_id):
+                return wl
+        return None
+
+    def add_replica(self, service_id: str, region_id: Optional[str] = None) -> bool:
+        """SCALE_REPLICAS: attach one idle GPU in-region to the workload.
+
+        Real mechanism: horizontal autoscaling (vLLM/Triton/Ray Serve replica or
+        K8s HPA) adding serving capacity. Metrics moved: service_rate rises with
+        GPU count (engine.py:722) → queue depth and p95 wait fall, p99 latency
+        improves. Side effect modeled: extra power draw (cost accounting). NOT
+        modeled: replica spin-up latency to readiness (treated as next-tick).
+        Realism: MODERATE_CONFIDENCE — capacity↑→queue↓ is sound; the warmup of a
+        fresh replica is approximated as immediate. Calibration: real replica
+        ready-time and per-replica throughput from pilot autoscaler metrics.
+        """
+        cluster = self._cluster
+        wl = self._resolve_workload(service_id, region_id)
+        if wl is None:
+            return False
+        region = cluster.regions.get(wl.region_id)
+        if region is None:
+            return False
+        for node in region.nodes:
+            for gpu in node.gpus:
+                if gpu.assigned_workload_id is None:
+                    gpu.assigned_workload_id = wl.workload_id
+                    gpu.memory_used_bytes = wl.memory_required_bytes
+                    wl.gpu_ids.append(gpu.gpu_id)
+                    if node.node_id not in wl.node_ids:
+                        wl.node_ids.append(node.node_id)
+                    wl.gpu_count_required = max(wl.gpu_count_required, len(wl.gpu_ids))
+                    wl.topology_score = self._compute_topology_score(wl, cluster)
+                    return True
+        return False  # no idle GPU available — scaling not possible this tick
+
+    def spread_workload(self, service_id: str, region_id: Optional[str] = None) -> bool:
+        """SPREAD: move the workload's hottest GPU onto a cooler idle GPU.
+
+        Real mechanism: pod anti-affinity / topology-spread spreading load off a
+        hot rack. Metrics moved: the workload's GPUs run cooler → less thermal
+        throttling (engine.py:662, 758-763) → lower TPOT/p99; the vacated node's
+        power density falls → rack heat decays (engine.py:639-642). Side effect
+        modeled: prefers an idle GPU on a DIFFERENT rack that is strictly cooler.
+        NOT modeled: in-flight request reshuffle cost. Realism:
+        MODERATE_CONFIDENCE — spreading reduces density and heat; exact thermal
+        coupling is a proxy. Calibration: real DCIM rack-thermal coupling.
+        """
+        cluster = self._cluster
+        wl = self._resolve_workload(service_id, region_id)
+        if wl is None or not wl.gpu_ids:
+            return False
+        region = cluster.regions.get(wl.region_id)
+        if region is None:
+            return False
+        assigned = self._workload_gpus(wl, cluster)
+        if not assigned:
+            return False
+        hottest = max(assigned, key=lambda g: g.temperature_c)
+        hottest_node = next(
+            (n for n in region.nodes if any(g.gpu_id == hottest.gpu_id for g in n.gpus)),
+            None,
+        )
+        hottest_rack = hottest_node.rack_id if hottest_node else None
+        idle = [
+            (gpu, node)
+            for node in region.nodes
+            for gpu in node.gpus
+            if gpu.assigned_workload_id is None
+        ]
+        if not idle:
+            return False
+        # Prefer a cooler GPU on a different rack.
+        idle.sort(key=lambda gn: (gn[1].rack_id == hottest_rack, gn[0].temperature_c))
+        target_gpu, target_node = idle[0]
+        if target_gpu.temperature_c >= hottest.temperature_c - 1.0:
+            return False  # no meaningfully cooler destination
+        hottest.assigned_workload_id = None
+        hottest.memory_used_bytes = int(hottest.profile.memory_total_bytes * 0.01)
+        target_gpu.assigned_workload_id = wl.workload_id
+        target_gpu.memory_used_bytes = wl.memory_required_bytes
+        wl.gpu_ids = [g for g in wl.gpu_ids if g != hottest.gpu_id] + [target_gpu.gpu_id]
+        wl.node_ids = sorted({
+            n.node_id for n in region.nodes for g in n.gpus if g.gpu_id in wl.gpu_ids
+        })
+        wl.topology_score = self._compute_topology_score(wl, cluster)
+        return True
+
+    def defer_flexible_workload(self, service_id: str, region_id: Optional[str] = None) -> bool:
+        """DEFER: shed a flexible/batch workload's load this window (off-peak shift).
+
+        Real mechanism: deferring a batch/flexible job to a cheaper/off-peak
+        window. Metrics moved: the workload's target utilization drops → lower
+        power draw → lower energy cost this tick. Only applied to NON
+        latency-sensitive workloads (deferring a live SLA workload is unsafe).
+        NOT modeled: makespan extension / deadline tracking. Realism:
+        LOW_CONFIDENCE — captures the energy-now reduction but not the deferred
+        work's later cost. Calibration: real batch deadline + catch-up dynamics.
+        """
+        wl = self._resolve_workload(service_id, region_id)
+        if wl is None or wl.latency_sensitive:
+            return False
+        # Shed load this window: drop target utilization toward idle.
+        wl.target_util_pct = min(wl.target_util_pct, 10.0)
+        return True
+
+    def consolidate_low_priority(self, region_id: str, service_id: Optional[str] = None) -> bool:
+        """CONSOLIDATE: power down nodes left fully idle after packing.
+
+        Real mechanism: bin-packing low-priority workloads and scaling idle nodes
+        to a low-power state. Metrics moved: fully-idle nodes drop to ~0 power
+        (vs 10% idle) → energy savings; mean utilization of remaining GPUs is
+        unaffected here. Guarded by the engine: CONSOLIDATE is suppressed when
+        thermal/queue is materially active, so this only fires when it is safe.
+        NOT modeled: node resume latency, fragmentation repacking cost. Realism:
+        LOW_CONFIDENCE — idle-node power-down is real but the savings magnitude is
+        a proxy. Calibration: real node idle vs powered-down power draw.
+        """
+        cluster = self._cluster
+        region = cluster.regions.get(region_id)
+        if region is None:
+            return False
+        changed = False
+        for node in region.nodes:
+            if node.gpus and all(g.assigned_workload_id is None for g in node.gpus):
+                for gpu in node.gpus:
+                    if gpu.power_watts > 1.0:
+                        gpu.power_watts = 0.0  # scale-to-zero idle node
+                        gpu.utilization_pct = 0.0
+                        changed = True
+        return changed
 
     @property
     def current_tick(self) -> int:

@@ -26,6 +26,7 @@ import uuid
 from dataclasses import dataclass, field
 from typing import Optional
 
+from ..connectors.topology import PlacementWorkloadSpec, score_placement
 from ..sla.actions import ActionType, OptimizationAction
 from ..sla.loader import SLARegistry
 from ..sla.selector import SLAAwareActionSelector
@@ -38,8 +39,7 @@ from ..state.models import (
     Provenance,
     Recommendation,
 )
-from ..connectors.topology import PlacementWorkloadSpec, score_placement
-from .classifier import ConstraintClassifier, ConstraintConfig
+from .classifier import _DISALLOWED_ACTIONS, ConstraintClassifier, ConstraintConfig
 from .cost_model import CostModelConfig, MigrationCostModel, RiskInputs
 
 logger = logging.getLogger(__name__)
@@ -363,6 +363,114 @@ _CANDIDATE_GENERATORS = {
 
 
 # ---------------------------------------------------------------------------
+# Multi-constraint action impact model (Mission 2)
+# ---------------------------------------------------------------------------
+#
+# The engine reasons over the FULL constraint score vector, not just the single
+# binding label. Each candidate action has a directional impact on each
+# constraint family: +1 = improves (relieves), -1 = worsens. These signs encode
+# the operational mechanism of each action; magnitudes are scaled at runtime by
+# the current score of the affected constraint (worsening an already-high
+# constraint is more dangerous than worsening a quiet one).
+
+# Savings-equivalent value of fully relieving a maxed-out SLA-risk constraint.
+# Scaled by the relieved constraint's current score. HEURISTIC — chosen so a
+# severe (≈0.5+) constraint justifies a relief action against typical penalties,
+# while a quiet (<0.2) one does not. Calibrate against real SLA-violation cost.
+_OPERATIONAL_RELIEF_WEIGHT: float = 10.0
+
+# SLA-risk families: worsening any of these while it is materially active is a
+# safety problem, regardless of which constraint is "binding".
+_SLA_RISK_FAMILIES: frozenset[ConstraintType] = frozenset({
+    ConstraintType.LATENCY,
+    ConstraintType.QUEUE,
+    ConstraintType.THERMAL,
+    ConstraintType.MEMORY,
+    ConstraintType.COMMUNICATION,
+})
+
+_ACTION_CONSTRAINT_SIGN: dict[str, dict[ConstraintType, int]] = {
+    ActionType.CHOOSE_CHEAPER_REGION.value: {
+        ConstraintType.ENERGY: +1,
+        ConstraintType.LATENCY: -1,   # cold-start tail during warmup
+        ConstraintType.QUEUE: -1,     # destination queue disruption
+        ConstraintType.MEMORY: -1,    # prefix/KV cache flush on move
+    },
+    ActionType.MIGRATE.value: {
+        ConstraintType.ENERGY: +1,
+        ConstraintType.LATENCY: -1,
+        ConstraintType.QUEUE: -1,
+        ConstraintType.MEMORY: -1,
+        ConstraintType.TOPOLOGY: -1,  # may land on worse interconnect
+    },
+    ActionType.CHOOSE_LOWER_CARBON_REGION.value: {
+        ConstraintType.ENERGY: +1,
+        ConstraintType.LATENCY: -1,
+        ConstraintType.QUEUE: -1,
+        ConstraintType.MEMORY: -1,
+    },
+    ActionType.DEFER.value: {
+        ConstraintType.ENERGY: +1,
+        ConstraintType.UTILIZATION: +1,
+        ConstraintType.LATENCY: -1,     # delays completion — unsafe for live SLAs
+    },
+    ActionType.SPREAD.value: {
+        ConstraintType.THERMAL: +1,
+        ConstraintType.QUEUE: +1,
+        ConstraintType.LATENCY: +1,
+        ConstraintType.MEMORY: +1,
+        ConstraintType.UTILIZATION: -1,  # uses more nodes
+    },
+    ActionType.REROUTE.value: {
+        ConstraintType.THERMAL: +1,
+        ConstraintType.QUEUE: +1,
+        ConstraintType.LATENCY: +1,
+    },
+    ActionType.SCALE_REPLICAS.value: {
+        ConstraintType.QUEUE: +1,
+        ConstraintType.LATENCY: +1,
+        ConstraintType.MEMORY: +1,
+        ConstraintType.UTILIZATION: -1,  # consumes more GPUs
+        ConstraintType.ENERGY: -1,       # more power draw
+    },
+    ActionType.CONSOLIDATE.value: {
+        ConstraintType.UTILIZATION: +1,
+        ConstraintType.ENERGY: +1,
+        ConstraintType.TOPOLOGY: +1,
+        ConstraintType.THERMAL: -1,      # increases power density / heat
+        ConstraintType.QUEUE: -1,        # reduces serving capacity
+    },
+    ActionType.CHANGE_PLACEMENT.value: {
+        ConstraintType.TOPOLOGY: +1,
+        ConstraintType.COMMUNICATION: +1,
+        ConstraintType.LATENCY: +1,
+        ConstraintType.THERMAL: -1,      # denser NVLink packing raises heat
+    },
+    ActionType.KEEP.value: {},
+}
+
+
+def _action_impact(action_type: str, scores: dict[ConstraintType, float]) -> dict[ConstraintType, float]:
+    """Estimate a candidate action's signed impact across the full constraint vector.
+
+    Returns ``{constraint: signed_delta}``. Positive = improves (relieves) the
+    constraint; negative = worsens it. The magnitude of a *worsening* is scaled
+    by the current score of the affected constraint, so worsening an already-hot
+    constraint produces a larger (more dangerous) negative delta.
+    """
+    signs = _ACTION_CONSTRAINT_SIGN.get(action_type, {})
+    impact: dict[ConstraintType, float] = {}
+    for ct, sign in signs.items():
+        cur = scores.get(ct, 0.0)
+        if sign < 0:
+            # Worsening magnitude grows with how active the constraint already is.
+            impact[ct] = -(0.25 + 0.75 * cur)
+        else:
+            impact[ct] = 0.25 + 0.75 * (1.0 - cur)  # improving a hot constraint helps more
+    return impact
+
+
+# ---------------------------------------------------------------------------
 # State adapters
 # ---------------------------------------------------------------------------
 
@@ -486,7 +594,21 @@ class ConstraintAwareEngine:
         classifier_config: Optional[ConstraintConfig] = None,
         cost_config: Optional[CostModelConfig] = None,
         implementation_mode: str = "recommendation_only",
+        active_threshold: float = 0.30,
+        safety_active_threshold: float = 0.20,
+        critical_dest_spare_pct: float = 5.0,
     ) -> None:
+        # Multi-constraint thresholds (Mission 2). All HEURISTIC.
+        # active_threshold: a constraint at/above this is "active" enough to
+        #   generate candidate actions for.
+        # safety_active_threshold: an SLA-risk constraint at/above this is
+        #   "materially active" — actions that worsen it are rejected even when
+        #   it is not the binding constraint.
+        # critical_dest_spare_pct: a migration destination with known spare
+        #   capacity below this (or no capacity evidence at all) is unsafe.
+        self.active_threshold = active_threshold
+        self.safety_active_threshold = safety_active_threshold
+        self.critical_dest_spare_pct = critical_dest_spare_pct
         self.classifier = classifier or ConstraintClassifier(
             config=classifier_config or ConstraintConfig()
         )
@@ -584,31 +706,102 @@ class ConstraintAwareEngine:
         # SLA telemetry adapter
         current_ws = _service_to_sla_workload_state(service, state)
 
-        # Generate candidates for the binding constraint
-        generator = _CANDIDATE_GENERATORS.get(binding or ConstraintType.NONE)
-        raw_candidates = generator(service, state, assessment) if generator else []
+        # --- Multi-constraint candidate generation (Mission 2) ---
+        # Reason over the FULL score vector: generate candidates for every
+        # materially-active constraint, not just the single binding label.
+        active = self._active_constraints(assessment.scores, self.active_threshold)
+        if binding is not None and binding not in active:
+            active = [binding, *active]
+        safety_active = {
+            ct
+            for ct, s in assessment.scores.items()
+            if ct in _SLA_RISK_FAMILIES and s >= self.safety_active_threshold
+        }
+        # Explainability: full active-constraint set (not just the binding label).
+        if active:
+            active_str = "Active constraints: " + ", ".join(
+                f"{ct.value}={assessment.scores.get(ct, 0.0):.2f}" for ct in active
+            )
+        else:
+            active_str = f"Binding constraint: {binding.value if binding else 'none'}"
 
-        # Filter candidates disallowed by the classifier for this constraint
+        # Choose which constraints generate candidates. When any SLA-risk
+        # constraint is materially active we PROTECT it: generate only its relief
+        # actions and do NOT chase energy/cost actions (which would disrupt the
+        # at-risk workload). When no SLA-risk constraint is active, pursue the
+        # active cost/efficiency constraints normally.
+        if safety_active:
+            gen_constraints = [
+                ct for ct in active if ct in safety_active
+            ] or sorted(safety_active, key=lambda c: -assessment.scores.get(c, 0.0))
+        else:
+            gen_constraints = active
+
+        # Generate + de-duplicate candidates across the chosen constraints.
+        raw_candidates: list[OptimizationAction] = []
+        seen_keys: set[tuple] = set()
+        for ct in (gen_constraints or [ConstraintType.NONE]):
+            gen = _CANDIDATE_GENERATORS.get(ct)
+            if gen is None:
+                continue
+            for action in gen(service, state, assessment):
+                key = (action.action_type.value, action.target_region)
+                if key not in seen_keys:
+                    seen_keys.add(key)
+                    raw_candidates.append(action)
+
+        # Disallowed actions are derived from ALL active constraints, not only
+        # the binding one (so e.g. an active secondary THERMAL still forbids
+        # CONSOLIDATE even when UTILIZATION is binding).
         disallowed = set(assessment.disallowed_action_types)
+        for ct in active:
+            disallowed.update(_DISALLOWED_ACTIONS.get(ct, []))
+
         allowed_candidates: list[OptimizationAction] = []
         for action in raw_candidates:
-            if action.action_type.value in disallowed:
+            at = action.action_type.value
+
+            # 1. Disallowed by binding/active constraints.
+            if at in disallowed:
                 rejected.append({
                     "service_id": workload_id,
-                    "action": action.action_type.value,
+                    "action": at,
                     "target_region": action.target_region,
-                    "reject_reason": (
-                        f"disallowed_by_classifier for "
-                        f"{binding.value if binding else 'none'}"
-                    ),
+                    "reject_reason": "disallowed_by_active_constraints: "
+                    + ",".join(sorted(c.value for c in active)),
                 })
-                logger.debug(
-                    "Rejected %s for %s: disallowed by classifier (%s)",
-                    action.action_type.value, workload_id,
-                    binding.value if binding else "none",
-                )
-            else:
-                allowed_candidates.append(action)
+                continue
+
+            # 2. Cross-constraint safety: reject an action that WORSENS any
+            #    materially-active SLA-risk constraint (full-vector reasoning).
+            impact = _action_impact(at, assessment.scores)
+            worsened = sorted(
+                ct.value for ct in safety_active if impact.get(ct, 0.0) < 0.0
+            )
+            if worsened:
+                rejected.append({
+                    "service_id": workload_id,
+                    "action": at,
+                    "target_region": action.target_region,
+                    "reject_reason": "cross_constraint_unsafe: worsens active "
+                    + ",".join(worsened),
+                })
+                continue
+
+            # 3. Hard destination-safety gate for cross-region migrations
+            #    (independent of gross savings — a full/unknown destination is
+            #    unsafe no matter how cheap the energy).
+            ds_ok, ds_reason = self._destination_safe(action, state, service)
+            if not ds_ok:
+                rejected.append({
+                    "service_id": workload_id,
+                    "action": at,
+                    "target_region": action.target_region,
+                    "reject_reason": f"destination_unsafe: {ds_reason}",
+                })
+                continue
+
+            allowed_candidates.append(action)
 
         # SLA gate: selector picks the best SLA-safe action
         wl_descriptor = WorkloadDescriptor(job_id=workload_id)
@@ -640,12 +833,28 @@ class ConstraintAwareEngine:
             else "blocked"
         )
 
-        # Cost model gate — applied to the SLA-chosen action
-        # Non-migration non-noop actions (SPREAD, SCALE, CONSOLIDATE) use gross_savings=None
-        # since they represent operational improvement without direct monetary savings signal.
+        # Cost model gate — applied to the SLA-chosen action.
+        # Actions carrying an explicit monetary savings estimate use it directly.
+        # Operational-relief actions (SPREAD/SCALE/REROUTE) carry no monetary
+        # savings, so without an operational-value signal the cost model would
+        # always KEEP them — which is why pre-Mission-2 the engine never relieved
+        # thermal/queue/latency. We assign them a savings-equivalent operational
+        # value proportional to how severely they relieve a materially-active
+        # SLA-risk constraint (only when one is active). This lets a severe
+        # constraint justify a relief action while a quiet one does not.
         gross_savings: Optional[float] = None
         if not chosen.is_noop and chosen.expected_savings_pct > 0:
             gross_savings = chosen.expected_savings_pct  # use pct as abstract cost unit
+        elif not chosen.is_noop and safety_active:
+            impact = _action_impact(chosen.action_type.value, assessment.scores)
+            relieved = [
+                assessment.scores.get(ct, 0.0)
+                for ct in safety_active
+                if impact.get(ct, 0.0) > 0.0
+            ]
+            if relieved:
+                # HEURISTIC: savings-equivalent operational value of relief.
+                gross_savings = _OPERATIONAL_RELIEF_WEIGHT * max(relieved)
 
         # Topology scores: derived from PlacementScorer when topology data is available.
         # Falls back to conservative heuristics (0.7 / 0.0) when topology is absent.
@@ -723,7 +932,7 @@ class ConstraintAwareEngine:
             net_benefit = None
             rationale = (
                 f"KEEP — cost model: {keep_reason}. "
-                f"Binding constraint: {binding.value if binding else 'none'} "
+                f"{active_str} "
                 f"(confidence={assessment.confidence:.2f}). "
                 f"{cost_estimate.explanation}"
             )
@@ -732,12 +941,22 @@ class ConstraintAwareEngine:
             is_noop = chosen.is_noop
             final_sla_status = sla_status if not is_noop else "unknown"
             net_benefit = cost_estimate.net_expected_savings if not is_noop else None
+            rejected_summary = (
+                " Rejected alternatives: "
+                + "; ".join(
+                    f"{r['action']} ({r['reject_reason']})" for r in rejected[:3]
+                )
+                + "."
+                if rejected
+                else ""
+            )
             rationale = (
-                f"Binding constraint: {binding.value if binding else 'none'} "
+                f"{active_str} "
                 f"(confidence={assessment.confidence:.2f}). "
                 f"SLA: {sla_status}. "
                 f"Action: {chosen.description}. "
                 f"{cost_estimate.explanation}"
+                f"{rejected_summary}"
             )
 
         # Provenance inherits sandbox flag from ClusterState
@@ -798,6 +1017,68 @@ class ConstraintAwareEngine:
         )
 
         return recommendation, rejected
+
+    # ------------------------------------------------------------------
+    # Multi-constraint helpers (Mission 2)
+    # ------------------------------------------------------------------
+
+    @staticmethod
+    def _active_constraints(
+        scores: dict[ConstraintType, float], threshold: float
+    ) -> list[ConstraintType]:
+        """All constraints scoring at/above ``threshold``, highest first."""
+        return [
+            ct
+            for ct, s in sorted(scores.items(), key=lambda kv: -kv[1])
+            if s >= threshold and ct != ConstraintType.NONE
+        ]
+
+    def _destination_safe(
+        self,
+        action: OptimizationAction,
+        state: ClusterState,
+        service: InferenceServiceState,
+    ) -> tuple[bool, str]:
+        """Hard safety gate for cross-region migration destinations.
+
+        A destination is unsafe — independent of how large the gross savings are
+        — when its spare capacity is known and critically low, or when there is
+        no capacity evidence at all (so safety cannot be proven). This stops a
+        cheap-energy migration from overwhelming a full/unknown destination.
+        """
+        migration_types = {
+            ActionType.CHOOSE_CHEAPER_REGION.value,
+            ActionType.MIGRATE.value,
+            ActionType.CHOOSE_LOWER_CARBON_REGION.value,
+        }
+        if action.action_type.value not in migration_types:
+            return True, ""
+        tgt = action.target_region
+        if tgt is None or tgt == service.region:
+            return True, ""
+
+        dest = state.regions.get(tgt)
+        if dest is None:
+            return False, f"destination region {tgt!r} absent from cluster state"
+
+        spare = dest.spare_capacity_pct
+        if spare is not None:
+            if spare < self.critical_dest_spare_pct:
+                return False, (
+                    f"destination {tgt} spare capacity {spare:.0f}% below critical "
+                    f"floor {self.critical_dest_spare_pct:.0f}%"
+                )
+            return True, ""
+
+        # Spare capacity unknown — require some allocatable-headroom evidence.
+        allocatable = sum((n.gpu_allocatable or 0) for n in dest.nodes.values())
+        allocated = sum((n.gpu_allocated or 0) for n in dest.nodes.values())
+        if not dest.nodes or allocatable <= allocated:
+            return False, (
+                f"destination {tgt} capacity unknown and unverifiable "
+                f"(missing spare telemetry)"
+            )
+        return True, ""
 
     # ------------------------------------------------------------------
     # Low-confidence fallback
