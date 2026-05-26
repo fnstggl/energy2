@@ -1090,4 +1090,242 @@ _BUILTIN_SCENARIOS: dict[str, dict[str, Any]] = {
         ],
         "events": [],
     },
+
+    # -----------------------------------------------------------------------
+    # 12. Tensor-parallel topology collapse — TP job split across racks
+    # -----------------------------------------------------------------------
+    # A tensor-parallel workload needs 4 GPUs but the region's GPUs are spread
+    # across two racks (2+2). The all-reduce-per-layer collective is paced by
+    # the worst (cross-rack) hop → throughput collapses and p95/p99 blow up.
+    # Same layout with the GPUs co-located on one NVSwitch node would be safe.
+    "tensor_parallel_topology_collapse": {
+        "scenario_name": "tensor_parallel_topology_collapse",
+        "description": (
+            "Tensor-parallel job (all-reduce per layer) forced to span two racks. "
+            "Expected: communication penalty collapses throughput and amplifies "
+            "p95/p99; NVSwitch co-location would avoid it. Topology-dominant."
+        ),
+        "seed": 42,
+        "tick_duration_hours": 1.0,
+        "expected_primary_constraint": "topology_bound",
+        "expected_events": [],
+        "scenario_version": "v1",
+        "simulator_version": "1.0.0",
+        "regions": [
+            {
+                "region_id": "us-east",
+                "energy_price_trace": [55.0] * 24,
+                "ambient_temp_c": 22.0,
+                "nodes": [
+                    {
+                        "node_id": "tp-node0",
+                        "gpu_type": "a100-sxm4-80gb",
+                        "gpu_count": 2,
+                        "topology_class": "nvswitch",
+                        "rack_id": "us-east-rack0",
+                        "zone": "us-east-1a",
+                    },
+                    {
+                        "node_id": "tp-node1",
+                        "gpu_type": "a100-sxm4-80gb",
+                        "gpu_count": 2,
+                        "topology_class": "nvswitch",
+                        "rack_id": "us-east-rack1",
+                        "zone": "us-east-1b",
+                    },
+                ],
+                "queues": [
+                    {
+                        "queue_id": "us-east-q0",
+                        "service_id": "tp-inference",
+                        "base_arrival_rate_per_sec": 3.0,
+                        "diurnal_amplitude": 0.3,
+                    }
+                ],
+            }
+        ],
+        "workloads": [
+            {
+                "workload_id": "tp-wl",
+                "service_id": "tp-inference",
+                "workload_type": "inference",
+                "priority_tier": "latency_sensitive",
+                "region_id": "us-east",
+                "gpu_count_required": 4,
+                "target_util_pct": 70.0,
+                "communication_intensity": "high",
+                "comm_profile": "tensor_parallel",
+                "comm_message_bytes": 8 * 1024 * 1024,
+                "latency_sensitive": True,
+                "latency_sla_p99_ms": 3000.0,
+                "migration_allowed": True,
+            }
+        ],
+        "events": [],
+    },
+
+    # -----------------------------------------------------------------------
+    # 13. MoE all-to-all hotspot + NIC saturation under congestion
+    # -----------------------------------------------------------------------
+    # An expert-parallel (MoE) workload with all-to-all dispatch/combine traffic
+    # co-located on PCIe nodes. As load rises the fabric oversubscribes and the
+    # all-to-all hotspot amplifies communication → throughput drops, NIC saturates.
+    "moe_hotspot_nic_saturation": {
+        "scenario_name": "moe_hotspot_nic_saturation",
+        "description": (
+            "MoE / expert-parallel all-to-all traffic on PCIe nodes under a load "
+            "surge. Expected: all-to-all hotspot amplification + NIC saturation + "
+            "fabric congestion degrade throughput and tails. Topology-dominant."
+        ),
+        "seed": 7,
+        "tick_duration_hours": 1.0,
+        "expected_primary_constraint": "topology_bound",
+        "expected_events": ["queue_surge"],
+        "scenario_version": "v1",
+        "simulator_version": "1.0.0",
+        "regions": [
+            {
+                "region_id": "us-east",
+                "energy_price_trace": [55.0] * 24,
+                "ambient_temp_c": 22.0,
+                "nodes": [
+                    {
+                        "node_id": "moe-node0",
+                        "gpu_type": "a100-pcie-80gb",
+                        "gpu_count": 4,
+                        "topology_class": "pcie_multi_numa",
+                        "rack_id": "us-east-rack0",
+                        "zone": "us-east-1a",
+                    },
+                    {
+                        "node_id": "moe-node1",
+                        "gpu_type": "a100-pcie-80gb",
+                        "gpu_count": 4,
+                        "topology_class": "pcie_multi_numa",
+                        "rack_id": "us-east-rack0",
+                        "zone": "us-east-1a",
+                    },
+                ],
+                "queues": [
+                    {
+                        "queue_id": "us-east-q0",
+                        "service_id": "moe-inference",
+                        "base_arrival_rate_per_sec": 4.0,
+                        "diurnal_amplitude": 0.3,
+                    }
+                ],
+            }
+        ],
+        "workloads": [
+            {
+                "workload_id": "moe-wl",
+                "service_id": "moe-inference",
+                "workload_type": "inference",
+                "priority_tier": "standard",
+                "region_id": "us-east",
+                "gpu_count_required": 8,
+                "target_util_pct": 75.0,
+                "communication_intensity": "high",
+                "comm_profile": "moe_expert",
+                "comm_message_bytes": 16 * 1024 * 1024,
+                "migration_allowed": True,
+            }
+        ],
+        "events": [
+            {"tick": 8, "type": "queue_surge", "region_id": "us-east",
+             "service_id": "moe-inference", "multiplier": 2.5},
+            {"tick": 16, "type": "queue_surge_end", "region_id": "us-east",
+             "service_id": "moe-inference"},
+        ],
+    },
+
+    # -----------------------------------------------------------------------
+    # 14. Degraded topology telemetry — missing NVLink/NIC visibility
+    # -----------------------------------------------------------------------
+    # Topology telemetry is partial (NVLink + NIC maps missing). The simulator
+    # must NOT assume ideal proximity: confidence drops, the usable topology
+    # score is discounted, and the topology-aware migration governor becomes more
+    # conservative (cross-domain vetoes trigger at a lower distance threshold).
+    "degraded_topology_telemetry": {
+        "scenario_name": "degraded_topology_telemetry",
+        "description": (
+            "Partial topology telemetry (missing NVLink + NIC maps, stale topo). "
+            "Expected: lowered placement confidence, discounted topology score, "
+            "more conservative topology-aware migration vetoes. Missing != safe."
+        ),
+        "seed": 11,
+        "tick_duration_hours": 1.0,
+        "expected_primary_constraint": "topology_bound",
+        "expected_events": [],
+        "scenario_version": "v1",
+        "simulator_version": "1.0.0",
+        "regions": [
+            {
+                "region_id": "us-east",
+                "energy_price_trace": [80.0] * 24,
+                "ambient_temp_c": 22.0,
+                "network_latency_to": {"us-west": 70},
+                "nodes": [
+                    {
+                        "node_id": "blind-node0",
+                        "gpu_type": "a100-sxm4-80gb",
+                        "gpu_count": 4,
+                        "topology_class": "nvswitch",
+                        "rack_id": "us-east-rack0",
+                        "zone": "us-east-1a",
+                        "nvlink_telemetry_visible": False,
+                        "nic_telemetry_visible": False,
+                        "topology_stale_ticks": 6,
+                    }
+                ],
+                "queues": [
+                    {
+                        "queue_id": "us-east-q0",
+                        "service_id": "blind-train",
+                        "base_arrival_rate_per_sec": 1.0,
+                        "diurnal_amplitude": 0.2,
+                    }
+                ],
+            },
+            {
+                "region_id": "us-west",
+                "energy_price_trace": [35.0] * 24,
+                "ambient_temp_c": 18.0,
+                "network_latency_to": {"us-east": 70},
+                "nodes": [
+                    {
+                        "node_id": "west-node0",
+                        "gpu_type": "a100-sxm4-80gb",
+                        "gpu_count": 4,
+                        "topology_class": "nvswitch",
+                        "rack_id": "us-west-rack0",
+                        "zone": "us-west-2a",
+                    }
+                ],
+                "queues": [
+                    {
+                        "queue_id": "us-west-q0",
+                        "service_id": "blind-train-west",
+                        "base_arrival_rate_per_sec": 0.1,
+                        "diurnal_amplitude": 0.2,
+                    }
+                ],
+            },
+        ],
+        "workloads": [
+            {
+                "workload_id": "blind-train-wl",
+                "service_id": "blind-train",
+                "workload_type": "batch_training",
+                "priority_tier": "standard",
+                "region_id": "us-east",
+                "gpu_count_required": 4,
+                "target_util_pct": 70.0,
+                "communication_intensity": "high",
+                "comm_profile": "all_reduce_training",
+                "migration_allowed": True,
+            }
+        ],
+        "events": [],
+    },
 }

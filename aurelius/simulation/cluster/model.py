@@ -133,6 +133,10 @@ class SimGPU:
     # First-class per-GPU thermal state (mutable). Constructed lazily by engine.
     thermal: Optional[Any] = None
 
+    # First-class per-GPU fabric state (NVLink/PCIe/NUMA/socket). Constructed
+    # lazily by the engine to avoid an import cycle.
+    fabric: Optional[Any] = None
+
     # Assigned workload (one workload per GPU for simplicity)
     assigned_workload_id: Optional[str] = None
 
@@ -175,6 +179,10 @@ class SimNode:
     cooling_regime: str = "air"
     # First-class per-rack thermal state (mutable). Constructed lazily by engine.
     rack_thermal: Optional[Any] = None
+
+    # First-class per-node fabric state (rack/NIC/congestion/telemetry/health).
+    # Constructed lazily by the engine.
+    node_fabric: Optional[Any] = None
 
     # Labels (matches K8s topology.kubernetes.io/zone etc.)
     labels: dict[str, str] = field(default_factory=dict)
@@ -261,6 +269,16 @@ class SimWorkload:
     memory_intensity: str = "medium"
     latency_sensitive: bool = False
 
+    # Topology / communication sensitivity profile (names an entry in
+    # calibration.WORKLOAD_COMM_PROFILES). None → inferred from workload_type /
+    # communication_intensity so existing scenarios keep working unchanged.
+    # tensor_parallel | pipeline_parallel | all_reduce_training | moe_expert |
+    # embedding | retrieval | batch_inference | comm_light_inference
+    comm_profile: Optional[str] = None
+    # Representative collective message size (bytes) for the comm-cost model
+    # (gradient/activation/expert payload). Order-of-magnitude proxy.
+    comm_message_bytes: int = 4 * 1024 * 1024  # 4 MiB default
+
     # SLA
     sla_policy_id: Optional[str] = None
     latency_sla_p99_ms: Optional[float] = None   # None = no hard SLA
@@ -297,6 +315,10 @@ class SimWorkload:
     pdb_min_available: int = 0            # PodDisruptionBudget floor
     # First-class migration state (mutable). Constructed lazily by the engine.
     migration: Optional[Any] = None
+
+    # First-class topology / communication state (mutable; updated each tick).
+    # Constructed lazily by the engine.
+    topology: Optional[Any] = None
 
     # Computed per tick
     effective_tokens_per_second: float = 0.0

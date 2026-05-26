@@ -966,20 +966,461 @@ def resolve_cooling_regime(name: str | None) -> CoolingRegime:
     )
 
 
+# ---------------------------------------------------------------------------
+# Topology / communication / placement parameter registry
+# ---------------------------------------------------------------------------
+# Added for the topology-realism upgrade (driven by topology.py). These price
+# the communication cost of a placement: latency-bandwidth message cost
+# (T = alpha + m/B_eff), ring/tree collective amplification, small-message
+# latency amplification, fabric contention/congestion, synchronization
+# penalties, communication-induced tail latency, topology telemetry confidence,
+# and a topology-aware migration veto. As elsewhere, the great majority are
+# HEURISTIC/INFERRED priors anchored to documented mechanisms (e.g. NVLink vs
+# PCIe vs InfiniBand bandwidth/latency regimes, ring-all-reduce scaling); NONE
+# are MEASURED on a live cluster. They make topology-aware placement materially
+# matter so bad placement can collapse throughput and synchronization-heavy jobs
+# become hard to move.
+
+TOPOLOGY_PARAMS: dict[str, CalibratedParam] = {
+    # --- Small-message latency amplification -----------------------------
+    "small_message_bytes": _h(
+        262144.0,
+        "Payload size (bytes) below which fixed per-message latency alpha "
+        "dominates over m/B_eff (small-message regime). ~256 KiB is the rough "
+        "NCCL latency/bandwidth crossover; calibrate from real message-size "
+        "sweeps per fabric.",
+        source_type=INFERRED, source="NCCL latency-bound vs bandwidth-bound crossover",
+        confidence="low",
+    ),
+    "small_message_amp_max": _h(
+        3.0,
+        "Max latency amplification for tiny messages where alpha and protocol "
+        "overhead dominate (latency-bound collectives pay this). Calibrate from "
+        "real small-message all-reduce latency.",
+        source_type=INFERRED, source="latency-bound small-message collectives",
+    ),
+
+    # --- Fabric contention / congestion ----------------------------------
+    "congestion_onset": _h(
+        0.60,
+        "Link utilization fraction above which effective bandwidth starts "
+        "degrading and queueing delay rises (oversubscription onset). "
+        "Operational heuristic, NOT a universal limit. Calibrate from real "
+        "fabric utilization-vs-latency curves.",
+        source_type=INFERRED, source="fabric oversubscription / queueing onset",
+        confidence="low",
+    ),
+    "congestion_convexity": _h(
+        2.0,
+        "Convexity k of congestion amplification (1/(1-load))^k past the onset. "
+        "Higher = bandwidth collapses faster under saturation. Calibrate from "
+        "real congestion-collapse tests.",
+        source_type=INFERRED, source="queueing amplification under saturation",
+    ),
+    "congestion_bw_floor": _h(
+        0.20,
+        "Floor on effective-bandwidth fraction under full congestion collapse "
+        "(a saturated fabric still moves SOME data). Calibrate from real "
+        "saturated-fabric goodput.",
+        source_type=INFERRED, source="goodput floor under congestion collapse",
+    ),
+    "nic_congestion_onset": _h(
+        0.55,
+        "Per-NIC throughput fraction above which NIC queueing / incast amplifies "
+        "cross-node latency. Cross-node collectives bottleneck on the NIC before "
+        "the intra-node fabric. Calibrate from real NIC saturation tests.",
+        source_type=INFERRED, source="NIC incast / queueing onset",
+        confidence="low",
+    ),
+
+    # --- Collective amplification ----------------------------------------
+    "collective_amp_max": _h(
+        6.0,
+        "Max collective-communication amplification of point-to-point cost at "
+        "large N under poor placement (ring all-reduce across many "
+        "cross-rack hops). Calibrate from real collective scaling sweeps.",
+        source_type=INFERRED, source="ring/tree all-reduce scaling with N and hops",
+    ),
+    "allreduce_alpha_term_weight": _h(
+        1.0,
+        "Weight on the latency (alpha) term in the ring-all-reduce approximation "
+        "T_ring = 2(N-1)/N*(m/B_eff) + w*2(N-1)*alpha. Latency-bound collectives "
+        "(small m, many ranks) are dominated by this. Calibrate per fabric.",
+        source_type=INFERRED, source="ring all-reduce cost model (Rabenseifner/NCCL)",
+        confidence="medium",
+    ),
+
+    # --- Synchronization penalty -----------------------------------------
+    "sync_penalty_max": _h(
+        0.50,
+        "Max throughput slowdown fraction for a synchronization-heavy workload "
+        "under worst-case topology (stragglers stall the whole collective; the "
+        "slowest rank sets the pace). Calibrate from real straggler/sync-stall "
+        "telemetry.",
+        source_type=INFERRED, source="bulk-synchronous straggler stalls",
+    ),
+    "sync_straggler_jitter": _h(
+        0.15,
+        "Std-dev of per-rank straggler jitter (fraction) injected into "
+        "synchronization-heavy collectives. Bulk-synchronous steps wait on the "
+        "slowest rank, so jitter amplifies tail. Calibrate from real per-rank "
+        "step-time variance.",
+    ),
+
+    # --- Communication-induced tail latency ------------------------------
+    "comm_tail_p95_base": _h(
+        1.3,
+        "p95/p50 communication-latency tail multiplier at GOOD topology / low "
+        "congestion. Grows toward comm_tail_max as topology degrades. Calibrate "
+        "from real collective-latency histograms.",
+        source_type=INFERRED, source="collective-latency tail behaviour",
+        confidence="low",
+    ),
+    "comm_tail_p99_base": _h(
+        1.8,
+        "p99/p50 communication-latency tail multiplier at good topology. Grows "
+        "convexly toward comm_tail_max under congestion/poor placement.",
+        source_type=INFERRED, source="collective-latency tail behaviour",
+        confidence="low",
+    ),
+    "comm_tail_max": _h(
+        10.0,
+        "Max communication-latency tail multiplier under congestion collapse / "
+        "cross-rack synchronization instability (p99 blows up faster than the "
+        "mean). Calibrate from real degraded-topology tail incidents.",
+        source_type=INFERRED, source="topology-induced tail blow-up",
+    ),
+
+    # --- Topology score / penalty normalization --------------------------
+    "topology_penalty_mu": _h(
+        1.0,
+        "Normalization mu in the communication penalty P = sum_k lambda_k*(m_k/B_k"
+        "+alpha_k)/(mu*S). Scales the absolute penalty so it is comparable to "
+        "energy savings; tune so comm penalties can OUTWEIGH arbitrage gains for "
+        "sync-heavy jobs. Heuristic policy lever.",
+        source_type=HEURISTIC, confidence="low",
+    ),
+    "topology_throughput_penalty_max": _h(
+        0.85,
+        "Max throughput slowdown fraction from a catastrophic placement of a "
+        "highly communication-bound workload (e.g. tensor-parallel split across "
+        "racks). Bad placement can collapse throughput, not just nudge it. "
+        "Calibrate from real cross-domain TP throughput cliffs.",
+        source_type=INFERRED, source="tensor-parallel cross-domain throughput collapse",
+    ),
+    "tp_instability_score": _h(
+        0.45,
+        "Topology-quality score (0-1) below which a tensor-parallel / sync-heavy "
+        "workload is considered UNSTABLE (collective instability risk, runaway "
+        "tails). Operational heuristic, NOT universal.",
+        source_type=INFERRED, source="TP collectives unstable off-NVSwitch (inferred)",
+        confidence="low",
+    ),
+    "moe_hotspot_amp": _h(
+        2.5,
+        "All-to-all hotspot amplification for MoE / expert-parallel traffic under "
+        "congestion (expert popularity skew creates incast hotspots). Calibrate "
+        "from real MoE dispatch/combine traffic.",
+        source_type=INFERRED, source="MoE all-to-all expert-popularity hotspots",
+    ),
+
+    # --- Topology telemetry confidence -----------------------------------
+    "topology_telemetry_missing_risk": _h(
+        0.5,
+        "Risk inflation when topology telemetry is missing/stale (missing "
+        "topology must NOT be read as ideal proximity). Heuristic policy lever; "
+        "raises placement conservatism and migration vetoes.",
+        source_type=HEURISTIC, confidence="low",
+    ),
+    "topology_confidence_min_score": _h(
+        0.6,
+        "Floor applied to a placement's usable topology score under LOW telemetry "
+        "confidence (we assume it MIGHT be a poor placement, so we discount the "
+        "optimistic reading). Heuristic conservatism lever.",
+        source_type=HEURISTIC, confidence="low",
+    ),
+
+    # --- Topology-aware migration veto -----------------------------------
+    "migration_veto_distance": _h(
+        4.0,
+        "Topology-distance ladder rung (same-rack=4, cross-rack=5, "
+        "cross-region=6) at/above which migrating a communication-sensitive or "
+        "synchronization-heavy workload is vetoed (the move would break fabric "
+        "locality). Calibrate from real placement-locality policies.",
+        source_type=INFERRED, source="topology-locality preservation policy",
+        confidence="low",
+    ),
+    "migration_veto_comm_weight": _h(
+        0.5,
+        "Communication-weight (lambda) threshold above which the distance-based "
+        "topology migration veto applies. Low-comm jobs migrate freely; high-comm "
+        "/ sync-heavy jobs are pinned. Heuristic policy lever.",
+        source_type=HEURISTIC, confidence="low",
+    ),
+
+    # --- Stochastic variation --------------------------------------------
+    "collective_jitter_frac": _h(
+        0.08,
+        "Std-dev of multiplicative collective-latency jitter per tick (routing "
+        "variation, NIC contention, scheduling). Topology behaviour is NOT one "
+        "deterministic curve. Calibrate from real collective-latency variance.",
+    ),
+    "routing_variation_frac": _h(
+        0.05,
+        "Std-dev of multiplicative effective-bandwidth jitter from adaptive "
+        "routing / path variation per tick. Calibrate from real fabric path "
+        "variance.",
+    ),
+}
+
+
+# ---------------------------------------------------------------------------
+# Topology distance ladder (tunable engineering heuristic, NOT universal truth)
+# ---------------------------------------------------------------------------
+# d(i,j) in the topology score S = sum(w_ij * d(i,j)). Lower = closer = better.
+# These rungs are deliberately ordinal: the *gaps* are tuned so that crossing a
+# domain boundary (e.g. node->rack, rack->region) is materially more expensive
+# than the one before, NOT measured hop counts.
+
+TOPOLOGY_DISTANCE_LADDER: dict[str, int] = {
+    "intra_gpu": 0,        # same GPU
+    "nvswitch": 1,         # same NVSwitch domain (fully connected)
+    "nvlink": 1,           # same NVLink domain (point-to-point links)
+    "pcie_root": 2,        # same PCIe root complex
+    "socket": 3,           # same NUMA socket (cross PCIe root, same socket)
+    "node": 3,             # same node (cross-socket within a box)
+    "rack": 4,             # same rack, different node
+    "cross_rack": 5,       # different rack, same region
+    "cross_region": 6,     # different region
+}
+
+
+@dataclass(frozen=True)
+class FabricRegime:
+    """A communication regime: distance rung + effective bandwidth + latency.
+
+    b_eff_gbps is one-directional effective payload bandwidth (GB/s) AFTER
+    protocol overhead; latency_us is the fixed per-message latency term alpha
+    (microseconds). congestion_sensitivity scales how fast b_eff degrades under
+    contention. These are regime PRIORS spanning NVSwitch -> NVLink -> PCIe ->
+    same-rack IB -> cross-rack -> cross-region, NOT measured per-fabric numbers;
+    the point is that the regimes differ MATERIALLY (orders of magnitude in
+    latency, large bandwidth steps), so links are NOT interchangeable pipes.
+    """
+    name: str
+    distance: int
+    b_eff_gbps: float
+    latency_us: float
+    congestion_sensitivity: float = 1.0
+    source: str = "fabric bandwidth/latency regime (vendor docs + inference)"
+    source_type: str = INFERRED
+    confidence: str = "low"
+
+
+# Regime priors. NVSwitch/NVLink bandwidths are SXM-class one-way figures; PCIe
+# Gen4/Gen5 ~ 32/64 GB/s effective; same-rack InfiniBand HDR/NDR ~ 25-50 GB/s
+# with ~1-2 us latency; cross-rack adds switch hops; cross-region is WAN-class.
+FABRIC_REGIMES: dict[str, FabricRegime] = {
+    "intra_gpu": FabricRegime(
+        "intra_gpu", 0, 2000.0, 0.1, 0.5,
+        source="on-device HBM (no inter-GPU transfer)", confidence="medium"),
+    "nvswitch": FabricRegime(
+        "nvswitch", 1, 450.0, 0.8, 0.6,
+        source="NVSwitch all-to-all (H100 SXM ~450 GB/s/dir uni)",
+        source_type=DOCUMENTED, confidence="medium"),
+    "nvlink": FabricRegime(
+        "nvlink", 1, 300.0, 1.0, 0.8,
+        source="point-to-point NVLink (A100/H100 partial mesh)",
+        source_type=DOCUMENTED, confidence="medium"),
+    "pcie_root": FabricRegime(
+        "pcie_root", 2, 50.0, 3.0, 1.2,
+        source="PCIe Gen5 x16 ~64 GB/s peak, ~50 effective",
+        source_type=DOCUMENTED, confidence="medium"),
+    "socket": FabricRegime(
+        "socket", 3, 32.0, 5.0, 1.4,
+        source="cross-PCIe-root within socket (Gen4-class ~32 GB/s)",
+        source_type=INFERRED),
+    "node": FabricRegime(
+        "node", 3, 20.0, 8.0, 1.6,
+        source="cross-socket QPI/UPI staging + PCIe (NUMA crossing)",
+        source_type=INFERRED),
+    "rack": FabricRegime(
+        "rack", 4, 25.0, 2.0, 1.8,
+        source="same-rack InfiniBand NDR/HDR (~25 GB/s, ~2 us)",
+        source_type=DOCUMENTED, confidence="low"),
+    "cross_rack": FabricRegime(
+        "cross_rack", 5, 12.5, 5.0, 2.5,
+        source="cross-rack via spine switches (oversubscribed, extra hops)",
+        source_type=INFERRED),
+    "cross_region": FabricRegime(
+        "cross_region", 6, 1.25, 10000.0, 3.0,
+        source="cross-region WAN (ms-class latency, limited bandwidth)",
+        source_type=INFERRED),
+}
+
+DEFAULT_FABRIC_REGIME = "nvswitch"
+
+
+@dataclass(frozen=True)
+class NVLinkGeneration:
+    """NVLink/NVSwitch generation regime (per-GPU aggregate, both directions).
+
+    bidir_gbps is the marketed aggregate NVLink bandwidth per GPU; intra-domain
+    point-to-point effective bandwidth is a fraction of this. Distinct
+    generations exist precisely so the simulator does NOT treat all NVLink as
+    one bandwidth (A100 ~600, H100 ~900, future ~1800 GB/s class).
+    """
+    name: str
+    bidir_gbps: float
+    latency_us: float
+    source: str = "NVIDIA NVLink generation datasheet"
+    source_type: str = DOCUMENTED
+    confidence: str = "medium"
+
+
+NVLINK_GENERATIONS: dict[str, NVLinkGeneration] = {
+    "a100": NVLinkGeneration("a100", 600.0, 1.2,
+                             source="NVIDIA A100 NVLink3 ~600 GB/s aggregate"),
+    "h100": NVLinkGeneration("h100", 900.0, 0.9,
+                             source="NVIDIA H100 NVLink4 ~900 GB/s aggregate"),
+    "future": NVLinkGeneration("future", 1800.0, 0.7,
+                               source="future-generation NVLink (~1.8 TB/s class)",
+                               source_type=INFERRED, confidence="low"),
+}
+
+
+@dataclass(frozen=True)
+class WorkloadCommProfile:
+    """Topology sensitivity of a workload family.
+
+    comm_weight (lambda) is the relative communication intensity used in the
+    penalty P; collective names the dominant collective; small_msg_sensitivity
+    and tail_sensitivity scale small-message amplification and how hard topology
+    degradation hits p95/p99; sync_heavy marks bulk-synchronous workloads whose
+    slowest rank sets the pace; nvlink_affinity is how strongly the workload
+    benefits from NVLink/NVSwitch locality. These distinguish tensor-parallel
+    (strongly prefers NVLink, unstable off it) from batch inference (low average
+    sensitivity, still tails under poor topology). Priors, NOT measured.
+    """
+    name: str
+    comm_weight: float
+    collective: str               # all_reduce | all_to_all | p2p | tree | none
+    small_msg_sensitivity: float
+    tail_sensitivity: float
+    sync_heavy: bool
+    nvlink_affinity: float
+    source: str = "workload communication character (inferred)"
+    source_type: str = INFERRED
+    confidence: str = "low"
+
+
+WORKLOAD_COMM_PROFILES: dict[str, WorkloadCommProfile] = {
+    "tensor_parallel": WorkloadCommProfile(
+        "tensor_parallel", 1.0, "all_reduce", 0.9, 0.9, True, 1.0,
+        source="TP all-reduce per layer; latency-bound, NVLink-critical"),
+    "pipeline_parallel": WorkloadCommProfile(
+        "pipeline_parallel", 0.4, "p2p", 0.5, 0.6, True, 0.6,
+        source="PP point-to-point activations; bubble-sensitive"),
+    "all_reduce_training": WorkloadCommProfile(
+        "all_reduce_training", 0.85, "all_reduce", 0.7, 0.85, True, 0.8,
+        source="data-parallel gradient all-reduce; bandwidth+latency bound"),
+    "moe_expert": WorkloadCommProfile(
+        "moe_expert", 0.7, "all_to_all", 0.6, 0.8, True, 0.7,
+        source="MoE dispatch/combine all-to-all; hotspot-prone"),
+    "embedding": WorkloadCommProfile(
+        "embedding", 0.3, "p2p", 0.4, 0.4, False, 0.4,
+        source="embedding lookup/exchange; moderate, sharded"),
+    "retrieval": WorkloadCommProfile(
+        "retrieval", 0.25, "p2p", 0.4, 0.4, False, 0.3,
+        source="retrieval/RAG fan-out; moderate small-message"),
+    "batch_inference": WorkloadCommProfile(
+        "batch_inference", 0.15, "none", 0.2, 0.4, False, 0.2,
+        source="batch inference; low average comm, still tails under bad topo"),
+    "comm_light_inference": WorkloadCommProfile(
+        "comm_light_inference", 0.05, "none", 0.1, 0.3, False, 0.1,
+        source="single-GPU / comm-light inference; topology-insensitive"),
+}
+
+DEFAULT_COMM_PROFILE = "comm_light_inference"
+
+
+def topology_value(name: str, config: dict | None = None) -> float:
+    """Return a topology parameter's value, allowing per-run config override.
+
+    Mirrors ``thermal_value`` for the TOPOLOGY_PARAMS registry so every topology
+    / communication assumption is configurable: ``config={'sync_penalty_max':
+    0.4}`` overrides the registry default.
+    """
+    if config and name in config:
+        return float(config[name])
+    return float(TOPOLOGY_PARAMS[name].value)
+
+
+def resolve_fabric_regime(name: str | None) -> FabricRegime:
+    """Resolve a fabric regime by name (default NVSwitch)."""
+    return FABRIC_REGIMES.get(
+        (name or DEFAULT_FABRIC_REGIME).lower(), FABRIC_REGIMES[DEFAULT_FABRIC_REGIME]
+    )
+
+
+def resolve_nvlink_generation(name: str | None) -> NVLinkGeneration:
+    """Resolve an NVLink generation by name (default A100)."""
+    return NVLINK_GENERATIONS.get((name or "a100").lower(), NVLINK_GENERATIONS["a100"])
+
+
+def nvlink_generation_for_model(model_name: str) -> NVLinkGeneration:
+    """Map a GPUProfile.model_name to an NVLink generation (substring heuristic)."""
+    m = (model_name or "").lower()
+    if "h100" in m or "h200" in m:
+        return NVLINK_GENERATIONS["h100"]
+    if "b100" in m or "b200" in m or "gb200" in m:
+        return NVLINK_GENERATIONS["future"]
+    return NVLINK_GENERATIONS["a100"]
+
+
+def resolve_comm_profile(
+    name: str | None,
+    communication_intensity: str | None = None,
+    workload_type: str | None = None,
+) -> WorkloadCommProfile:
+    """Resolve a workload communication profile.
+
+    Explicit ``name`` wins. Otherwise infer from workload_type (embedding/
+    training/etc.) then fall back to the coarse communication_intensity
+    (low/medium/high) so existing scenarios keep working without a comm_profile.
+    """
+    if name and name in WORKLOAD_COMM_PROFILES:
+        return WORKLOAD_COMM_PROFILES[name]
+    wt = (workload_type or "").lower()
+    if wt in ("batch_training", "fine_tuning", "training"):
+        return WORKLOAD_COMM_PROFILES["all_reduce_training"]
+    if wt == "embedding":
+        return WORKLOAD_COMM_PROFILES["embedding"]
+    ci = (communication_intensity or "low").lower()
+    if ci == "high":
+        return WORKLOAD_COMM_PROFILES["tensor_parallel"]
+    if ci == "medium":
+        return WORKLOAD_COMM_PROFILES["all_reduce_training"]
+    return WORKLOAD_COMM_PROFILES["comm_light_inference"]
+
+
 # Combined registry: every tunable constant is inspectable in one place.
 ALL_PARAMS: dict[str, CalibratedParam] = {
     **SERVING_PARAMS, **KV_CACHE_PARAMS, **MIGRATION_PARAMS, **THERMAL_PARAMS,
+    **TOPOLOGY_PARAMS,
 }
 
 
 def calibration_table() -> list[dict[str, Any]]:
-    """Inspectable list of ALL serving + KV-cache + migration + thermal params."""
+    """Inspectable list of ALL serving + KV-cache + migration + thermal +
+    topology params."""
     rows: list[dict[str, Any]] = []
     for group, registry in (
         ("serving", SERVING_PARAMS),
         ("kv_cache", KV_CACHE_PARAMS),
         ("migration", MIGRATION_PARAMS),
         ("thermal", THERMAL_PARAMS),
+        ("topology", TOPOLOGY_PARAMS),
     ):
         for k, v in sorted(registry.items()):
             rows.append({"name": k, "group": group, **v.to_dict()})
@@ -1056,4 +1497,55 @@ def engine_profile_table() -> list[dict[str, Any]]:
             "confidence": p.confidence,
         }
         for p in sorted(ENGINE_STARTUP_PROFILES.values(), key=lambda x: x.name)
+    ]
+
+
+def fabric_regime_table() -> list[dict[str, Any]]:
+    """Inspectable fabric-regime comparison table (NVSwitch -> cross-region)."""
+    return [
+        {
+            "name": r.name,
+            "distance": r.distance,
+            "b_eff_gbps": r.b_eff_gbps,
+            "latency_us": r.latency_us,
+            "congestion_sensitivity": r.congestion_sensitivity,
+            "source": r.source,
+            "source_type": r.source_type,
+            "confidence": r.confidence,
+        }
+        for r in sorted(FABRIC_REGIMES.values(), key=lambda x: x.distance)
+    ]
+
+
+def nvlink_generation_table() -> list[dict[str, Any]]:
+    """Inspectable NVLink-generation comparison table with provenance."""
+    return [
+        {
+            "name": g.name,
+            "bidir_gbps": g.bidir_gbps,
+            "latency_us": g.latency_us,
+            "source": g.source,
+            "source_type": g.source_type,
+            "confidence": g.confidence,
+        }
+        for g in sorted(NVLINK_GENERATIONS.values(), key=lambda x: x.bidir_gbps)
+    ]
+
+
+def workload_comm_profile_table() -> list[dict[str, Any]]:
+    """Inspectable workload communication-sensitivity table with provenance."""
+    return [
+        {
+            "name": p.name,
+            "comm_weight": p.comm_weight,
+            "collective": p.collective,
+            "small_msg_sensitivity": p.small_msg_sensitivity,
+            "tail_sensitivity": p.tail_sensitivity,
+            "sync_heavy": p.sync_heavy,
+            "nvlink_affinity": p.nvlink_affinity,
+            "source": p.source,
+            "source_type": p.source_type,
+            "confidence": p.confidence,
+        }
+        for p in sorted(WORKLOAD_COMM_PROFILES.values(), key=lambda x: -x.comm_weight)
     ]

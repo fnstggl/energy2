@@ -406,6 +406,26 @@ def _aggregate_kpis(policy_name: str, tick_kpis: list[TickKPI]) -> AggregatedKPI
     ]
     hot_vals2 = [k.hotspot_severity_max for k in tick_kpis if k.hotspot_severity_max is not None]
     rkw_vals = [k.rack_density_kw_max for k in tick_kpis if k.rack_density_kw_max is not None]
+    tq_vals = [
+        k.mean_topology_quality for k in tick_kpis if k.mean_topology_quality is not None
+    ]
+    fc_vals = [k.fabric_congestion_max for k in tick_kpis if k.fabric_congestion_max is not None]
+    ca_vals = [
+        k.collective_amplification_max for k in tick_kpis
+        if k.collective_amplification_max is not None
+    ]
+    cp_vals = [
+        k.comm_throughput_penalty_pct_mean for k in tick_kpis
+        if k.comm_throughput_penalty_pct_mean is not None
+    ]
+    ss_vals = [
+        k.sync_slowdown_pct_mean for k in tick_kpis if k.sync_slowdown_pct_mean is not None
+    ]
+    ns_vals = [k.nic_saturation_max for k in tick_kpis if k.nic_saturation_max is not None]
+    tr_vals = [k.topology_risk_max for k in tick_kpis if k.topology_risk_max is not None]
+    cl_vals = [
+        k.comm_latency_p99_ms_max for k in tick_kpis if k.comm_latency_p99_ms_max is not None
+    ]
 
     return AggregatedKPI(
         policy_name=policy_name,
@@ -445,6 +465,17 @@ def _aggregate_kpis(policy_name: str, tick_kpis: list[TickKPI]) -> AggregatedKPI
         rack_density_kw_max=max(rkw_vals) if rkw_vals else None,
         total_thermal_excursions=tick_kpis[-1].thermal_excursions if tick_kpis else 0,
         total_thermal_migration_vetoes=sum(k.thermal_migration_vetoes for k in tick_kpis),
+        mean_topology_quality=sum(tq_vals) / len(tq_vals) if tq_vals else None,
+        min_topology_quality=min(tq_vals) if tq_vals else None,
+        fabric_congestion_max=max(fc_vals) if fc_vals else None,
+        collective_amplification_max=max(ca_vals) if ca_vals else None,
+        comm_throughput_penalty_pct_mean=sum(cp_vals) / len(cp_vals) if cp_vals else None,
+        sync_slowdown_pct_mean=sum(ss_vals) / len(ss_vals) if ss_vals else None,
+        nic_saturation_max=max(ns_vals) if ns_vals else None,
+        topology_risk_max=max(tr_vals) if tr_vals else None,
+        total_collective_instability=sum(k.collective_instability_count for k in tick_kpis),
+        total_topology_migration_vetoes=sum(k.topology_migration_vetoes for k in tick_kpis),
+        comm_latency_p99_ms_max=max(cl_vals) if cl_vals else None,
     )
 
 
@@ -487,6 +518,16 @@ def _tick_metrics_to_kpi(tm: TickMetrics) -> TickKPI:
         rack_density_kw_max=tm.rack_density_kw_max,
         thermal_excursions=tm.thermal_excursions,
         thermal_migration_vetoes=tm.thermal_migration_vetoes,
+        mean_topology_quality=tm.mean_topology_quality,
+        fabric_congestion_max=tm.fabric_congestion_max,
+        collective_amplification_max=tm.collective_amplification_max,
+        comm_throughput_penalty_pct_mean=tm.comm_throughput_penalty_pct_mean,
+        sync_slowdown_pct_mean=tm.sync_slowdown_pct_mean,
+        nic_saturation_max=tm.nic_saturation_max,
+        topology_risk_max=tm.topology_risk_max,
+        collective_instability_count=tm.collective_instability_count,
+        topology_migration_vetoes=tm.topology_migration_vetoes,
+        comm_latency_p99_ms_max=tm.comm_latency_p99_ms_max,
     )
 
 
