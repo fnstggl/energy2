@@ -185,6 +185,7 @@ class SimQueue:
     diurnal_amplitude: float = 0.4   # fraction of base (0 = flat, 1 = full swing)
     surge_active: bool = False
     surge_multiplier: float = 1.0
+    in_burst: bool = False           # Markov-modulated burst state (serving realism)
 
     # State
     queue_depth: int = 0
@@ -244,6 +245,7 @@ class SimWorkload:
     # Migration state
     migration_allowed: bool = True
     last_migrated_tick: Optional[int] = None
+    last_scaled_tick: Optional[int] = None       # for autoscaling cooldown / anti-flap
     cold_start_warmup_ticks_remaining: int = 0   # ticks until full throughput
 
     # Cache proxy (0-1 fractions)
@@ -333,6 +335,11 @@ class SimulatorConfig:
     scenario_version: str = "v1"
     simulator_version: str = "1.0.0"
 
+    # Serving-realism overrides (calibration param overrides + enable_bursts).
+    # Bursts are OFF by default so the canonical single-constraint detection
+    # scenarios keep deterministic arrivals; validation scenarios opt in.
+    serving_config: dict[str, Any] = field(default_factory=dict)
+
     @classmethod
     def from_dict(cls, d: dict[str, Any]) -> "SimulatorConfig":
         return cls(
@@ -346,4 +353,5 @@ class SimulatorConfig:
             sla_config_path=d.get("sla_config_path"),
             scenario_version=d.get("scenario_version", "v1"),
             simulator_version=d.get("simulator_version", "1.0.0"),
+            serving_config=d.get("serving_config", {}),
         )

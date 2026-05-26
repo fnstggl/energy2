@@ -237,6 +237,82 @@ make production savings claims until that calibration is done.
 
 ---
 
+## Serving Realism Upgrade (2026-05-26)
+
+A follow-up run upgraded the simulator's inference-serving DYNAMICS from
+optimistic toward operationally believable. Goal: make the benchmark non-trivial
+so that realistic tradeoffs appear and naive strategies can lose — without
+fabricating precision.
+
+### Architectural diff
+- New `aurelius/simulation/cluster/serving.py` — pure, seedable serving-realism
+  functions (Erlang-C, convex saturation, exploding tails, decomposed TTFT/TPOT,
+  batching tradeoff, MMPP bursts).
+- New `aurelius/simulation/cluster/calibration.py` — every serving parameter is a
+  `CalibratedParam{value, source, source_type, confidence, calibration_notes}`,
+  inspectable via `calibration_table()` and overridable per run. No hidden
+  magic constants.
+- `engine._update_queues` rewritten to use the layer; `add_replica` gains
+  autoscaling lag + anti-flap cooldown; `migrate_workload` gains a destination
+  queue-disruption spike (migrations are not free).
+- New state: `SimQueue.in_burst`, `SimWorkload.last_scaled_tick`,
+  `SimulatorConfig.serving_config` (per-scenario overrides + `enable_bursts`).
+
+### Source-confidence summary (20 parameters)
+- By source type: inferred 10, heuristic 7, documented 2, benchmark-derived 1.
+- By confidence: medium 8, low 12, high 0. **None are MEASURED on real hardware.**
+- These exist to make *dynamics* qualitatively believable (convexity, tail
+  explosion, autoscaling lag), NOT to assert quantitative accuracy. Treat every
+  value as a tunable prior. Full table: `calibration_table()`.
+
+### Realism-gap report (subsystem verdicts)
+| Subsystem | Before | After | Verdict |
+|---|---|---|---|
+| Queue saturation | linear-ish | convex beyond safe band + overload region | MODERATE |
+| Latency tails | fixed p95=3×mean | p95/p99 grow with ρ; p99 faster | MODERATE |
+| TTFT/TPOT | single-base multipliers | decomposed (queue/prefill/contention/KV; per-replica) | MODERATE |
+| Batching | linear in replicas | knee tradeoff (more replicas → thinner batches) | MODERATE |
+| Autoscaling | instantaneous | detect + warmup lag + anti-flap cooldown | MODERATE |
+| Migration cost | cold-start only | + destination queue-disruption spike | MODERATE |
+| Arrivals | smooth sinusoid | MMPP bursts (opt-in per scenario) | MODERATE |
+| Service rate vs util | — | **STILL** ∝ util (physically backwards) | **LOW — remaining gap** |
+
+### Before/after benchmark KPI (sim-only, vs FIFO, seed 42, 24 ticks)
+| Scenario | constraint_aware result | greedy_energy (aggressive) | SLA-viol regression? |
+|---|---|---|---|
+| energy_arbitrage | p99 ~10s, +18% tokens | **p99 ~910s (LOSES)**, 9 migrations | none |
+| queue_surge | +120% tokens, p99 ≤ FIFO | — | none |
+| thermal_hotspot | p99 −23%, queue −97%, +37% tokens | — | none |
+| underutilization | +150% tokens; **p99 transient regression** (scaling spike) | — | none (SLA count equal) |
+
+### Newly-failing unrealistic strategies
+- **greedy_energy** (aggressive energy migration) now LOSES: its migrations
+  destabilize destination queues (cold cache + disruption spike + convex
+  saturation) → p99 explodes ~88× vs constraint_aware. This is the headline
+  product property the audit wanted and could not previously demonstrate.
+
+### Remaining realism limitations (honest)
+- **Service rate ∝ utilization** (pre-existing quirk) — physically backwards; a
+  low-util GPU has spare capacity but is modelled as slow. This makes slow-service
+  low-util scenarios present as latency-adjacent (underutilization p99 flag). A
+  proper fix decouples capacity from observed util.
+- No full state-class decomposition (RequestArrivalProcess/KVCachePressureState/…);
+  realism is added to the existing models, not a from-scratch rewrite.
+- No heavy-tailed per-request token distributions (representative fixed prompt
+  length); no explicit preemption/recompute storms; no admission-control/shedding;
+  KV pressure is a single scalar, not fragmentation.
+- All parameters uncalibrated against real telemetry (see confidence table).
+- Bursts are opt-in (off for the 6 canonical detection scenarios) to preserve
+  their designed single-constraint labels.
+
+### Production-readiness (unchanged): READY_FOR_SHADOW_PILOT_WITH_REAL_TELEMETRY
+The simulator is **substantially more realistic, not perfect**. It is now a
+better dev/validation harness (naive strategies can lose; tradeoffs are visible),
+but all numbers remain simulator-only and uncalibrated. No production savings
+claims.
+
+---
+
 ## Non-Negotiable Implementation Philosophy
 
 This tracker is also a planning artifact, not proof of correctness.
