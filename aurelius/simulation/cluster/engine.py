@@ -33,6 +33,8 @@ from ...state.models import (
     TopologyLinkType,
     TopologyState,
 )
+from . import serving
+from .calibration import serving_value
 from .model import (
     GPU_PROFILES,
     GPUProfile,
@@ -128,6 +130,7 @@ class ClusterSimulator:
     def __init__(self, config: SimulatorConfig, seed: Optional[int] = None):
         self.config = config
         self.seed = seed if seed is not None else config.seed
+        self._serving_config = dict(getattr(config, "serving_config", {}) or {})
         self._rng = random.Random(self.seed)
         self._cluster = self._build_initial_cluster()
         self._base_time = datetime(2024, 1, 1, 0, 0, 0, tzinfo=timezone.utc)
@@ -662,117 +665,132 @@ class ClusterSimulator:
                     gpu.thermal_throttle_active = gpu.temperature_c > _THROTTLE_TEMP_C
 
     def _update_queues(self, cluster: SimCluster) -> None:
-        """Update queue state using M/M/1 latency approximation."""
+        """Update queue state with the inference-serving realism layer.
+
+        Erlang-C/M/M/c baseline + convex saturation amplification + exploding
+        latency tails + decomposed TTFT/TPOT + a batching/replica tradeoff.
+        See aurelius/simulation/cluster/serving.py and calibration.py.
+        """
         tick = cluster.tick
-        # Hour of day for diurnal modulation (0-23)
-        hour = (tick - 1) % 24
+        hour = (tick - 1) % 24  # diurnal modulation (peak ~14:00)
+        cfg = getattr(self, "_serving_config", None)
 
         for region in cluster.regions.values():
             for queue in region.queues:
-                # Arrival rate with diurnal modulation: peak around 14:00
-                diurnal_factor = 1.0 + queue.diurnal_amplitude * math.sin(
-                    math.pi * (hour - 6) / 12
+                diurnal_factor = max(
+                    0.1, 1.0 + queue.diurnal_amplitude * math.sin(math.pi * (hour - 6) / 12)
                 )
-                diurnal_factor = max(0.1, diurnal_factor)
-
                 arrival_rate = queue.base_arrival_rate_per_sec * diurnal_factor
+
+                # Bursty arrivals (Markov-modulated, seedable) on top of diurnal.
+                # OFF by default — opt-in per scenario via serving_config.enable_bursts
+                # so the canonical detection scenarios keep deterministic arrivals.
+                if cfg and cfg.get("enable_bursts"):
+                    queue.in_burst = serving.step_burst_state(queue.in_burst, self._rng, cfg)
+                    arrival_rate *= serving.arrival_multiplier(queue.in_burst, cfg)
                 if queue.surge_active:
                     arrival_rate *= queue.surge_multiplier
-
                 queue.arrival_rate_per_sec = arrival_rate
 
-                # Service rate: depends on effective GPU throughput
-                # Find GPUs serving this queue's service
                 workload = self._find_workload_for_service(
                     queue.service_id, region.region_id, cluster
                 )
                 if workload is None:
-                    queue.service_rate_per_sec = 0.01   # effectively no service
+                    queue.service_rate_per_sec = 0.01
                     queue.queue_depth = min(
                         queue.queue_depth + int(arrival_rate * 3600 * 0.1), 10000
                     )
-                    queue.queue_wait_p95_ms = 60000.0   # 60s wait
+                    queue.queue_wait_p95_ms = 60000.0
                     continue
 
-                # Effective service rate based on GPU throughput
                 gpu_util = self._workload_effective_util(workload, cluster)
                 warmup_factor = max(
                     0.2,
                     1.0 - workload.cold_start_warmup_ticks_remaining / _COLD_START_WARMUP_TICKS,
                 )
-
-                # Tokens per second per GPU at current utilization
                 profile = self._get_workload_gpu_profile(workload, cluster)
-                if profile is not None:
-                    tokens_per_sec = (
-                        profile.tokens_per_sec_at_full_util * (gpu_util / 100.0) * warmup_factor
-                    )
-                else:
-                    tokens_per_sec = 1000.0 * (gpu_util / 100.0)
+                base_tps_per_gpu = (
+                    profile.tokens_per_sec_at_full_util if profile is not None else 1000.0
+                )
+                tokens_per_sec = base_tps_per_gpu * (gpu_util / 100.0) * warmup_factor
 
-                # Apply topology penalty for multi-GPU communication-heavy workloads
+                # Topology penalty for multi-GPU comm-heavy workloads.
                 topo_penalty = 1.0 - (1.0 - workload.topology_score) * {
-                    "low": 0.1,
-                    "medium": 0.3,
-                    "high": 0.5,
+                    "low": 0.1, "medium": 0.3, "high": 0.5,
                 }.get(workload.communication_intensity, 0.1)
                 tokens_per_sec *= topo_penalty
 
-                # Total service rate (requests/sec, assuming _TOKENS_PER_REQUEST tokens each)
-                total_tokens_per_sec = tokens_per_sec * len(workload.gpu_ids)
+                replicas = max(1, len(workload.gpu_ids))
+
+                # Active sequences (offered concurrency) drive batching + contention.
+                active_seqs = min(int(arrival_rate * 0.5) + queue.queue_depth // 100, 1024)
+
+                # Batching/replica tradeoff: spreading the same load over more
+                # replicas pushes each below the batching knee → lower tput/GPU.
+                batch_eff = serving.batching_efficiency(active_seqs, replicas, cfg)
+                tokens_per_sec *= batch_eff
+
+                total_tokens_per_sec = tokens_per_sec * replicas
                 service_rate = (
                     total_tokens_per_sec / _TOKENS_PER_REQUEST if _TOKENS_PER_REQUEST > 0 else 0.0
                 )
                 queue.service_rate_per_sec = max(0.01, service_rate)
-
                 workload.effective_tokens_per_second = total_tokens_per_sec
                 workload.effective_requests_per_second = service_rate
 
-                # M/M/1: rho = lambda/mu, E[W] = rho / (mu * (1 - rho))
-                rho = min(0.99, arrival_rate / queue.service_rate_per_sec)
+                rho = min(0.999, arrival_rate / queue.service_rate_per_sec)
 
-                # Queue depth update (discrete-time M/M/1 approximation)
+                # Discrete-time backlog update (accelerates in overload).
                 net_arrival = arrival_rate - queue.service_rate_per_sec
                 delta = int(net_arrival * 3600 * cluster.tick_duration_hours * 0.01)
-                queue.queue_depth = max(0, queue.queue_depth + delta)
-                queue.queue_depth = min(queue.queue_depth, 50000)
+                queue.queue_depth = max(0, min(queue.queue_depth + delta, 50000))
 
-                # Latency from M/M/1
-                if rho < 0.99 and queue.service_rate_per_sec > 0:
-                    mean_wait_s = rho / (queue.service_rate_per_sec * (1.0 - rho))
-                else:
-                    mean_wait_s = 60.0   # saturated
+                # Queue wait: Erlang-C mean × convex saturation amplifier.
+                mu_per = queue.service_rate_per_sec / replicas
+                mean_wait_s = serving.erlang_c_wait_s(arrival_rate, mu_per, replicas)
+                if not math.isfinite(mean_wait_s):
+                    mean_wait_s = 60.0
+                mean_wait_s = min(60.0, mean_wait_s * serving.saturation_amplifier(rho, cfg))
+                mean_wait_ms = mean_wait_s * 1000.0
 
-                queue.queue_wait_p95_ms = mean_wait_s * 1000.0 * 3.0  # p95 ≈ 3x mean for M/M/1
+                p95_mult, p99_mult = serving.tail_multipliers(rho, cfg)
+                queue.queue_wait_p95_ms = mean_wait_ms * (p95_mult / 2.0 + 1.0)
 
-                # TTFT: base + queue wait + memory pressure penalty
-                cache_penalty = 1.0 + 2.0 * max(0, workload.kv_cache_usage_frac - 0.7)
-                ttft_base = _BASE_TTFT_MS / max(0.1, warmup_factor)
+                # Contention is PER-REPLICA: more replicas means each handles
+                # fewer concurrent sequences → less scheduler/decode contention.
+                # (This is the autoscaling benefit; it trades off against the
+                # batching-efficiency loss applied to throughput above.)
+                active_per_replica = active_seqs / replicas
 
-                queue.ttft_p50_ms = ttft_base * (1.0 + rho * 2.0) * cache_penalty
-                queue.ttft_p95_ms = queue.ttft_p50_ms * 2.5
-                queue.ttft_p99_ms = queue.ttft_p50_ms * 5.0
+                # Decomposed TTFT: queue + prefill + active-seq contention + KV stall.
+                prompt_tokens = _TOKENS_PER_REQUEST  # representative; heavy-tailed dist = remaining gap
+                kv = workload.kv_cache_usage_frac
+                # Cold-start/warmup is NOT applied to TTFT directly: it already
+                # flows through reduced service rate → higher queue wait → higher
+                # TTFT. Dividing TTFT again would double-count it (warmup_factor=1).
+                ttft_p50 = serving.ttft_ms(mean_wait_ms, prompt_tokens, active_per_replica, kv,
+                                           1.0, cfg)
+                queue.ttft_p50_ms = ttft_p50
+                queue.ttft_p95_ms = ttft_p50 * p95_mult
+                queue.ttft_p99_ms = ttft_p50 * p99_mult
 
-                # TPOT: relatively stable, affected by GPU throttling
+                # Decomposed TPOT: base × throttle + per-replica decode contention.
                 throttle_factor = 1.0
                 for gpu in self._workload_gpus(workload, cluster):
                     if gpu.thermal_throttle_active:
                         throttle_factor = max(
-                            throttle_factor,
-                            1.0 + (gpu.temperature_c - _THROTTLE_TEMP_C) / 20.0,
+                            throttle_factor, 1.0 + (gpu.temperature_c - _THROTTLE_TEMP_C) / 20.0
                         )
+                tpot_p50 = serving.tpot_ms(_BASE_TPOT_MS, active_per_replica, throttle_factor, cfg)
+                queue.tpot_p50_ms = tpot_p50
+                queue.tpot_p95_ms = tpot_p50 * 2.0
+                queue.tpot_p99_ms = tpot_p50 * 4.0
 
-                queue.tpot_p50_ms = _BASE_TPOT_MS * throttle_factor
-                queue.tpot_p95_ms = queue.tpot_p50_ms * 2.0
-                queue.tpot_p99_ms = queue.tpot_p50_ms * 4.0
-
-                # End-to-end latency ≈ TTFT + TPOT * avg_output_tokens
                 avg_output_tokens = 128
-                queue.latency_p50_ms = queue.ttft_p50_ms + queue.tpot_p50_ms * avg_output_tokens
+                queue.latency_p50_ms = ttft_p50 + tpot_p50 * avg_output_tokens
                 queue.latency_p95_ms = queue.ttft_p95_ms + queue.tpot_p95_ms * avg_output_tokens
                 queue.latency_p99_ms = queue.ttft_p99_ms + queue.tpot_p99_ms * avg_output_tokens
 
-                # Timeout rate: when p99 > SLA
                 sla_ms = workload.latency_sla_p99_ms or _SLA_P99_DEFAULT_MS
                 if queue.latency_p99_ms > sla_ms:
                     timeout_rate = min(50.0, (queue.latency_p99_ms - sla_ms) / sla_ms * 10.0)
@@ -781,9 +799,8 @@ class ClusterSimulator:
                     timeout_rate = 0.0
                 queue.timeout_rate_pct = timeout_rate
 
-                # Active sequences and batch size
-                queue.active_sequences = min(int(arrival_rate * 0.5), 512)
-                queue.batch_size = min(queue.active_sequences, 64)
+                queue.active_sequences = active_seqs
+                queue.batch_size = min(active_seqs // replicas, 256)
                 queue.tokens_per_second = total_tokens_per_sec
                 queue.requests_per_second = service_rate
 
@@ -1319,6 +1336,19 @@ class ClusterSimulator:
         # Recompute topology score
         workload.topology_score = self._compute_topology_score(workload, cluster)
 
+        # Migration is NOT free: drained in-flight requests + rebalancing land as
+        # a backlog spike on the destination queue (queue disruption). Combined
+        # with the cold cache + warmup set above, this can make aggressive
+        # migration LOSE on p99/queue even when it lowers energy cost.
+        target_region = cluster.regions.get(target_region_id)
+        if target_region is not None:
+            disruption = serving_value("migration_queue_disruption")
+            for q in target_region.queues:
+                if q.service_id == workload.service_id:
+                    spike = int(q.arrival_rate_per_sec * 3600 * cluster.tick_duration_hours
+                                * 0.01 * disruption)
+                    q.queue_depth = min(50000, q.queue_depth + max(0, spike))
+
         # Log migration
         cluster.migration_log.append({
             "tick": cluster.tick,
@@ -1376,6 +1406,11 @@ class ClusterSimulator:
         wl = self._resolve_workload(service_id, region_id)
         if wl is None:
             return False
+        # Anti-flapping cooldown: a workload cannot scale again within the
+        # stabilization window (real autoscalers use scale-down stabilization).
+        cooldown = int(serving_value("scale_cooldown_ticks"))
+        if wl.last_scaled_tick is not None and (cluster.tick - wl.last_scaled_tick) < cooldown:
+            return False
         region = cluster.regions.get(wl.region_id)
         if region is None:
             return False
@@ -1389,6 +1424,14 @@ class ClusterSimulator:
                         wl.node_ids.append(node.node_id)
                     wl.gpu_count_required = max(wl.gpu_count_required, len(wl.gpu_ids))
                     wl.topology_score = self._compute_topology_score(wl, cluster)
+                    # Autoscaling lag: the new replica is not instantly ready
+                    # (provision + container start + model load + readiness). The
+                    # workload ramps over replica_warmup_ticks before full tput.
+                    wl.cold_start_warmup_ticks_remaining = max(
+                        wl.cold_start_warmup_ticks_remaining,
+                        int(serving_value("replica_warmup_ticks")),
+                    )
+                    wl.last_scaled_tick = cluster.tick
                     return True
         return False  # no idle GPU available — scaling not possible this tick
 
