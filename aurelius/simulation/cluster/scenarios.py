@@ -677,6 +677,176 @@ _BUILTIN_SCENARIOS: dict[str, dict[str, Any]] = {
     },
 
     # -----------------------------------------------------------------------
+    # 4d. Startup-heavy migration — TensorRT-LLM cold-start storm
+    # -----------------------------------------------------------------------
+    # A compile-heavy TensorRT-LLM workload free to chase cheap energy. Each
+    # migration triggers a multi-minute engine-build cold start; abrupt rerouting
+    # should drown TTFT in startup + tail uplift, so naive arbitrage LOSES.
+    "startup_heavy_migration_trtllm": {
+        "scenario_name": "startup_heavy_migration_trtllm",
+        "description": (
+            "Compile-heavy TensorRT-LLM workload in an anti-correlated energy "
+            "market. Expected: abrupt energy-greedy rerouting pays multi-minute "
+            "cold starts + tail uplift and loses on TTFT/p99 vs migration restraint."
+        ),
+        "seed": 42,
+        "tick_duration_hours": 1.0,
+        "expected_primary_constraint": "energy_bound",
+        "expected_events": ["energy_price_spike"],
+        "scenario_version": "v1",
+        "simulator_version": "1.0.0",
+        "regions": [
+            {
+                "region_id": "us-east",
+                "energy_price_trace": [
+                    45, 48, 52, 80, 110, 95, 70, 55, 48, 45, 43, 42,
+                    48, 55, 62, 75, 120, 140, 130, 100, 75, 60, 52, 48,
+                ],
+                "ambient_temp_c": 22.0,
+                "network_latency_to": {"us-west": 70},
+                "nodes": [
+                    {
+                        "node_id": "us-east-node0",
+                        "gpu_type": "h100-sxm5-80gb",
+                        "gpu_count": 4,
+                        "topology_class": "nvswitch",
+                        "rack_id": "us-east-rack0",
+                        "zone": "us-east-1a",
+                    }
+                ],
+                "queues": [
+                    {
+                        "queue_id": "us-east-q0",
+                        "service_id": "trt-inference",
+                        "base_arrival_rate_per_sec": 1.5,
+                        "diurnal_amplitude": 0.2,
+                    }
+                ],
+            },
+            {
+                "region_id": "us-west",
+                "energy_price_trace": [
+                    60, 55, 50, 48, 45, 42, 40, 42, 45, 50, 55, 60,
+                    58, 52, 48, 45, 43, 42, 45, 50, 55, 60, 62, 62,
+                ],
+                "ambient_temp_c": 18.0,
+                "network_latency_to": {"us-east": 70},
+                "nodes": [
+                    {
+                        "node_id": "us-west-node0",
+                        "gpu_type": "h100-sxm5-80gb",
+                        "gpu_count": 4,
+                        "topology_class": "nvswitch",
+                        "rack_id": "us-west-rack0",
+                        "zone": "us-west-2a",
+                    }
+                ],
+                "queues": [
+                    {
+                        "queue_id": "us-west-q0",
+                        "service_id": "trt-inference-west",
+                        "base_arrival_rate_per_sec": 0.3,
+                        "diurnal_amplitude": 0.2,
+                    }
+                ],
+            },
+        ],
+        "workloads": [
+            {
+                "workload_id": "trt-wl",
+                "service_id": "trt-inference",
+                "workload_type": "inference",
+                "priority_tier": "standard",
+                "region_id": "us-east",
+                "gpu_count_required": 2,
+                "target_util_pct": 65.0,
+                "communication_intensity": "low",
+                "migration_allowed": True,
+                "latency_sensitive": False,
+                "latency_sla_p99_ms": 4000.0,
+                "engine_runtime": "tensorrt-llm",   # compile-heavy cold start
+                "model_kv_profile": "llama3-8b",
+                "prefix_overlap": 0.7,
+                "avg_seq_len_tokens": 2048,
+            }
+        ],
+        "events": [
+            {"tick": 10, "type": "energy_price_spike", "region_id": "us-east",
+             "multiplier": 2.5},
+            {"tick": 14, "type": "energy_price_spike_end", "region_id": "us-east"},
+        ],
+    },
+
+    # -----------------------------------------------------------------------
+    # 4e. Proxy bottleneck — ingress saturation dominates scaling
+    # -----------------------------------------------------------------------
+    # High arrival rate against a small replica set: the proxy/ingress saturates,
+    # so replica count alone does not deliver throughput — queue wait and TTFT
+    # are dominated by proxy queue amplification.
+    "proxy_bottleneck_ingress": {
+        "scenario_name": "proxy_bottleneck_ingress",
+        "description": (
+            "High RPS against few replicas: proxy/ingress saturation dominates "
+            "queue wait and TTFT (replica count alone does not set throughput)."
+        ),
+        "seed": 42,
+        "tick_duration_hours": 1.0,
+        "expected_primary_constraint": "queue_bound",
+        "expected_events": ["queue_surge"],
+        "scenario_version": "v1",
+        "simulator_version": "1.0.0",
+        "serving_config": {"proxy_capacity_rps_per_replica": 20.0},
+        "regions": [
+            {
+                "region_id": "us-east",
+                "energy_price_trace": [50.0] * 24,
+                "ambient_temp_c": 22.0,
+                "nodes": [
+                    {
+                        "node_id": "us-east-node0",
+                        "gpu_type": "h100-sxm5-80gb",
+                        "gpu_count": 4,
+                        "topology_class": "nvswitch",
+                        "rack_id": "us-east-rack0",
+                        "zone": "us-east-1a",
+                    }
+                ],
+                "queues": [
+                    {
+                        "queue_id": "us-east-q0",
+                        "service_id": "proxy-bound-inference",
+                        "base_arrival_rate_per_sec": 30.0,
+                        "diurnal_amplitude": 0.1,
+                    }
+                ],
+            }
+        ],
+        "workloads": [
+            {
+                "workload_id": "proxy-wl",
+                "service_id": "proxy-bound-inference",
+                "workload_type": "inference",
+                "priority_tier": "latency_sensitive",
+                "region_id": "us-east",
+                "gpu_count_required": 2,
+                "target_util_pct": 70.0,
+                "communication_intensity": "low",
+                "migration_allowed": False,
+                "latency_sensitive": True,
+                "latency_sla_p99_ms": 2000.0,
+                "engine_runtime": "vllm",
+                "prefix_overlap": 0.5,
+                "avg_seq_len_tokens": 1024,
+            }
+        ],
+        "events": [
+            {"tick": 8, "type": "queue_surge", "service_id": "proxy-bound-inference",
+             "multiplier": 3.0},
+            {"tick": 16, "type": "queue_surge_end", "service_id": "proxy-bound-inference"},
+        ],
+    },
+
+    # -----------------------------------------------------------------------
     # 5. Topology fragmentation — H100 NVSwitch vs PCIe
     # -----------------------------------------------------------------------
     "topology_fragmentation_h100": {

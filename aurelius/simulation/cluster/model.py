@@ -216,6 +216,9 @@ class SimQueue:
     kv_pressure_region: Optional[str] = None
     preemptions_total: Optional[float] = None
     cache_fragmentation_frac: Optional[float] = None
+    # Migration-realism telemetry
+    proxy_saturation: Optional[float] = None
+    batch_efficiency: Optional[float] = None
     tokens_per_second: float = 0.0
     requests_per_second: float = 0.0
 
@@ -271,6 +274,13 @@ class SimWorkload:
     # First-class KV-cache / prefix-affinity / locality state (mutable; updated
     # each tick). Constructed lazily by the engine to avoid an import cycle.
     cache: Optional[Any] = None
+
+    # Migration / rerouting / drain / cold-start realism.
+    engine_runtime: str = "vllm"          # vllm | tensorrt-llm | sglang | triton | ray_serve
+    warm_pool_size: int = 0               # replicas kept pre-loaded/ready
+    pdb_min_available: int = 0            # PodDisruptionBudget floor
+    # First-class migration state (mutable). Constructed lazily by the engine.
+    migration: Optional[Any] = None
 
     # Computed per tick
     effective_tokens_per_second: float = 0.0

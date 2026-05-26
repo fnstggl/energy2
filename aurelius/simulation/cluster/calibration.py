@@ -441,6 +441,226 @@ MODEL_KV_PROFILES: dict[str, ModelKVProfile] = {
 DEFAULT_MODEL_KV_PROFILE = "llama3-8b"
 
 
+# ---------------------------------------------------------------------------
+# Migration / rerouting / drain / cold-start parameter registry
+# ---------------------------------------------------------------------------
+# Added for the migration-realism upgrade (driven by migration.py). These price
+# the operational cost of moving a workload: Kubernetes-style drain, cold-start
+# decomposition, request rerouting + proxy bottlenecks, batching disruption,
+# tail-latency uplift, and phased-rollout / governor behaviour. As elsewhere,
+# most are HEURISTIC/INFERRED priors anchored to documented defaults (e.g. the
+# K8s 30s termination grace period); none are MEASURED on a live cluster. They
+# make migration *expensive and risky* so naive arbitrage can lose.
+
+MIGRATION_PARAMS: dict[str, CalibratedParam] = {
+    # --- Kubernetes drain (seconds) --------------------------------------
+    "drain_evict_seconds": _h(
+        5.0,
+        "Eviction API delay before a pod begins terminating (cordon + evict "
+        "admission). Calibrate from real kubectl drain traces.",
+        source_type=INFERRED, source="K8s eviction API / drain behaviour",
+    ),
+    "drain_grace_seconds": _h(
+        30.0,
+        "Graceful termination window (terminationGracePeriodSeconds). K8s default "
+        "is 30s; actual shutdown may finish earlier (modelled as a truncated "
+        "right-skew, NOT a fixed downtime).",
+        source_type=DOCUMENTED, source="K8s default terminationGracePeriodSeconds=30s",
+        confidence="medium",
+    ),
+    "drain_grace_skew": _h(
+        0.5,
+        "Lognormal sigma for the graceful-termination window (right-skew). Higher "
+        "= heavier tail of slow shutdowns. Calibrate from real shutdown timings.",
+    ),
+    "drain_rebind_seconds": _h(
+        10.0,
+        "Scheduling + rebinding delay before the rescheduled pod is admitted on a "
+        "new node. Calibrate from real scheduler latency.",
+        source_type=INFERRED, source="K8s scheduler rebind latency",
+    ),
+
+    # --- Request rerouting / proxy (seconds / rps) -----------------------
+    "reroute_network_rtt_ms": _h(
+        50.0,
+        "Default cross-route network RTT added on reroute when no per-region "
+        "latency is configured. Scenario network_latency_to overrides this.",
+        source_type=INFERRED, source="inter-region RTT (varies widely)",
+    ),
+    "reroute_replica_accept_ms": _h(
+        20.0,
+        "Time for a destination replica to accept a rerouted request (connection "
+        "+ admission). Calibrate from real ingress accept latency.",
+    ),
+    "proxy_capacity_rps_per_replica": _h(
+        80.0,
+        "Per-replica proxy/ingress request capacity before queueing. Replica "
+        "count alone does NOT determine throughput — the proxy can bottleneck. "
+        "Calibrate from real ingress/router saturation tests.",
+        source_type=INFERRED, source="ingress/proxy concurrency limits",
+    ),
+    "proxy_saturation_convexity": _h(
+        2.0,
+        "Convexity of proxy queue amplification past capacity (1/(1-load))^k. "
+        "Calibrate from real proxy latency-vs-load curves.",
+    ),
+
+    # --- Cold-start distribution shape -----------------------------------
+    "coldstart_lognormal_sigma": _h(
+        0.6,
+        "Lognormal sigma applied to each cold-start stage so startup is "
+        "heavy-tailed (NOT a single Gaussian). Higher = heavier tail.",
+        source_type=INFERRED, source="serverless/GPU cold-start latency is heavy-tailed",
+    ),
+    "coldstart_firstcompile_prob": _h(
+        0.15,
+        "Probability a cold start hits the first-compile path (kernel/graph "
+        "compilation not cached) → bimodal startup. Calibrate per engine/runtime.",
+    ),
+    "coldstart_firstcompile_mult": _h(
+        4.0,
+        "Multiplier on the warmup/compile stage when the first-compile path is "
+        "hit. TensorRT-style engines can be far worse. Calibrate per engine.",
+    ),
+    "scale_from_zero_ttft_mult": _h(
+        3.0,
+        "Extra TTFT amplification when scaling FROM ZERO (no warm replica to "
+        "absorb the queue while the first replica starts). Calibrate from real "
+        "scale-from-zero incidents.",
+    ),
+
+    # --- Batching disruption under churn ---------------------------------
+    "batch_churn_floor": _h(
+        0.4,
+        "Floor on batching efficiency η_batch under maximal reroute churn (decode "
+        "cohorts fragmented, batch occupancy collapses). Calibrate from real "
+        "churn-vs-throughput tests.",
+        source_type=INFERRED, source="continuous-batching cohort fragmentation",
+    ),
+    "batch_churn_sensitivity": _h(
+        0.5,
+        "How fast η_batch falls toward the floor as churn rises (per recent "
+        "migration). Calibrate from real reroute-churn throughput data.",
+    ),
+
+    # --- Migration tail uplift -------------------------------------------
+    "tail_uplift_base": _h(
+        1.2,
+        "Baseline p95/p99 uplift multiplier for a single clean migration. "
+        "Migration is NOT p50-only degradation. Calibrate from rollout tail data.",
+        source_type=INFERRED, source="rollout p99 instability",
+    ),
+    "tail_uplift_max": _h(
+        8.0,
+        "Maximum p95/p99 uplift under combined rollout instability + queue "
+        "pressure + churn + cache loss. Calibrate from real rollout incidents.",
+    ),
+
+    # --- Autoscaling scale-up (seconds) ----------------------------------
+    "scaleup_scheduling_seconds": _h(
+        8.0,
+        "Scheduling delay for a scale-up pod (queue + bind). Adds to image-pull + "
+        "model-load + warmup. Calibrate from real HPA/KEDA scale-up latency.",
+        source_type=INFERRED, source="K8s scheduling + HPA reaction latency",
+    ),
+
+    # --- Phased rollout / governor ---------------------------------------
+    "rollout_hold_ticks": _h(
+        1.0,
+        "Stabilization hold (ticks) at each phased-rollout step before advancing "
+        "traffic fraction. Calibrate from real canary hold windows.",
+        source_type=INFERRED, source="canary/blue-green stabilization windows",
+        confidence="medium",
+    ),
+    "rollback_p99_budget_mult": _h(
+        2.0,
+        "Rollback trigger: if p99 exceeds this multiple of the SLA budget during "
+        "a rollout phase, roll back. Calibrate from real rollback policies.",
+    ),
+    "governor_queue_pressure_qdepth": _h(
+        2000.0,
+        "Queue-depth threshold above which the migration governor vetoes a "
+        "non-essential migration (do-nothing is safer under queue pressure). "
+        "Calibrate from real overload thresholds.",
+    ),
+
+    # --- Warm pools -------------------------------------------------------
+    "warm_pool_idle_power_frac": _h(
+        0.35,
+        "Idle power draw of a warm-pool replica as a fraction of full TDP (kept "
+        "loaded/ready). Warm pools trade energy for startup safety. Calibrate "
+        "from real idle-but-loaded GPU power.",
+        source_type=INFERRED, source="loaded-idle GPU power draw",
+        confidence="medium",
+    ),
+}
+
+
+# ---------------------------------------------------------------------------
+# Engine-specific cold-start profiles (seconds per stage)
+# ---------------------------------------------------------------------------
+
+@dataclass(frozen=True)
+class EngineStartupProfile:
+    """Cold-start decomposition for a serving engine (mean seconds per stage).
+
+    T_cold = T_node + T_pull + T_load + T_gpu_transfer + T_warmup
+    compile_heavy engines (TensorRT-LLM) carry a large T_warmup and a higher
+    first-compile penalty (graph build / kernel compilation can be multi-minute).
+    Warm runtimes (vLLM, SGLang) skip the compile stage. Stage means are
+    order-of-magnitude operational anchors, NOT measured per-cluster numbers.
+    """
+    name: str
+    t_node: float          # node provisioning (0 if pre-provisioned pool)
+    t_pull: float          # container image pull
+    t_load: float          # weight load / deserialization
+    t_gpu_transfer: float  # host→GPU weight transfer + allocation
+    t_warmup: float        # graph capture / kernel compile / runtime warmup
+    compile_heavy: bool = False
+    source: str = "engine docs / public startup reports"
+    source_type: str = INFERRED
+    confidence: str = "low"
+
+    def total_mean_seconds(self) -> float:
+        return self.t_node + self.t_pull + self.t_load + self.t_gpu_transfer + self.t_warmup
+
+
+ENGINE_STARTUP_PROFILES: dict[str, EngineStartupProfile] = {
+    # vLLM: fast warm start, CUDA-graph capture but no AOT compile.
+    "vllm": EngineStartupProfile(
+        name="vllm", t_node=0.0, t_pull=15.0, t_load=25.0, t_gpu_transfer=10.0,
+        t_warmup=15.0, compile_heavy=False,
+        source="vLLM startup (image pull + weight load + CUDA graph capture)",
+    ),
+    # TensorRT-LLM: compilation/engine-build heavy → multi-minute cold path.
+    "tensorrt-llm": EngineStartupProfile(
+        name="tensorrt-llm", t_node=0.0, t_pull=20.0, t_load=30.0, t_gpu_transfer=15.0,
+        t_warmup=180.0, compile_heavy=True,
+        source="TensorRT-LLM engine build / graph compilation (compile-heavy)",
+    ),
+    # SGLang: warm runtime, RadixAttention; moderate warmup.
+    "sglang": EngineStartupProfile(
+        name="sglang", t_node=0.0, t_pull=15.0, t_load=25.0, t_gpu_transfer=10.0,
+        t_warmup=20.0, compile_heavy=False,
+        source="SGLang startup (warm runtime)",
+    ),
+    # Triton: model-repo load; warmup configurable.
+    "triton": EngineStartupProfile(
+        name="triton", t_node=0.0, t_pull=18.0, t_load=28.0, t_gpu_transfer=12.0,
+        t_warmup=25.0, compile_heavy=False,
+        source="Triton Inference Server model load + warmup",
+    ),
+    # Ray Serve: actor scheduling + replica init on top of the engine.
+    "ray_serve": EngineStartupProfile(
+        name="ray_serve", t_node=0.0, t_pull=15.0, t_load=25.0, t_gpu_transfer=10.0,
+        t_warmup=30.0, compile_heavy=False,
+        source="Ray Serve replica actor init + model load",
+    ),
+}
+
+DEFAULT_ENGINE_PROFILE = "vllm"
+
+
 def serving_value(name: str, config: dict | None = None) -> float:
     """Return a serving parameter's value, allowing per-run config override.
 
@@ -477,14 +697,37 @@ def resolve_kv_profile(name: str | None, config: dict | None = None) -> ModelKVP
     return prof
 
 
+def migration_value(name: str, config: dict | None = None) -> float:
+    """Return a migration parameter's value, allowing per-run config override.
+
+    Mirrors ``serving_value`` for the MIGRATION_PARAMS registry so every
+    migration/drain/cold-start assumption is configurable.
+    """
+    if config and name in config:
+        return float(config[name])
+    return float(MIGRATION_PARAMS[name].value)
+
+
+def resolve_engine_profile(name: str | None) -> EngineStartupProfile:
+    """Resolve an engine cold-start profile by name (default vLLM)."""
+    return ENGINE_STARTUP_PROFILES.get(
+        (name or DEFAULT_ENGINE_PROFILE).lower(),
+        ENGINE_STARTUP_PROFILES[DEFAULT_ENGINE_PROFILE],
+    )
+
+
 # Combined registry: every tunable constant is inspectable in one place.
-ALL_PARAMS: dict[str, CalibratedParam] = {**SERVING_PARAMS, **KV_CACHE_PARAMS}
+ALL_PARAMS: dict[str, CalibratedParam] = {**SERVING_PARAMS, **KV_CACHE_PARAMS, **MIGRATION_PARAMS}
 
 
 def calibration_table() -> list[dict[str, Any]]:
-    """Inspectable list of ALL serving + KV-cache parameters with provenance."""
+    """Inspectable list of ALL serving + KV-cache + migration parameters."""
     rows: list[dict[str, Any]] = []
-    for group, registry in (("serving", SERVING_PARAMS), ("kv_cache", KV_CACHE_PARAMS)):
+    for group, registry in (
+        ("serving", SERVING_PARAMS),
+        ("kv_cache", KV_CACHE_PARAMS),
+        ("migration", MIGRATION_PARAMS),
+    ):
         for k, v in sorted(registry.items()):
             rows.append({"name": k, "group": group, **v.to_dict()})
     return rows
@@ -506,4 +749,24 @@ def model_profile_table() -> list[dict[str, Any]]:
             "confidence": p.confidence,
         }
         for p in sorted(MODEL_KV_PROFILES.values(), key=lambda x: x.name)
+    ]
+
+
+def engine_profile_table() -> list[dict[str, Any]]:
+    """Inspectable list of engine cold-start profiles with provenance."""
+    return [
+        {
+            "name": p.name,
+            "t_node": p.t_node,
+            "t_pull": p.t_pull,
+            "t_load": p.t_load,
+            "t_gpu_transfer": p.t_gpu_transfer,
+            "t_warmup": p.t_warmup,
+            "compile_heavy": p.compile_heavy,
+            "total_mean_seconds": p.total_mean_seconds(),
+            "source": p.source,
+            "source_type": p.source_type,
+            "confidence": p.confidence,
+        }
+        for p in sorted(ENGINE_STARTUP_PROFILES.values(), key=lambda x: x.name)
     ]

@@ -34,9 +34,11 @@ from ...state.models import (
     TopologyState,
 )
 from . import kv_cache as kvc
+from . import migration as mig
 from . import serving
 from .cache_model import WorkloadCacheState
-from .calibration import kv_value, serving_value
+from .calibration import kv_value, migration_value, serving_value
+from .migration_model import WorkloadMigrationState
 from .model import (
     GPU_PROFILES,
     GPUProfile,
@@ -109,6 +111,19 @@ class TickMetrics:
     ttft_p50_ms: Optional[float] = None
     ttft_p95_ms: Optional[float] = None
     ttft_p99_ms: Optional[float] = None
+    # Migration / rerouting / drain / cold-start realism KPIs
+    reroute_count: int = 0
+    migration_veto_count: int = 0
+    drain_seconds_total: float = 0.0
+    startup_latency_s_max: Optional[float] = None
+    warmup_active_count: int = 0
+    batch_efficiency_mean: Optional[float] = None
+    route_churn_mean: Optional[float] = None
+    proxy_saturation_max: Optional[float] = None
+    cold_start_count: int = 0
+    warm_pool_occupancy_mean: Optional[float] = None
+    rollback_count: int = 0
+    overload_events: int = 0
     is_sandbox: bool = True
 
 
@@ -344,6 +359,9 @@ class ClusterSimulator:
             model_kv_profile=w_cfg.get("model_kv_profile", "llama3-8b"),
             prefix_overlap=w_cfg.get("prefix_overlap", 0.5),
             avg_seq_len_tokens=w_cfg.get("avg_seq_len_tokens", 1024),
+            engine_runtime=w_cfg.get("engine_runtime", "vllm"),
+            warm_pool_size=w_cfg.get("warm_pool_size", 0),
+            pdb_min_available=w_cfg.get("pdb_min_available", 0),
         )
 
         # Place workload onto GPUs in the target region
@@ -361,6 +379,14 @@ class ClusterSimulator:
         cache.routing.home_gpu_ids = tuple(workload.gpu_ids)
         cache.routing.telemetry_tier = (cfg or {}).get("kv_telemetry_tier", "high")
         workload.cache = cache
+
+        # Initialize first-class migration / drain / cold-start state. The
+        # workload starts WARM on its home route (no startup penalty).
+        migstate = WorkloadMigrationState(engine_runtime=workload.engine_runtime)
+        migstate.warm_pool.size = workload.warm_pool_size
+        migstate.pdb.min_available = workload.pdb_min_available
+        migstate.pdb.available = max(0, len(workload.gpu_ids) - workload.pdb_min_available)
+        workload.migration = migstate
         return workload
 
     def _place_workload(self, workload: SimWorkload, cluster: SimCluster) -> None:
@@ -403,6 +429,7 @@ class ClusterSimulator:
         self._update_gpu_state(cluster)
         self._update_thermal(cluster)
         self._update_kv_cache(cluster)
+        self._update_migration(cluster)
         self._update_queues(cluster)
         self._update_cost_accounting(cluster)
 
@@ -451,6 +478,7 @@ class ClusterSimulator:
             self._update_gpu_state(cluster)
             self._update_thermal(cluster)
             self._update_kv_cache(cluster)
+            self._update_migration(cluster)
             self._update_queues(cluster)
             self._update_cost_accounting(cluster)
             ts = self._tick_timestamp(cluster.tick)
@@ -769,6 +797,12 @@ class ClusterSimulator:
                 batch_eff = kvc.cache_aware_batch_efficiency(
                     base_eff, hit_rate, kv_pressure, cfg
                 )
+                # Reroute churn fragments decode cohorts → η_batch degrades.
+                migstate = workload.migration
+                churn = migstate.route_shift.churn_rate if migstate else 0.0
+                if migstate is not None:
+                    batch_eff = mig.batch_efficiency_under_churn(batch_eff, churn, cfg)
+                    migstate.cohort.efficiency = batch_eff
                 tokens_per_sec *= batch_eff
 
                 total_tokens_per_sec = tokens_per_sec * replicas
@@ -792,6 +826,15 @@ class ClusterSimulator:
                 if not math.isfinite(mean_wait_s):
                     mean_wait_s = 60.0
                 mean_wait_s = min(60.0, mean_wait_s * serving.saturation_amplifier(rho, cfg))
+                # Proxy/ingress bottleneck amplifies queue wait from OFFERED load
+                # (arrivals), independent of replica count — replica count alone
+                # does NOT set throughput once the proxy saturates.
+                if migstate is not None:
+                    proxy_sat = mig.proxy_saturation_factor(arrival_rate, replicas, cfg)
+                    migstate.proxy.saturation_factor = proxy_sat
+                else:
+                    proxy_sat = 1.0
+                mean_wait_s = min(60.0, mean_wait_s * proxy_sat)
                 mean_wait_ms = mean_wait_s * 1000.0
 
                 p95_mult, p99_mult = serving.tail_multipliers(rho, cfg)
@@ -818,10 +861,16 @@ class ClusterSimulator:
                 if cache is not None:
                     ttft_compute += cache.affinity.cold_route_penalty_ms
                     ttft_compute += cache.preemption.recompute_penalty_ms
+                # Migration startup penalty (drain/cold-start/requeue) during the
+                # warmup window — cold starts materially hurt TTFT.
+                if migstate is not None:
+                    ttft_compute += migstate.warmup.startup_penalty_ms
                 ttft_p50 = mean_wait_ms + ttft_compute
+                # Migration amplifies the TAIL (p95/p99), not just the median.
+                tail_mult = migstate.tail.uplift_mult if migstate else 1.0
                 queue.ttft_p50_ms = ttft_p50
-                queue.ttft_p95_ms = ttft_p50 * p95_mult
-                queue.ttft_p99_ms = ttft_p50 * p99_mult
+                queue.ttft_p95_ms = ttft_p50 * p95_mult * tail_mult
+                queue.ttft_p99_ms = ttft_p50 * p99_mult * tail_mult
 
                 # Decomposed TPOT: base × throttle + per-replica decode contention.
                 throttle_factor = 1.0
@@ -852,6 +901,15 @@ class ClusterSimulator:
                 queue.batch_size = min(active_seqs // replicas, 256)
                 queue.tokens_per_second = total_tokens_per_sec
                 queue.requests_per_second = service_rate
+                queue.proxy_saturation = proxy_sat
+                queue.batch_efficiency = batch_eff
+
+                # Overload event: sustained queue pressure beyond the governor's
+                # threshold is an operational incident worth counting.
+                if migstate is not None and queue.queue_depth >= migration_value(
+                    "governor_queue_pressure_qdepth", cfg
+                ):
+                    migstate.migration.overload_events += 1
 
                 # Remember offered concurrency so the NEXT tick's KV pressure is
                 # computed from it (deterministic pre/post ordering).
@@ -991,6 +1049,52 @@ class ClusterSimulator:
                     queue.preemptions_total = float(cache.preemption.cumulative_count)
                     queue.cache_fragmentation_frac = frag
 
+    def _update_migration(self, cluster: SimCluster) -> None:
+        """Advance migration/drain/cold-start state one tick (decay + bookkeeping).
+
+        Runs after _update_kv_cache and before _update_queues so the queue
+        physics see the current warmup penalty, batching cohort efficiency, and
+        tail uplift. Penalties/instability decay over their windows so a single
+        migration is a transient spike, not a permanent tax.
+        """
+        cfg = self._serving_config or None
+        for wl in cluster.workloads.values():
+            m = wl.migration
+            if m is None:
+                continue
+
+            # Route churn decays toward 0 (recent-reroute intensity).
+            m.route_shift.churn_rate *= 0.6
+
+            # Warmup window counts down; the startup TTFT penalty drains with it.
+            if m.warmup.ticks_remaining > 0:
+                m.warmup.ticks_remaining -= 1
+                m.warmup.startup_penalty_ms *= 0.5
+                m.warmup.warm = m.warmup.ticks_remaining <= 0
+            else:
+                m.warmup.startup_penalty_ms = 0.0
+                m.warmup.warm = True
+
+            # Tail uplift relaxes back toward 1.0 once churn/instability subside.
+            target_tail = mig.tail_uplift(
+                m.rollout.instability, 0.0, m.route_shift.churn_rate,
+                wl.cache.prefix.hit_rate if wl.cache else 0.0, cfg,
+            ) if (m.route_shift.churn_rate > 0.01 or m.rollout.instability > 0.01) else 1.0
+            m.tail.uplift_mult = max(1.0, 0.5 * m.tail.uplift_mult + 0.5 * target_tail)
+
+            # Rollout hold window counts down; instability relaxes.
+            if m.rollout.hold_ticks_remaining > 0:
+                m.rollout.hold_ticks_remaining -= 1
+            m.rollout.instability *= 0.7
+
+            # PDB availability tracks current replica count vs the floor.
+            m.pdb.available = max(0, len(wl.gpu_ids) - m.pdb.min_available)
+
+            # Warm-pool occupancy: fraction of warm replicas currently serving.
+            if m.warm_pool.size > 0:
+                m.warm_pool.occupancy = min(1.0, len(wl.gpu_ids) / m.warm_pool.size)
+            # Proxy saturation is computed in _update_queues from offered load.
+
     def _update_cost_accounting(self, cluster: SimCluster) -> None:
         """Accumulate cost and energy metrics for this tick."""
         tick_energy_kwh = 0.0
@@ -1073,6 +1177,38 @@ class ClusterSimulator:
             cold_reroute_count += c.affinity.cold_reroute_count
             eviction_count += c.eviction.last_tick_evictions
 
+        # Migration / drain / cold-start KPIs aggregated across workloads.
+        reroute_count = 0
+        veto_count = 0
+        drain_total = 0.0
+        startup_latencies: list[float] = []
+        warmup_active = 0
+        batch_effs: list[float] = []
+        churns: list[float] = []
+        proxy_sats: list[float] = []
+        cold_starts = 0
+        warm_occ: list[float] = []
+        rollback_count = 0
+        overload_events = 0
+        for wl in cluster.workloads.values():
+            m = wl.migration
+            if m is None:
+                continue
+            reroute_count += m.route_shift.reroute_count
+            veto_count += m.migration.veto_count
+            drain_total += m.drain.drain_seconds_total
+            startup_latencies.append(m.startup.last_cold_seconds)
+            if m.warmup.ticks_remaining > 0:
+                warmup_active += 1
+            batch_effs.append(m.cohort.efficiency)
+            churns.append(m.route_shift.churn_rate)
+            proxy_sats.append(m.proxy.saturation_factor)
+            cold_starts += m.coldstart.cold_start_count
+            if m.warm_pool.size > 0:
+                warm_occ.append(m.warm_pool.occupancy)
+            rollback_count += m.rollout.rollback_count
+            overload_events += m.migration.overload_events
+
         mean_util = sum(util_values) / len(util_values) if util_values else 0.0
         p99_lat = max(p99_values) if p99_values else None
         p95_wait = max(p95_wait_values) if p95_wait_values else None
@@ -1123,6 +1259,18 @@ class ClusterSimulator:
             ttft_p50_ms=max(ttft_p50_values) if ttft_p50_values else None,
             ttft_p95_ms=max(ttft_p95_values) if ttft_p95_values else None,
             ttft_p99_ms=max(ttft_p99_values) if ttft_p99_values else None,
+            reroute_count=reroute_count,
+            migration_veto_count=veto_count,
+            drain_seconds_total=drain_total,
+            startup_latency_s_max=max(startup_latencies) if startup_latencies else None,
+            warmup_active_count=warmup_active,
+            batch_efficiency_mean=sum(batch_effs) / len(batch_effs) if batch_effs else None,
+            route_churn_mean=sum(churns) / len(churns) if churns else None,
+            proxy_saturation_max=max(proxy_sats) if proxy_sats else None,
+            cold_start_count=cold_starts,
+            warm_pool_occupancy_mean=sum(warm_occ) / len(warm_occ) if warm_occ else None,
+            rollback_count=rollback_count,
+            overload_events=overload_events,
         )
 
     # ------------------------------------------------------------------
@@ -1493,18 +1641,24 @@ class ClusterSimulator:
         workload_id: str,
         target_region_id: str,
         target_node_ids: Optional[list[str]] = None,
+        *,
+        respect_governor: bool = False,
     ) -> bool:
-        """Simulate workload migration to another region.
+        """Simulate workload migration to another region (NOT free, NOT instant).
 
-        This is the benchmark feedback mechanism for optimizer policies.
-        Safety checks prevent invalid migrations:
-        - workload not found → False
-        - migration_allowed=False → False
-        - same region → False (no-op)
-        - unknown region → False
-        - insufficient capacity in target → False
+        This is the benchmark feedback mechanism for optimizer policies. Basic
+        safety checks reject invalid migrations (unknown/ same region, capacity,
+        migration_allowed=False). A PodDisruptionBudget that forbids eviction
+        ALWAYS blocks the migration (drain stall). When ``respect_governor`` is
+        set, the migration governor may additionally veto under queue pressure,
+        strong cache affinity, rollout instability, incomplete warmup, or a
+        startup-heavy / scale-from-zero path (do-nothing is often safest).
 
-        Returns True if migration was applied, False if blocked.
+        On success the full migration cost is applied: Kubernetes-style drain +
+        engine-specific heavy-tailed cold start + cache loss + batching
+        disruption + p95/p99 tail uplift. See migration.py / migration_model.py.
+
+        Returns True if migration was applied, False if blocked/vetoed.
         """
         cluster = self._cluster
         workload = cluster.workloads.get(workload_id)
@@ -1516,6 +1670,17 @@ class ClusterSimulator:
             return False
         if target_region_id not in cluster.regions:
             return False
+
+        cfg = self._serving_config or None
+        migstate = workload.migration
+
+        # PodDisruptionBudget / governor veto — block BEFORE mutating anything.
+        if migstate is not None:
+            veto = self._migration_veto(workload, respect_governor=respect_governor)
+            if veto is not None:
+                migstate.migration.veto_count += 1
+                migstate.migration.last_veto_reason = veto
+                return False
 
         old_region = workload.region_id
         old_gpu_ids = list(workload.gpu_ids)
@@ -1533,10 +1698,9 @@ class ClusterSimulator:
         # re-prefilled. Price that lost prefill into a pending TTFT penalty and
         # reset locality confidence — this is what makes naive rerouting destroy
         # TTFT and lets affinity preservation beat cheaper energy.
-        cfg = self._serving_config or None
         cache = workload.cache
+        hit_before = cache.prefix.hit_rate if cache is not None else 0.0
         if cache is not None:
-            hit_before = cache.prefix.hit_rate
             shared = cache.prefix.shared_prefix_tokens or (
                 workload.prefix_overlap * workload.avg_seq_len_tokens
             )
@@ -1569,6 +1733,12 @@ class ClusterSimulator:
         # Recompute topology score
         workload.topology_score = self._compute_topology_score(workload, cluster)
 
+        # Apply the full migration cost (drain + cold start + cache loss + batch
+        # disruption + tail uplift) to the migration state. This is the heart of
+        # the realism upgrade: a migration injects a startup TTFT penalty over a
+        # warmup window, fragments batching, and amplifies p95/p99.
+        self._apply_migration_cost(workload, old_region, target_region_id)
+
         # Migration is NOT free: drained in-flight requests + rebalancing land as
         # a backlog spike on the destination queue (queue disruption). Combined
         # with the cold cache + warmup set above, this can make aggressive
@@ -1593,6 +1763,217 @@ class ClusterSimulator:
         })
         cluster.migration_count += 1
 
+        return True
+
+    # ------------------------------------------------------------------
+    # Migration realism helpers
+    # ------------------------------------------------------------------
+
+    def _migration_veto(
+        self, workload: SimWorkload, *, respect_governor: bool
+    ) -> Optional[str]:
+        """Return a veto reason if this migration should be blocked, else None.
+
+        PDB unavailability ALWAYS blocks (drain stall). The remaining governor
+        checks only apply when ``respect_governor`` is set (cache-aware policies);
+        naive policies pass them by and pay the realistic cost instead.
+        """
+        m = workload.migration
+        if m is None:
+            return None
+        if mig.pdb_blocks_migration(m.pdb.available):
+            return "pdb_unavailable"
+        if not respect_governor:
+            return None
+        cluster = self._cluster
+        cfg = self._serving_config or None
+        # Aggregate queue depth for this workload's service in its current region.
+        region = cluster.regions.get(workload.region_id)
+        qdepth = 0.0
+        p95_unstable = False
+        if region is not None:
+            for q in region.queues:
+                if q.service_id == workload.service_id:
+                    qdepth = max(qdepth, float(q.queue_depth))
+                    sla = workload.queue_sla_p95_ms or 1000.0
+                    if q.queue_wait_p95_ms is not None and q.queue_wait_p95_ms > sla:
+                        p95_unstable = True
+        loc_conf = workload.cache.locality.confidence if workload.cache else 0.0
+        prof = mig.resolve_engine_profile(m.engine_runtime)
+        return mig.migration_veto_reason(
+            queue_depth=qdepth,
+            locality_confidence=loc_conf,
+            p95_unstable=p95_unstable,
+            rollout_instability=m.rollout.instability,
+            pdb_available=m.pdb.available,
+            warmup_incomplete=m.warmup.ticks_remaining > 0,
+            startup_heavy=prof.compile_heavy,
+            scale_from_zero=m.coldstart.scale_from_zero,
+            config=cfg,
+        )
+
+    def _apply_migration_cost(
+        self, workload: SimWorkload, old_region: str, target_region_id: str
+    ) -> None:
+        """Compute C_mig via migration.py and write it into the migration state."""
+        m = workload.migration
+        if m is None:
+            return
+        cfg = self._serving_config or None
+        cluster = self._cluster
+
+        # Cross-region RTT, if the scenario configured it.
+        rtt_ms = None
+        src = cluster.regions.get(old_region)
+        if src is not None and target_region_id in src.network_latency_to:
+            rtt_ms = float(src.network_latency_to[target_region_id])
+
+        hit_before = workload.cache.prefix.hit_rate if workload.cache else 0.0
+        prefill_cost = kv_value("prefill_cost_per_token_ms", cfg)
+        from_zero = len(workload.gpu_ids) == 0 or m.coldstart.scale_from_zero
+        cohort_eff = m.cohort.efficiency
+
+        cost = mig.migration_cost(
+            m.engine_runtime,
+            prompt_tokens=workload.avg_seq_len_tokens,
+            hit_rate_before=hit_before,
+            prefill_cost_per_token_ms=prefill_cost,
+            rng=self._rng,
+            base_batch_efficiency=cohort_eff,
+            churn_rate=m.route_shift.churn_rate,
+            rollout_instability=m.rollout.instability,
+            queue_pressure=0.0,
+            network_rtt_ms=rtt_ms,
+            from_zero=from_zero,
+            config=cfg,
+        )
+
+        # Warm pool absorbs the cold start: a pre-loaded replica skips
+        # transfer+warmup, leaving only requeue/routing cost.
+        warm = m.warm_pool.size > 0
+        startup_penalty = cost.t_requeue_ms + (
+            0.0 if warm else cost.t_transfer_ms + cost.t_warmup_ms
+        )
+        total_startup_s = (cost.drain_s
+                           + (0.0 if warm else cost.cold_start.total_seconds))
+
+        # Startup state + warmup window.
+        m.startup.last_cold_seconds = cost.cold_start.total_seconds
+        m.startup.t_node = cost.cold_start.t_node
+        m.startup.t_pull = cost.cold_start.t_pull
+        m.startup.t_load = cost.cold_start.t_load
+        m.startup.t_gpu_transfer = cost.cold_start.t_gpu_transfer
+        m.startup.t_warmup = cost.cold_start.t_warmup
+        m.startup.first_compile = cost.cold_start.first_compile
+        m.coldstart.cold_start_count += 0 if warm else 1
+
+        warmup_ticks = mig.seconds_to_warmup_ticks(
+            total_startup_s, cluster.tick_duration_hours
+        )
+        m.warmup.ticks_remaining = max(m.warmup.ticks_remaining, warmup_ticks)
+        m.warmup.startup_penalty_ms = startup_penalty
+        m.warmup.warm = False
+
+        # Drain / eviction bookkeeping.
+        m.drain.draining = False
+        m.drain.last_drain_seconds = cost.drain_s
+        m.drain.drain_seconds_total += cost.drain_s
+        m.eviction.last_tick_evictions += 1
+        m.eviction.cumulative_evictions += 1
+
+        # Route churn + tail instability spike.
+        m.route_shift.reroute_count += 1
+        m.route_shift.churn_rate += 1.0
+        m.tail.uplift_mult = max(m.tail.uplift_mult, cost.t_tail_mult)
+        m.cohort.efficiency = cost.t_batchloss_factor
+
+        # Top-level bookkeeping.
+        m.migration.migration_count += 1
+        m.migration.last_cost_ms = cost.startup_penalty_ms
+
+    # ------------------------------------------------------------------
+    # Phased rollout + governor (public; used by tests / cache-aware policies)
+    # ------------------------------------------------------------------
+
+    def can_migrate(self, service_id: str, region_id: Optional[str] = None) -> Optional[str]:
+        """Governor check: return a veto reason if migration is unsafe, else None."""
+        wl = self._resolve_workload(service_id, region_id)
+        if wl is None:
+            return "workload_not_found"
+        return self._migration_veto(wl, respect_governor=True)
+
+    def safe_migrate_workload(self, workload_id: str, target_region_id: str) -> bool:
+        """Governor-respecting migration: vetoes unsafe moves (do-nothing safer)."""
+        return self.migrate_workload(workload_id, target_region_id, respect_governor=True)
+
+    def migrate_workload_phased(self, workload_id: str, target_region_id: str) -> bool:
+        """Begin/advance a phased (canary) rollout of a cross-region migration.
+
+        Traffic shifts in stabilization-gated phases (0.1→0.25→0.5→1.0). A phase
+        advances only when stable; p99 blowups trigger rollback. The first call
+        starts the rollout (and performs the underlying placement migration with
+        its cost); subsequent calls advance or roll back based on current p99.
+        Returns True while the rollout is progressing, False on rollback/block.
+        """
+        cluster = self._cluster
+        wl = cluster.workloads.get(workload_id)
+        if wl is None or wl.migration is None:
+            return False
+        m = wl.migration
+        cfg = self._serving_config or None
+
+        if not m.rollout.active:
+            # Start the rollout: perform the placement migration once.
+            if not self.migrate_workload(workload_id, target_region_id):
+                return False
+            m.rollout.active = True
+            m.rollout.phase = 1
+            m.traffic_shift.fraction = 0.1
+            m.rollout.hold_ticks_remaining = int(migration_value("rollout_hold_ticks", cfg))
+            return True
+
+        # Advancing an in-flight rollout: check stability / rollback.
+        region = cluster.regions.get(wl.region_id)
+        p99 = 0.0
+        if region is not None:
+            for q in region.queues:
+                if q.service_id == wl.service_id and q.latency_p99_ms is not None:
+                    p99 = max(p99, q.latency_p99_ms)
+        sla = wl.latency_sla_p99_ms or _SLA_P99_DEFAULT_MS
+        if mig.should_rollback(p99, sla, cfg):
+            m.rollout.rollback_count += 1
+            m.rollout.instability = min(1.0, m.rollout.instability + 0.5)
+            m.traffic_shift.fraction = max(0.0, m.traffic_shift.fraction - 0.25)
+            return False
+        if m.rollout.hold_ticks_remaining > 0:
+            return True  # still holding/stabilizing this phase
+        stable = p99 <= sla
+        new_frac = mig.next_traffic_fraction(m.traffic_shift.fraction, stable)
+        m.traffic_shift.fraction = new_frac
+        m.rollout.phase += 1 if new_frac > m.traffic_shift.fraction - 1e-9 else 0
+        m.rollout.hold_ticks_remaining = int(migration_value("rollout_hold_ticks", cfg))
+        if new_frac >= 1.0:
+            m.rollout.active = False  # rollout complete
+        return True
+
+    def set_warm_pool(self, service_id: str, size: int, region_id: Optional[str] = None) -> bool:
+        """Configure a warm pool (pre-loaded ready replicas) for a workload."""
+        wl = self._resolve_workload(service_id, region_id)
+        if wl is None or wl.migration is None:
+            return False
+        wl.warm_pool_size = max(0, size)
+        wl.migration.warm_pool.size = wl.warm_pool_size
+        return True
+
+    def set_pdb(self, service_id: str, min_available: int, region_id: Optional[str] = None) -> bool:
+        """Set a PodDisruptionBudget floor; min_available ≥ replicas blocks drains."""
+        wl = self._resolve_workload(service_id, region_id)
+        if wl is None or wl.migration is None:
+            return False
+        wl.pdb_min_available = max(0, min_available)
+        m = wl.migration
+        m.pdb.min_available = wl.pdb_min_available
+        m.pdb.available = max(0, len(wl.gpu_ids) - wl.pdb_min_available)
         return True
 
     # ------------------------------------------------------------------
@@ -1647,6 +2028,7 @@ class ClusterSimulator:
         region = cluster.regions.get(wl.region_id)
         if region is None:
             return False
+        scaling_from_zero = len(wl.gpu_ids) == 0
         for node in region.nodes:
             for gpu in node.gpus:
                 if gpu.assigned_workload_id is None:
@@ -1665,8 +2047,37 @@ class ClusterSimulator:
                         int(serving_value("replica_warmup_ticks")),
                     )
                     wl.last_scaled_tick = cluster.tick
+                    # Scale-up cold start: engine-specific, heavy-tailed; scale-
+                    # FROM-ZERO amplifies TTFT (no warm replica to absorb the
+                    # queue while the first replica starts).
+                    self._apply_scaleup_cost(wl, from_zero=scaling_from_zero)
                     return True
         return False  # no idle GPU available — scaling not possible this tick
+
+    def _apply_scaleup_cost(self, workload: SimWorkload, *, from_zero: bool) -> None:
+        """Apply an autoscaling scale-up startup penalty to the migration state."""
+        m = workload.migration
+        if m is None:
+            return
+        cfg = self._serving_config or None
+        warm = m.warm_pool.size > 0
+        scaleup_s = mig.scaleup_seconds(m.engine_runtime, self._rng, cfg, from_zero=from_zero)
+        if warm:
+            scaleup_s *= 0.2  # warm pool absorbs most of the startup
+        m.coldstart.scale_from_zero = from_zero
+        m.coldstart.cold_start_count += 0 if warm else 1
+        m.startup.last_cold_seconds = scaleup_s
+        warmup_ticks = mig.seconds_to_warmup_ticks(scaleup_s, self._cluster.tick_duration_hours)
+        m.warmup.ticks_remaining = max(m.warmup.ticks_remaining, warmup_ticks)
+        # Scale-from-zero amplifies TTFT while the first replica starts.
+        penalty = scaleup_s * 1000.0 * 0.1
+        if from_zero and not warm:
+            penalty *= migration_value("scale_from_zero_ttft_mult", cfg)
+            m.tail.uplift_mult = max(
+                m.tail.uplift_mult, migration_value("scale_from_zero_ttft_mult", cfg)
+            )
+        m.warmup.startup_penalty_ms = max(m.warmup.startup_penalty_ms, penalty)
+        m.warmup.warm = False
 
     def spread_workload(self, service_id: str, region_id: Optional[str] = None) -> bool:
         """SPREAD: move the workload's hottest GPU onto a cooler idle GPU.

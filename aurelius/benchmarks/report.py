@@ -113,6 +113,15 @@ class TickKPI:
     locality_confidence_mean: Optional[float] = None
     cache_fragmentation_frac_mean: Optional[float] = None
     ttft_p99_ms: Optional[float] = None
+    # Migration / drain / cold-start realism KPIs (optional)
+    reroute_count: int = 0
+    migration_veto_count: int = 0
+    batch_efficiency_mean: Optional[float] = None
+    proxy_saturation_max: Optional[float] = None
+    cold_start_count: int = 0
+    rollback_count: int = 0
+    overload_events: int = 0
+    startup_latency_s_max: Optional[float] = None
 
     def to_dict(self) -> dict[str, Any]:
         return {
@@ -138,6 +147,14 @@ class TickKPI:
             "locality_confidence_mean": self.locality_confidence_mean,
             "cache_fragmentation_frac_mean": self.cache_fragmentation_frac_mean,
             "ttft_p99_ms": self.ttft_p99_ms,
+            "reroute_count": self.reroute_count,
+            "migration_veto_count": self.migration_veto_count,
+            "batch_efficiency_mean": self.batch_efficiency_mean,
+            "proxy_saturation_max": self.proxy_saturation_max,
+            "cold_start_count": self.cold_start_count,
+            "rollback_count": self.rollback_count,
+            "overload_events": self.overload_events,
+            "startup_latency_s_max": self.startup_latency_s_max,
         }
 
 
@@ -167,6 +184,15 @@ class AggregatedKPI:
     locality_confidence_mean: Optional[float] = None
     cache_fragmentation_frac_mean: Optional[float] = None
     ttft_p99_ms: Optional[float] = None
+    # Migration / drain / cold-start realism KPIs (optional)
+    total_reroutes: int = 0
+    total_migration_vetoes: int = 0
+    batch_efficiency_mean: Optional[float] = None
+    proxy_saturation_max: Optional[float] = None
+    total_cold_starts: int = 0
+    total_rollbacks: int = 0
+    total_overload_events: int = 0
+    startup_latency_s_max: Optional[float] = None
 
     def to_dict(self) -> dict[str, Any]:
         return {
@@ -215,6 +241,23 @@ class AggregatedKPI:
             ),
             "ttft_p99_ms": (
                 round(self.ttft_p99_ms, 1) if self.ttft_p99_ms is not None else None
+            ),
+            "total_reroutes": self.total_reroutes,
+            "total_migration_vetoes": self.total_migration_vetoes,
+            "batch_efficiency_mean": (
+                round(self.batch_efficiency_mean, 3)
+                if self.batch_efficiency_mean is not None else None
+            ),
+            "proxy_saturation_max": (
+                round(self.proxy_saturation_max, 3)
+                if self.proxy_saturation_max is not None else None
+            ),
+            "total_cold_starts": self.total_cold_starts,
+            "total_rollbacks": self.total_rollbacks,
+            "total_overload_events": self.total_overload_events,
+            "startup_latency_s_max": (
+                round(self.startup_latency_s_max, 1)
+                if self.startup_latency_s_max is not None else None
             ),
         }
 

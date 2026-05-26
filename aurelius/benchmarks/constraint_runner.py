@@ -390,6 +390,16 @@ def _aggregate_kpis(policy_name: str, tick_kpis: list[TickKPI]) -> AggregatedKPI
     ]
     ttft99_vals = [k.ttft_p99_ms for k in tick_kpis if k.ttft_p99_ms is not None]
 
+    beff_vals = [
+        k.batch_efficiency_mean for k in tick_kpis if k.batch_efficiency_mean is not None
+    ]
+    psat_vals = [
+        k.proxy_saturation_max for k in tick_kpis if k.proxy_saturation_max is not None
+    ]
+    startup_vals = [
+        k.startup_latency_s_max for k in tick_kpis if k.startup_latency_s_max is not None
+    ]
+
     return AggregatedKPI(
         policy_name=policy_name,
         total_energy_cost=total_cost,
@@ -413,6 +423,14 @@ def _aggregate_kpis(policy_name: str, tick_kpis: list[TickKPI]) -> AggregatedKPI
         locality_confidence_mean=sum(loc_vals) / len(loc_vals) if loc_vals else None,
         cache_fragmentation_frac_mean=sum(frag_vals) / len(frag_vals) if frag_vals else None,
         ttft_p99_ms=max(ttft99_vals) if ttft99_vals else None,
+        total_reroutes=tick_kpis[-1].reroute_count if tick_kpis else 0,
+        total_migration_vetoes=tick_kpis[-1].migration_veto_count if tick_kpis else 0,
+        batch_efficiency_mean=sum(beff_vals) / len(beff_vals) if beff_vals else None,
+        proxy_saturation_max=max(psat_vals) if psat_vals else None,
+        total_cold_starts=tick_kpis[-1].cold_start_count if tick_kpis else 0,
+        total_rollbacks=tick_kpis[-1].rollback_count if tick_kpis else 0,
+        total_overload_events=tick_kpis[-1].overload_events if tick_kpis else 0,
+        startup_latency_s_max=max(startup_vals) if startup_vals else None,
     )
 
 
@@ -440,6 +458,14 @@ def _tick_metrics_to_kpi(tm: TickMetrics) -> TickKPI:
         locality_confidence_mean=tm.locality_confidence_mean,
         cache_fragmentation_frac_mean=tm.cache_fragmentation_frac_mean,
         ttft_p99_ms=tm.ttft_p99_ms,
+        reroute_count=tm.reroute_count,
+        migration_veto_count=tm.migration_veto_count,
+        batch_efficiency_mean=tm.batch_efficiency_mean,
+        proxy_saturation_max=tm.proxy_saturation_max,
+        cold_start_count=tm.cold_start_count,
+        rollback_count=tm.rollback_count,
+        overload_events=tm.overload_events,
+        startup_latency_s_max=tm.startup_latency_s_max,
     )
 
 
