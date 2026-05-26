@@ -1706,4 +1706,375 @@ _BUILTIN_SCENARIOS: dict[str, dict[str, Any]] = {
         ],
         "events": [],
     },
+
+    # -----------------------------------------------------------------------
+    # 20. Clean batch-shift arbitrage (energy optimization works)
+    # -----------------------------------------------------------------------
+    # A high-flexibility batch job, a large stable DA spread, no basis/congestion.
+    # Expected SAFE action: shift the batch job to the cheap region for net
+    # savings (gross spread comfortably clears migration cost). Net savings > 0.
+    "clean_batch_shift_arbitrage": {
+        "scenario_name": "clean_batch_shift_arbitrage",
+        "description": (
+            "Flexible batch job + large stable DA price spread, no basis. "
+            "Expected: shifting captures positive NET savings (gross >> migration "
+            "cost). Energy optimization works here."
+        ),
+        "seed": 42,
+        "tick_duration_hours": 1.0,
+        "expected_primary_constraint": "energy_bound",
+        "expected_events": [],
+        "scenario_version": "v1",
+        "simulator_version": "1.0.0",
+        "regions": [
+            {
+                "region_id": "us-east",
+                "energy_price_trace": [140.0] * 24,
+                "carbon_intensity_trace": [400] * 24,
+                "network_latency_to": {"us-west": 30},
+                "nodes": [{
+                    "node_id": "e0", "gpu_type": "a100-sxm4-80gb", "gpu_count": 4,
+                    "topology_class": "nvswitch", "rack_id": "er0",
+                }],
+                "queues": [{
+                    "queue_id": "eq", "service_id": "batch-svc",
+                    "base_arrival_rate_per_sec": 0.4,
+                }],
+            },
+            {
+                "region_id": "us-west",
+                "energy_price_trace": [35.0] * 24,
+                "carbon_intensity_trace": [350] * 24,
+                "network_latency_to": {"us-east": 30},
+                "nodes": [{
+                    "node_id": "w0", "gpu_type": "a100-sxm4-80gb", "gpu_count": 4,
+                    "topology_class": "nvswitch", "rack_id": "wr0",
+                }],
+                "queues": [{
+                    "queue_id": "wq", "service_id": "batch-svc-w",
+                    "base_arrival_rate_per_sec": 0.05,
+                }],
+            },
+        ],
+        "workloads": [{
+            "workload_id": "batch-shift", "service_id": "batch-svc",
+            "workload_type": "batch_training", "priority_tier": "batch",
+            "region_id": "us-east", "gpu_count_required": 2, "target_util_pct": 70.0,
+            "communication_intensity": "low", "workload_class": "batch_inference",
+            "flexibility": "high", "comm_profile": "batch_inference",
+            "migration_allowed": True,
+        }],
+        "events": [],
+    },
+
+    # -----------------------------------------------------------------------
+    # 21. DA/RT basis blowout (DA planner wrong under RT settlement)
+    # -----------------------------------------------------------------------
+    # The destination is cheap on day-ahead but a congestion event drives its
+    # real-time price far above day-ahead. A DA-only planner that shifts there
+    # pays the RT basis. Expected rejected unsafe action: the energy governor
+    # blocks the move (net savings erased by the forecast-error buffer).
+    "da_rt_basis_blowout": {
+        "scenario_name": "da_rt_basis_blowout",
+        "description": (
+            "Destination cheap on day-ahead but congestion blows out its "
+            "real-time price. Expected: DA planner is wrong under RT; energy "
+            "governor rejects the move (basis/forecast buffer erases savings)."
+        ),
+        "seed": 3,
+        "tick_duration_hours": 1.0,
+        "expected_primary_constraint": "energy_bound",
+        "expected_events": ["energy_congestion"],
+        "scenario_version": "v1",
+        "simulator_version": "1.0.0",
+        "serving_config": {"enable_basis": True, "enable_spikes": True},
+        "regions": [
+            {
+                "region_id": "us-east",
+                "energy_price_trace": [110.0] * 24,
+                "carbon_intensity_trace": [400] * 24,
+                "network_latency_to": {"us-west": 40},
+                "nodes": [{
+                    "node_id": "e0", "gpu_type": "a100-sxm4-80gb", "gpu_count": 4,
+                    "topology_class": "nvswitch", "rack_id": "er0",
+                }],
+                "queues": [{
+                    "queue_id": "eq", "service_id": "basis-svc",
+                    "base_arrival_rate_per_sec": 0.4,
+                }],
+            },
+            {
+                "region_id": "us-west",
+                "energy_price_trace": [45.0] * 24,    # cheap day-ahead
+                "carbon_intensity_trace": [350] * 24,
+                "network_latency_to": {"us-east": 40},
+                "nodes": [{
+                    "node_id": "w0", "gpu_type": "a100-sxm4-80gb", "gpu_count": 4,
+                    "topology_class": "nvswitch", "rack_id": "wr0",
+                }],
+                "queues": [{
+                    "queue_id": "wq", "service_id": "basis-svc-w",
+                    "base_arrival_rate_per_sec": 0.05,
+                }],
+            },
+        ],
+        "workloads": [{
+            "workload_id": "basis-batch", "service_id": "basis-svc",
+            "workload_type": "batch_training", "priority_tier": "batch",
+            "region_id": "us-east", "gpu_count_required": 2, "target_util_pct": 70.0,
+            "communication_intensity": "low", "workload_class": "batch_inference",
+            "flexibility": "high", "comm_profile": "batch_inference",
+            "migration_allowed": True,
+        }],
+        "events": [
+            {"tick": 2, "type": "energy_congestion", "region_id": "us-west"},
+            {"tick": 2, "type": "grid_stress", "region_id": "us-west"},
+            {"tick": 20, "type": "energy_congestion_end", "region_id": "us-west"},
+        ],
+    },
+
+    # -----------------------------------------------------------------------
+    # 22. Carbon-cheap but price-expensive region (carbon != price)
+    # -----------------------------------------------------------------------
+    # Carbon optimization (beta>0) prefers the low-carbon region, which is NOT
+    # the price-minimizing region. Demonstrates carbon-minimizing windows are not
+    # price-minimizing windows.
+    "carbon_cheap_price_expensive": {
+        "scenario_name": "carbon_cheap_price_expensive",
+        "description": (
+            "Low-carbon region is price-expensive; cheap-price region is "
+            "carbon-dirty. Expected: carbon optimization (beta>0) does NOT pick "
+            "the price-minimizing region. Carbon != price."
+        ),
+        "seed": 5,
+        "tick_duration_hours": 1.0,
+        "expected_primary_constraint": "energy_bound",
+        "expected_events": [],
+        "scenario_version": "v1",
+        "simulator_version": "1.0.0",
+        "regions": [
+            {
+                "region_id": "hydro",     # clean but pricey
+                "energy_price_trace": [90.0] * 24,
+                "carbon_intensity_trace": [60] * 24,
+                "network_latency_to": {"coal": 50},
+                "nodes": [{
+                    "node_id": "h0", "gpu_type": "a100-sxm4-80gb", "gpu_count": 4,
+                    "topology_class": "nvswitch", "rack_id": "hr0",
+                }],
+                "queues": [{
+                    "queue_id": "hq", "service_id": "carbon-svc-h",
+                    "base_arrival_rate_per_sec": 0.05,
+                }],
+            },
+            {
+                "region_id": "coal",      # cheap but dirty
+                "energy_price_trace": [40.0] * 24,
+                "carbon_intensity_trace": [820] * 24,
+                "network_latency_to": {"hydro": 50},
+                "nodes": [{
+                    "node_id": "c0", "gpu_type": "a100-sxm4-80gb", "gpu_count": 4,
+                    "topology_class": "nvswitch", "rack_id": "cr0",
+                }],
+                "queues": [{
+                    "queue_id": "cq", "service_id": "carbon-svc",
+                    "base_arrival_rate_per_sec": 0.4,
+                }],
+            },
+        ],
+        "workloads": [{
+            "workload_id": "carbon-batch", "service_id": "carbon-svc",
+            "workload_type": "batch_training", "priority_tier": "batch",
+            "region_id": "coal", "gpu_count_required": 2, "target_util_pct": 70.0,
+            "communication_intensity": "low", "workload_class": "batch_inference",
+            "flexibility": "high", "comm_profile": "batch_inference",
+            "migration_allowed": True,
+            "beta_carbon": 0.01,    # carbon-weighted objective
+        }],
+        "events": [],
+    },
+
+    # -----------------------------------------------------------------------
+    # 23. Migration trap — gross savings erased by penalties
+    # -----------------------------------------------------------------------
+    # A small DA spread that is positive gross but negative net once migration
+    # cost is included. Expected: energy governor recommends KEEP (no-op).
+    "migration_trap_erased_savings": {
+        "scenario_name": "migration_trap_erased_savings",
+        "description": (
+            "Small positive gross spread, but migration cost erases it. Expected: "
+            "net savings <= 0 → KEEP / no-op. Gross savings != net savings."
+        ),
+        "seed": 7,
+        "tick_duration_hours": 1.0,
+        "expected_primary_constraint": "energy_bound",
+        "expected_events": [],
+        "scenario_version": "v1",
+        "simulator_version": "1.0.0",
+        "regions": [
+            {
+                "region_id": "us-east",
+                "energy_price_trace": [62.0] * 24,
+                "carbon_intensity_trace": [400] * 24,
+                "network_latency_to": {"us-west": 40},
+                "nodes": [{
+                    "node_id": "e0", "gpu_type": "a100-sxm4-80gb", "gpu_count": 4,
+                    "topology_class": "nvswitch", "rack_id": "er0",
+                }],
+                "queues": [{
+                    "queue_id": "eq", "service_id": "trap-svc",
+                    "base_arrival_rate_per_sec": 0.4,
+                }],
+            },
+            {
+                "region_id": "us-west",
+                "energy_price_trace": [60.0] * 24,   # only ~3% cheaper
+                "carbon_intensity_trace": [400] * 24,
+                "network_latency_to": {"us-east": 40},
+                "nodes": [{
+                    "node_id": "w0", "gpu_type": "a100-sxm4-80gb", "gpu_count": 4,
+                    "topology_class": "nvswitch", "rack_id": "wr0",
+                }],
+                "queues": [{
+                    "queue_id": "wq", "service_id": "trap-svc-w",
+                    "base_arrival_rate_per_sec": 0.05,
+                }],
+            },
+        ],
+        "workloads": [{
+            "workload_id": "trap-batch", "service_id": "trap-svc",
+            "workload_type": "batch_training", "priority_tier": "batch",
+            "region_id": "us-east", "gpu_count_required": 2, "target_util_pct": 70.0,
+            "communication_intensity": "low", "workload_class": "batch_inference",
+            "flexibility": "high", "comm_profile": "batch_inference",
+            "migration_allowed": True,
+        }],
+        "events": [],
+    },
+
+    # -----------------------------------------------------------------------
+    # 24. Low-confidence energy telemetry forces no-op
+    # -----------------------------------------------------------------------
+    # Price/carbon telemetry is missing/stale → confidence low → required margin
+    # inflated → a modest spread no longer justifies action. Bias to no-op.
+    "low_confidence_energy_telemetry": {
+        "scenario_name": "low_confidence_energy_telemetry",
+        "description": (
+            "Missing/stale price + carbon telemetry inflates the required margin. "
+            "Expected: a modest spread no longer justifies action → no-op. Missing "
+            "telemetry biases toward KEEP."
+        ),
+        "seed": 11,
+        "tick_duration_hours": 1.0,
+        "expected_primary_constraint": "energy_bound",
+        "expected_events": [],
+        "scenario_version": "v1",
+        "simulator_version": "1.0.0",
+        "regions": [
+            {
+                "region_id": "us-east",
+                "energy_price_trace": [80.0] * 24,
+                "carbon_intensity_trace": [400] * 24,
+                "network_latency_to": {"us-west": 40},
+                "price_telemetry_visible": False,
+                "carbon_telemetry_visible": False,
+                "energy_stale_ticks": 6,
+                "nodes": [{
+                    "node_id": "e0", "gpu_type": "a100-sxm4-80gb", "gpu_count": 4,
+                    "topology_class": "nvswitch", "rack_id": "er0",
+                }],
+                "queues": [{
+                    "queue_id": "eq", "service_id": "blind-energy-svc",
+                    "base_arrival_rate_per_sec": 0.4,
+                }],
+            },
+            {
+                "region_id": "us-west",
+                "energy_price_trace": [72.0] * 24,
+                "carbon_intensity_trace": [400] * 24,
+                "network_latency_to": {"us-east": 40},
+                "price_telemetry_visible": False,
+                "carbon_telemetry_visible": False,
+                "energy_stale_ticks": 6,
+                "nodes": [{
+                    "node_id": "w0", "gpu_type": "a100-sxm4-80gb", "gpu_count": 4,
+                    "topology_class": "nvswitch", "rack_id": "wr0",
+                }],
+                "queues": [{
+                    "queue_id": "wq", "service_id": "blind-energy-svc-w",
+                    "base_arrival_rate_per_sec": 0.05,
+                }],
+            },
+        ],
+        "workloads": [{
+            "workload_id": "blind-energy-batch", "service_id": "blind-energy-svc",
+            "workload_type": "batch_training", "priority_tier": "batch",
+            "region_id": "us-east", "gpu_count_required": 2, "target_util_pct": 70.0,
+            "communication_intensity": "low", "workload_class": "batch_inference",
+            "flexibility": "high", "comm_profile": "batch_inference",
+            "migration_allowed": True,
+        }],
+        "events": [],
+    },
+
+    # -----------------------------------------------------------------------
+    # 25. Latency-critical inference blocked from energy migration
+    # -----------------------------------------------------------------------
+    # A latency-critical, cache-sensitive inference service in an expensive region
+    # next to a cheap region. Expected: it is NOT shifted (low flexibility / no
+    # temporal shift; cross-region move would break locality and SLA).
+    "latency_critical_no_energy_shift": {
+        "scenario_name": "latency_critical_no_energy_shift",
+        "description": (
+            "Latency-critical, cache-sensitive inference next to a cheap region. "
+            "Expected: NOT shifted for energy (low flexibility, SLA/locality). "
+            "Latency-critical inference is not temporally shiftable."
+        ),
+        "seed": 13,
+        "tick_duration_hours": 1.0,
+        "expected_primary_constraint": "energy_bound",
+        "expected_events": [],
+        "scenario_version": "v1",
+        "simulator_version": "1.0.0",
+        "regions": [
+            {
+                "region_id": "us-east",
+                "energy_price_trace": [140.0] * 24,
+                "carbon_intensity_trace": [400] * 24,
+                "network_latency_to": {"us-west": 70},
+                "nodes": [{
+                    "node_id": "e0", "gpu_type": "a100-sxm4-80gb", "gpu_count": 4,
+                    "topology_class": "nvswitch", "rack_id": "er0",
+                }],
+                "queues": [{
+                    "queue_id": "eq", "service_id": "lc-svc",
+                    "base_arrival_rate_per_sec": 3.0,
+                }],
+            },
+            {
+                "region_id": "us-west",
+                "energy_price_trace": [35.0] * 24,
+                "carbon_intensity_trace": [350] * 24,
+                "network_latency_to": {"us-east": 70},
+                "nodes": [{
+                    "node_id": "w0", "gpu_type": "a100-sxm4-80gb", "gpu_count": 4,
+                    "topology_class": "nvswitch", "rack_id": "wr0",
+                }],
+                "queues": [{
+                    "queue_id": "wq", "service_id": "lc-svc-w",
+                    "base_arrival_rate_per_sec": 0.05,
+                }],
+            },
+        ],
+        "workloads": [{
+            "workload_id": "lc-inf", "service_id": "lc-svc",
+            "workload_type": "inference", "priority_tier": "critical",
+            "region_id": "us-east", "gpu_count_required": 2, "target_util_pct": 60.0,
+            "communication_intensity": "low",
+            "workload_class": "latency_critical_inference", "flexibility": "low",
+            "latency_sensitive": True, "latency_sla_p99_ms": 1500.0,
+            "migration_allowed": True,
+        }],
+        "events": [],
+    },
 }

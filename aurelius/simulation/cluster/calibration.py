@@ -1795,16 +1795,264 @@ def flexibility_multiplier(flexibility: str | None) -> float:
     return FLEXIBILITY_CLASSES.get((flexibility or "medium").lower(), 0.6)
 
 
+# ---------------------------------------------------------------------------
+# Energy / carbon / arbitrage parameter registry
+# ---------------------------------------------------------------------------
+# Added for the energy-realism upgrade (driven by energy.py). These model
+# separate day-ahead / real-time settlement, mean-reverting + heteroskedastic
+# DA/RT basis with congestion jumps, an LMP component decomposition (energy +
+# congestion + loss), a heavy-tailed RT spike process, regional carbon-intensity
+# forecasts with uncertainty + provider disagreement, conservative forecast-error
+# buffers, net-vs-gross savings accounting with explicit penalties, and
+# diminishing returns / churn from repeated shifting. As elsewhere, the great
+# majority are HEURISTIC/INFERRED priors anchored to documented market behaviour
+# (ISO DA/RT settlement, LMP = energy+congestion+loss); NONE are calibrated to a
+# specific market. They make energy arbitrage a constrained problem where DA
+# planning can be wrong under RT, gross savings != net savings, and tiny spreads
+# do not justify action.
+#
+# IMPORTANT: basis and the spike process are OFF by default (enable_basis /
+# enable_spikes in the scenario's serving_config) so the canonical detection
+# scenarios keep deterministic, DA==RT pricing; energy-realism scenarios opt in.
+
+ENERGY_PARAMS: dict[str, CalibratedParam] = {
+    # --- DA/RT basis (mean-reverting, heteroskedastic) -------------------
+    "basis_mean_reversion": _h(
+        0.4,
+        "Mean-reversion rate (theta) of the DA/RT basis OU process per tick. "
+        "Higher = basis snaps back to ~0 faster. RT-DA basis is mean-reverting "
+        "but spiky. Calibrate from real RT-DA spread autocorrelation.",
+        source_type=INFERRED, source="RT-DA basis is mean-reverting (ISO markets)",
+        confidence="low",
+    ),
+    "basis_vol": _h(
+        8.0,
+        "Base volatility ($/MWh) of the DA/RT basis innovations. RT settles can "
+        "diverge materially from DA. Calibrate from real RT-DA spread std.",
+        source_type=INFERRED, source="RT-DA spread volatility", confidence="low",
+    ),
+    "basis_vol_congestion_mult": _h(
+        4.0,
+        "Volatility multiplier on the basis during congestion regimes "
+        "(heteroskedastic — congestion makes RT far more volatile). Calibrate "
+        "from real congested-interval spread variance.",
+        source_type=INFERRED, source="basis volatility clusters under congestion",
+    ),
+    "basis_jump_prob": _h(
+        0.05,
+        "Per-tick probability of a congestion-driven basis jump (RT spikes far "
+        "above DA). Do NOT hardcode a universal rate — override per scenario. "
+        "Calibrate from real congestion-event frequency.",
+        source_type=INFERRED, source="congestion-driven RT basis jumps",
+    ),
+    "basis_jump_magnitude": _h(
+        120.0,
+        "Mean magnitude ($/MWh) of a congestion-driven basis jump. RT can exceed "
+        "DA by 100s of $/MWh during constrained intervals. Calibrate per node.",
+        source_type=INFERRED, source="constrained-interface RT price jumps",
+    ),
+
+    # --- LMP component decomposition -------------------------------------
+    "lmp_congestion_base": _h(
+        0.0,
+        "Baseline congestion component ($/MWh) added to the energy component "
+        "(LMP = energy + congestion + loss). 0 in the unconstrained base case; "
+        "raised by congestion events. Calibrate from real nodal LMP decomposition.",
+        source_type=DOCUMENTED, source="LMP = energy + congestion + loss (ISO)",
+        confidence="medium",
+    ),
+    "lmp_congestion_event_adder": _h(
+        80.0,
+        "Congestion-component adder ($/MWh) at a node during a constrained-"
+        "interface event. Nodal arbitrage is NOT clean — destination congestion "
+        "can erase the spread. Calibrate from real congestion LMP.",
+        source_type=INFERRED, source="nodal congestion component under constraints",
+    ),
+    "lmp_loss_frac": _h(
+        0.03,
+        "Loss component as a fraction of the energy component (~2-4% marginal "
+        "losses). Location-specific loss adder. Calibrate from real loss factors.",
+        source_type=INFERRED, source="marginal loss component ~2-4% (ISO)",
+        confidence="medium",
+    ),
+    "lmp_region_correlation": _h(
+        0.7,
+        "Correlation of the system-wide energy component across regions "
+        "(regions move together but imperfectly). Regional arbitrage relies on "
+        "the UNcorrelated part. Calibrate from real inter-region price correlation.",
+        source_type=INFERRED, source="regional prices correlated but imperfect",
+        confidence="low",
+    ),
+
+    # --- RT spike process (heavy tails) ----------------------------------
+    "spike_prob": _h(
+        0.03,
+        "Per-tick probability of an RT price spike (heavy right tail). RT has "
+        "heavier tails than DA. Do NOT hardcode universally — override per "
+        "scenario/region. Calibrate from real RT spike frequency.",
+        source_type=INFERRED, source="RT price spikes (scarcity/stress)",
+    ),
+    "spike_magnitude": _h(
+        300.0,
+        "Mean magnitude ($/MWh) of an RT price spike. Scarcity pricing can reach "
+        "many 100s-1000s $/MWh. Calibrate from real scarcity events.",
+        source_type=INFERRED, source="RT scarcity-pricing spike magnitude",
+    ),
+    "spike_stress_mult": _h(
+        2.5,
+        "Spike-probability multiplier in a grid-stress regime (weather/load "
+        "stress). Calibrate from real stress-correlated spike rates.",
+        source_type=INFERRED, source="stress-regime spike clustering",
+    ),
+
+    # --- Carbon intensity + forecast uncertainty -------------------------
+    "carbon_diurnal_amplitude": _h(
+        0.35,
+        "Diurnal swing of carbon intensity as a fraction of the baseline "
+        "(solar/wind cycle). Calibrate from real regional CI curves.",
+        source_type=INFERRED, source="diurnal carbon-intensity cycle",
+        confidence="low",
+    ),
+    "carbon_forecast_error_std": _h(
+        0.15,
+        "Std-dev of carbon-intensity forecast error as a fraction of the value. "
+        "Forecast carbon is NOT ground truth. Calibrate from real CI forecast "
+        "vs actual.",
+        source_type=INFERRED, source="carbon-intensity forecast error",
+        confidence="low",
+    ),
+    "carbon_provider_disagreement": _h(
+        0.12,
+        "Fractional disagreement between carbon providers for the same region/"
+        "time. Providers disagree. Calibrate from real multi-provider CI spread.",
+        source_type=INFERRED, source="carbon providers disagree (ElectricityMaps/WattTime)",
+        confidence="low",
+    ),
+    "carbon_price_correlation": _h(
+        0.2,
+        "Correlation between carbon-intensity and price minima. Low/variable: "
+        "carbon-cheap windows are often NOT price-cheap windows. Calibrate from "
+        "real CI-vs-price joint distributions.",
+        source_type=INFERRED, source="carbon-cheap != price-cheap",
+        confidence="low",
+    ),
+
+    # --- Net-savings accounting + forecast buffer ------------------------
+    "forecast_error_buffer_k": _h(
+        1.0,
+        "Conservatism multiplier k on the forecast error std in "
+        "risk_adjusted_savings = expected - k*error_std. Higher = more "
+        "conservative (more no-ops). Heuristic policy lever.",
+        source_type=HEURISTIC, confidence="low",
+    ),
+    "required_margin_frac": _h(
+        0.10,
+        "Required net-savings margin as a fraction of the workload's tick energy "
+        "cost before an energy action is allowed. Tiny arbitrage must NOT trigger "
+        "action. Heuristic policy lever.",
+        source_type=HEURISTIC, confidence="low",
+    ),
+    "missing_forecast_margin_mult": _h(
+        2.0,
+        "Multiplier on the required margin when price/carbon forecast confidence "
+        "is missing/low (bias toward no-op). Missing telemetry must NOT be read "
+        "as a safe opportunity. Heuristic policy lever.",
+        source_type=HEURISTIC, confidence="low",
+    ),
+
+    # --- Diminishing returns / churn -------------------------------------
+    "churn_penalty_base": _h(
+        0.02,
+        "Base churn penalty as a fraction of tick energy cost per recent shift. "
+        "Repeated shifting is increasingly costly (cache loss, instability). "
+        "Calibrate from real reshuffling overhead.",
+        source_type=HEURISTIC, confidence="low",
+    ),
+    "churn_penalty_growth": _h(
+        1.6,
+        "Super-linear growth exponent of the churn penalty in the recent-shift "
+        "count. Repeated shifting does NOT keep producing linear savings. "
+        "Heuristic policy lever.",
+        source_type=HEURISTIC, confidence="low",
+    ),
+    "churn_window_ticks": _h(
+        6.0,
+        "Window (ticks) over which recent shifts count toward churn. Calibrate "
+        "from real anti-flap windows.",
+        source_type=INFERRED, source="anti-flap / churn accounting window",
+        confidence="low",
+    ),
+    "low_cost_window_capacity_frac": _h(
+        0.3,
+        "Fraction of a cheap region's spare capacity usable for shifted load "
+        "before its price/queue rises (limited low-cost windows). Calibrate from "
+        "real spare-capacity-vs-price elasticity.",
+        source_type=INFERRED, source="limited regional spare capacity",
+        confidence="low",
+    ),
+}
+
+
+# ---------------------------------------------------------------------------
+# Workload energy-flexibility profiles (shift windows by class)
+# ---------------------------------------------------------------------------
+# Default temporal-shift windows (hours) by flexibility class. A workload is
+# deferrable only within its window; nothing is infinitely deferrable. Tunable
+# operational priors, NOT universal truths.
+
+@dataclass(frozen=True)
+class EnergyFlexProfile:
+    """Energy-shift flexibility of a workload class."""
+    name: str
+    max_shift_hours: float        # max temporal deferral window
+    spatial_shift: bool           # may migrate region for energy
+    requires_locality: bool       # only shift if cache/topology preserved
+    source: str = "workload energy-flexibility (inferred)"
+    source_type: str = INFERRED
+    confidence: str = "low"
+
+
+ENERGY_FLEX_PROFILES: dict[str, EnergyFlexProfile] = {
+    "high": EnergyFlexProfile(
+        "high", 24.0, True, False,
+        source="batch/offline/embeddings/non-urgent: deferrable 1-24h, movable"),
+    "medium": EnergyFlexProfile(
+        "medium", 2.0, True, True,
+        source="standard inference/retryable/async: short SLA-safe windows only"),
+    "low": EnergyFlexProfile(
+        "low", 0.0, False, True,
+        source="latency-critical/cache/topology/training: usually no temporal shift"),
+}
+
+
+def energy_value(name: str, config: dict | None = None) -> float:
+    """Return an energy parameter's value, allowing per-run config override.
+
+    Mirrors ``thermal_value`` for the ENERGY_PARAMS registry so every energy /
+    carbon / arbitrage assumption is configurable: ``config={'spike_prob':0.1}``.
+    """
+    if config and name in config:
+        return float(config[name])
+    return float(ENERGY_PARAMS[name].value)
+
+
+def resolve_energy_flex(flexibility: str | None) -> EnergyFlexProfile:
+    """Resolve an energy-flexibility profile by class (default medium)."""
+    return ENERGY_FLEX_PROFILES.get(
+        (flexibility or "medium").lower(), ENERGY_FLEX_PROFILES["medium"]
+    )
+
+
 # Combined registry: every tunable constant is inspectable in one place.
 ALL_PARAMS: dict[str, CalibratedParam] = {
     **SERVING_PARAMS, **KV_CACHE_PARAMS, **MIGRATION_PARAMS, **THERMAL_PARAMS,
-    **TOPOLOGY_PARAMS, **UTILIZATION_PARAMS,
+    **TOPOLOGY_PARAMS, **UTILIZATION_PARAMS, **ENERGY_PARAMS,
 }
 
 
 def calibration_table() -> list[dict[str, Any]]:
     """Inspectable list of ALL serving + KV-cache + migration + thermal +
-    topology + utilization params."""
+    topology + utilization + energy params."""
     rows: list[dict[str, Any]] = []
     for group, registry in (
         ("serving", SERVING_PARAMS),
@@ -1813,6 +2061,7 @@ def calibration_table() -> list[dict[str, Any]]:
         ("thermal", THERMAL_PARAMS),
         ("topology", TOPOLOGY_PARAMS),
         ("utilization", UTILIZATION_PARAMS),
+        ("energy", ENERGY_PARAMS),
     ):
         for k, v in sorted(registry.items()):
             rows.append({"name": k, "group": group, **v.to_dict()})
@@ -1959,4 +2208,20 @@ def workload_class_table() -> list[dict[str, Any]]:
             "confidence": p.confidence,
         }
         for p in sorted(WORKLOAD_CLASS_PROFILES.values(), key=lambda x: -x.util_target)
+    ]
+
+
+def energy_flex_table() -> list[dict[str, Any]]:
+    """Inspectable energy-flexibility (shift-window) table with provenance."""
+    return [
+        {
+            "name": p.name,
+            "max_shift_hours": p.max_shift_hours,
+            "spatial_shift": p.spatial_shift,
+            "requires_locality": p.requires_locality,
+            "source": p.source,
+            "source_type": p.source_type,
+            "confidence": p.confidence,
+        }
+        for p in sorted(ENERGY_FLEX_PROFILES.values(), key=lambda x: -x.max_shift_hours)
     ]

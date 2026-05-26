@@ -33,6 +33,7 @@ from ...state.models import (
     TopologyLinkType,
     TopologyState,
 )
+from . import energy as enrg
 from . import kv_cache as kvc
 from . import migration as mig
 from . import serving
@@ -41,12 +42,14 @@ from . import topology as topo
 from . import utilization as util
 from .cache_model import WorkloadCacheState
 from .calibration import (
+    energy_value,
     flexibility_multiplier,
     kv_value,
     migration_value,
     nvlink_generation_for_model,
     power_class_for_model,
     resolve_comm_profile,
+    resolve_energy_flex,
     resolve_fabric_regime,
     resolve_workload_class,
     serving_value,
@@ -54,6 +57,7 @@ from .calibration import (
     topology_value,
     utilization_value,
 )
+from .energy_model import RegionEnergyState, WorkloadEnergyState
 from .migration_model import WorkloadMigrationState
 from .model import (
     GPU_PROFILES,
@@ -193,6 +197,19 @@ class TickMetrics:
     bin_packing_risk_max: Optional[float] = None
     packing_migration_vetoes: int = 0
     low_util_telemetry_count: int = 0
+    # Energy / carbon / arbitrage realism KPIs
+    day_ahead_price_mean: Optional[float] = None
+    real_time_price_mean: Optional[float] = None
+    da_rt_basis_max: Optional[float] = None
+    lmp_congestion_max: Optional[float] = None
+    carbon_intensity_mean: Optional[float] = None
+    carbon_forecast_error_max: Optional[float] = None
+    net_savings_sum: Optional[float] = None
+    gross_savings_sum: Optional[float] = None
+    energy_migration_vetoes: int = 0
+    churn_penalty_max: Optional[float] = None
+    energy_actions_rejected: int = 0
+    low_energy_telemetry_count: int = 0
     is_sandbox: bool = True
 
 
@@ -239,6 +256,9 @@ class ClusterSimulator:
         # Dedicated RNG for the utilization/fragmentation/packing layer (same
         # rationale as the topology RNG: do not perturb the shared stream).
         self._util_rng = random.Random((self.seed * 40503 + 0x05A1) & 0xFFFFFFFF)
+        # Dedicated RNG for the energy/carbon layer (same rationale: do not
+        # perturb the shared stream — keeps non-energy scenarios deterministic).
+        self._energy_rng = random.Random((self.seed * 22695477 + 0x0E11) & 0xFFFFFFFF)
         self._region_util: dict[str, Any] = {}
         self._cluster = self._build_initial_cluster()
         self._base_time = datetime(2024, 1, 1, 0, 0, 0, tzinfo=timezone.utc)
@@ -249,6 +269,8 @@ class ClusterSimulator:
         self._rng = random.Random(self.seed)
         self._topo_rng = random.Random((self.seed * 2654435761 + 0x7070) & 0xFFFFFFFF)
         self._util_rng = random.Random((self.seed * 40503 + 0x05A1) & 0xFFFFFFFF)
+        self._energy_rng = random.Random((self.seed * 22695477 + 0x0E11) & 0xFFFFFFFF)
+        self._region_util = {}
         self._cluster = self._build_initial_cluster()
         self._tick_metrics = []
 
@@ -295,15 +317,40 @@ class ClusterSimulator:
         region_id = r_cfg["region_id"]
         raw_carbon = r_cfg.get("carbon_intensity_trace", [])
         raw_ambient = r_cfg.get("ambient_temp_trace", [])
+        da0 = self._parse_float_trace(r_cfg.get("energy_price_trace", [50.0]))[0]
         region = SimRegion(
             region_id=region_id,
             energy_price_trace=self._parse_float_trace(r_cfg.get("energy_price_trace", [50.0])),
             carbon_intensity_trace=self._parse_float_trace(raw_carbon),
-            current_energy_price=self._parse_float_trace(r_cfg.get("energy_price_trace", [50.0]))[0],
+            current_energy_price=da0,
+            day_ahead_price=da0,
+            realtime_price=da0,
             ambient_temp_c=float(r_cfg.get("ambient_temp_c", 22.0)),
             ambient_temp_trace=self._parse_float_trace(raw_ambient),
             network_latency_to=r_cfg.get("network_latency_to", {}),
         )
+        # First-class energy/carbon market state. Basis + spikes are OFF unless
+        # the scenario opts in (serving_config.enable_basis / enable_spikes), so
+        # non-energy scenarios keep deterministic DA==RT pricing.
+        cfg = self._serving_config or {}
+        es = RegionEnergyState()
+        es.day_ahead.price_per_mwh = da0
+        es.real_time.price_per_mwh = da0
+        es.lmp.energy_component = da0
+        es.basis_enabled = bool(cfg.get("enable_basis", False))
+        es.spikes_enabled = bool(cfg.get("enable_spikes", False))
+        if region.carbon_intensity_trace:
+            es.carbon.actual_gco2_per_kwh = region.carbon_intensity_trace[0]
+            es.carbon.forecast_gco2_per_kwh = region.carbon_intensity_trace[0]
+        # Telemetry visibility is config-driven per region.
+        es.telemetry.price_visible = bool(r_cfg.get("price_telemetry_visible", True))
+        es.telemetry.carbon_visible = bool(r_cfg.get("carbon_telemetry_visible", True))
+        es.telemetry.stale_ticks = int(r_cfg.get("energy_stale_ticks", 0))
+        es.telemetry.tier = enrg.energy_telemetry_confidence(
+            es.telemetry.price_visible, es.telemetry.carbon_visible,
+            es.telemetry.stale_ticks,
+        )
+        region.energy_state = es
 
         for node_cfg in r_cfg.get("nodes", []):
             node = self._build_node(node_cfg, region_id)
@@ -529,6 +576,8 @@ class ClusterSimulator:
             admissible_domains=w_cfg.get("admissible_domains", []),
             output_len_cv=w_cfg.get("output_len_cv", 0.5),
             vram_requirement_bytes=w_cfg.get("vram_requirement_bytes"),
+            alpha_cost=w_cfg.get("alpha_cost", 1.0),
+            beta_carbon=w_cfg.get("beta_carbon", 0.0),
         )
 
         # Place workload onto GPUs in the target region
@@ -584,6 +633,19 @@ class ClusterSimulator:
         us.flexibility.multiplier = flexibility_multiplier(flex)
         us.continuous_batching.output_len_cv = workload.output_len_cv
         workload.util = us
+
+        # Initialize first-class energy / arbitrage state. The temporal-shift
+        # window is set by the (resolved) flexibility class — nothing is
+        # infinitely deferrable. Objective weights default to price-only.
+        es = WorkloadEnergyState()
+        eflex = resolve_energy_flex(flex)
+        es.shift.flexibility = flex
+        es.shift.max_shift_hours = eflex.max_shift_hours
+        es.shift.spatial_shift = eflex.spatial_shift
+        es.shift.requires_locality = eflex.requires_locality
+        es.alpha_cost = workload.alpha_cost
+        es.beta_carbon = workload.beta_carbon
+        workload.energy = es
         return workload
 
     def _place_workload(self, workload: SimWorkload, cluster: SimCluster) -> None:
@@ -622,6 +684,7 @@ class ClusterSimulator:
 
         self._apply_events(cluster)
         self._update_energy_prices(cluster)
+        self._update_energy(cluster)
         self._update_workload_targets(cluster)
         self._update_gpu_state(cluster)
         self._update_thermal(cluster)
@@ -673,6 +736,7 @@ class ClusterSimulator:
             cluster.tick += 1
             self._apply_events(cluster)
             self._update_energy_prices(cluster)
+            self._update_energy(cluster)
             self._update_workload_targets(cluster)
             self._update_gpu_state(cluster)
             self._update_thermal(cluster)
@@ -754,6 +818,22 @@ class ClusterSimulator:
                         idx = (tick - 1) % len(region.energy_price_trace)
                         region.current_energy_price = region.energy_price_trace[idx]
 
+            elif etype in ("energy_congestion", "energy_congestion_end"):
+                region_id = event.get("region_id")
+                active = etype == "energy_congestion"
+                for region in cluster.regions.values():
+                    if region_id and region.region_id != region_id:
+                        continue
+                    region.congestion_active = active
+
+            elif etype in ("grid_stress", "grid_stress_end"):
+                region_id = event.get("region_id")
+                active = etype == "grid_stress"
+                for region in cluster.regions.values():
+                    if region_id and region.region_id != region_id:
+                        continue
+                    region.grid_stress_active = active
+
             elif etype == "thermal_hotspot":
                 node_id = event.get("node_id")
                 extra_heat = event.get("extra_heat_c", 15.0)
@@ -816,6 +896,118 @@ class ClusterSimulator:
             if region.ambient_temp_trace:
                 idx = (tick - 1) % len(region.ambient_temp_trace)
                 region.ambient_temp_c = region.ambient_temp_trace[idx]
+
+    def _update_energy(self, cluster: SimCluster) -> None:
+        """Day-ahead / real-time settlement + LMP + carbon evolution.
+
+        Runs after _update_energy_prices (which sets the day-ahead / planning
+        price) and before cost accounting. Computes the LMP decomposition
+        (energy + congestion + loss), the mean-reverting DA/RT basis, a
+        heavy-tailed RT spike, the realized real-time price, the carbon forecast
+        vs actual, forecast uncertainty, and usable spare capacity. Uses a
+        dedicated RNG so it does not perturb the other layers' replay.
+
+        Basis + spikes are OFF by default (RT == DA), so non-energy scenarios
+        keep deterministic pricing and unchanged cost. See energy.py.
+        """
+        cfg = self._serving_config or None
+        for region in cluster.regions.values():
+            es = region.energy_state
+            if es is None:
+                region.day_ahead_price = region.current_energy_price
+                region.realtime_price = region.current_energy_price
+                continue
+            da = region.current_energy_price          # planning signal (DA)
+            region.day_ahead_price = da
+            es.day_ahead.price_per_mwh = da
+            es.lmp.energy_component = da
+
+            congested = region.congestion_active
+            es.congestion.active = congested
+            if congested:
+                es.congestion.persisted_ticks += 1
+                es.congestion.severity = min(1.0, es.congestion.severity + 0.2)
+            else:
+                es.congestion.persisted_ticks = 0
+                es.congestion.severity = max(0.0, es.congestion.severity - 0.3)
+            cong_comp, loss_comp, _ = enrg.lmp_total(da, congested, cfg)
+            es.lmp.congestion_component = cong_comp
+            es.lmp.loss_component = loss_comp
+            es.lmp.constrained_interface = congested
+
+            if es.basis_enabled:
+                new_basis, jump = enrg.basis_step(
+                    es.basis.basis, congested, self._energy_rng, cfg
+                )
+                es.basis.basis = new_basis
+                es.basis.vol_regime = "congested" if congested else "normal"
+                es.basis.last_jump = jump
+            else:
+                es.basis.basis = 0.0
+            spike = 0.0
+            if es.spikes_enabled:
+                spike = enrg.spike_increment(
+                    region.grid_stress_active, self._energy_rng, cfg
+                )
+            es.real_time.heavy_tail_active = spike > 0.0
+
+            # Realized RT price. Neutral (== DA) unless basis/spikes/congestion
+            # are active, preserving deterministic pricing for base scenarios.
+            if es.basis_enabled or es.spikes_enabled or congested:
+                rt = enrg.real_time_price(da, es.basis.basis, cong_comp, loss_comp, spike)
+            else:
+                rt = da
+            region.realtime_price = rt
+            es.real_time.price_per_mwh = rt
+
+            # Carbon forecast vs actual (actual stays from the trace; forecast is
+            # noisy and provider-uncertain — NOT ground truth).
+            actual_ci = region.current_carbon_intensity
+            if actual_ci is not None:
+                es.carbon.actual_gco2_per_kwh = actual_ci
+                fc, err, dis = enrg.carbon_forecast(actual_ci, self._energy_rng, cfg)
+                es.carbon.forecast_gco2_per_kwh = fc
+                es.carbon.error_std_frac = err
+                es.carbon.provider_disagreement_frac = dis
+                es.carbon.confidence = es.telemetry.tier
+
+            es.forecast.price_error_std = (
+                abs(es.basis.basis) * 0.5 + es.lmp.congestion_component * 0.3
+            )
+            es.forecast.carbon_error_std_frac = es.carbon.error_std_frac
+            es.forecast.confidence = es.telemetry.tier
+
+            free = sum(
+                1 for n in region.nodes for g in n.gpus
+                if g.assigned_workload_id is None
+            )
+            es.spare.free_gpus = free
+            es.spare.usable_for_shift = int(
+                free * energy_value("low_cost_window_capacity_frac", cfg)
+            )
+            es.spare.saturated = free == 0
+
+        # Continuously evaluate net-vs-gross savings for each migratable workload
+        # against the cheapest day-ahead region (WITHOUT acting). This populates
+        # the net-savings KPIs every tick so the benchmark always reports net (not
+        # just gross) energy savings — and shows where tiny spreads / forecast
+        # error / churn make an energy move not worth it.
+        cheapest_da = None
+        cheapest_price = float("inf")
+        for region in cluster.regions.values():
+            if region.day_ahead_price < cheapest_price:
+                cheapest_price = region.day_ahead_price
+                cheapest_da = region.region_id
+        if cheapest_da is not None:
+            for wl in cluster.workloads.values():
+                if wl.energy is None:
+                    continue
+                if not wl.migration_allowed or wl.region_id == cheapest_da:
+                    wl.energy.net.last_reason = "not_energy"
+                    wl.energy.net.action_allowed = False
+                    continue
+                self._energy_net_savings(wl, cheapest_da)
+                wl.energy.churn.churn_penalty = wl.energy.net.churn_penalty
 
     def _update_workload_targets(self, cluster: SimCluster) -> None:
         """Decrement cold-start warmup counters."""
@@ -1766,6 +1958,19 @@ class ClusterSimulator:
                 m.warm_pool.occupancy = min(1.0, len(wl.gpu_ids) / m.warm_pool.size)
             # Proxy saturation is computed in _update_queues from offered load.
 
+            # Churn decay: recent-shift count resets once the churn window passes
+            # since the last shift, and the churn penalty is recomputed.
+            we = wl.energy
+            if we is not None:
+                window = int(energy_value("churn_window_ticks", cfg))
+                if (cluster.tick - we.churn.last_shift_tick) >= window:
+                    we.churn.recent_shifts = 0
+                we.shift.deferred_ticks = max(0, we.shift.deferred_ticks)
+                we.shift.deadline_pressure = enrg.deadline_pressure(
+                    we.shift.deferred_ticks, we.shift.max_shift_hours,
+                    cluster.tick_duration_hours,
+                )
+
     def _update_cost_accounting(self, cluster: SimCluster) -> None:
         """Accumulate cost and energy metrics for this tick."""
         tick_energy_kwh = 0.0
@@ -1773,7 +1978,10 @@ class ClusterSimulator:
         tick_tokens = 0
 
         for region in cluster.regions.values():
-            price_per_kwh = region.current_energy_price / 1000.0   # $/MWh → $/kWh
+            # Realized consumption settles at the REAL-TIME price (== day-ahead
+            # when basis/spikes are disabled). A planner that committed to the
+            # day-ahead price still pays the realized RT price on its consumption.
+            price_per_kwh = region.realtime_price / 1000.0   # $/MWh → $/kWh
             for node in region.nodes:
                 for gpu in node.gpus:
                     gpu_kwh = gpu.power_watts / 1000.0 * cluster.tick_duration_hours
@@ -1801,7 +2009,7 @@ class ClusterSimulator:
         throttle_count = 0
 
         for region in cluster.regions.values():
-            price_per_kwh = region.current_energy_price / 1000.0
+            price_per_kwh = region.realtime_price / 1000.0
             for node in region.nodes:
                 for gpu in node.gpus:
                     util_values.append(gpu.utilization_pct)
@@ -2017,6 +2225,48 @@ class ClusterSimulator:
         bp_risks = [r.get("bin_packing_risk", 0.0) for r in self._region_util.values()]
         stranded_total = sum(r.get("stranded", 0) for r in self._region_util.values())
 
+        # Energy / carbon / arbitrage KPIs.
+        da_prices: list[float] = []
+        rt_prices: list[float] = []
+        bases: list[float] = []
+        congs: list[float] = []
+        cis: list[float] = []
+        ci_errs: list[float] = []
+        low_energy_tel = 0
+        for region in cluster.regions.values():
+            es = region.energy_state
+            if es is None:
+                continue
+            da_prices.append(es.day_ahead.price_per_mwh)
+            rt_prices.append(es.real_time.price_per_mwh)
+            bases.append(abs(es.basis.basis))
+            congs.append(es.lmp.congestion_component)
+            cis.append(es.carbon.actual_gco2_per_kwh)
+            ci_errs.append(es.carbon.error_std_frac)
+            if es.telemetry.tier == "low":
+                low_energy_tel += 1
+        net_sum = 0.0
+        gross_sum = 0.0
+        churn_pens: list[float] = []
+        energy_rejected = 0
+        has_net = False
+        for wl in cluster.workloads.values():
+            we = wl.energy
+            if we is None:
+                continue
+            churn_pens.append(we.churn.churn_penalty)
+            if we.net.last_reason:
+                has_net = True
+                net_sum += we.net.net_savings
+                gross_sum += we.net.gross_energy_savings + we.net.gross_carbon_value
+                if we.net.last_reason == "energy_motivated" and not we.net.action_allowed:
+                    energy_rejected += 1
+        energy_vetoes = sum(
+            1 for wl in cluster.workloads.values()
+            if wl.migration is not None
+            and wl.migration.migration.last_veto_reason == "energy_not_worth_it"
+        )
+
         return TickMetrics(
             tick=cluster.tick,
             timestamp=ts,
@@ -2130,6 +2380,18 @@ class ClusterSimulator:
                     "packing_unsafe_consolidation", "packing_fragmented_destination")
             ),
             low_util_telemetry_count=low_util_tel,
+            day_ahead_price_mean=sum(da_prices) / len(da_prices) if da_prices else None,
+            real_time_price_mean=sum(rt_prices) / len(rt_prices) if rt_prices else None,
+            da_rt_basis_max=max(bases) if bases else None,
+            lmp_congestion_max=max(congs) if congs else None,
+            carbon_intensity_mean=sum(cis) / len(cis) if cis else None,
+            carbon_forecast_error_max=max(ci_errs) if ci_errs else None,
+            net_savings_sum=net_sum if has_net else None,
+            gross_savings_sum=gross_sum if has_net else None,
+            energy_migration_vetoes=energy_vetoes,
+            churn_penalty_max=max(churn_pens) if churn_pens else None,
+            energy_actions_rejected=energy_rejected,
+            low_energy_telemetry_count=low_energy_tel,
         )
 
     # ------------------------------------------------------------------
@@ -2583,12 +2845,16 @@ class ClusterSimulator:
                 for node in region.nodes
                 for gpu in node.gpus
             )
+            # Separate day-ahead (planning) and real-time (settlement) prices so a
+            # DA-only planner can be wrong under RT. price_per_mwh exposes the RT
+            # (realized) price; day_ahead_price_per_mwh is the planning signal.
             energy = EnergyState(
                 region=region.region_id,
                 timestamp=ts,
                 provenance=prov,
-                price_per_mwh=region.current_energy_price,
-                real_time_price_per_mwh=region.current_energy_price,
+                price_per_mwh=region.realtime_price,
+                day_ahead_price_per_mwh=region.day_ahead_price,
+                real_time_price_per_mwh=region.realtime_price,
                 carbon_gco2_per_kwh=region.current_carbon_intensity,
                 power_draw_kw=power_draw_kw,
             )
@@ -2827,6 +3093,12 @@ class ClusterSimulator:
                                 * 0.01 * disruption)
                     q.queue_depth = min(50000, q.queue_depth + max(0, spike))
 
+        # Churn accounting: repeated shifting is increasingly costly (diminishing
+        # returns). Increment the recent-shift count for this workload.
+        if workload.energy is not None:
+            workload.energy.churn.recent_shifts += 1
+            workload.energy.churn.last_shift_tick = cluster.tick
+
         # Log migration
         cluster.migration_log.append({
             "tick": cluster.tick,
@@ -2899,6 +3171,17 @@ class ClusterSimulator:
                         "topology_cross_domain"
                     )
                 return "topology_cross_domain"
+        # Energy-arbitrage governor: for an ENERGY-MOTIVATED cross-region move
+        # (destination cheaper on day-ahead price), require that the risk-adjusted
+        # NET savings clear the required margin. Tiny spreads, forecast-error
+        # traps, churn, and low energy-telemetry confidence all bias toward
+        # no-op. Safety-motivated moves (to a more expensive region) skip this.
+        if target_region_id is not None and target_region_id != workload.region_id:
+            ns = self._energy_net_savings(workload, target_region_id)
+            if ns is not None and ns.last_reason == "energy_motivated" and (
+                not ns.action_allowed
+            ):
+                return "energy_not_worth_it"
         cluster = self._cluster
         cfg = self._serving_config or None
         # Aggregate queue depth for this workload's service in its current region.
@@ -2939,6 +3222,96 @@ class ClusterSimulator:
                 if order.get(t, 0) > order.get(tier, 0):
                     tier = t
         return tier
+
+    def _workload_tick_kwh(self, workload: SimWorkload, cluster: SimCluster) -> float:
+        """Energy (kWh) the workload's GPUs draw in one tick."""
+        gpus = self._workload_gpus(workload, cluster)
+        return sum(
+            g.power_watts / 1000.0 * cluster.tick_duration_hours for g in gpus
+        )
+
+    def _energy_net_savings(
+        self, workload: SimWorkload, target_region_id: str
+    ):
+        """Compute net-vs-gross energy savings for migrating to a target region.
+
+        Always reports NET savings (gross energy/carbon value minus migration,
+        forecast-error, and churn penalties), the risk-adjusted savings, and the
+        required margin. ``last_reason`` is "energy_motivated" only when the
+        destination is cheaper on the day-ahead (planning) price — those moves are
+        gated by the margin; everything else is recorded but not vetoed here.
+        Writes the result into ``workload.energy.net`` and returns it.
+        """
+        es = workload.energy
+        cluster = self._cluster
+        if es is None:
+            return None
+        cfg = self._serving_config or None
+        src = cluster.regions.get(workload.region_id)
+        dst = cluster.regions.get(target_region_id)
+        if src is None or dst is None:
+            return None
+
+        tick_kwh = self._workload_tick_kwh(workload, cluster)
+        src_tick_cost = src.realtime_price / 1000.0 * tick_kwh
+        # Planner decides on day-ahead prices; settlement is real-time.
+        p_src_da = src.day_ahead_price
+        p_dst_da = dst.day_ahead_price
+        # Expected gross savings over the workload's shift window (in ticks).
+        horizon = max(1.0, es.shift.max_shift_hours / max(1e-6, cluster.tick_duration_hours))
+        horizon = min(horizon, 8.0)  # cap the look-ahead horizon
+        expected_gross = (p_src_da - p_dst_da) / 1000.0 * tick_kwh * horizon
+
+        # Carbon value (only when carbon optimization is enabled, beta>0).
+        carbon_value = 0.0
+        if es.beta_carbon > 0 and src.energy_state and dst.energy_state:
+            ci_src = src.energy_state.carbon.forecast_gco2_per_kwh
+            ci_dst = dst.energy_state.carbon.forecast_gco2_per_kwh
+            carbon_value = es.beta_carbon * (ci_src - ci_dst) * tick_kwh * horizon
+
+        # Forecast-error buffer: penalize uncertain RT/carbon forecasts.
+        price_err_std = (
+            dst.energy_state.forecast.price_error_std if dst.energy_state else 0.0
+        )
+        forecast_cost = enrg.energy_value("forecast_error_buffer_k", cfg) * (
+            price_err_std / 1000.0 * tick_kwh * horizon
+        )
+
+        # Migration cost proxy ($): queue disruption + cold-start fraction of one
+        # tick's source energy cost (a believable monetization, not a fitted cost).
+        disruption = serving_value("migration_queue_disruption", cfg)
+        migration_cost = disruption * src_tick_cost + 0.5 * src_tick_cost
+        churn_pen = enrg.churn_penalty(
+            es.churn.recent_shifts, src_tick_cost, cfg
+        )
+
+        net = enrg.net_savings(
+            expected_gross,
+            gross_carbon_value=carbon_value,
+            migration_cost=migration_cost,
+            forecast_error_cost=forecast_cost,
+            churn_penalty=churn_pen,
+        )
+        risk_adj = enrg.risk_adjusted_savings(
+            expected_gross + carbon_value, price_err_std / 1000.0 * tick_kwh * horizon, cfg
+        ) - migration_cost - churn_pen
+        tier = dst.energy_state.telemetry.tier if dst.energy_state else "high"
+        margin = enrg.required_margin(src_tick_cost, tier, cfg)
+        allowed = enrg.energy_action_allowed(net, risk_adj, margin)
+
+        n = es.net
+        n.gross_energy_savings = expected_gross
+        n.gross_carbon_value = carbon_value
+        n.migration_cost = migration_cost
+        n.forecast_error_cost = forecast_cost
+        n.churn_penalty = churn_pen
+        n.net_savings = net
+        n.risk_adjusted_savings = risk_adj
+        n.required_margin = margin
+        n.action_allowed = allowed
+        # Energy-motivated iff the destination is cheaper on the planning price.
+        n.last_reason = "energy_motivated" if p_dst_da < p_src_da else "not_energy"
+        return n
 
     def _dest_zone_too_hot(self, target_region_id: str) -> bool:
         """True if every rack in the destination region is thermally hot.
