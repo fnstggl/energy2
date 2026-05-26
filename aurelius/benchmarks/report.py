@@ -691,6 +691,9 @@ class BenchmarkReport:
     regression_flags: list[str]
     is_valid: bool                          # False when metadata or env changed
     validity_notes: list[str]
+    # Packing baseline frontier (first-fit / best-fit / FFD / clairvoyant) for
+    # utilization/fragmentation scenarios — analysis-only, never a deployable policy.
+    packing_frontier: Optional[list[dict[str, Any]]] = None
 
     def to_dict(self) -> dict[str, Any]:
         return {
@@ -703,6 +706,7 @@ class BenchmarkReport:
             "regression_flags": self.regression_flags,
             "is_valid": self.is_valid,
             "validity_notes": self.validity_notes,
+            "packing_frontier": self.packing_frontier,
         }
 
     def to_text(self) -> str:
@@ -784,6 +788,26 @@ class BenchmarkReport:
                 lines.append(f"  ✗  {flag}")
             lines.append("")
 
+        if self.packing_frontier:
+            lines.append("")
+            lines.append("Packing baselines (analysis-only — first-fit/best-fit/FFD/clairvoyant):")
+            for pf in self.packing_frontier:
+                region = pf.get("region", "?")
+                cur = pf.get("current_active_nodes", "?")
+                avail = pf.get("nodes_available", "?")
+                cap = pf.get("bin_capacity", "?")
+                lines.append(
+                    f"  region {region}: {cur}/{avail} nodes active now "
+                    f"(node capacity={cap} GPUs)"
+                )
+                for name, r in pf.get("results", {}).items():
+                    lines.append(
+                        f"     {name:<24} → {r['bins_used']} nodes, "
+                        f"{r['stranded_gpus']} stranded, density={r['packing_density']}"
+                    )
+            lines.append("  (clairvoyant is an optimal floor for analysis, not deployable.)")
+
+        lines.append("")
         validity_str = "VALID" if self.is_valid else "INVALID (environment changed)"
         lines.append(f"Comparison validity: {validity_str}")
         for note in self.validity_notes:

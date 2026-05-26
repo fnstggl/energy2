@@ -1179,6 +1179,7 @@ def main():
         cmd_benchmark_run,
         cmd_constraint_report,
         cmd_optimizer_regression_check,
+        cmd_realism_audit,
         cmd_self_metrics,
         cmd_simulate_constraint_scenario,
         cmd_telemetry_check,
@@ -1937,6 +1938,18 @@ def main():
     orc_parser.add_argument("--min-score", type=float, default=0.4, dest="min_score",
                             help="Minimum scorecard weighted_score (default: 0.4)")
 
+    # --- realism-audit (Simulator Realism Audit §8) ---
+    ra_parser = subparsers.add_parser(
+        "realism-audit",
+        help="Probe the simulator's realism and report per-subsystem verdicts [SANDBOX]",
+    )
+    ra_parser.add_argument("--seed", type=int, default=42, help="Random seed (default: 42)")
+    ra_parser.add_argument("--format", choices=["text", "json"], default="text")
+    ra_parser.add_argument("--output-dir", dest="output_dir", default=None,
+                           help="Optional directory to save the JSON audit report")
+    ra_parser.add_argument("--strict", action="store_true",
+                           help="Exit non-zero if a blocker-severity realism gap is found")
+
     # --- self-metrics (Phase 12) ---
     sm_parser = subparsers.add_parser(
         "self-metrics",
@@ -1995,6 +2008,8 @@ def main():
         cmd_benchmark_compare(args)
     elif args.command == "optimizer-regression-check":
         cmd_optimizer_regression_check(args)
+    elif args.command == "realism-audit":
+        cmd_realism_audit(args)
     elif args.command == "self-metrics":
         cmd_self_metrics(args)
     else:

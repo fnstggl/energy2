@@ -5,6 +5,17 @@ and optimization scoring for the constraint-aware Aurelius system.
 """
 
 from .constraint_runner import BenchmarkResult, ConstraintBenchmarkRunner, PolicyResult
+from .packing import (
+    ClusterPackingAnalysis,
+    PackingResult,
+    analyze_cluster_packing,
+    best_fit,
+    clairvoyant_lower_bound,
+    first_fit,
+    first_fit_decreasing,
+    greedy_bin_packing,
+)
+from .realism_audit import RealismAuditReport, run_realism_audit
 from .regression import BenchmarkRegressionChecker
 from .report import BenchmarkMetadata, BenchmarkReport, OptimizationScorecard
 
@@ -16,4 +27,14 @@ __all__ = [
     "BenchmarkMetadata",
     "OptimizationScorecard",
     "BenchmarkRegressionChecker",
+    "run_realism_audit",
+    "RealismAuditReport",
+    "analyze_cluster_packing",
+    "ClusterPackingAnalysis",
+    "PackingResult",
+    "first_fit",
+    "best_fit",
+    "first_fit_decreasing",
+    "greedy_bin_packing",
+    "clairvoyant_lower_bound",
 ]

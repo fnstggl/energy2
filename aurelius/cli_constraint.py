@@ -280,6 +280,49 @@ def cmd_benchmark_compare(args) -> None:
 
 
 # ---------------------------------------------------------------------------
+# realism-audit  (Simulator Realism Audit, task spec §8)
+# ---------------------------------------------------------------------------
+
+def cmd_realism_audit(args) -> None:
+    """Probe the simulator's own code paths and report per-subsystem realism verdicts.
+
+    This is an HONEST audit: every check probes a real code path (serving physics,
+    migration cost, canonical telemetry confidence, engine no-op behaviour,
+    energy/carbon traces) and reports what is actually observed — including the
+    places where the simulator is still too optimistic for production claims.
+    """
+    from aurelius.benchmarks.realism_audit import run_realism_audit
+
+    seed = getattr(args, "seed", 42)
+    fmt = getattr(args, "format", "text")
+
+    report = run_realism_audit(seed=seed)
+
+    if fmt == "json":
+        print(json.dumps(report.to_dict(), indent=2))
+    else:
+        print(report.to_text())
+
+    # Non-zero exit if a blocker-severity realism gap is unresolved, so CI can gate
+    # on it (the canonical telemetry-perfection blocker is currently expected).
+    has_blocker = any(
+        (not c.realistic and c.severity == "blocker")
+        for sv in report.subsystems for c in sv.checks
+    )
+    output_dir = getattr(args, "output_dir", None)
+    if output_dir:
+        out = Path(output_dir)
+        out.mkdir(parents=True, exist_ok=True)
+        ts = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
+        path = out / f"realism_audit_{ts}.json"
+        path.write_text(json.dumps(report.to_dict(), indent=2))
+        print(f"\nSaved: {path}")
+
+    if has_blocker and getattr(args, "strict", False):
+        sys.exit(1)
+
+
+# ---------------------------------------------------------------------------
 # optimizer-regression-check  (Phase 11)
 # ---------------------------------------------------------------------------
 

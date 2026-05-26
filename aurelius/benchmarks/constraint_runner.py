@@ -69,6 +69,7 @@ class PolicyResult:
     engine_results: list[Optional[EngineResult]]   # None for fifo/price_only
     migration_log: list[dict[str, str]]            # {tick, workload_id, from, to}
     error: Optional[str] = None
+    final_state: Optional[ClusterState] = None     # last observed state (for packing analysis)
 
 
 # ---------------------------------------------------------------------------
@@ -706,11 +707,13 @@ class ConstraintBenchmarkRunner:
         migration_log: list[dict[str, str]] = []
         engine_results: list[Optional[EngineResult]] = []
         tick_kpis: list[TickKPI] = []
+        last_state: Optional[ClusterState] = None
 
         for _ in range(steps):
             tick_result = sim.tick()
             # Apply optimizer AFTER observing tick state (before next tick)
             state = tick_result.cluster_state
+            last_state = state
             er = apply_fn(sim, state, self._engine, migration_log)
             engine_results.append(er)
             tick_kpis.append(_tick_metrics_to_kpi(tick_result.metrics))
@@ -720,6 +723,7 @@ class ConstraintBenchmarkRunner:
             tick_kpis=tick_kpis,
             engine_results=engine_results,
             migration_log=migration_log,
+            final_state=last_state,
         )
 
     def _build_report(
@@ -781,6 +785,9 @@ class ConstraintBenchmarkRunner:
 
         regression_flags: list[str] = list(scorecard.flags)
 
+        # Packing baseline frontier (analysis-only) for utilization/fragmentation scenarios.
+        packing_frontier = self._packing_frontier(metadata.scenario_name, policy_results)
+
         return BenchmarkReport(
             metadata=metadata,
             aggregated=aggregated,
@@ -791,7 +798,28 @@ class ConstraintBenchmarkRunner:
             regression_flags=regression_flags,
             is_valid=True,
             validity_notes=[],
+            packing_frontier=packing_frontier,
         )
+
+    @staticmethod
+    def _packing_frontier(
+        scenario_name: str,
+        policy_results: dict[str, PolicyResult],
+    ) -> Optional[list[dict[str, Any]]]:
+        """Compute packing baselines for packing-relevant scenarios from FIFO state."""
+        packing_keywords = ("fragmentation", "underutilization", "stranded",
+                            "packing", "consolidation", "util")
+        if not any(k in scenario_name for k in packing_keywords):
+            return None
+        fifo = policy_results.get(POLICY_FIFO)
+        if fifo is None or fifo.final_state is None:
+            return None
+        try:
+            from .packing import analyze_cluster_packing
+            analyses = analyze_cluster_packing(fifo.final_state)
+        except Exception:
+            return None
+        return [a.to_dict() for a in analyses] or None
 
 
 def _error_result(scenario_name: str, error: str) -> BenchmarkResult:
