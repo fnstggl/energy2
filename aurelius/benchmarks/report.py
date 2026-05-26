@@ -130,6 +130,17 @@ class TickKPI:
     rack_density_kw_max: Optional[float] = None
     thermal_excursions: int = 0
     thermal_migration_vetoes: int = 0
+    # Topology / communication realism KPIs (optional)
+    mean_topology_quality: Optional[float] = None
+    fabric_congestion_max: Optional[float] = None
+    collective_amplification_max: Optional[float] = None
+    comm_throughput_penalty_pct_mean: Optional[float] = None
+    sync_slowdown_pct_mean: Optional[float] = None
+    nic_saturation_max: Optional[float] = None
+    topology_risk_max: Optional[float] = None
+    collective_instability_count: int = 0
+    topology_migration_vetoes: int = 0
+    comm_latency_p99_ms_max: Optional[float] = None
 
     def to_dict(self) -> dict[str, Any]:
         return {
@@ -170,6 +181,16 @@ class TickKPI:
             "rack_density_kw_max": self.rack_density_kw_max,
             "thermal_excursions": self.thermal_excursions,
             "thermal_migration_vetoes": self.thermal_migration_vetoes,
+            "mean_topology_quality": self.mean_topology_quality,
+            "fabric_congestion_max": self.fabric_congestion_max,
+            "collective_amplification_max": self.collective_amplification_max,
+            "comm_throughput_penalty_pct_mean": self.comm_throughput_penalty_pct_mean,
+            "sync_slowdown_pct_mean": self.sync_slowdown_pct_mean,
+            "nic_saturation_max": self.nic_saturation_max,
+            "topology_risk_max": self.topology_risk_max,
+            "collective_instability_count": self.collective_instability_count,
+            "topology_migration_vetoes": self.topology_migration_vetoes,
+            "comm_latency_p99_ms_max": self.comm_latency_p99_ms_max,
         }
 
 
@@ -216,6 +237,18 @@ class AggregatedKPI:
     rack_density_kw_max: Optional[float] = None
     total_thermal_excursions: int = 0
     total_thermal_migration_vetoes: int = 0
+    # Topology / communication realism KPIs (optional)
+    mean_topology_quality: Optional[float] = None
+    min_topology_quality: Optional[float] = None
+    fabric_congestion_max: Optional[float] = None
+    collective_amplification_max: Optional[float] = None
+    comm_throughput_penalty_pct_mean: Optional[float] = None
+    sync_slowdown_pct_mean: Optional[float] = None
+    nic_saturation_max: Optional[float] = None
+    topology_risk_max: Optional[float] = None
+    total_collective_instability: int = 0
+    total_topology_migration_vetoes: int = 0
+    comm_latency_p99_ms_max: Optional[float] = None
 
     def to_dict(self) -> dict[str, Any]:
         return {
@@ -300,6 +333,44 @@ class AggregatedKPI:
             ),
             "total_thermal_excursions": self.total_thermal_excursions,
             "total_thermal_migration_vetoes": self.total_thermal_migration_vetoes,
+            "mean_topology_quality": (
+                round(self.mean_topology_quality, 3)
+                if self.mean_topology_quality is not None else None
+            ),
+            "min_topology_quality": (
+                round(self.min_topology_quality, 3)
+                if self.min_topology_quality is not None else None
+            ),
+            "fabric_congestion_max": (
+                round(self.fabric_congestion_max, 3)
+                if self.fabric_congestion_max is not None else None
+            ),
+            "collective_amplification_max": (
+                round(self.collective_amplification_max, 2)
+                if self.collective_amplification_max is not None else None
+            ),
+            "comm_throughput_penalty_pct_mean": (
+                round(self.comm_throughput_penalty_pct_mean, 2)
+                if self.comm_throughput_penalty_pct_mean is not None else None
+            ),
+            "sync_slowdown_pct_mean": (
+                round(self.sync_slowdown_pct_mean, 2)
+                if self.sync_slowdown_pct_mean is not None else None
+            ),
+            "nic_saturation_max": (
+                round(self.nic_saturation_max, 3)
+                if self.nic_saturation_max is not None else None
+            ),
+            "topology_risk_max": (
+                round(self.topology_risk_max, 3)
+                if self.topology_risk_max is not None else None
+            ),
+            "total_collective_instability": self.total_collective_instability,
+            "total_topology_migration_vetoes": self.total_topology_migration_vetoes,
+            "comm_latency_p99_ms_max": (
+                round(self.comm_latency_p99_ms_max, 1)
+                if self.comm_latency_p99_ms_max is not None else None
+            ),
         }
 
 

@@ -24,10 +24,15 @@ from .model import (
     SimNode,
     SimQueue,
     SimRegion,
-    SimWorkload,
     SimulatorConfig,
+    SimWorkload,
 )
-from .scenarios import load_scenario, list_scenarios, ScenarioConfig
+from .scenarios import ScenarioConfig, list_scenarios, load_scenario
+from .topology_model import (
+    GPUFabricState,
+    NodeFabricState,
+    WorkloadTopologyState,
+)
 
 __all__ = [
     "ClusterSimulator",
@@ -42,4 +47,7 @@ __all__ = [
     "load_scenario",
     "list_scenarios",
     "ScenarioConfig",
+    "GPUFabricState",
+    "NodeFabricState",
+    "WorkloadTopologyState",
 ]

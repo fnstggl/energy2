@@ -37,13 +37,18 @@ from . import kv_cache as kvc
 from . import migration as mig
 from . import serving
 from . import thermal as therm
+from . import topology as topo
 from .cache_model import WorkloadCacheState
 from .calibration import (
     kv_value,
     migration_value,
+    nvlink_generation_for_model,
     power_class_for_model,
+    resolve_comm_profile,
+    resolve_fabric_regime,
     serving_value,
     thermal_value,
+    topology_value,
 )
 from .migration_model import WorkloadMigrationState
 from .model import (
@@ -59,6 +64,11 @@ from .model import (
     SimWorkload,
 )
 from .thermal_model import GPUThermalState, RackThermalState
+from .topology_model import (
+    GPUFabricState,
+    NodeFabricState,
+    WorkloadTopologyState,
+)
 
 # EnergyState and ThermalState are used for region-level context
 # (not directly emitted per-GPU in this version)
@@ -143,6 +153,21 @@ class TickMetrics:
     thermal_excursions: int = 0
     cooling_alarms: int = 0
     thermal_migration_vetoes: int = 0
+    # Topology / communication realism KPIs
+    mean_topology_quality: Optional[float] = None
+    min_topology_quality: Optional[float] = None
+    fabric_congestion_max: Optional[float] = None
+    collective_amplification_max: Optional[float] = None
+    comm_pressure_max: Optional[float] = None
+    sync_slowdown_pct_mean: Optional[float] = None
+    comm_throughput_penalty_pct_mean: Optional[float] = None
+    nic_saturation_max: Optional[float] = None
+    topology_risk_max: Optional[float] = None
+    collective_instability_count: int = 0
+    topology_migration_vetoes: int = 0
+    comm_latency_p99_ms_max: Optional[float] = None
+    cross_rack_workload_count: int = 0
+    low_topology_telemetry_count: int = 0
     is_sandbox: bool = True
 
 
@@ -181,6 +206,11 @@ class ClusterSimulator:
         self.seed = seed if seed is not None else config.seed
         self._serving_config = dict(getattr(config, "serving_config", {}) or {})
         self._rng = random.Random(self.seed)
+        # Dedicated RNG for the topology/communication layer so its stochastic
+        # draws (routing/collective jitter, stragglers) do NOT perturb the shared
+        # stream that the thermal/serving/migration layers depend on — preserving
+        # their deterministic replay while keeping topology behaviour seedable.
+        self._topo_rng = random.Random((self.seed * 2654435761 + 0x7070) & 0xFFFFFFFF)
         self._cluster = self._build_initial_cluster()
         self._base_time = datetime(2024, 1, 1, 0, 0, 0, tzinfo=timezone.utc)
         self._tick_metrics: list[TickMetrics] = []
@@ -188,6 +218,7 @@ class ClusterSimulator:
     def reset(self) -> None:
         """Reset to initial state (same seed → identical replay)."""
         self._rng = random.Random(self.seed)
+        self._topo_rng = random.Random((self.seed * 2654435761 + 0x7070) & 0xFFFFFFFF)
         self._cluster = self._build_initial_cluster()
         self._tick_metrics = []
 
@@ -298,6 +329,9 @@ class ClusterSimulator:
             gt.power_class = power_class.name
             gt.power_throttle.power_cap_w = power_class.p_max_w
             gpu.thermal = gt
+            # First-class per-GPU fabric state (NVLink generation, PCIe gen,
+            # NUMA/socket attachment derived from the node's topology class).
+            gpu.fabric = self._build_gpu_fabric(gpu, idx, gpu_count, topology_class)
             gpus.append(gpu)
 
         # Build topology links
@@ -326,7 +360,59 @@ class ClusterSimulator:
         rt.cooling_regime = cooling_regime
         rt.zone.regime = cooling_regime
         node.rack_thermal = rt
+        # First-class per-node fabric state (rack/NIC/congestion/telemetry).
+        node.node_fabric = self._build_node_fabric(node, node_cfg, topology_class)
         return node
+
+    def _build_gpu_fabric(
+        self, gpu: SimGPU, idx: int, gpu_count: int, topology_class: str
+    ) -> GPUFabricState:
+        """Construct per-GPU fabric state from the node's topology class."""
+        gf = GPUFabricState()
+        gen = nvlink_generation_for_model(gpu.profile.model_name)
+        gf.nvlink.generation = gen.name
+        gf.nvlink.bidir_gbps = gen.bidir_gbps
+        has_nvlink = gpu.profile.nvlink_bandwidth_gbps > 0 and topology_class in (
+            "nvswitch", "nvlink4", "nvlink2"
+        )
+        gf.nvlink.visible = has_nvlink
+        gf.nvswitch.present = topology_class == "nvswitch"
+        gf.nvswitch.domain_size = gpu_count if topology_class == "nvswitch" else 0
+        # PCIe generation: H100-class boards are Gen5, older are Gen4.
+        m = gpu.profile.model_name.lower()
+        gf.pcie.generation = "gen5" if "h100" in m else "gen4"
+        gf.pcie.b_eff_gbps = gpu.profile.pcie_bandwidth_gbps
+        # NUMA / socket: split GPUs across two NUMA nodes / sockets in a box.
+        half = max(1, gpu_count // 2)
+        gf.numa.numa_node = 0 if idx < half else 1
+        gf.socket.socket_id = gf.numa.numa_node
+        gf.pcie.root_complex_id = gf.numa.numa_node
+        return gf
+
+    def _build_node_fabric(
+        self, node: SimNode, node_cfg: dict[str, Any], topology_class: str
+    ) -> NodeFabricState:
+        """Construct per-node fabric state (rack, NIC, telemetry visibility)."""
+        nf = NodeFabricState()
+        nf.topology_class = topology_class
+        nf.rack.rack_id = node.rack_id
+        # Telemetry visibility is config-driven (a scenario can model missing/
+        # partial topology telemetry). Default: full visibility, fresh.
+        nf.telemetry.nvlink_visible = bool(
+            node_cfg.get("nvlink_telemetry_visible", True)
+        )
+        nf.telemetry.pcie_visible = bool(node_cfg.get("pcie_telemetry_visible", True))
+        nf.telemetry.nic_visible = bool(node_cfg.get("nic_telemetry_visible", True))
+        nf.telemetry.detached_devices = int(node_cfg.get("detached_devices", 0))
+        nf.telemetry.stale_ticks = int(node_cfg.get("topology_stale_ticks", 0))
+        nf.telemetry.tier = topo.topology_telemetry_confidence(
+            nf.telemetry.nvlink_visible,
+            nf.telemetry.pcie_visible,
+            nf.telemetry.nic_visible,
+            nf.telemetry.stale_ticks,
+            nf.telemetry.detached_devices,
+        )
+        return nf
 
     def _build_topology_links(
         self, gpus: list[SimGPU], topology_class: str
@@ -398,6 +484,8 @@ class ClusterSimulator:
             engine_runtime=w_cfg.get("engine_runtime", "vllm"),
             warm_pool_size=w_cfg.get("warm_pool_size", 0),
             pdb_min_available=w_cfg.get("pdb_min_available", 0),
+            comm_profile=w_cfg.get("comm_profile"),
+            comm_message_bytes=w_cfg.get("comm_message_bytes", 4 * 1024 * 1024),
         )
 
         # Place workload onto GPUs in the target region
@@ -423,6 +511,21 @@ class ClusterSimulator:
         migstate.pdb.min_available = workload.pdb_min_available
         migstate.pdb.available = max(0, len(workload.gpu_ids) - workload.pdb_min_available)
         workload.migration = migstate
+
+        # Initialize first-class topology / communication state. The comm profile
+        # is resolved from an explicit name or inferred from workload type /
+        # communication intensity.
+        prof = resolve_comm_profile(
+            workload.comm_profile,
+            workload.communication_intensity,
+            workload.workload_type,
+        )
+        ts = WorkloadTopologyState()
+        ts.comm_profile = prof.name
+        ts.collective.collective = prof.collective
+        ts.collective.participants = max(1, workload.gpu_count_required)
+        ts.sync.sync_heavy = prof.sync_heavy
+        workload.topology = ts
         return workload
 
     def _place_workload(self, workload: SimWorkload, cluster: SimCluster) -> None:
@@ -466,6 +569,7 @@ class ClusterSimulator:
         self._update_thermal(cluster)
         self._update_kv_cache(cluster)
         self._update_migration(cluster)
+        self._update_topology(cluster)
         self._update_queues(cluster)
         self._update_cost_accounting(cluster)
 
@@ -515,6 +619,7 @@ class ClusterSimulator:
             self._update_thermal(cluster)
             self._update_kv_cache(cluster)
             self._update_migration(cluster)
+            self._update_topology(cluster)
             self._update_queues(cluster)
             self._update_cost_accounting(cluster)
             ts = self._tick_timestamp(cluster.tick)
@@ -847,6 +952,149 @@ class ClusterSimulator:
                         rt.violation.cooling_alarms += 1
                     rt.migration_risk.risk = max(risk, min(1.0, hot))
 
+    def _update_topology(self, cluster: SimCluster) -> None:
+        """Topology / communication state evolution for the tick.
+
+        Runs after _update_migration and before _update_queues so the queue
+        physics see this tick's communication throughput penalty, sync slowdown,
+        congestion, and communication-induced tail amplification. Per node:
+        fabric congestion + NIC saturation + telemetry tier. Per workload:
+        placement quality (distance ladder), collective load/amplification,
+        communication pressure, synchronization penalty, topology risk, and
+        communication latency. See aurelius/simulation/cluster/topology.py.
+        """
+        cfg = self._serving_config or None
+
+        # --- Per-node fabric congestion + NIC + telemetry --------------------
+        for region in cluster.regions.values():
+            for node in region.nodes:
+                nf = node.node_fabric
+                if nf is None:
+                    continue
+                # Aggregate communication demand of resident workloads on this
+                # node: comm weight × utilization. Co-located comm-heavy jobs
+                # oversubscribe the fabric.
+                demands: list[float] = []
+                cross_node = 0.0
+                for gpu in node.gpus:
+                    wid = gpu.assigned_workload_id
+                    wl = cluster.workloads.get(wid) if wid else None
+                    if wl is None:
+                        continue
+                    prof = self._resolve_comm_profile(wl)
+                    demands.append(prof.comm_weight * gpu.utilization_pct / 100.0)
+                    # Cross-node traffic fraction: GPUs of a multi-node workload.
+                    if len(set(wl.node_ids)) > 1:
+                        cross_node = max(cross_node, prof.comm_weight)
+                base_load = sum(demands) / len(demands) if demands else 0.0
+                # Scale demand by the node fabric's bandwidth headroom: the same
+                # communication demand is a small load on a high-bandwidth NVSwitch
+                # fabric but oversubscribes a low-bandwidth PCIe fabric. (150 is a
+                # reference GB/s ~ NVLink-class; the clamp keeps it bounded.)
+                best = resolve_fabric_regime(self._INTRANODE_REGIME.get(
+                    nf.topology_class, "pcie_root"))
+                load_factor = max(0.3, min(2.0, 150.0 / max(1.0, best.b_eff_gbps)))
+                base_load = base_load * load_factor
+                jitter = self._topo_rng.gauss(
+                    0.0, topology_value("routing_variation_frac", cfg)
+                )
+                nvlink_cong = max(0.0, min(1.0, base_load + jitter))
+                # PCIe carries comm on non-NVLink topologies; heavier there.
+                pcie_factor = 1.0 if nf.topology_class in ("pcie", "pcie_multi_numa") else 0.4
+                pcie_cong = max(0.0, min(1.0, base_load * pcie_factor + jitter))
+                nf.congestion.nvlink_congestion = nvlink_cong
+                nf.congestion.pcie_congestion = pcie_cong
+                nf.congestion.fabric_oversubscribed = nvlink_cong > topology_value(
+                    "congestion_onset", cfg
+                )
+                eff_bw = topo.effective_bandwidth(best, nvlink_cong, cfg)
+                nf.congestion.bandwidth_degradation_frac = max(
+                    0.0, 1.0 - eff_bw / max(1e-6, best.b_eff_gbps)
+                )
+                # NIC saturation for cross-node traffic.
+                sat, incast = topo.nic_saturation(cross_node, nvlink_cong, cfg)
+                nf.nic.throughput_frac = cross_node
+                nf.nic.saturation = sat
+                nf.nic.incast_active = incast
+                # Topology health: degraded links / fragmentation under collapse.
+                nf.health.health = max(0.0, 1.0 - 0.5 * nf.congestion.bandwidth_degradation_frac)
+                nf.health.fragmented = nf.congestion.fabric_oversubscribed and incast
+                # Telemetry tier may drift stale; recompute from visibility.
+                nf.telemetry.tier = topo.topology_telemetry_confidence(
+                    nf.telemetry.nvlink_visible,
+                    nf.telemetry.pcie_visible,
+                    nf.telemetry.nic_visible,
+                    nf.telemetry.stale_ticks,
+                    nf.telemetry.detached_devices,
+                )
+
+        # --- Per-workload communication state --------------------------------
+        for wl in cluster.workloads.values():
+            ts = wl.topology
+            if ts is None:
+                continue
+            prof = self._resolve_comm_profile(wl)
+            # Placement quality (telemetry-discounted) → topology_score.
+            wl.topology_score = self._compute_topology_score(wl, cluster)
+            quality = wl.topology_score
+            n = max(1, len(wl.gpu_ids))
+            load = self._workload_fabric_load(wl, cluster)
+            m_bytes = float(wl.comm_message_bytes)
+            worst = resolve_fabric_regime(ts.affinity.worst_regime)
+
+            # Collective load + amplification + latency.
+            ts.collective.collective = prof.collective
+            ts.collective.participants = n
+            ts.collective.amplification = topo.collective_amplification(
+                prof.collective, m_bytes, n, worst, load, cfg
+            )
+            ts.collective.latency_ms = topo.collective_latency_ms(
+                prof.collective, m_bytes, n, worst, load, self._topo_rng, cfg
+            )
+
+            # Communication pressure regime.
+            penalty = topo.communication_penalty(
+                prof, m_bytes, n, worst, quality, load, cfg
+            )
+            pressure = max(0.0, min(1.0, load * 0.6 + (1.0 - quality) * 0.4))
+            ts.pressure.pressure = pressure
+            if pressure >= 0.85:
+                ts.pressure.regime = topo.CommRegime.COLLAPSE
+            elif pressure >= topology_value("congestion_onset", cfg):
+                ts.pressure.regime = topo.CommRegime.CONGESTED
+            elif pressure >= 0.3:
+                ts.pressure.regime = topo.CommRegime.ELEVATED
+            else:
+                ts.pressure.regime = topo.CommRegime.NOMINAL
+
+            # Synchronization penalty (bulk-synchronous straggler stalls).
+            straggler, sync_slow = topo.synchronization_penalty(
+                prof, quality, load, self._topo_rng, cfg
+            )
+            ts.sync.sync_heavy = prof.sync_heavy
+            ts.sync.straggler_frac = straggler
+            ts.sync.slowdown_frac = sync_slow
+
+            # Topology risk + collective instability flag.
+            risk, unstable = topo.topology_risk(prof, quality, load, cfg)
+            ts.risk.risk = risk
+            ts.risk.instability = unstable
+
+            # Communication-induced tail multipliers (stored for the queue layer).
+            p95m, p99m = topo.comm_tail_multipliers(prof, quality, load, cfg)
+            ts.latency.tail_mult = p99m
+            ts.latency.p50_ms = ts.collective.latency_ms
+
+            # Throughput penalty fraction (informational; applied in queues).
+            comm_factor = topo.comm_throughput_factor(prof, quality, load, cfg)
+            ts.throughput_penalty_frac = 1.0 - comm_factor * (1.0 - sync_slow)
+
+            # Migration risk: comm-sensitive + poor/uncertain placement is risky.
+            ts.migration_risk.risk = max(risk, pressure if prof.sync_heavy else 0.0)
+            # Cache the penalty scalar on the pressure state for reporting.
+            ts.collective.amplification = max(1.0, ts.collective.amplification)
+            _ = penalty  # used by migration veto / reporting paths
+
     def _update_queues(self, cluster: SimCluster) -> None:
         """Update queue state with the inference-serving realism layer.
 
@@ -906,11 +1154,20 @@ class ClusterSimulator:
                 thermal_tput = therm.throughput_factor(s_thermal, s_power)
                 tokens_per_sec *= thermal_tput
 
-                # Topology penalty for multi-GPU comm-heavy workloads.
-                topo_penalty = 1.0 - (1.0 - workload.topology_score) * {
-                    "low": 0.1, "medium": 0.3, "high": 0.5,
-                }.get(workload.communication_intensity, 0.1)
-                tokens_per_sec *= topo_penalty
+                # Communication throughput penalty (topology-aware). A poorly
+                # placed communication-bound workload (e.g. tensor-parallel split
+                # off NVSwitch) can collapse toward the floor; a comm-light job is
+                # barely touched. Synchronization-heavy jobs additionally pay a
+                # straggler-stall slowdown. See topology.py.
+                comm_prof = self._resolve_comm_profile(workload)
+                ts = workload.topology
+                fabric_load = ts.pressure.pressure if ts is not None else 0.0
+                comm_factor = topo.comm_throughput_factor(
+                    comm_prof, workload.topology_score, fabric_load, cfg
+                )
+                tokens_per_sec *= comm_factor
+                sync_slow = ts.sync.slowdown_frac if ts is not None else 0.0
+                tokens_per_sec *= max(0.05, 1.0 - sync_slow)
 
                 replicas = max(1, len(workload.gpu_ids))
 
@@ -999,9 +1256,24 @@ class ClusterSimulator:
                 ttft_p50 = mean_wait_ms + ttft_compute
                 # Migration amplifies the TAIL (p95/p99), not just the median.
                 tail_mult = migstate.tail.uplift_mult if migstate else 1.0
+                # Communication-induced tail amplification: poor topology /
+                # fabric congestion blows up p95/p99 faster than the mean (p99
+                # faster than p95). Applied as an EXTRA factor on top of the
+                # queueing tails so it compounds with migration instability.
+                comm_p95x, comm_p99x = topo.comm_tail_multipliers(
+                    comm_prof, workload.topology_score, fabric_load, cfg
+                )
+                base_p95 = topology_value("comm_tail_p95_base", cfg)
+                base_p99 = topology_value("comm_tail_p99_base", cfg)
+                comm_p95_extra = max(1.0, comm_p95x / base_p95)
+                comm_p99_extra = max(1.0, comm_p99x / base_p99)
                 queue.ttft_p50_ms = ttft_p50
-                queue.ttft_p95_ms = ttft_p50 * p95_mult * tail_mult
-                queue.ttft_p99_ms = ttft_p50 * p99_mult * tail_mult
+                queue.ttft_p95_ms = ttft_p50 * p95_mult * tail_mult * comm_p95_extra
+                queue.ttft_p99_ms = ttft_p50 * p99_mult * tail_mult * comm_p99_extra
+                if ts is not None:
+                    ts.latency.p50_ms = ttft_p50
+                    ts.latency.p95_ms = queue.ttft_p95_ms
+                    ts.latency.p99_ms = queue.ttft_p99_ms
 
                 # Decomposed TPOT: base × throttle + per-replica decode contention.
                 # Throttle factor scales with the CONTINUOUS thermal+power slowdown
@@ -1382,6 +1654,47 @@ class ClusterSimulator:
         topo_scores = [wl.topology_score for wl in cluster.workloads.values()]
         mean_topo = sum(topo_scores) / len(topo_scores) if topo_scores else 1.0
 
+        # Topology / communication KPIs aggregated across workloads + nodes.
+        topo_qualities: list[float] = []
+        coll_amps: list[float] = []
+        comm_pressures: list[float] = []
+        sync_slows: list[float] = []
+        comm_pens: list[float] = []
+        topo_risks: list[float] = []
+        comm_p99s: list[float] = []
+        instability_count = 0
+        topo_vetoes = 0
+        cross_rack_count = 0
+        for wl in cluster.workloads.values():
+            t = wl.topology
+            if t is None:
+                continue
+            topo_qualities.append(t.affinity.quality_score)
+            coll_amps.append(t.collective.amplification)
+            comm_pressures.append(t.pressure.pressure)
+            sync_slows.append(t.sync.slowdown_frac)
+            comm_pens.append(t.throughput_penalty_frac)
+            topo_risks.append(t.risk.risk)
+            if t.latency.p99_ms > 0:
+                comm_p99s.append(t.latency.p99_ms)
+            if t.risk.instability:
+                instability_count += 1
+            topo_vetoes += t.migration_risk.veto_count
+            if topo.topology_distance(t.affinity.worst_regime) >= 5:
+                cross_rack_count += 1
+        fabric_congs: list[float] = []
+        nic_sats: list[float] = []
+        low_telemetry = 0
+        for region in cluster.regions.values():
+            for node in region.nodes:
+                nf = node.node_fabric
+                if nf is None:
+                    continue
+                fabric_congs.append(nf.congestion.nvlink_congestion)
+                nic_sats.append(nf.nic.saturation)
+                if nf.telemetry.tier == "low":
+                    low_telemetry += 1
+
         return TickMetrics(
             tick=cluster.tick,
             timestamp=ts,
@@ -1447,6 +1760,26 @@ class ClusterSimulator:
             thermal_excursions=thermal_excursions,
             cooling_alarms=cooling_alarms,
             thermal_migration_vetoes=thermal_vetoes,
+            mean_topology_quality=(
+                sum(topo_qualities) / len(topo_qualities) if topo_qualities else None
+            ),
+            min_topology_quality=min(topo_qualities) if topo_qualities else None,
+            fabric_congestion_max=max(fabric_congs) if fabric_congs else None,
+            collective_amplification_max=max(coll_amps) if coll_amps else None,
+            comm_pressure_max=max(comm_pressures) if comm_pressures else None,
+            sync_slowdown_pct_mean=(
+                100.0 * sum(sync_slows) / len(sync_slows) if sync_slows else None
+            ),
+            comm_throughput_penalty_pct_mean=(
+                100.0 * sum(comm_pens) / len(comm_pens) if comm_pens else None
+            ),
+            nic_saturation_max=max(nic_sats) if nic_sats else None,
+            topology_risk_max=max(topo_risks) if topo_risks else None,
+            collective_instability_count=instability_count,
+            topology_migration_vetoes=topo_vetoes,
+            comm_latency_p99_ms_max=max(comm_p99s) if comm_p99s else None,
+            cross_rack_workload_count=cross_rack_count,
+            low_topology_telemetry_count=low_telemetry,
         )
 
     # ------------------------------------------------------------------
@@ -1515,47 +1848,134 @@ class ClusterSimulator:
             return gpus[0].profile
         return None
 
-    def _compute_topology_score(self, workload: SimWorkload, cluster: SimCluster) -> float:
-        """Compute 0-1 topology score for a workload's current placement."""
-        if workload.gpu_count_required <= 1:
-            return 1.0
-        if len(workload.gpu_ids) < 2:
-            return 1.0
+    # Intra-node topology class → fabric regime name (the per-pair regime when
+    # two GPUs share a node). pcie_multi_numa pairs may cross a NUMA boundary
+    # (handled per-pair via gpu.fabric.numa); the node default is the cross-NUMA
+    # "node" regime so a multi-NUMA box is not treated as ideal.
+    _INTRANODE_REGIME = {
+        "nvswitch": "nvswitch",
+        "nvlink4": "nvlink",
+        "nvlink2": "nvlink",
+        "pcie_multi_numa": "node",
+        "pcie": "pcie_root",
+    }
 
-        # Find links between workload GPUs
-        gpu_set = set(workload.gpu_ids)
-        best_link_type = "SYS"   # worst default
+    def _resolve_comm_profile(self, workload: SimWorkload):
+        """Resolve the workload's communication-sensitivity profile."""
+        return resolve_comm_profile(
+            workload.comm_profile,
+            workload.communication_intensity,
+            workload.workload_type,
+        )
 
+    def _node_map(self, cluster: SimCluster) -> dict[str, SimNode]:
+        nmap: dict[str, SimNode] = {}
         for region in cluster.regions.values():
             for node in region.nodes:
-                for link in node.topology_links:
-                    if link.gpu_a in gpu_set and link.gpu_b in gpu_set:
-                        # Prefer higher bandwidth link types
-                        if _link_rank(link.link_type) > _link_rank(best_link_type):
-                            best_link_type = link.link_type
+                nmap[node.node_id] = node
+        return nmap
 
-        score_map = {
-            "NVSWITCH": 1.0,
-            "NV4": 0.95,
-            "NV2": 0.9,
-            "PIX": 0.75,
-            "PXB": 0.65,
-            "PHB": 0.5,
-            "NODE": 0.4,
-            "SYS": 0.25,
-            "RACK": 0.15,
-            "REGION": 0.05,
-        }
-        base_score = score_map.get(best_link_type, 0.25)
+    def _pair_regime(
+        self, ga: SimGPU, gb: SimGPU, nmap: dict[str, SimNode]
+    ) -> str:
+        """Fabric regime connecting two GPUs (the topology-distance rung)."""
+        if ga.gpu_id == gb.gpu_id:
+            return "intra_gpu"
+        # Cross-node: distinguish same-rack vs cross-rack vs cross-region.
+        if ga.node_id != gb.node_id:
+            node_a = nmap.get(ga.node_id)
+            node_b = nmap.get(gb.node_id)
+            if node_a is None or node_b is None:
+                return "cross_rack"
+            if node_a.region_id != node_b.region_id:
+                return "cross_region"
+            if node_a.rack_id != node_b.rack_id:
+                return "cross_rack"
+            return "rack"
+        # Same node: use the node's topology class, refined by NUMA for PCIe.
+        node = nmap.get(ga.node_id)
+        tclass = node.node_fabric.topology_class if (
+            node is not None and node.node_fabric is not None
+        ) else "nvswitch"
+        regime = self._INTRANODE_REGIME.get(tclass, "pcie_root")
+        if tclass == "pcie_multi_numa" and ga.fabric is not None and gb.fabric is not None:
+            # Same NUMA → fast PCIe root; cross NUMA → node (cross-socket) regime.
+            return "socket" if ga.fabric.numa.numa_node == gb.fabric.numa.numa_node else "node"
+        return regime
 
-        # Communication intensity multiplier: poor topology hurts high-comm more.
-        comm_weight = {"low": 0.3, "medium": 0.6, "high": 1.0}.get(
-            workload.communication_intensity, 0.3
-        )
-        # Penalty scales with both topology badness (1 - base_score) and comm
-        # intensity: a perfect link (base_score=1.0) is never penalized, while a
-        # poor link penalizes high-comm workloads far more than low-comm ones.
-        return base_score * (1.0 - comm_weight * (1.0 - base_score))
+    def _workload_pair_regimes(
+        self, workload: SimWorkload, cluster: SimCluster
+    ) -> list[str]:
+        """Regime name for every GPU pair in the workload (drives Σ w*d)."""
+        gpus = self._workload_gpus(workload, cluster)
+        if len(gpus) < 2:
+            return []
+        nmap = self._node_map(cluster)
+        regimes: list[str] = []
+        for i in range(len(gpus)):
+            for j in range(i + 1, len(gpus)):
+                regimes.append(self._pair_regime(gpus[i], gpus[j], nmap))
+        return regimes
+
+    def _workload_fabric_load(self, workload: SimWorkload, cluster: SimCluster) -> float:
+        """Max fabric congestion load across the nodes hosting the workload."""
+        load = 0.0
+        node_ids = set(workload.node_ids)
+        for region in cluster.regions.values():
+            for node in region.nodes:
+                if node.node_id in node_ids and node.node_fabric is not None:
+                    load = max(load, node.node_fabric.congestion.nvlink_congestion)
+        return load
+
+    def _workload_telemetry_tier(
+        self, workload: SimWorkload, cluster: SimCluster
+    ) -> str:
+        """Worst topology telemetry tier across the workload's nodes."""
+        order = {"high": 0, "medium": 1, "low": 2}
+        tier = "high"
+        node_ids = set(workload.node_ids)
+        for region in cluster.regions.values():
+            for node in region.nodes:
+                if node.node_id in node_ids and node.node_fabric is not None:
+                    t = node.node_fabric.telemetry.tier
+                    if order.get(t, 0) > order.get(tier, 0):
+                        tier = t
+        return tier
+
+    def _compute_topology_score(self, workload: SimWorkload, cluster: SimCluster) -> float:
+        """0-1 topology quality score for a workload's current placement.
+
+        Uses the topology distance ladder + calibrated fabric regimes
+        (topology.placement_quality_score) and discounts the optimistic reading
+        under poor topology telemetry confidence (missing topology ≠ ideal
+        proximity). See aurelius/simulation/cluster/topology.py.
+        """
+        if workload.gpu_count_required <= 1 or len(workload.gpu_ids) < 2:
+            quality = 1.0
+            distance = 0.0
+            regimes = ["intra_gpu"]
+        else:
+            cfg = self._serving_config or None
+            regimes = self._workload_pair_regimes(workload, cluster)
+            distance, quality = topo.placement_quality_score(regimes, None, cfg)
+
+        tier = self._workload_telemetry_tier(workload, cluster)
+        cfg = self._serving_config or None
+        q_eff = topo.telemetry_discounted_score(quality, tier, cfg)
+
+        ts = workload.topology
+        if ts is not None:
+            ts.affinity.distance_score = distance
+            ts.affinity.quality_score = q_eff
+            if regimes:
+                ts.affinity.worst_regime = max(
+                    regimes, key=lambda rn: topo.topology_distance(rn)
+                )
+                ts.affinity.best_regime = min(
+                    regimes, key=lambda rn: topo.topology_distance(rn)
+                )
+            ts.telemetry.tier = tier
+        return q_eff
 
     # ------------------------------------------------------------------
     # Connector data generators (fake connector payloads)
@@ -1858,6 +2278,8 @@ class ClusterSimulator:
             if veto is not None:
                 migstate.migration.veto_count += 1
                 migstate.migration.last_veto_reason = veto
+                if veto == "topology_cross_domain" and workload.topology is not None:
+                    workload.topology.migration_risk.veto_count += 1
                 return False
 
         old_region = workload.region_id
@@ -1968,6 +2390,24 @@ class ClusterSimulator:
         # Thermal governor: veto migrating INTO a hot destination zone.
         if target_region_id is not None and self._dest_zone_too_hot(target_region_id):
             return "thermal_hot_destination"
+        # Topology governor: veto moving a communication-sensitive / sync-heavy
+        # workload across fabric domains (the move breaks NVLink/NVSwitch/rack
+        # locality). A cross-region move is the worst case (distance 6). Missing
+        # destination topology telemetry lowers the veto threshold (≠ safe).
+        if target_region_id is not None and target_region_id != workload.region_id:
+            cfg_t = self._serving_config or None
+            prof = self._resolve_comm_profile(workload)
+            dest_dist = topo.topology_distance("cross_region")
+            dest_tier = self._region_telemetry_tier(target_region_id)
+            dest_quality = topo.telemetry_discounted_score(0.05, dest_tier, cfg_t)
+            if topo.topology_migration_blocked(
+                prof, dest_dist, dest_quality, dest_tier, cfg_t
+            ):
+                if workload.topology is not None:
+                    workload.topology.migration_risk.last_veto_reason = (
+                        "topology_cross_domain"
+                    )
+                return "topology_cross_domain"
         cluster = self._cluster
         cfg = self._serving_config or None
         # Aggregate queue depth for this workload's service in its current region.
@@ -1994,6 +2434,20 @@ class ClusterSimulator:
             scale_from_zero=m.coldstart.scale_from_zero,
             config=cfg,
         )
+
+    def _region_telemetry_tier(self, region_id: str) -> str:
+        """Worst topology telemetry tier across a region's nodes."""
+        order = {"high": 0, "medium": 1, "low": 2}
+        tier = "high"
+        region = self._cluster.regions.get(region_id)
+        if region is None:
+            return tier
+        for node in region.nodes:
+            if node.node_fabric is not None:
+                t = node.node_fabric.telemetry.tier
+                if order.get(t, 0) > order.get(tier, 0):
+                    tier = t
+        return tier
 
     def _dest_zone_too_hot(self, target_region_id: str) -> bool:
         """True if every rack in the destination region is thermally hot.
