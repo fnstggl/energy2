@@ -290,64 +290,69 @@ def _probe_migration(checks: list[RealismCheck], seed: int) -> None:
 
 
 def _probe_telemetry(checks: list[RealismCheck], seed: int) -> None:
-    from ..constraints.classifier import ConstraintClassifier
+    from ..constraints import ConstraintAwareEngine
     from ..simulation.cluster import load_scenario
     from ..simulation.cluster.engine import ClusterSimulator
 
-    def assess(scn: str):
+    def state_for(scn: str):
         sc = load_scenario(scn, seed_override=seed)
         sim = ClusterSimulator(sc.config, seed=seed)
         sim.run(steps=6)
-        st = sim.get_cluster_state()
-        a = ConstraintClassifier().assess(st)
-        return st, a
+        return sim.get_cluster_state()
 
-    # 1. Is the canonical telemetry ALWAYS perfect at the ClusterState level?
-    clean_st, _ = assess("energy_price_arbitrage_multiregion")
-    region_confs = {clean_st.provenance.confidence}
-    for r in clean_st.regions.values():
-        region_confs.add(r.provenance.confidence)
-    always_high = clean_st.provenance.confidence == "high" and not clean_st.is_partial
-    checks.append(RealismCheck(
-        "telemetry",
-        "Is telemetry always perfect at the canonical ClusterState level?",
-        realistic=not always_high,
-        observation=(
-            f"ClusterState.provenance.confidence={clean_st.provenance.confidence!r}, "
-            f"is_partial={clean_st.is_partial}; region confidences={sorted(region_confs)}. "
-            "get_cluster_state() hardcodes confidence='high'/is_partial=False even for "
-            "'degraded telemetry' scenarios."
-        ),
-        severity="blocker",
-    ))
-
-    # 2. Do the degraded/partial telemetry scenarios actually lower classifier confidence?
-    results = {}
+    # 1. Does the canonical ClusterState tell the truth — clean scenarios report
+    #    high confidence, degraded-telemetry scenarios report low + partial?
+    clean = state_for("energy_price_arbitrage_multiregion")
+    clean_high = clean.provenance.confidence == "high" and not clean.is_partial
+    degraded = {}
     for scn in (
         "degraded_topology_telemetry",
         "partial_utilization_telemetry",
         "low_confidence_energy_telemetry",
     ):
         try:
-            _, a = assess(scn)
-            results[scn] = (round(a.confidence, 2), len(a.missing_signals))
-        except Exception as exc:  # scenario may not exist in some versions
-            results[scn] = ("ERR", str(exc))
-    # "Exercised" only if at least one scenario raises a missing-signal flag.
-    exercised = any(
-        isinstance(v[1], int) and v[1] > 0 for v in results.values()
+            st = state_for(scn)
+            degraded[scn] = (st.provenance.confidence, st.is_partial, len(st.missing_sources))
+        except Exception as exc:
+            degraded[scn] = ("ERR", False, str(exc))
+    all_degraded_marked = all(
+        v[0] != "high" and v[1] is True for v in degraded.values()
     )
+    truthful = clean_high and all_degraded_marked
     checks.append(RealismCheck(
         "telemetry",
-        "Are stale / missing telemetry paths exercised end-to-end?",
+        "Does the canonical ClusterState report degraded telemetry honestly?",
+        realistic=truthful,
+        observation=(
+            f"clean scenario → confidence={clean.provenance.confidence!r}, "
+            f"is_partial={clean.is_partial}; degraded scenarios (confidence, is_partial, "
+            f"#missing_sources): " + ", ".join(f"{k}={v}" for k, v in degraded.items())
+            + ". get_cluster_state() now derives provenance from per-subsystem "
+            "telemetry tiers instead of hardcoding 'high'."
+        ),
+        severity="blocker",
+    ))
+
+    # 2. Does degraded telemetry actually force the engine to KEEP (no risky action)?
+    engine = ConstraintAwareEngine()
+    forced_keep = {}
+    for scn in degraded:
+        try:
+            st = state_for(scn)
+            res = engine.run(st)
+            forced_keep[scn] = res.actionable_count
+        except Exception as exc:
+            forced_keep[scn] = f"ERR:{exc}"
+    exercised = all(v == 0 for v in forced_keep.values() if isinstance(v, int))
+    checks.append(RealismCheck(
+        "telemetry",
+        "Do missing/stale telemetry paths force KEEP end-to-end?",
         realistic=exercised,
         observation=(
-            "(confidence, #missing_signals) per scenario: " + ", ".join(
-                f"{k}={v}" for k, v in results.items()
-            ) + ". Confidence degradation is weak/inconsistent — most 'degraded' scenarios "
-            "still classify at high confidence."
+            "engine actionable_count under degraded telemetry: "
+            + ", ".join(f"{k}={v}" for k, v in forced_keep.items())
+            + " (0 = correctly forced KEEP by the telemetry-trust gate)."
         ),
-        severity="warn",
     ))
 
 

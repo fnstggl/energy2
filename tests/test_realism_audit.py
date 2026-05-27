@@ -49,15 +49,19 @@ def test_migration_is_not_free():
     assert free_check.realistic, "migration must carry a cold-start / cache cost"
 
 
-def test_telemetry_perfection_is_flagged_as_blocker():
-    # The canonical ClusterState hardcodes confidence='high'/is_partial=False.
-    # The audit must surface this honestly as a blocker, not hide it.
+def test_telemetry_reports_degradation_honestly():
+    # Mission 1 fix: get_cluster_state() now derives provenance confidence from
+    # the simulator's per-subsystem tiers. Clean scenarios stay high; degraded
+    # scenarios report low + partial, and degraded telemetry forces KEEP.
     r = _report()
     telemetry = next(s for s in r.subsystems if s.subsystem == "telemetry")
-    perfect = next(c for c in telemetry.checks if "always perfect" in c.question)
-    assert perfect.severity == "blocker"
-    assert perfect.realistic is False
-    assert telemetry.verdict == "NEEDS_REAL_TELEMETRY"
+    honest = next(
+        c for c in telemetry.checks if "report degraded telemetry honestly" in c.question
+    )
+    assert honest.realistic is True
+    keep = next(c for c in telemetry.checks if "force KEEP" in c.question)
+    assert keep.realistic is True
+    assert telemetry.verdict == "REALISTIC_ENOUGH_FOR_DEV"
 
 
 def test_no_safe_action_states_are_reachable():

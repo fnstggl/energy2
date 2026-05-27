@@ -126,19 +126,19 @@ class TestAutoscaling:
 # ---------------------------------------------------------------------------
 
 class TestAggressiveMigrationCanLose:
-    @pytest.mark.xfail(
-        reason=(
-            "KNOWN REGRESSION since #82 (energy/carbon realism). greedy_energy still "
-            "migrates more and is still worse on p99, but no longer by the 5x "
-            "catastrophic margin: constraint_aware ALSO saturates in this energy "
-            "scenario (lower throughput, higher cost than greedy). Tracked as a "
-            "calibration target in docs/COMPUTE_OPTIMIZATION_PROGRESS.md and surfaced "
-            "by the realism-audit robustness probe. Do NOT weaken the threshold to "
-            "fake a pass — the property we want to RESTORE is the 5x margin."
-        ),
-        strict=False,
-    )
     def test_greedy_energy_loses_on_latency_in_energy_scenario(self):
+        """Headline product property, RESTORED.
+
+        The previous xfail was NOT a model regression — it was a benchmark
+        DETERMINISM bug: the energy scenario's builtin definition had drifted from
+        its YAML (missing the flexible `batch-wl-west` workload), so results
+        depended on whether PyYAML was installed (YAML→3 workloads, builtin→2). The
+        bare pytest venv (no PyYAML) loaded the stale 2-workload builtin, where
+        greedy only migrated 4× and the p99 blow-up was muted. With the builtin
+        re-synced to the YAML (see test_scenario_source_parity.py), greedy_energy's
+        aggressive migration again catastrophically destabilises queues: p99
+        explodes >5x past constraint_aware in every environment and seed.
+        """
         result = ConstraintBenchmarkRunner().run_scenario(
             "energy_price_arbitrage_multiregion", steps=24, seed=42
         )
@@ -150,22 +150,6 @@ class TestAggressiveMigrationCanLose:
         # ...but its migrations destabilize queues → p99 explodes far past the
         # constraint-aware policy, which protects latency.
         assert greedy.p99_latency_ms > ca.p99_latency_ms * 5
-
-    def test_greedy_energy_still_migrates_more_and_is_worse_on_p99(self):
-        """The directional property still holds post-#82, even if not by 5x.
-
-        This is the honest, currently-true version of the headline property:
-        aggressive energy migration is still a net latency loss vs constraint_aware,
-        just no longer catastrophically so.
-        """
-        result = ConstraintBenchmarkRunner().run_scenario(
-            "energy_price_arbitrage_multiregion", steps=24, seed=42
-        )
-        agg = result.report.aggregated
-        greedy = agg["greedy_energy"]
-        ca = agg["constraint_aware"]
-        assert greedy.total_migrations > ca.total_migrations
-        assert greedy.p99_latency_ms >= ca.p99_latency_ms
 
     def test_constraint_aware_no_sla_regression_vs_fifo(self):
         for scen in ("thermal_hotspot_mixed_cluster", "queue_surge_latency_sensitive",

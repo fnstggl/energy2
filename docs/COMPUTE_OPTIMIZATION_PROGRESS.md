@@ -399,6 +399,92 @@ until then.
 
 ---
 
+## Telemetry-Truth + Benchmark-Determinism Calibration (2026-05-27)
+
+This run closed the telemetry-confidence gap, fixed a benchmark determinism bug,
+resolved the xfail honestly, and added a principled action-selection guard —
+without weakening any realism penalty.
+
+### Mission 1 — Telemetry confidence / partial-state truth (FIXED)
+- `ClusterSimulator.get_cluster_state()` previously hardcoded
+  `provenance.confidence='high'` / `is_partial=False` for ALL state objects, so
+  degraded-telemetry scenarios were masked as perfect.
+- New `_region_telemetry_truth()` derives each region's provenance confidence from
+  the simulator's own per-subsystem telemetry tiers (energy/topology/utilization),
+  sets top-level `is_partial` + `missing_sources` honestly. Clean scenarios stay
+  `high`/not-partial (canonical detection scenarios unchanged); degraded scenarios
+  now report `low` + partial.
+- Engine gains a **telemetry-trust gate**: `state.is_partial and
+  provenance.confidence=='low'` → KEEP all (risky actions blocked). Gated on
+  PROVENANCE trust, NOT the blended classifier confidence — so legitimate
+  low-COVERAGE-but-trustworthy scenarios (rack_density, fragmentation) still act.
+  Plus an advisory downgrade: partial-but-not-low telemetry blocks cross-region
+  migrations / placement changes (can't trust an unseen destination).
+- Result: `degraded_topology_telemetry`, `partial_utilization_telemetry`,
+  `low_confidence_energy_telemetry` now classify at 0.29–0.34 confidence, are
+  marked partial, and force KEEP (0 actions). Tests: `tests/test_telemetry_truth.py`
+  (12). The realism-audit telemetry verdict graduated
+  `NEEDS_REAL_TELEMETRY` → `REALISTIC_ENOUGH_FOR_DEV` (overall still
+  `NOT_PRODUCTION_REALISTIC_YET` — no measured params).
+
+### Mission 4 — xfail investigation (RESOLVED: was a determinism bug, not a model regression)
+- The "greedy loses by 5× p99" xfail was traced to **benchmark non-determinism**:
+  the energy scenario's builtin (`_BUILTIN_SCENARIOS`) had drifted from its YAML
+  (`benchmarks/v1/...yaml`) — missing the flexible `batch-wl-west` workload. Since
+  `load_scenario` prefers YAML when PyYAML is installed and falls back to the
+  builtin otherwise, results depended on whether PyYAML was present (the bare
+  pytest venv lacks it → stale 2-workload builtin → muted p99 blow-up; a plain
+  interpreter has it → 3-workload YAML → full blow-up).
+- Fix: re-synced the builtin to the YAML (added `batch-wl-west`; fixed
+  `hot-wl`→`hot-wl-0`). Now both sources give identical results in every
+  environment and the 5× property holds across seeds (ratios 15–26×). The xfail
+  is converted to a passing assertion. Guard added:
+  `tests/test_scenario_source_parity.py` asserts builtin == YAML structure (runs
+  where PyYAML exists) plus yaml-free completeness checks.
+
+### Mission 3 — Principled action guard (PARTIAL; honest open weakness)
+- Added a **constraint-dominance** guard: reject an action that worsens a
+  HIGHER-scored constraint than the best one it relieves (uses only the observed
+  score vector — no new magic constant). This stops e.g. scaling batch replicas to
+  chase a marginal queue=0.30 score when energy=0.60 dominates, while still
+  allowing scaling when queue/latency is the dominant pressure (real surge) and
+  allowing energy migrations whose only worsened constraints score below energy.
+- **SLA-safe across all 26 scenarios** (no regression vs FIFO); thermal/queue wins
+  preserved.
+- **Honest open weakness:** it does NOT fully fix the energy arbitrage scenario.
+  `constraint_aware` is still the most expensive policy there and loses to
+  `current_price_only` on both cost AND SLA, because the engine still applies some
+  queue-relief scaling to batch workloads. A complete fix requires propagating
+  workload class (`priority_tier`/`latency_sensitive`) into the canonical
+  `InferenceServiceState` so the engine can apply workload-aware priorities (batch:
+  cost/throughput, not queue). Deliberately NOT papered over.
+
+### Benchmark truth (Mission 2)
+- `docs/REALISM_BENCHMARK_VALIDATION.md` regenerated: per-scenario table now
+  includes a telemetry-confidence column (with partial flag); mean/median cost
+  delta vs FIFO / current_price_only / greedy_energy / SLA-aware; engine net
+  savings; honest win/loss lists. Median cost delta vs FIFO is now $0.00
+  (degraded scenarios correctly KEEP = FIFO).
+
+### Honest standing claims
+- Benchmark evidence remains **simulator-only**; no production savings claims.
+- `constraint_aware` raw cost is **worse than current_price_only/greedy_energy** in
+  the energy scenario; its value elsewhere is safety-adjusted (thermal/queue/p99).
+- Determinism: benchmark results are now environment-independent for the
+  file-backed scenarios (builtin/YAML parity guarded).
+
+### Commands run
+```
+python -m aurelius.cli realism-audit --format text
+python scripts/generate_realism_report.py --steps 24 --seed 42
+pytest tests/test_telemetry_truth.py tests/test_scenario_source_parity.py
+       tests/test_realism_audit.py tests/test_serving_realism.py -q     # green
+# full constraint suite: 538 passed, 6 skipped (yaml-parity), 4 pre-existing
+#   yaml/pandas env-gap failures (test_sla_optimization / test_queue_aware).
+```
+
+---
+
 ## Non-Negotiable Implementation Philosophy
 
 This tracker is also a planning artifact, not proof of correctness.

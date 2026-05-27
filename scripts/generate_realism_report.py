@@ -110,6 +110,20 @@ def main() -> int:
         if net_loss:
             ca_losses.append(scn)
 
+        # Telemetry confidence (mean over ticks) + partial flag, from the
+        # constraint_aware engine assessments — exposes the Mission 1 telemetry truth.
+        ca_pr = res.policy_results.get(POLICY_CONSTRAINT_AWARE)
+        confs = [
+            er.assessment.confidence
+            for er in (ca_pr.engine_results if ca_pr else [])
+            if er is not None
+        ]
+        mean_conf = statistics.mean(confs) if confs else None
+        is_partial = bool(ca_pr.final_state.is_partial) if ca_pr and ca_pr.final_state else False
+        conf_str = (f"{mean_conf:.2f}" if mean_conf is not None else "—") + (
+            " (partial)" if is_partial else ""
+        )
+
         # One row per scenario: constraint_aware vs fifo deltas + absolute KPIs.
         rows.append(
             f"| {scn} | constraint_aware | {_fmt(ca.total_energy_cost, 3)} | "
@@ -118,7 +132,7 @@ def main() -> int:
             f"{ca.total_sla_violations} | {ca.total_migrations} | "
             f"{_fmt(ca.churn_penalty_max, 4)} | {ca.total_thermal_throttle_ticks} | "
             f"{_fmt(ca.mean_topology_score, 3)} | {_fmt(ca.prefix_hit_rate_mean, 3)} | "
-            f"{_fmt(fifo.total_energy_cost, 3)} |"
+            f"{conf_str} | {_fmt(fifo.total_energy_cost, 3)} |"
         )
 
     audit = run_realism_audit(seed=args.seed)
@@ -181,8 +195,8 @@ def main() -> int:
     lines.append("")
     lines.append("| scenario | policy | cost $ | net savings | goodput(tok) | p99 ms | "
                  "queue p95 ms | SLA viol | migrations | churn | thermal | topology | "
-                 "cache hit | FIFO cost $ |")
-    lines.append("|" + "---|" * 14)
+                 "cache hit | telemetry conf | FIFO cost $ |")
+    lines.append("|" + "---|" * 15)
     lines.extend(rows)
     lines.append("")
 
@@ -205,22 +219,35 @@ def main() -> int:
                  "relief, or an SLA regression): "
                  + (", ".join(sorted(set(ca_losses))) or "none"))
     lines.append("")
-    lines.append("Known regression: `energy_price_arbitrage_multiregion` — since the "
-                 "energy/carbon realism upgrade, constraint_aware no longer beats greedy_energy "
-                 "by a 5× p99 margin; both saturate. Tracked as a calibration target "
-                 "(see test_serving_realism.py xfail).")
+    lines.append("`greedy_energy` headline property (RESTORED): on "
+                 "`energy_price_arbitrage_multiregion`, greedy_energy's aggressive migration "
+                 "blows up p99 >5× past constraint_aware (now deterministic across pytest and "
+                 "a plain interpreter — the prior xfail was a YAML/builtin scenario-drift "
+                 "determinism bug, not a model regression; see test_scenario_source_parity.py).")
+    lines.append("")
+    lines.append("Honest open weakness (energy scenario): constraint_aware is still the most "
+                 "EXPENSIVE policy on raw energy cost here and does not beat current_price_only "
+                 "(which is cheaper AND has fewer SLA violations). Root cause: the engine still "
+                 "applies some queue-relief scaling to BATCH workloads (which tolerate "
+                 "queueing), wasting energy. The constraint-dominance guard reduces but does not "
+                 "eliminate this; a full fix needs workload-class (priority_tier/latency_sensitive) "
+                 "propagated into the canonical InferenceServiceState so the engine can apply "
+                 "the spec's workload-aware priorities. Reported, not hidden.")
     lines.append("")
 
     lines.append("## 6. What remains simulator-only / needs real telemetry")
     lines.append("")
     lines.append("- Every calibration parameter is an uncalibrated prior (none measured on real "
                  "hardware). All KPI numbers are directional.")
-    lines.append("- Canonical `ClusterState` hardcodes `confidence='high'`/`is_partial=False`; "
-                 "the missing/stale telemetry path is only weakly exercised end-to-end "
-                 "(`telemetry` subsystem verdict = `NEEDS_REAL_TELEMETRY`).")
+    lines.append("- Telemetry truth (Mission 1, FIXED): the canonical `ClusterState` now derives "
+                 "provenance confidence + `is_partial` from the simulator's per-subsystem tiers, "
+                 "so degraded-telemetry scenarios report low/partial confidence and the engine "
+                 "force-KEEPs (telemetry subsystem verdict graduated to REALISTIC_ENOUGH_FOR_DEV). "
+                 "The tiers themselves remain uncalibrated heuristics.")
     lines.append("- Next calibration step: run a read-only shadow pilot against real "
-                 "Prometheus/DCGM/K8s telemetry to calibrate the priors and exercise the "
-                 "degraded-telemetry path with real confidence degradation.")
+                 "Prometheus/DCGM/K8s telemetry to calibrate the priors and the confidence "
+                 "model (C = R·F·K·S·N) against measured staleness/coverage/noise, and propagate "
+                 "workload class into InferenceServiceState for workload-aware action selection.")
     lines.append("")
 
     out = Path(args.out)

@@ -237,6 +237,22 @@ _BUILTIN_SCENARIOS: dict[str, dict[str, Any]] = {
                 "latency_sensitive": False,
             },
             {
+                # Kept in sync with benchmarks/v1/energy_price_arbitrage_multiregion.yaml.
+                # This flexible west workload is what makes the scenario a real
+                # arbitrage (something safe to shift); its absence in the builtin
+                # made benchmark results depend on whether PyYAML was installed.
+                "workload_id": "batch-wl-west",
+                "service_id": "batch-llm-west",
+                "workload_type": "batch_training",
+                "priority_tier": "batch",
+                "region_id": "us-west",
+                "gpu_count_required": 4,
+                "target_util_pct": 70.0,
+                "communication_intensity": "medium",
+                "migration_allowed": True,
+                "latency_sensitive": False,
+            },
+            {
                 "workload_id": "inference-wl-east",
                 "service_id": "inference-svc-east",
                 "workload_type": "inference",
@@ -313,7 +329,8 @@ _BUILTIN_SCENARIOS: dict[str, dict[str, Any]] = {
         ],
         "workloads": [
             {
-                "workload_id": "hot-wl",
+                # id kept in sync with benchmarks/v1/thermal_hotspot_mixed_cluster.yaml
+                "workload_id": "hot-wl-0",
                 "service_id": "llm-inference",
                 "workload_type": "inference",
                 "priority_tier": "standard",

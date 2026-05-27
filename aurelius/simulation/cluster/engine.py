@@ -92,6 +92,9 @@ _RACK_HEAT_DECAY = 0.05     # rack heat dissipation per tick at low load
 _THROTTLE_TEMP_C = 83.0
 _MAX_REALISTIC_TEMP_C = 100.0
 
+# Telemetry confidence tier ordering (higher = more trustworthy).
+_TIER_ORDER = {"high": 3, "medium": 2, "low": 1}
+
 # M/M/1 queue: latency scales as 1/(1 - rho) where rho = lambda/mu
 _BASE_TTFT_MS = 150.0       # TTFT at zero load
 _BASE_TPOT_MS = 20.0        # TPOT per token at zero load
@@ -2718,6 +2721,65 @@ class ClusterSimulator:
     # Connector data generators (fake connector payloads)
     # ------------------------------------------------------------------
 
+    def _region_telemetry_truth(
+        self, region: Any
+    ) -> tuple[str, Optional[float], list[str]]:
+        """Derive a region's HONEST telemetry confidence from the simulator's own
+        per-subsystem tiers (energy / topology / utilization).
+
+        Returns (worst_tier, sample_age_s, missing_sources). Clean scenarios have
+        all-"high" tiers → ("high", None, []) so canonical detection scenarios are
+        unchanged. Degraded-telemetry scenarios populate "medium"/"low" tiers,
+        which this surfaces so the classifier's provenance weighting and the
+        engine's low-confidence KEEP fallback actually fire. Missing subsystem
+        state is recorded as a missing source — never silently treated as zero.
+        """
+        tiers: list[str] = []
+        missing: list[str] = []
+        rid = region.region_id
+
+        # Energy telemetry (price/carbon visibility + staleness).
+        es = getattr(region, "energy_state", None)
+        if es is not None and getattr(es, "telemetry", None) is not None:
+            tiers.append(es.telemetry.tier)
+        # Energy is always required for energy-aware decisions; absent → missing.
+        elif es is None:
+            missing.append(f"energy:{rid}")
+
+        # Topology / fabric telemetry (worst node fabric tier in the region).
+        node_topo_tiers = [
+            n.node_fabric.telemetry.tier
+            for n in region.nodes
+            if getattr(n, "node_fabric", None) is not None
+            and getattr(n.node_fabric, "telemetry", None) is not None
+        ]
+        if node_topo_tiers:
+            tiers.append(min(node_topo_tiers, key=lambda t: _TIER_ORDER.get(t, 3)))
+
+        # Utilization telemetry (worst per-GPU util tier in the region).
+        gpu_util_tiers = [
+            g.utilization.telemetry.tier
+            for n in region.nodes
+            for g in n.gpus
+            if getattr(g, "utilization", None) is not None
+            and getattr(g.utilization, "telemetry", None) is not None
+        ]
+        if gpu_util_tiers:
+            tiers.append(min(gpu_util_tiers, key=lambda t: _TIER_ORDER.get(t, 3)))
+
+        worst = min(tiers, key=lambda t: _TIER_ORDER.get(t, 3)) if tiers else "high"
+
+        # Any degraded (non-high) subsystem is recorded as a degraded source so the
+        # cluster is honestly marked partial.
+        if worst != "high":
+            missing.append(f"telemetry_degraded({worst}):{rid}")
+
+        # These scenarios degrade telemetry VISIBILITY/COVERAGE, not freshness, so
+        # the tier (→ provenance confidence_weight) carries the signal; we do not
+        # fabricate a staleness age. A separate stale-sample model can populate
+        # sample_age_s when the simulator actually models stale ticks.
+        return worst, None, missing
+
     def get_cluster_state(self) -> ClusterState:
         """Convert mutable simulation state to canonical frozen ClusterState.
 
@@ -2725,18 +2787,33 @@ class ClusterSimulator:
         """
         cluster = self._cluster
         ts = self._tick_timestamp(cluster.tick)
-        prov = Provenance(
-            source="simulator",
-            fetched_at=ts,
-            confidence="high",
-            is_sandbox=True,
-        )
 
         region_states: dict[str, RegionState] = {}
+        # Telemetry-truth: degraded telemetry must NOT be masked as perfect.
+        # We derive each region's provenance confidence from the simulator's own
+        # per-subsystem telemetry tiers (energy/topology/utilization), which the
+        # degraded-telemetry scenarios already populate. A region whose worst
+        # subsystem tier is "low"/"medium" is reported as such so the classifier's
+        # provenance/staleness weighting and the engine's low-confidence KEEP
+        # fallback actually fire. Clean scenarios keep all-"high" tiers → no change.
+        missing_sources: list[str] = []
+        cluster_worst_tier = "high"
 
         for region in cluster.regions.values():
             node_states: dict[str, NodeState] = {}
             service_states: dict[str, InferenceServiceState] = {}
+
+            region_tier, region_age_s, region_missing = self._region_telemetry_truth(region)
+            missing_sources.extend(region_missing)
+            if _TIER_ORDER[region_tier] < _TIER_ORDER[cluster_worst_tier]:
+                cluster_worst_tier = region_tier
+            region_prov = Provenance(
+                source="simulator",
+                fetched_at=ts,
+                confidence=region_tier,
+                is_sandbox=True,
+                sample_age_s=region_age_s,
+            )
 
             for node in region.nodes:
                 gpu_states: dict[str, GPUState] = {}
@@ -2749,7 +2826,7 @@ class ClusterSimulator:
                         node_id=gpu.node_id,
                         region=region.region_id,
                         timestamp=ts,
-                        provenance=prov,
+                        provenance=region_prov,
                         gpu_index=gpu.gpu_index,
                         gpu_type=gpu.profile.model_name,
                         util_pct=max(0.0, min(100.0, gpu.utilization_pct)),
@@ -2783,7 +2860,7 @@ class ClusterSimulator:
                     node_id=node.node_id,
                     region=region.region_id,
                     timestamp=ts,
-                    provenance=prov,
+                    provenance=region_prov,
                     zone=node.zone,
                     rack_id=node.rack_id,
                     instance_type=node.instance_type,
@@ -2813,7 +2890,7 @@ class ClusterSimulator:
                     service_id=queue.service_id,
                     engine=runtime,
                     timestamp=ts,
-                    provenance=prov,
+                    provenance=region_prov,
                     region=region.region_id,
                     node_id=node_id,
                     requests_running=max(0.0, float(queue.active_sequences)),
@@ -2851,7 +2928,7 @@ class ClusterSimulator:
             energy = EnergyState(
                 region=region.region_id,
                 timestamp=ts,
-                provenance=prov,
+                provenance=region_prov,
                 price_per_mwh=region.realtime_price,
                 day_ahead_price_per_mwh=region.day_ahead_price,
                 real_time_price_per_mwh=region.realtime_price,
@@ -2886,7 +2963,7 @@ class ClusterSimulator:
             region_topology = TopologyState(
                 node_id=f"{region.region_id}-aggregate",
                 timestamp=ts,
-                provenance=prov,
+                provenance=region_prov,
                 gpu_uuids=all_gpu_uuids,
                 numa_affinity={},
                 pair_levels=pair_levels,
@@ -2896,7 +2973,7 @@ class ClusterSimulator:
             rs = RegionState(
                 region=region.region_id,
                 timestamp=ts,
-                provenance=prov,
+                provenance=region_prov,
                 nodes=node_states,
                 services=service_states,
                 energy=energy,
@@ -2905,11 +2982,18 @@ class ClusterSimulator:
             )
             region_states[region.region_id] = rs
 
+        cluster_prov = Provenance(
+            source="simulator",
+            fetched_at=ts,
+            confidence=cluster_worst_tier,
+            is_sandbox=True,
+        )
         return ClusterState(
             timestamp=ts,
-            provenance=prov,
+            provenance=cluster_prov,
             regions=region_states,
-            is_partial=False,
+            is_partial=bool(missing_sources),
+            missing_sources=sorted(set(missing_sources)),
         )
 
     def get_dcgm_prometheus_text(self, node_id: str) -> str:

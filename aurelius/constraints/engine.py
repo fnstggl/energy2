@@ -638,7 +638,30 @@ class ConstraintAwareEngine:
         # 1. Classify binding constraint
         assessment = self.classifier.assess(state)
 
-        # 2. Low-confidence fallback: KEEP everything (fail-safe)
+        # 2a. Telemetry-trust gate (Mission 1): genuinely degraded/missing
+        # telemetry forces KEEP, independent of binding-strength confidence. We
+        # gate on PROVENANCE trust (the source-quality/coverage tier surfaced by
+        # the assembler), NOT on the blended classifier confidence — that scalar
+        # also legitimately drops for low-coverage but TRUSTWORTHY states (e.g.
+        # rack-density scenarios), which should still be allowed to act. Missing
+        # telemetry must never be read as a safe opportunity.
+        if state.is_partial and state.provenance.confidence == "low":
+            recommendations = self._keep_all(
+                state, assessment,
+                reason=(
+                    "KEEP — telemetry degraded/partial "
+                    f"(provenance confidence='low', missing_sources={state.missing_sources}). "
+                    "Risky actions blocked until telemetry is trustworthy."
+                ),
+            )
+            return EngineResult(
+                assessment=assessment,
+                recommendations=recommendations,
+                rejected=rejected,
+                elapsed_ms=(time.monotonic() - t0) * 1000.0,
+            )
+
+        # 2b. Low-confidence fallback: KEEP everything (fail-safe)
         if assessment.confidence < self.classifier.config.confidence_floor:
             recommendations = self._keep_all(state, assessment)
             return EngineResult(
@@ -664,11 +687,60 @@ class ConstraintAwareEngine:
             recommendations.append(rec)
             rejected.extend(rej)
 
+        # 4b. Advisory band (Mission 1): telemetry is PARTIAL but not fully "low"
+        # (e.g. "medium") — block the highest-risk, telemetry-dependent actions
+        # (cross-region migrations / placement changes) while still permitting
+        # low-risk in-region relief (scale/spread/defer). You cannot trust a
+        # destination you cannot see.
+        if state.is_partial:
+            recommendations = [
+                self._downgrade_high_risk_under_partial(rec, state, assessment)
+                for rec in recommendations
+            ]
+
         return EngineResult(
             assessment=assessment,
             recommendations=recommendations,
             rejected=rejected,
             elapsed_ms=(time.monotonic() - t0) * 1000.0,
+        )
+
+    _HIGH_RISK_PARTIAL_ACTIONS = frozenset({
+        ActionType.CHOOSE_CHEAPER_REGION.value,
+        ActionType.CHOOSE_LOWER_CARBON_REGION.value,
+        ActionType.MIGRATE.value,
+        ActionType.CHANGE_PLACEMENT.value,
+    })
+
+    def _downgrade_high_risk_under_partial(
+        self,
+        rec: Recommendation,
+        state: ClusterState,
+        assessment: ConstraintAssessment,
+    ) -> Recommendation:
+        """Under partial telemetry, downgrade cross-region/placement actions to KEEP.
+
+        Migrating to a destination whose telemetry is missing/stale is exactly the
+        kind of action that looks cheap on paper and is unsafe in reality.
+        """
+        if rec.is_noop or rec.action_type not in self._HIGH_RISK_PARTIAL_ACTIONS:
+            return rec
+        return Recommendation(
+            recommendation_id=str(uuid.uuid4()),
+            workload_id=rec.workload_id,
+            action_type=ActionType.KEEP.value,
+            timestamp=rec.timestamp,
+            provenance=rec.provenance,
+            binding_constraint=rec.binding_constraint,
+            confidence=rec.confidence,
+            sla_status="unknown",
+            rationale=(
+                f"KEEP — advisory: telemetry partial (missing_sources="
+                f"{state.missing_sources}); blocking high-risk {rec.action_type} "
+                "to an unverifiable destination. Original rationale: " + rec.rationale
+            ),
+            is_noop=True,
+            implementation_mode=self.implementation_mode,
         )
 
     # ------------------------------------------------------------------
@@ -787,6 +859,36 @@ class ConstraintAwareEngine:
                     + ",".join(worsened),
                 })
                 continue
+
+            # 2b. Constraint-dominance: do not sacrifice a HIGHER-scored constraint
+            #     to relieve a LOWER-scored one. Uses only the observed score vector
+            #     (no new threshold). This is what stops the engine from scaling
+            #     batch replicas to chase a marginal queue=0.30 score when the
+            #     dominant pressure is energy=0.60 (scaling worsens energy) — while
+            #     still allowing scaling when queue/latency is the dominant pressure
+            #     (e.g. a real queue surge), and allowing an energy migration whose
+            #     only worsened constraints score below energy.
+            improved_scores = [
+                assessment.scores.get(ct, 0.0) for ct, d in impact.items() if d > 0.0
+            ]
+            worsened_all = [
+                (ct, assessment.scores.get(ct, 0.0)) for ct, d in impact.items() if d < 0.0
+            ]
+            if improved_scores and worsened_all:
+                best_relief = max(improved_scores)
+                worst_sacrifice_ct, worst_sacrifice = max(worsened_all, key=lambda x: x[1])
+                if worst_sacrifice > best_relief + 1e-9:
+                    rejected.append({
+                        "service_id": workload_id,
+                        "action": at,
+                        "target_region": action.target_region,
+                        "reject_reason": (
+                            f"dominated: worsens {worst_sacrifice_ct.value}"
+                            f"={worst_sacrifice:.2f} to relieve a lower-scored "
+                            f"constraint (best relief={best_relief:.2f})"
+                        ),
+                    })
+                    continue
 
             # 3. Hard destination-safety gate for cross-region migrations
             #    (independent of gross savings — a full/unknown destination is
@@ -1088,13 +1190,19 @@ class ConstraintAwareEngine:
         self,
         state: ClusterState,
         assessment: ConstraintAssessment,
+        reason: Optional[str] = None,
     ) -> list[Recommendation]:
-        """Emit KEEP for every service when classifier confidence is too low."""
+        """Emit KEEP for every service when telemetry/confidence is too low."""
         prov = Provenance(
             source="constraint-engine",
             fetched_at=state.timestamp,
             confidence="low",
             is_sandbox=state.provenance.is_sandbox,
+        )
+        rationale = reason or (
+            f"KEEP — classifier confidence {assessment.confidence:.2f} "
+            f"below floor {self.classifier.config.confidence_floor:.2f}. "
+            f"Missing signals: {assessment.missing_signals}."
         )
         recommendations: list[Recommendation] = []
         for service in state.all_services.values():
@@ -1107,11 +1215,7 @@ class ConstraintAwareEngine:
                 binding_constraint=assessment.binding_constraint,
                 confidence=assessment.confidence,
                 sla_status="unknown",
-                rationale=(
-                    f"KEEP — classifier confidence {assessment.confidence:.2f} "
-                    f"below floor {self.classifier.config.confidence_floor:.2f}. "
-                    f"Missing signals: {assessment.missing_signals}."
-                ),
+                rationale=rationale,
                 is_noop=True,
                 implementation_mode=self.implementation_mode,
             ))
