@@ -485,6 +485,144 @@ pytest tests/test_telemetry_truth.py tests/test_scenario_source_parity.py
 
 ---
 
+## Canonical KPI: SLA-Safe Goodput per Infrastructure Dollar (2026-05-28)
+
+This run replaces raw energy cost with Aurelius's new canonical benchmark metric.
+Raw energy cost was the wrong objective: it rewarded starving customer SLOs to
+save electricity and punished safe consolidation that uses more energy now to
+prevent SLA-violating thrash later. The new headline metric is:
+
+```
+sla_safe_goodput_per_infrastructure_dollar =
+    sla_compliant_goodput
+    / (gpu_infra_cost + energy_cost + network_cost)
+```
+
+with **secondary KPIs (p99, queue, thermal, topology, …) tracked separately as
+constraints/diagnostics — never folded into the primary KPI**.
+
+### Files changed
+- `aurelius/benchmarks/economics.py` (new) — pure, deterministic functions plus
+  `InfrastructureCostConfig`, `SLAFilterConfig`, `EconomicKPIResult`. Documented
+  public-list cloud GPU prices as priors; operator overrides every default. No
+  workload-value weights anywhere in the module.
+- `aurelius/simulation/cluster/engine.py` — added `sla_compliant_tokens`,
+  `active_gpu_count`, `active_gpu_hours_by_type` to `TickMetrics`, computed in
+  the existing per-tick aggregation loop from per-queue `timeout_rate_pct`
+  (SLA filter) and `gpu.assigned_workload_id` (billable footprint).
+- `aurelius/benchmarks/report.py` — `AggregatedKPI` gains the primary KPI +
+  cost breakdown + active GPU-hours; `to_dict()` puts the primary KPI first;
+  `to_text()` renders a Primary KPI section followed by a Secondary KPIs
+  (diagnostics) section.
+- `aurelius/benchmarks/constraint_runner.py` — wires the cost config end-to-end
+  and aggregates per-policy.
+- `aurelius/benchmarks/__init__.py` — exports the new public API.
+- `scripts/generate_realism_report.py` — adds a new Section 2 with mean/median
+  primary KPI per policy, "scenarios where constraint_aware loses the canonical
+  KPI to a baseline" (1% noise floor for materiality), and a per-scenario primary
+  KPI table across all five policies.
+- `tests/test_economics_kpi.py` (new, 20 tests) — covers every spec invariant.
+- `docs/REALISM_BENCHMARK_VALIDATION.md` regenerated with the canonical KPI
+  front and center.
+
+### KPI formula and terms
+- **SLA-compliant goodput** = per queue per tick, `tokens × max(0, 1 −
+  timeout_rate_pct/100)` summed across queues and ticks. `timeout_rate_pct` is
+  the simulator's existing per-queue measure of the share of work whose p99
+  exceeded the workload's configured `latency_sla_p99_ms` (engine.py:1758). No
+  partial credit by default at ≥50% timeout (hard exclude).
+- **GPU infra cost** = `Σ active_gpu_hours[type] × gpu_hour_price[type]`.
+  "Active" = `gpu.assigned_workload_id is not None` (the billable footprint;
+  consolidated idle nodes correctly drop to zero). Defaults are documented
+  public-list on-demand prices ($3/hr H100, $2/hr A100 SXM4, …) — overridable
+  per operator.
+- **Energy cost** = pass-through of `tick_cost` (`kWh × realtime_price`); DA/RT
+  basis preserved.
+- **Network cost** = `migrations × per-migration` + `egress_gb × per-GB`,
+  defaulted to 0.0 so we do not invent network penalties inside the headline KPI.
+
+### Tests (20 new)
+The spec's 11 invariants all proven:
+SLA-violating tokens never count · raw throughput can rise while SLA-safe
+goodput falls · lower energy can still lose / higher energy can still win · GPU
+infra cost can dominate energy · network cost only when configured · zero
+goodput never divides by zero · cost-per-compliant-token is `inf` when goodput
+collapses but cost > 0 · NO workload-value parameters or fields exist · benchmark
+reports surface both primary and secondary KPIs · constraint_aware is compared
+against current_price_only and greedy_energy, not only FIFO.
+
+### Honest benchmark findings under the new canonical KPI
+**Per-policy aggregates across 26 scenarios (mean goodput per $infra):**
+| Policy | Mean | Median |
+|---|---|---|
+| FIFO | 414,803 | 459,570 |
+| current_price_only | 414,670 | 449,752 |
+| greedy_energy | 407,800 | 449,752 |
+| SLA-aware | 414,803 | 459,570 |
+| **constraint_aware** | **410,663** | **439,149** |
+
+**constraint_aware is mean-worse than FIFO and SLA-aware on the canonical KPI.**
+It materially (>1%) loses to FIFO in 10 scenarios, to current_price_only in 10,
+to greedy_energy in 8, to SLA-aware in 10.
+
+**Energy scenario specifically:**
+| Policy | goodput/$ | sla_goodput | infra $ |
+|---|---|---|---|
+| current_price_only | **402,882** | 158.8M | 394.26 |
+| FIFO | 338,274 | 164.9M | 487.40 |
+| greedy_energy | 274,801 | 85.0M  | 309.17 |
+| SLA-aware | 338,274 | 164.9M | 487.40 |
+| **constraint_aware** | **196,792** ← worst | 110.7M | **562.30** |
+
+**constraint_aware delivers the lowest SLA-safe goodput per infrastructure
+dollar of any policy in the energy scenario** (≈50% of current_price_only). The
+canonical metric reveals this loss more starkly than raw energy cost did.
+
+**Scenarios where constraint_aware genuinely wins on the canonical KPI:**
+- `thermal_hotspot_mixed_cluster`: 830,781 vs FIFO 565,817 (**+47%** — thermal
+  spreading prevents throttle).
+- `underutilization_stranded_capacity`: 74,432 vs FIFO 45,426 (**+64%** — safe
+  consolidation).
+- `rack_density_overload_air`: 680,129 vs FIFO 667,543 (+1.9%).
+
+### Next optimizer fix (the diagnosis was correct)
+The energy-scenario loss has a single precise root cause, unchanged from the
+last run: the engine generates `SCALE_REPLICAS` for **batch** workloads
+(`batch-llm-east/west`) to chase a marginal queue=0.30 score under
+energy-dominant pressure. Scaling adds billable GPU-hours (gpu_infra_cost goes
+from $388 / $304 to $554), which is exactly the worst trade under the new KPI:
+batch workloads tolerate queueing, so the extra GPU dollars buy goodput that
+could have come from KEEP at lower cost. The principled fix is propagating
+workload class (`priority_tier` / `latency_sensitive`) into the canonical
+`InferenceServiceState` so the engine can apply the spec's workload-aware
+priorities — **not** tuning a constant. Deliberately deferred to keep this PR
+scoped to metric/accounting correctness.
+
+### Honest standing claims
+- **Simulator benchmark KPI implemented; production claims require customer
+  telemetry calibration.**
+- Raw energy cost is **not** the primary metric for full constraint-aware
+  Aurelius.
+- Secondary KPIs are constraints / vetoes / diagnostics, **not** hidden weighted
+  objective terms.
+- GPU infra cost typically dominates electricity by 50–200×; an "energy savings"
+  win that increases active GPU-hours can lose the canonical KPI.
+- No guaranteed savings · no production-proven savings · no hyperscaler-validated
+  economics · no enterprise-ready autonomous optimization.
+
+### Commands run
+```
+pytest tests/test_economics_kpi.py -q                            # 20 passed
+pytest tests/{constraint_*,cluster_simulator,realism_audit,
+       telemetry_truth,scenario_source_parity,*_realism,
+       packing_baselines,state_assemble,migration_cost_model}.py -q   # green
+python scripts/generate_realism_report.py --steps 24 --seed 42
+ruff check aurelius/benchmarks tests/test_economics_kpi.py        # clean
+python -m compileall aurelius/benchmarks aurelius/simulation/cluster
+```
+
+---
+
 ## Non-Negotiable Implementation Philosophy
 
 This tracker is also a planning artifact, not proof of correctness.

@@ -104,6 +104,10 @@ class TickKPI:
     thermal_throttle_gpu_count: int
     migration_count: int
     mean_topology_score: float
+    # Canonical KPI inputs (per-tick).
+    sla_compliant_tokens: int = 0
+    active_gpu_count: int = 0
+    active_gpu_hours_by_type: dict = field(default_factory=dict)
     # KV-cache / prefix-affinity / locality realism KPIs (optional)
     kv_pressure_max: Optional[float] = None
     prefix_hit_rate_mean: Optional[float] = None
@@ -259,6 +263,22 @@ class AggregatedKPI:
     total_thermal_throttle_ticks: int
     total_migrations: int
     mean_topology_score: float
+    # --- Canonical primary KPI: SLA-safe goodput per infrastructure dollar ---
+    # Numerator: SLA-compliant goodput (tokens that met their workload's SLO).
+    # Denominator: gpu_infra_cost + energy_cost + network_cost.
+    # Per the spec, secondary KPIs are NOT folded into this metric — they remain
+    # diagnostics / constraints / vetoes below.
+    sla_compliant_goodput: int = 0
+    gpu_infra_cost: float = 0.0
+    energy_cost: float = 0.0        # mirrors total_energy_cost for symmetry
+    network_cost: float = 0.0
+    total_infrastructure_cost: float = 0.0
+    sla_safe_goodput_per_infra_dollar: Optional[float] = None
+    cost_per_sla_compliant_token: Optional[float] = None
+    active_gpu_hours: float = 0.0
+    active_gpu_hours_by_type: dict = field(default_factory=dict)
+    # Secondary derived KPI (diagnostic only, not part of the primary).
+    goodput_per_gpu_hour: Optional[float] = None
     # KV-cache / prefix-affinity / locality realism KPIs (optional)
     kv_pressure_max: Optional[float] = None
     prefix_hit_rate_mean: Optional[float] = None
@@ -323,9 +343,36 @@ class AggregatedKPI:
     churn_penalty_max: Optional[float] = None
 
     def to_dict(self) -> dict[str, Any]:
+        # Primary KPI (the canonical headline metric) and its cost breakdown go
+        # FIRST in the JSON output so it's the first thing a reader sees.
+        import math as _math
+        cpsct = self.cost_per_sla_compliant_token
         return {
             "policy": self.policy_name,
+            # --- Primary canonical KPI + components ---
+            "sla_safe_goodput_per_infra_dollar": (
+                None if self.sla_safe_goodput_per_infra_dollar is None
+                else round(self.sla_safe_goodput_per_infra_dollar, 4)
+            ),
+            "cost_per_sla_compliant_token": (
+                None if cpsct is None
+                else (_math.inf if _math.isinf(cpsct) else round(cpsct, 10))
+            ),
+            "sla_compliant_goodput": self.sla_compliant_goodput,
+            "total_infrastructure_cost": round(self.total_infrastructure_cost, 4),
+            "gpu_infra_cost": round(self.gpu_infra_cost, 4),
+            "network_cost": round(self.network_cost, 4),
+            "active_gpu_hours": round(self.active_gpu_hours, 4),
+            "active_gpu_hours_by_type": {
+                k: round(v, 4) for k, v in self.active_gpu_hours_by_type.items()
+            },
+            "goodput_per_gpu_hour": (
+                round(self.goodput_per_gpu_hour, 4)
+                if self.goodput_per_gpu_hour is not None else None
+            ),
+            # --- Secondary KPIs (constraints, vetoes, diagnostics) ---
             "total_energy_cost": round(self.total_energy_cost, 4),
+            "energy_cost": round(self.energy_cost, 4),
             "total_tokens": self.total_tokens,
             "total_energy_kwh": round(self.total_energy_kwh, 4),
             "mean_cost_per_token": (
@@ -750,8 +797,40 @@ class BenchmarkReport:
                 parts.append((str(val) if val is not None else "N/A").ljust(col_w))
             return "  ".join(parts)
 
+        # --- Primary canonical KPI (the headline benchmark metric) ---
+        lines.append("Primary KPI: SLA-safe goodput per infrastructure dollar")
+        lines.append("=" * (32 + col_w * len(available) + 2 * len(available)))
+        lines.append(row(
+            "goodput / $infra",
+            lambda k: (
+                f"{k.sla_safe_goodput_per_infra_dollar:,.0f}"
+                if k.sla_safe_goodput_per_infra_dollar is not None else "N/A"
+            ),
+        ))
+        import math as _math
+        lines.append(row(
+            "$ / SLA-compliant token",
+            lambda k: (
+                "inf" if k.cost_per_sla_compliant_token is not None
+                and _math.isinf(k.cost_per_sla_compliant_token)
+                else (f"{k.cost_per_sla_compliant_token:.3e}"
+                      if k.cost_per_sla_compliant_token is not None else "N/A")
+            ),
+        ))
+        lines.append(row("SLA-compliant goodput",
+                         lambda k: f"{k.sla_compliant_goodput:,}"))
+        lines.append(row("Total infra cost ($)",
+                         lambda k: f"{k.total_infrastructure_cost:.2f}"))
+        lines.append(row("  GPU infra ($)", lambda k: f"{k.gpu_infra_cost:.2f}"))
+        lines.append(row("  Energy ($)", lambda k: f"{k.energy_cost:.4f}"))
+        lines.append(row("  Network ($)", lambda k: f"{k.network_cost:.2f}"))
+        lines.append(row("Active GPU-hours",
+                         lambda k: f"{k.active_gpu_hours:.1f}"))
+        lines.append("")
+        lines.append("Secondary KPIs (diagnostics — NOT folded into the primary KPI):")
+        lines.append("-" * (32 + col_w * len(available) + 2 * len(available)))
         lines.append(row("Total energy cost ($)", lambda k: f"{k.total_energy_cost:.4f}"))
-        lines.append(row("Total tokens served", lambda k: str(k.total_tokens)))
+        lines.append(row("Total raw tokens", lambda k: f"{k.total_tokens:,}"))
         lines.append(row("Mean GPU util (%)", lambda k: f"{k.mean_gpu_util_pct:.1f}"))
         lines.append(row("p99 latency (ms)", lambda k: f"{k.p99_latency_ms:.0f}" if k.p99_latency_ms else "N/A"))
         lines.append(row("p95 queue wait (ms)", lambda k: f"{k.p95_queue_wait_ms:.0f}" if k.p95_queue_wait_ms else "N/A"))
@@ -760,6 +839,11 @@ class BenchmarkReport:
         lines.append(row("Migrations", lambda k: str(k.total_migrations)))
         lines.append(row("Mean topology score", lambda k: f"{k.mean_topology_score:.3f}"))
         lines.append(row("Mean cost/token ($)", lambda k: f"{k.mean_cost_per_token:.6f}" if k.mean_cost_per_token else "N/A"))
+        lines.append(row(
+            "Goodput per GPU-hour",
+            lambda k: (f"{k.goodput_per_gpu_hour:,.0f}"
+                       if k.goodput_per_gpu_hour is not None else "N/A"),
+        ))
         lines.append("")
 
         # Scorecard

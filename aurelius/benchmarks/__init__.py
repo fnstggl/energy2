@@ -5,6 +5,19 @@ and optimization scoring for the constraint-aware Aurelius system.
 """
 
 from .constraint_runner import BenchmarkResult, ConstraintBenchmarkRunner, PolicyResult
+from .economics import (
+    EconomicKPIResult,
+    InfrastructureCostConfig,
+    SLAFilterConfig,
+    compute_cost_per_sla_compliant_token,
+    compute_economic_kpi,
+    compute_energy_cost,
+    compute_gpu_infra_cost,
+    compute_network_cost,
+    compute_sla_compliant_goodput,
+    compute_sla_safe_goodput_per_infra_dollar,
+    compute_total_infrastructure_cost,
+)
 from .packing import (
     ClusterPackingAnalysis,
     PackingResult,
@@ -37,4 +50,16 @@ __all__ = [
     "first_fit_decreasing",
     "greedy_bin_packing",
     "clairvoyant_lower_bound",
+    # Canonical KPI: SLA-safe goodput per infrastructure dollar.
+    "EconomicKPIResult",
+    "InfrastructureCostConfig",
+    "SLAFilterConfig",
+    "compute_sla_compliant_goodput",
+    "compute_gpu_infra_cost",
+    "compute_energy_cost",
+    "compute_network_cost",
+    "compute_total_infrastructure_cost",
+    "compute_sla_safe_goodput_per_infra_dollar",
+    "compute_cost_per_sla_compliant_token",
+    "compute_economic_kpi",
 ]

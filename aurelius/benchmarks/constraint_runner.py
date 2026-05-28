@@ -29,6 +29,14 @@ from ..constraints.engine import ConstraintAwareEngine, EngineResult
 from ..simulation.cluster.engine import ClusterSimulator, TickMetrics
 from ..simulation.cluster.scenarios import ScenarioConfig, list_scenarios, load_scenario
 from ..state.models import ClusterState
+from .economics import (
+    InfrastructureCostConfig,
+    compute_cost_per_sla_compliant_token,
+    compute_gpu_infra_cost,
+    compute_network_cost,
+    compute_sla_safe_goodput_per_infra_dollar,
+    compute_total_infrastructure_cost,
+)
 from .report import (
     AggregatedKPI,
     BenchmarkMetadata,
@@ -351,7 +359,13 @@ _POLICY_APPLY_FNS = {
 # KPI aggregation
 # ---------------------------------------------------------------------------
 
-def _aggregate_kpis(policy_name: str, tick_kpis: list[TickKPI]) -> AggregatedKPI:
+def _aggregate_kpis(
+    policy_name: str,
+    tick_kpis: list[TickKPI],
+    cost_config: Optional[InfrastructureCostConfig] = None,
+) -> AggregatedKPI:
+    if cost_config is None:
+        cost_config = InfrastructureCostConfig()
     if not tick_kpis:
         return AggregatedKPI(
             policy_name=policy_name,
@@ -455,6 +469,31 @@ def _aggregate_kpis(policy_name: str, tick_kpis: list[TickKPI]) -> AggregatedKPI
     gs_vals = [k.gross_savings_sum for k in tick_kpis if k.gross_savings_sum is not None]
     cpen_vals = [k.churn_penalty_max for k in tick_kpis if k.churn_penalty_max is not None]
 
+    # --- Canonical primary KPI: SLA-safe goodput per infrastructure dollar ---
+    # Computed from simulator-tracked sla_compliant_tokens + active_gpu_hours
+    # and the existing energy_cost stream. No business-value weights, no
+    # synthetic SLA penalty dollars folded in.
+    cost_cfg = cost_config
+    aggregated_by_type: dict[str, float] = {}
+    for tk in tick_kpis:
+        for gtype, hrs in (tk.active_gpu_hours_by_type or {}).items():
+            aggregated_by_type[gtype] = aggregated_by_type.get(gtype, 0.0) + hrs
+    active_gpu_hours = sum(aggregated_by_type.values())
+    gpu_cost = compute_gpu_infra_cost(aggregated_by_type, cost_cfg)
+    sla_goodput = sum(k.sla_compliant_tokens for k in tick_kpis)
+    # network_cost is keyed on migrations only when the operator has configured
+    # a per-migration cost; default is 0 per the spec.
+    net_cost = compute_network_cost(
+        migration_count=tick_kpis[-1].migration_count if tick_kpis else 0,
+        config=cost_cfg,
+    )
+    total_infra_cost = compute_total_infrastructure_cost(gpu_cost, total_cost, net_cost)
+    primary_kpi = compute_sla_safe_goodput_per_infra_dollar(sla_goodput, total_infra_cost)
+    cpsct = compute_cost_per_sla_compliant_token(total_infra_cost, sla_goodput)
+    goodput_per_gpu_hr = (
+        sla_goodput / active_gpu_hours if active_gpu_hours > 0 else None
+    )
+
     return AggregatedKPI(
         policy_name=policy_name,
         total_energy_cost=total_cost,
@@ -467,6 +506,16 @@ def _aggregate_kpis(policy_name: str, tick_kpis: list[TickKPI]) -> AggregatedKPI
         p95_latency_ms=max(p95_vals) if p95_vals else None,
         p95_queue_wait_ms=max(qwait_vals) if qwait_vals else None,
         total_sla_violations=sum(k.sla_violations for k in tick_kpis),
+        sla_compliant_goodput=sla_goodput,
+        gpu_infra_cost=gpu_cost,
+        energy_cost=total_cost,
+        network_cost=net_cost,
+        total_infrastructure_cost=total_infra_cost,
+        sla_safe_goodput_per_infra_dollar=primary_kpi,
+        cost_per_sla_compliant_token=cpsct,
+        active_gpu_hours=active_gpu_hours,
+        active_gpu_hours_by_type=aggregated_by_type,
+        goodput_per_gpu_hour=goodput_per_gpu_hr,
         total_thermal_throttle_ticks=sum(k.thermal_throttle_gpu_count for k in tick_kpis),
         total_migrations=tick_kpis[-1].migration_count if tick_kpis else 0,
         mean_topology_score=sum(topo_vals) / len(topo_vals) if topo_vals else 1.0,
@@ -549,6 +598,9 @@ def _tick_metrics_to_kpi(tm: TickMetrics) -> TickKPI:
         thermal_throttle_gpu_count=tm.thermal_throttle_gpu_count,
         migration_count=tm.migration_count,
         mean_topology_score=tm.mean_topology_score,
+        sla_compliant_tokens=tm.sla_compliant_tokens,
+        active_gpu_count=tm.active_gpu_count,
+        active_gpu_hours_by_type=dict(tm.active_gpu_hours_by_type or {}),
         kv_pressure_max=tm.kv_pressure_max,
         prefix_hit_rate_mean=tm.prefix_hit_rate_mean,
         preemption_count=tm.preemption_count,
@@ -625,12 +677,16 @@ class ConstraintBenchmarkRunner:
         self,
         policies: Optional[list[str]] = None,
         confidence_floor: float = 0.3,
+        cost_config: Optional[InfrastructureCostConfig] = None,
     ):
         self._policies = policies or ALL_POLICIES
         from ..constraints.classifier import ConstraintConfig
         self._engine = ConstraintAwareEngine(
             classifier_config=ConstraintConfig(confidence_floor=confidence_floor)
         )
+        # Infrastructure cost basis for the canonical KPI (operator-overridable).
+        # Defaults are documented public-list cloud GPU prices; not production.
+        self._cost_config = cost_config or InfrastructureCostConfig()
 
     def run_scenario(
         self,
@@ -735,7 +791,9 @@ class ConstraintBenchmarkRunner:
     ) -> BenchmarkReport:
         aggregated: dict[str, AggregatedKPI] = {}
         for policy_name, pr in policy_results.items():
-            aggregated[policy_name] = _aggregate_kpis(policy_name, pr.tick_kpis)
+            aggregated[policy_name] = _aggregate_kpis(
+                policy_name, pr.tick_kpis, cost_config=self._cost_config
+            )
 
         fifo_kpi = aggregated.get(POLICY_FIFO)
         ca_kpi = aggregated.get(POLICY_CONSTRAINT_AWARE)

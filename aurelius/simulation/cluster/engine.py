@@ -18,7 +18,7 @@ from __future__ import annotations
 import math
 import random
 import uuid
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from datetime import datetime, timedelta, timezone
 from typing import Any, Optional
 
@@ -128,6 +128,14 @@ class TickMetrics:
     thermal_throttle_gpu_count: int
     migration_count: int
     mean_topology_score: float
+    # SLA-safe goodput accounting (canonical KPI inputs).
+    # sla_compliant_tokens = sum over queues of tokens × (1 − timeout_rate_pct/100),
+    # i.e. tokens served whose containing queue met its p99 SLO this tick.
+    # active_gpu_count = GPUs with an assigned workload (the billable footprint).
+    # active_gpu_hours_by_type = active GPUs × tick_duration_hours, keyed by GPU type.
+    sla_compliant_tokens: int = 0
+    active_gpu_count: int = 0
+    active_gpu_hours_by_type: dict = field(default_factory=dict)
     # KV-cache / prefix-affinity / locality realism KPIs
     kv_pressure_max: Optional[float] = None
     prefix_hit_rate_mean: Optional[float] = None
@@ -2001,6 +2009,9 @@ class ClusterSimulator:
     def _compute_tick_metrics(self, cluster: SimCluster, ts: datetime) -> TickMetrics:
         """Compute aggregated metrics for this tick."""
         tick_tokens = 0
+        tick_sla_compliant_tokens = 0
+        tick_active_gpus = 0
+        tick_active_gpu_hours_by_type: dict[str, float] = {}
         tick_energy_kwh = 0.0
         tick_cost = 0.0
         util_values: list[float] = []
@@ -2021,9 +2032,24 @@ class ClusterSimulator:
                     gpu_kwh = gpu.power_watts / 1000.0 * cluster.tick_duration_hours
                     tick_energy_kwh += gpu_kwh
                     tick_cost += gpu_kwh * price_per_kwh
+                    # Active = an assigned (billable) workload occupies the GPU.
+                    # Consolidated/idle nodes (power down) report None → not billed.
+                    if gpu.assigned_workload_id is not None:
+                        tick_active_gpus += 1
+                        gtype = gpu.profile.model_name
+                        tick_active_gpu_hours_by_type[gtype] = (
+                            tick_active_gpu_hours_by_type.get(gtype, 0.0)
+                            + cluster.tick_duration_hours
+                        )
 
             for queue in region.queues:
-                tick_tokens += int(queue.tokens_per_second * 3600 * cluster.tick_duration_hours)
+                q_tokens = int(queue.tokens_per_second * 3600 * cluster.tick_duration_hours)
+                tick_tokens += q_tokens
+                # SLA filter: timeout_rate_pct is the share of work whose p99
+                # exceeded the configured per-workload SLO this tick (engine.py:1758).
+                # Tokens served by that fraction did NOT meet SLA → exclude them.
+                compliant_frac = max(0.0, 1.0 - (queue.timeout_rate_pct or 0.0) / 100.0)
+                tick_sla_compliant_tokens += int(q_tokens * compliant_frac)
                 if queue.latency_p99_ms is not None:
                     p99_values.append(queue.latency_p99_ms)
                 if queue.queue_wait_p95_ms is not None:
@@ -2279,6 +2305,9 @@ class ClusterSimulator:
             cost_per_token=cost_per_token,
             tokens_per_joule=tokens_per_joule,
             mean_gpu_util_pct=mean_util,
+            sla_compliant_tokens=tick_sla_compliant_tokens,
+            active_gpu_count=tick_active_gpus,
+            active_gpu_hours_by_type=tick_active_gpu_hours_by_type,
             p95_latency_ms=(
                 max(p99_values[:-1]) if len(p99_values) > 1
                 else (p99_values[0] * 0.6 if p99_values else None)
