@@ -1,6 +1,6 @@
 # Simulator Realism + Benchmark Validation Report
 
-_Generated 2026-05-28 16:40:25Z · seed=42 · steps=24 · **[SANDBOX]**_
+_Generated 2026-05-28 17:08:03Z · seed=42 · steps=24 · **[SANDBOX]**_
 
 > All numbers are **simulator-only, uncalibrated** directional results. Not production savings. See the realism audit verdict below.
 
@@ -34,30 +34,30 @@ Per-policy aggregates across all scenarios:
 | current_price_only | 414670.8699 | 449752.3827 |
 | greedy_energy | 407800.6395 | 449752.3827 |
 | SLA-aware | 414803.6616 | 459570.4658 |
-| constraint_aware | 410663.5252 | 439149.4338 |
+| constraint_aware | 414912.9125 | 454858.0190 |
 
 Scenarios where constraint_aware **loses** the canonical KPI to a baseline (honest, not hidden):
-- vs FIFO: carbon_cheap_price_expensive, clean_batch_shift_arbitrage, da_rt_basis_blowout, energy_price_arbitrage_multiregion, latency_critical_no_energy_shift, migration_trap_erased_savings, prefix_affinity_energy_arbitrage, proxy_bottleneck_ingress, queue_surge_latency_sensitive, startup_heavy_migration_trtllm
-- vs current_price_only: carbon_cheap_price_expensive, clean_batch_shift_arbitrage, energy_price_arbitrage_multiregion, latency_critical_no_energy_shift, migration_trap_erased_savings, prefix_affinity_energy_arbitrage, proxy_bottleneck_ingress, queue_surge_latency_sensitive, startup_heavy_migration_trtllm, unsafe_aggressive_consolidation
-- vs greedy_energy: carbon_cheap_price_expensive, clean_batch_shift_arbitrage, energy_price_arbitrage_multiregion, latency_critical_no_energy_shift, migration_trap_erased_savings, proxy_bottleneck_ingress, queue_surge_latency_sensitive, unsafe_aggressive_consolidation
-- vs SLA-aware: carbon_cheap_price_expensive, clean_batch_shift_arbitrage, da_rt_basis_blowout, energy_price_arbitrage_multiregion, latency_critical_no_energy_shift, migration_trap_erased_savings, prefix_affinity_energy_arbitrage, proxy_bottleneck_ingress, queue_surge_latency_sensitive, startup_heavy_migration_trtllm
+- vs FIFO: energy_price_arbitrage_multiregion, latency_critical_no_energy_shift, prefix_affinity_energy_arbitrage, proxy_bottleneck_ingress, queue_surge_latency_sensitive, startup_heavy_migration_trtllm
+- vs current_price_only: energy_price_arbitrage_multiregion, latency_critical_no_energy_shift, prefix_affinity_energy_arbitrage, proxy_bottleneck_ingress, queue_surge_latency_sensitive, startup_heavy_migration_trtllm, unsafe_aggressive_consolidation
+- vs greedy_energy: energy_price_arbitrage_multiregion, latency_critical_no_energy_shift, proxy_bottleneck_ingress, queue_surge_latency_sensitive, unsafe_aggressive_consolidation
+- vs SLA-aware: energy_price_arbitrage_multiregion, latency_critical_no_energy_shift, prefix_affinity_energy_arbitrage, proxy_bottleneck_ingress, queue_surge_latency_sensitive, startup_heavy_migration_trtllm
 
 Per-scenario primary KPI (SLA-safe goodput per $):
 
 | scenario | FIFO | current_price_only | greedy_energy | SLA-aware | constraint_aware |
 |---|---|---|---|---|---|
-| carbon_cheap_price_expensive | 466,101 | 466,101 | 466,101 | 466,101 | 447,705 |
-| clean_batch_shift_arbitrage | 458,321 | 450,074 | 450,074 | 458,321 | 439,126 |
-| da_rt_basis_blowout | 456,085 | 442,536 | 442,536 | 456,085 | 438,483 |
+| carbon_cheap_price_expensive | 466,101 | 466,101 | 466,101 | 466,101 | 465,834 |
+| clean_batch_shift_arbitrage | 458,321 | 450,074 | 450,074 | 458,321 | 459,235 |
+| da_rt_basis_blowout | 456,085 | 442,536 | 442,536 | 456,085 | 456,985 |
 | degraded_topology_telemetry | 230,226 | 225,143 | 225,143 | 230,226 | 230,226 |
 | dram_bound_inference | 376,142 | 376,142 | 376,142 | 376,142 | 376,142 |
-| energy_price_arbitrage_multiregion | 338,274 | 402,882 | 274,801 | 338,274 | 196,792 |
+| energy_price_arbitrage_multiregion | 338,274 | 402,882 | 274,801 | 338,274 | 228,634 |
 | fragmentation_stranded_capacity | 295,886 | 295,886 | 295,886 | 295,886 | 295,886 |
 | kv_exhaustion_preemption_storm | 361,584 | 361,584 | 361,584 | 361,584 | 361,584 |
 | latency_critical_no_energy_shift | 495,968 | 495,968 | 495,968 | 495,968 | 472,692 |
 | latency_tail_kvcache_pressure | 424,896 | 424,896 | 424,896 | 424,896 | 424,896 |
 | low_confidence_energy_telemetry | 463,453 | 449,431 | 449,431 | 463,453 | 463,453 |
-| migration_trap_erased_savings | 466,467 | 451,983 | 451,983 | 466,467 | 445,445 |
+| migration_trap_erased_savings | 466,467 | 451,983 | 451,983 | 466,467 | 467,347 |
 | moe_hotspot_nic_saturation | 34,515 | 34,515 | 34,515 | 34,515 | 34,515 |
 | partial_utilization_telemetry | 478,725 | 478,725 | 478,725 | 478,725 | 478,725 |
 | prefix_affinity_energy_arbitrage | 867,411 | 849,608 | 824,206 | 867,411 | 821,767 |
@@ -81,12 +81,12 @@ Energy-cost delta = `baseline_cost − constraint_aware_cost` per scenario (posi
 
 | Baseline | Mean cost delta ($) | Median cost delta ($) |
 |---|---|---|
-| FIFO | -0.4829 | 0.0000 |
-| current_price_only | -0.8609 | -0.1853 |
-| greedy_energy | -0.9042 | -0.1853 |
-| SLA-aware | -0.4829 | 0.0000 |
+| FIFO | -0.2797 | 0.0000 |
+| current_price_only | -0.6577 | -0.0234 |
+| greedy_energy | -0.7010 | -0.0234 |
+| SLA-aware | -0.2797 | 0.0000 |
 
-Engine-computed constraint_aware net savings across scenarios: mean=1.0505, median=0.0000.
+Engine-computed constraint_aware net savings across scenarios: mean=0.2615, median=0.0000.
 
 Packing baselines (first-fit / best-fit / FFD / clairvoyant) are reported per packing scenario inside the benchmark JSON `packing_frontier` block; they are analysis-only and never a deployable comparison.
 
@@ -94,18 +94,18 @@ Packing baselines (first-fit / best-fit / FFD / clairvoyant) are reported per pa
 
 | scenario | policy | goodput/$ (PRIMARY) | $/SLA-tok | SLA-compliant goodput | infra $ | GPU $ | energy $ | raw cost $ | raw tokens | p99 ms | queue p95 ms | SLA viol | migrations | churn | thermal | topology | cache hit | telemetry conf |
 |---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|
-| carbon_cheap_price_expensive | constraint_aware | 447,705 | 2.234e-06 | 82,714,599 | 184.75 | 182.00 | 2.752 | 2.752 | 165429210 | 17449 | 60000 | 300 | 0 | 0.0000 | 0 | 1.000 | 0.559 | 0.99 |
-| clean_batch_shift_arbitrage | constraint_aware | 439,126 | 2.277e-06 | 82,493,273 | 187.86 | 182.00 | 5.858 | 5.858 | 164986559 | 20022 | 60000 | 300 | 0 | 0.0000 | 0 | 1.000 | 0.559 | 0.99 |
-| da_rt_basis_blowout | constraint_aware | 438,483 | 2.281e-06 | 82,493,273 | 188.13 | 182.00 | 6.133 | 6.133 | 164986559 | 20022 | 60000 | 300 | 0 | 0.0000 | 0 | 1.000 | 0.559 | 0.99 |
+| carbon_cheap_price_expensive | constraint_aware | 465,834 | 2.147e-06 | 45,764,025 | 98.24 | 96.00 | 2.241 | 2.241 | 91528059 | 14730 | 60000 | 300 | 0 | 0.0000 | 0 | 1.000 | 0.559 | 0.85 |
+| clean_batch_shift_arbitrage | constraint_aware | 459,235 | 2.178e-06 | 46,008,283 | 100.18 | 96.00 | 4.185 | 4.185 | 92016576 | 14744 | 60000 | 300 | 0 | 0.0000 | 0 | 1.000 | 0.559 | 0.85 |
+| da_rt_basis_blowout | constraint_aware | 456,985 | 2.188e-06 | 46,008,283 | 100.68 | 96.00 | 4.678 | 4.678 | 92016576 | 14744 | 60000 | 300 | 0 | 0.0000 | 0 | 1.000 | 0.559 | 0.85 |
 | degraded_topology_telemetry | constraint_aware | 230,226 | 4.344e-06 | 45,050,961 | 195.68 | 192.00 | 3.682 | 3.682 | 90101936 | 15643 | 60000 | 300 | 0 | 0.0000 | 0 | 0.600 | 0.559 | 0.34 (partial) |
 | dram_bound_inference | constraint_aware | 376,142 | 2.659e-06 | 72,922,344 | 193.87 | 192.00 | 1.869 | 1.869 | 145844703 | 1081053 | 239730 | 300 | 0 | 0.0000 | 0 | 1.000 | 0.559 | 1.00 |
-| energy_price_arbitrage_multiregion | constraint_aware | 196,792 | 5.081e-06 | 110,656,118 | 562.30 | 554.00 | 8.298 | 8.298 | 221312266 | 375194 | 907 | 600 | 0 | 0.0000 | 0 | 0.806 | 0.373 | 0.55 |
+| energy_price_arbitrage_multiregion | constraint_aware | 228,634 | 4.374e-06 | 111,437,017 | 487.40 | 480.00 | 7.403 | 7.403 | 222874064 | 19747 | 179 | 600 | 0 | 0.0000 | 0 | 0.827 | 0.373 | 0.65 |
 | fragmentation_stranded_capacity | constraint_aware | 295,886 | 3.380e-06 | 100,532,433 | 339.77 | 336.00 | 3.767 | 3.767 | 196806844 | 11997 | 0 | 300 | 0 | 0.0000 | 0 | 1.000 | 0.140 | 0.22 |
 | kv_exhaustion_preemption_storm | constraint_aware | 361,584 | 2.766e-06 | 35,049,137 | 96.93 | 96.00 | 0.932 | 0.932 | 65203115 | 2632394 | 239730 | 300 | 0 | 0.0000 | 0 | 1.000 | 0.077 | 0.99 |
 | latency_critical_no_energy_shift | constraint_aware | 472,692 | 2.116e-06 | 88,523,791 | 187.28 | 182.00 | 5.276 | 5.276 | 177047592 | 902903 | 231662 | 300 | 0 | 0.0000 | 0 | 1.000 | 0.559 | 0.99 |
 | latency_tail_kvcache_pressure | constraint_aware | 424,896 | 2.354e-06 | 123,747,924 | 291.24 | 288.00 | 3.243 | 3.243 | 247495860 | 15816 | 5 | 300 | 0 | 0.0000 | 0 | 1.000 | 0.273 | 0.62 |
 | low_confidence_energy_telemetry | constraint_aware | 463,453 | 2.158e-06 | 45,925,649 | 99.09 | 96.00 | 3.095 | 3.095 | 91851314 | 14744 | 60000 | 300 | 0 | 0.0000 | 0 | 1.000 | 0.559 | 0.29 (partial) |
-| migration_trap_erased_savings | constraint_aware | 445,445 | 2.245e-06 | 82,493,273 | 185.19 | 182.00 | 3.193 | 3.193 | 164986559 | 20022 | 60000 | 300 | 0 | 0.0000 | 0 | 1.000 | 0.559 | 0.99 |
+| migration_trap_erased_savings | constraint_aware | 467,347 | 2.140e-06 | 46,008,283 | 98.45 | 96.00 | 2.446 | 2.446 | 92016576 | 14744 | 60000 | 300 | 0 | 0.0000 | 0 | 1.000 | 0.559 | 0.85 |
 | moe_hotspot_nic_saturation | constraint_aware | 34,515 | 2.897e-05 | 10,080,964 | 292.08 | 288.00 | 4.076 | 4.076 | 20161943 | 13414020 | 239730 | 300 | 0 | 0.0000 | 0 | 0.280 | 0.559 | 1.00 |
 | partial_utilization_telemetry | constraint_aware | 478,725 | 2.089e-06 | 46,601,134 | 97.34 | 96.00 | 1.344 | 1.344 | 93202280 | 20686 | 845 | 300 | 0 | 0.0000 | 0 | 0.600 | 0.559 | 0.29 (partial) |
 | prefix_affinity_energy_arbitrage | constraint_aware | 821,767 | 1.217e-06 | 229,474,498 | 279.25 | 273.00 | 6.245 | 6.245 | 290632106 | 26313 | 60000 | 300 | 0 | 0.0000 | 0 | 1.000 | 0.897 | 0.99 |
@@ -127,7 +127,7 @@ None — constraint_aware did not increase hard SLA violations vs FIFO in any sc
 
 ## 6. Where constraint_aware performs well / poorly
 
-Performs well (improves a binding KPI without SLA regression): carbon_cheap_price_expensive, clean_batch_shift_arbitrage, da_rt_basis_blowout, latency_critical_no_energy_shift, migration_trap_erased_savings, prefix_affinity_energy_arbitrage, proxy_bottleneck_ingress, queue_surge_latency_sensitive, rack_density_overload_air, startup_heavy_migration_trtllm, thermal_hotspot_mixed_cluster, underutilization_stranded_capacity
+Performs well (improves a binding KPI without SLA regression): latency_critical_no_energy_shift, prefix_affinity_energy_arbitrage, proxy_bottleneck_ingress, queue_surge_latency_sensitive, rack_density_overload_air, startup_heavy_migration_trtllm, thermal_hotspot_mixed_cluster, underutilization_stranded_capacity
 
 Performs poorly (net loss — tail worse with no throughput/thermal/cost relief, or an SLA regression): energy_price_arbitrage_multiregion
 

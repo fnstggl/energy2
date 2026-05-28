@@ -279,6 +279,15 @@ class AggregatedKPI:
     active_gpu_hours_by_type: dict = field(default_factory=dict)
     # Secondary derived KPI (diagnostic only, not part of the primary).
     goodput_per_gpu_hour: Optional[float] = None
+    # --- Workload-aware action accounting (this PR) ---
+    # Engine-applied / blocked counters, for diagnostics. Blocked counts are
+    # parsed from engine `rejected` reason strings; they are not part of the
+    # primary KPI.
+    scale_up_recommended: int = 0
+    scale_up_applied: int = 0
+    blocked_scale_for_low_value_queue_relief: int = 0
+    blocked_uneconomic_scale: int = 0
+    blocked_dominated: int = 0
     # KV-cache / prefix-affinity / locality realism KPIs (optional)
     kv_pressure_max: Optional[float] = None
     prefix_hit_rate_mean: Optional[float] = None
@@ -370,6 +379,13 @@ class AggregatedKPI:
                 round(self.goodput_per_gpu_hour, 4)
                 if self.goodput_per_gpu_hour is not None else None
             ),
+            # --- Workload-aware action accounting ---
+            "scale_up_recommended": self.scale_up_recommended,
+            "scale_up_applied": self.scale_up_applied,
+            "blocked_scale_for_low_value_queue_relief":
+                self.blocked_scale_for_low_value_queue_relief,
+            "blocked_uneconomic_scale": self.blocked_uneconomic_scale,
+            "blocked_dominated": self.blocked_dominated,
             # --- Secondary KPIs (constraints, vetoes, diagnostics) ---
             "total_energy_cost": round(self.total_energy_cost, 4),
             "energy_cost": round(self.energy_cost, 4),
@@ -844,6 +860,14 @@ class BenchmarkReport:
             lambda k: (f"{k.goodput_per_gpu_hour:,.0f}"
                        if k.goodput_per_gpu_hour is not None else "N/A"),
         ))
+        lines.append(row("Scale-up recommended", lambda k: str(k.scale_up_recommended)))
+        lines.append(row("Scale-up applied", lambda k: str(k.scale_up_applied)))
+        lines.append(row(
+            "Blocked (low-value queue)",
+            lambda k: str(k.blocked_scale_for_low_value_queue_relief),
+        ))
+        lines.append(row("Blocked (uneconomic)", lambda k: str(k.blocked_uneconomic_scale)))
+        lines.append(row("Blocked (dominated)", lambda k: str(k.blocked_dominated)))
         lines.append("")
 
         # Scorecard
