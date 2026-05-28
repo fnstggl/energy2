@@ -914,6 +914,7 @@ class ConstraintBenchmarkRunner:
                 outcome = analyze_outcome(
                     scenario_metadata, ca_for_outcome, headline_kpi, aggregated,
                     scorecard_flags=tuple(scorecard.flags),
+                    headline_name=headline_name,
                 )
         except Exception:
             # Never fail the benchmark on a reporting-layer issue.

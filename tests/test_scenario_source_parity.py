@@ -40,6 +40,19 @@ def _parse_dash_trace(raw):
     return out
 
 
+def _normalize_constant_trace(trace):
+    """Compress a constant N-element trace to a 1-element trace for comparison.
+
+    YAML scenarios often store constant traces as `[55.0]` (1 element) while
+    builtins store them as `[55.0]*24`. The simulator wraps with `% len(trace)`
+    so KPI is identical either way; this normalization avoids reporting false
+    drift in the parity check.
+    """
+    if trace and len(set(trace)) == 1:
+        return trace[:1]
+    return trace
+
+
 def _full_signature(cfg: dict):
     """Hash ALL fields that affect simulation outcome — workloads + region
     traces + node topology + events. Catches the kind of YAML-vs-builtin drift
@@ -63,9 +76,15 @@ def _full_signature(cfg: dict):
         ))
         rsig.append((
             r.get("region_id"),
-            tuple(_parse_dash_trace(r.get("energy_price_trace", []))),
-            tuple(_parse_dash_trace(r.get("carbon_intensity_trace", []))),
-            tuple(_parse_dash_trace(r.get("ambient_temp_trace", []))),
+            tuple(_normalize_constant_trace(
+                _parse_dash_trace(r.get("energy_price_trace", []))
+            )),
+            tuple(_normalize_constant_trace(
+                _parse_dash_trace(r.get("carbon_intensity_trace", []))
+            )),
+            tuple(_normalize_constant_trace(
+                _parse_dash_trace(r.get("ambient_temp_trace", []))
+            )),
             r.get("ambient_temp_c"),
             nodes,
         ))
