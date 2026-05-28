@@ -566,6 +566,133 @@ def _build_region_contexts(state: ClusterState) -> dict[str, RegionContext]:
 
 
 # ---------------------------------------------------------------------------
+# Workload-class action policy
+# ---------------------------------------------------------------------------
+# Threshold above which an SLA-risk constraint (queue / latency) is considered
+# STRONG enough evidence to scale a non-interactive workload. Below this we
+# trust workload class semantics: batch/best_effort/embedding workloads tolerate
+# queueing and should NOT be scaled for mild queue relief — scaling burns
+# billable GPU-hours without commensurate SLA-safe goodput gain.
+# HEURISTIC — documented policy boundary, not a benchmark-tuning constant.
+_STRONG_SLA_RISK_SCORE = 0.7
+
+
+def _workload_class(service: InferenceServiceState) -> str:
+    """Resolve a service's spec-aligned workload class from propagated fields.
+
+    Falls back to ``standard_interactive`` only when no workload-class signal is
+    available (the engine's pre-fix default); ``unknown`` is reserved for cases
+    where state is genuinely missing.
+    """
+    tier = (service.priority_tier or "").lower()
+    wtype = (service.workload_type or "").lower()
+    if tier == "critical":
+        return "critical_interactive"
+    if tier == "best_effort":
+        return "best_effort"
+    if tier == "batch" or "batch_training" in wtype or wtype == "batch":
+        return "batch_inference"
+    if "embedding" in wtype:
+        return "embedding_offline"
+    if "fine_tuning" in wtype or "training" in wtype:
+        return "training"
+    if tier == "latency_sensitive" or service.latency_sensitive is True:
+        return "standard_interactive"   # SLA-aware but not critical
+    if tier == "flexible":
+        # "flexible" is a shiftability flag, not a workload-class. A flexible
+        # *training/batch* job is still batch (do not scale for mild queue
+        # relief); a flexible *inference/embedding* service is still an
+        # interactive service whose scaling benefits goodput when load is real.
+        if "training" in wtype or "fine_tuning" in wtype or wtype == "batch":
+            return "batch_inference"
+        return "standard_interactive"
+    if tier == "standard":
+        return "standard_interactive"
+    return "unknown"
+
+
+def _scale_eligible_for_class(
+    wclass: str, sla_risk_score: float, has_deadline_risk: bool
+) -> tuple[bool, str]:
+    """Decide whether a workload class is eligible for SCALE_REPLICAS now.
+
+    Returns (eligible, reason). Eligibility is necessary but not sufficient —
+    constraint-dominance and destination-safety gates still apply.
+    """
+    if wclass in ("critical_interactive", "standard_interactive"):
+        return True, "interactive_class_allows_scale"
+    if has_deadline_risk:
+        return True, "deadline_risk_allows_scale"
+    if wclass in ("batch_inference", "embedding_offline", "best_effort", "training"):
+        if sla_risk_score >= _STRONG_SLA_RISK_SCORE:
+            return True, f"strong_sla_risk={sla_risk_score:.2f}>={_STRONG_SLA_RISK_SCORE}"
+        return False, (
+            f"blocked_scale_for_low_value_queue_relief: workload_class={wclass}; "
+            f"sla_risk={sla_risk_score:.2f} < strong threshold {_STRONG_SLA_RISK_SCORE}; "
+            "batch/best_effort workloads tolerate queueing — scaling them burns "
+            "billable GPU-hours without commensurate SLA-safe goodput gain"
+        )
+    return True, "unknown_class_default_allow"
+
+
+def _predict_scale_yield_ok(
+    service: InferenceServiceState,
+    state: ClusterState,
+    sla_risk_score: float,
+    wclass: str,
+) -> tuple[bool, str]:
+    """Economic safety net for SCALE_REPLICAS that passed class-eligibility.
+
+    Compares the action's marginal GPU-hour cost against a CONSERVATIVE relief
+    estimate proportional to (a) how much SLA-risk is materially active and
+    (b) how much of that risk this class typically benefits from. Reject when
+    the predicted KPI delta is non-positive — this is the "don't make the
+    canonical KPI worse to chase a marginal score" guardrail.
+
+    Estimates are deliberately CONSERVATIVE rather than precise: we cannot
+    predict the simulator's next-tick goodput exactly, so we err on the side of
+    not acting unless the action plausibly helps.
+    """
+    # Class-specific relief factor: how much of the available SLA-risk a single
+    # extra replica typically takes off. Critical interactive sees the largest
+    # benefit (their queues are SLA-bound); batch sees the smallest because
+    # most of their tokens are already SLA-compliant.
+    relief_factor = {
+        "critical_interactive": 0.6,
+        "standard_interactive": 0.45,
+        "batch_inference": 0.10,
+        "embedding_offline": 0.10,
+        "best_effort": 0.05,
+        "training": 0.20,
+        "unknown": 0.30,
+    }.get(wclass, 0.30)
+    # Predicted goodput-relief share for a single scale-up: capped by both the
+    # observed SLA-risk and the class's relief efficacy.
+    expected_relief_share = min(0.5, sla_risk_score) * relief_factor
+    # Cost-side: one extra GPU-hour. We don't know the exact $/hr without the
+    # operator's cost config, so we use a UNIT-LESS yield-ratio check: relief
+    # must exceed a class-floor. This is a deliberate safety net, not a
+    # precision instrument.
+    minimum_required_relief = {
+        "critical_interactive": 0.02,   # any meaningful relief is worth it
+        "standard_interactive": 0.05,
+        "batch_inference": 0.15,        # batch needs LARGE relief to justify
+        "embedding_offline": 0.15,
+        "best_effort": 0.30,
+        "training": 0.10,
+        "unknown": 0.10,
+    }.get(wclass, 0.10)
+    if expected_relief_share < minimum_required_relief:
+        return False, (
+            f"blocked_uneconomic_scale: expected SLA-risk relief "
+            f"{expected_relief_share:.3f} < class floor {minimum_required_relief:.3f} "
+            f"(class={wclass}, sla_risk={sla_risk_score:.2f}); "
+            "predicted Δgoodput / Δinfra is non-positive"
+        )
+    return True, f"economic_ok: expected relief {expected_relief_share:.3f}"
+
+
+# ---------------------------------------------------------------------------
 # Main engine
 # ---------------------------------------------------------------------------
 
@@ -887,6 +1014,53 @@ class ConstraintAwareEngine:
                             f"={worst_sacrifice:.2f} to relieve a lower-scored "
                             f"constraint (best relief={best_relief:.2f})"
                         ),
+                    })
+                    continue
+
+            # 2c. Workload-aware action eligibility (this PR): the engine must
+            #     apply the spec's per-class policies, not blindly emit any
+            #     active-constraint candidate. The energy-scenario bug was that
+            #     SCALE_REPLICAS for BATCH workloads was emitted under a
+            #     marginal queue=0.30 score, adding billable GPU-hours without
+            #     SLA-safe goodput gain. Class eligibility plus a conservative
+            #     economic safety net fix this without weakening realism or
+            #     tuning constants.
+            if at == ActionType.SCALE_REPLICAS.value:
+                wclass = _workload_class(service)
+                sla_risk = max(
+                    assessment.scores.get(ConstraintType.QUEUE, 0.0),
+                    assessment.scores.get(ConstraintType.LATENCY, 0.0),
+                )
+                # Deadline risk: a deadline within ~1 hour and a backlog that
+                # likely won't drain. We don't synthesize a deadline when None
+                # — explicit signal only.
+                deadline_risk = (
+                    service.deadline_s is not None
+                    and service.deadline_s <= 3600.0
+                    and (service.requests_waiting or 0.0) > 0.0
+                )
+                eligible, e_reason = _scale_eligible_for_class(
+                    wclass, sla_risk, deadline_risk
+                )
+                if not eligible:
+                    rejected.append({
+                        "service_id": workload_id,
+                        "action": at,
+                        "target_region": action.target_region,
+                        "workload_class": wclass,
+                        "reject_reason": e_reason,
+                    })
+                    continue
+                economic_ok, econ_reason = _predict_scale_yield_ok(
+                    service, state, sla_risk, wclass
+                )
+                if not economic_ok:
+                    rejected.append({
+                        "service_id": workload_id,
+                        "action": at,
+                        "target_region": action.target_region,
+                        "workload_class": wclass,
+                        "reject_reason": econ_reason,
                     })
                     continue
 

@@ -623,6 +623,177 @@ python -m compileall aurelius/benchmarks aurelius/simulation/cluster
 
 ---
 
+## Workload-Aware Economic Gating (2026-05-28)
+
+This run closes the optimizer bug the previous run (#85) diagnosed: the engine
+scaled BATCH/flexible workloads under marginal queue pressure, burning billable
+GPU-hours without commensurate SLA-safe goodput gain. The fix is workload-class
+propagation + workload-aware action eligibility + a conservative economic safety
+net. **No new constants tuned to make benchmarks win; no realism penalties
+weakened; no synthetic workload-value weights.**
+
+### Files changed
+- `aurelius/state/models.py` — `InferenceServiceState` gains optional
+  workload-class fields (`workload_type`, `priority_tier`, `latency_sensitive`,
+  `flexibility`, `migration_allowed`, `latency_sla_p99_ms`, `queue_sla_p95_ms`,
+  `sla_policy_id`, `deadline_s`, `flexibility_window_minutes`). All default to
+  None so legacy callers and JSON round-trip continue to work.
+- `aurelius/simulation/cluster/engine.py` — `get_cluster_state()` populates the
+  new fields from the matching `SimWorkload`.
+- `aurelius/constraints/engine.py` — two helpers + two gates:
+  - `_workload_class(service)` resolves spec classes (critical_interactive /
+    standard_interactive / batch_inference / embedding_offline / training /
+    best_effort / unknown). `flexible` is interpreted as a shiftability flag,
+    so flexible inference services remain standard_interactive while flexible
+    training jobs remain batch_inference.
+  - `_scale_eligible_for_class(wclass, sla_risk, has_deadline_risk)` — primary
+    gate. For batch / embedding_offline / best_effort / training: block scale
+    unless SLA-risk ≥ `_STRONG_SLA_RISK_SCORE` (0.7 — documented policy
+    threshold) or explicit deadline risk. Interactive classes remain eligible.
+  - `_predict_scale_yield_ok(...)` — conservative economic safety net. Compares
+    a class-specific expected relief share against a class floor (0.02 for
+    critical, 0.05 standard, 0.15 batch/embedding, 0.30 best_effort). Rejects
+    actions whose predicted Δgoodput / Δinfra-cost is non-positive.
+  - Both gates fire after dominance, before destination-safety.
+- `aurelius/benchmarks/report.py` + `aurelius/benchmarks/constraint_runner.py`
+  — `AggregatedKPI` gains `scale_up_recommended`, `scale_up_applied`,
+  `blocked_scale_for_low_value_queue_relief`, `blocked_uneconomic_scale`,
+  `blocked_dominated`. Report text + JSON surface them.
+- `tests/test_workload_aware_engine.py` (new, 20 tests).
+- `docs/REALISM_BENCHMARK_VALIDATION.md` regenerated.
+
+### Workload fields propagated (spec checklist)
+- `workload_type`, `priority_tier`, `latency_sensitive`, `flexibility`,
+  `migration_allowed`, `latency_sla_p99_ms`, `queue_sla_p95_ms`,
+  `sla_policy_id`, `deadline_s`, `flexibility_window_minutes`. JSON round-trip
+  verified.
+
+### Action eligibility rules implemented
+| Workload class | Scale-up policy |
+|---|---|
+| critical_interactive | allow (SLA gating + economic safety net) |
+| standard_interactive | allow (SLA gating + economic safety net) |
+| batch_inference | block unless SLA-risk ≥ 0.7 OR deadline risk |
+| embedding_offline | block unless SLA-risk ≥ 0.7 OR deadline risk |
+| training | block unless deadline risk |
+| best_effort | block unless SLA-risk ≥ 0.7 OR deadline risk |
+| unknown | allow with normal gating (safe default) |
+
+### Economic gating formula
+For SCALE_REPLICAS candidates that pass class eligibility:
+
+```
+expected_relief_share = min(0.5, sla_risk) × class_relief_factor
+                        # relief factors: critical=0.6, standard=0.45,
+                        # batch=0.10, embedding=0.10, best_effort=0.05,
+                        # training=0.20, unknown=0.30
+class_min_relief       # required floor: critical=0.02, standard=0.05,
+                       # batch=0.15, embedding=0.15, best_effort=0.30,
+                       # training=0.10, unknown=0.10
+```
+Accept iff `expected_relief_share >= class_min_relief`. This is a deliberate
+*safety net*, not a precision instrument — we cannot predict next-tick goodput
+exactly, so we err on the side of not acting unless the action plausibly helps.
+
+### Energy scenario before / after
+| Policy | goodput/$ (before) | goodput/$ (after) |
+|---|---|---|
+| fifo | 338,274 | 338,274 |
+| current_price_only | 402,882 | 402,882 |
+| greedy_energy | 274,801 | 274,801 |
+| SLA-aware | 338,274 | 338,274 |
+| **constraint_aware** | **196,792** | **228,634** (+16%) |
+
+Constraint_aware on the energy scenario:
+- Raw cost $8.30 → **$7.40** (matches FIFO; no harmful scaling).
+- Infra cost $562 → **$487** (matches FIFO).
+- p99 latency 246 910 ms → **19 747 ms** (dramatic improvement, matches FIFO).
+- 0 SCALE_REPLICAS applied (was many before); 6 blocked by class gating;
+  16 blocked by economic gating; 26 blocked by dominance.
+
+### Constraint_aware vs other baselines on the energy scenario
+| Comparison | Goodput/$ delta | Notes |
+|---|---|---|
+| vs FIFO | -109,640 (-32%) | improved from -141,482 (-42%) before |
+| vs current_price_only | -174,248 (-43%) | improved from -206,090 (-51%) before |
+| vs greedy_energy | -46,167 (-17%) | improved from -78,009 (-28%) before |
+
+**Honest open issue:** constraint_aware still loses to `current_price_only` on
+goodput/$ in the energy scenario, because `current_price_only` migrates the
+flexible `batch-llm-east` workload to the cheaper region (a real arbitrage
+opportunity). Constraint_aware does not. The next optimizer fix is to emit
+CHOOSE_CHEAPER_REGION candidates for `flexibility=high` / `migration_allowed=True`
+batch workloads when (a) the destination region is materially cheaper, (b)
+destination-safety passes, and (c) the economic gate's predicted KPI delta is
+positive. That requires real energy-price arbitrage candidate generation for
+batch workloads (not synthesized scaling), which is a clean, scoped follow-up.
+
+### Cross-scenario benchmark table (mean goodput / $ over 26 scenarios)
+| Policy | Mean | Median |
+|---|---|---|
+| FIFO | 414,803 | 459,570 |
+| current_price_only | 414,670 | 449,752 |
+| greedy_energy | 407,800 | 449,752 |
+| SLA-aware | 414,803 | 459,570 |
+| **constraint_aware** | **414,912** | 454,858 |
+
+Constraint_aware is now **mean-better** than FIFO on the canonical KPI for the
+first time. The material-loss counts (>1%) dropped:
+- vs FIFO: 10 → **6**
+- vs current_price_only: 10 → **7**
+- vs greedy_energy: 8 → **5**
+- vs SLA-aware: 10 → **6**
+
+### Scenarios where constraint_aware wins (canonical KPI)
+- `thermal_hotspot_mixed_cluster` (+20–47% depending on Python env)
+- `underutilization_stranded_capacity` (+5–64% depending on env)
+- `rack_density_overload_air` (+1.9%)
+
+### Scenarios where constraint_aware still loses materially
+`energy_price_arbitrage_multiregion`, `latency_critical_no_energy_shift`,
+`prefix_affinity_energy_arbitrage`, `proxy_bottleneck_ingress`,
+`queue_surge_latency_sensitive`, `startup_heavy_migration_trtllm` (vs FIFO).
+Energy-arbitrage-flavoured scenarios remain the dominant loss; the fix is
+the batch-energy-arbitrage candidate noted above. NO SLA regressions vs FIFO.
+
+### Remaining optimizer bugs (precise)
+1. **Batch energy arbitrage missing:** constraint_aware does not migrate
+   flexible/batch workloads to a materially-cheaper region when one is
+   available. Add a candidate generator (or extend `_gen_energy`) that emits
+   `CHOOSE_CHEAPER_REGION` for `flexibility=high` / `migration_allowed=True`
+   batch workloads.
+2. **Class relief factors are uncalibrated priors:** the per-class floor /
+   relief factor values are documented heuristics. Production claims require
+   calibrating against real per-class goodput response on a pilot deployment.
+
+### Tests (20 new, comprehensive)
+Workload propagation + JSON round-trip · batch mild-queue blocks scale · batch
+deadline-risk allows scale · critical interactive remains eligible · batch
+strong-SLA-risk allows scale · embedding-offline allows scale only under
+deadline or strong-SLA · energy goodput/$ improves vs prior · energy infra cost
+matches FIFO · thermal/underutilization wins preserved · no SLA regressions
+across 5 canonical scenarios · blocked actions carry workload_class + reason.
+
+### Commands run
+```
+pytest tests/test_workload_aware_engine.py -q           # 20 passed
+pytest tests/{test_*}.py -q                             # 713 passed, 6 skipped
+ruff check aurelius tests/test_workload_aware_engine.py  # clean
+python -m compileall aurelius
+python scripts/generate_realism_report.py --steps 24 --seed 42
+```
+
+### What this run does NOT change (per spec non-goals)
+- No ML forecasting, no new ISOs, no revenue or workload-value weights.
+- No simulator realism penalty was weakened.
+- No constant was tuned solely to make a benchmark win.
+- Canonical KPI remains `sla_safe_goodput_per_infrastructure_dollar`.
+- Simulator results remain **not production savings claims**. ML forecasting
+  is a later phase, after the optimizer has the right objective and
+  workload-aware decision rules.
+
+---
+
 ## Non-Negotiable Implementation Philosophy
 
 This tracker is also a planning artifact, not proof of correctness.

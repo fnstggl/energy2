@@ -417,6 +417,27 @@ class InferenceServiceState:
     # Replica count (Ray autoscaling / K8s)
     replicas: Optional[int] = None
 
+    # ---- Workload-class fields (propagated from SimWorkload / SLA policy) ----
+    # These let the engine apply spec workload-aware policies: batch workloads
+    # tolerate queueing and should not be scaled for mild queue relief; critical
+    # workloads should be protected. All optional with documented defaults so
+    # legacy callers and JSON round-trip keep working unchanged.
+    workload_type: Optional[str] = None
+    # "critical" | "latency_sensitive" | "standard" | "flexible" | "batch" | "best_effort"
+    priority_tier: Optional[str] = None
+    latency_sensitive: Optional[bool] = None
+    flexibility: Optional[str] = None     # "low" | "medium" | "high"
+    migration_allowed: Optional[bool] = None
+    # SLA targets (None = no hard SLA)
+    latency_sla_p99_ms: Optional[float] = None
+    queue_sla_p95_ms: Optional[float] = None
+    sla_policy_id: Optional[str] = None
+    # Deadline for batch / offline / training: seconds remaining before the
+    # workload misses its deadline. None = no explicit deadline.
+    deadline_s: Optional[float] = None
+    # Flexibility window for shiftable workloads (e.g. cheap-energy batch).
+    flexibility_window_minutes: Optional[float] = None
+
     _VALID_ENGINES = frozenset({"vllm", "triton", "ray_serve", "unknown"})
 
     def __post_init__(self) -> None:
@@ -478,6 +499,16 @@ class InferenceServiceState:
             "tokens_per_s": self.tokens_per_s,
             "error_rate_pct": self.error_rate_pct,
             "replicas": self.replicas,
+            "workload_type": self.workload_type,
+            "priority_tier": self.priority_tier,
+            "latency_sensitive": self.latency_sensitive,
+            "flexibility": self.flexibility,
+            "migration_allowed": self.migration_allowed,
+            "latency_sla_p99_ms": self.latency_sla_p99_ms,
+            "queue_sla_p95_ms": self.queue_sla_p95_ms,
+            "sla_policy_id": self.sla_policy_id,
+            "deadline_s": self.deadline_s,
+            "flexibility_window_minutes": self.flexibility_window_minutes,
         }
 
     @classmethod
@@ -509,6 +540,16 @@ class InferenceServiceState:
             tokens_per_s=d.get("tokens_per_s"),
             error_rate_pct=d.get("error_rate_pct"),
             replicas=d.get("replicas"),
+            workload_type=d.get("workload_type"),
+            priority_tier=d.get("priority_tier"),
+            latency_sensitive=d.get("latency_sensitive"),
+            flexibility=d.get("flexibility"),
+            migration_allowed=d.get("migration_allowed"),
+            latency_sla_p99_ms=d.get("latency_sla_p99_ms"),
+            queue_sla_p95_ms=d.get("queue_sla_p95_ms"),
+            sla_policy_id=d.get("sla_policy_id"),
+            deadline_s=d.get("deadline_s"),
+            flexibility_window_minutes=d.get("flexibility_window_minutes"),
         )
 
 

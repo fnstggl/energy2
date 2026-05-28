@@ -21,7 +21,7 @@ changes workload placement via ClusterSimulator.migrate_workload().
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from datetime import datetime, timezone
 from typing import Any, Optional
 
@@ -363,6 +363,7 @@ def _aggregate_kpis(
     policy_name: str,
     tick_kpis: list[TickKPI],
     cost_config: Optional[InfrastructureCostConfig] = None,
+    engine_results: Optional[list] = None,
 ) -> AggregatedKPI:
     if cost_config is None:
         cost_config = InfrastructureCostConfig()
@@ -494,6 +495,29 @@ def _aggregate_kpis(
         sla_goodput / active_gpu_hours if active_gpu_hours > 0 else None
     )
 
+    # Workload-aware action accounting (this PR): count SCALE_REPLICAS
+    # recommendations and the rejections of each kind, by scanning engine
+    # outputs. Pure parsing of existing `rejected.reject_reason` strings.
+    scale_up_recommended = 0
+    blk_low_value = 0
+    blk_uneconomic = 0
+    blk_dominated = 0
+    if engine_results:
+        for er in engine_results:
+            if er is None:
+                continue
+            for rec in er.recommendations:
+                if (not rec.is_noop) and rec.action_type == "scale_replicas":
+                    scale_up_recommended += 1
+            for rj in er.rejected:
+                reason = rj.get("reject_reason", "")
+                if reason.startswith("blocked_scale_for_low_value_queue_relief"):
+                    blk_low_value += 1
+                elif reason.startswith("blocked_uneconomic_scale"):
+                    blk_uneconomic += 1
+                elif reason.startswith("dominated"):
+                    blk_dominated += 1
+
     return AggregatedKPI(
         policy_name=policy_name,
         total_energy_cost=total_cost,
@@ -516,6 +540,11 @@ def _aggregate_kpis(
         active_gpu_hours=active_gpu_hours,
         active_gpu_hours_by_type=aggregated_by_type,
         goodput_per_gpu_hour=goodput_per_gpu_hr,
+        scale_up_recommended=scale_up_recommended,
+        scale_up_applied=0,  # filled in by the runner below from migration_log
+        blocked_scale_for_low_value_queue_relief=blk_low_value,
+        blocked_uneconomic_scale=blk_uneconomic,
+        blocked_dominated=blk_dominated,
         total_thermal_throttle_ticks=sum(k.thermal_throttle_gpu_count for k in tick_kpis),
         total_migrations=tick_kpis[-1].migration_count if tick_kpis else 0,
         mean_topology_score=sum(topo_vals) / len(topo_vals) if topo_vals else 1.0,
@@ -792,7 +821,16 @@ class ConstraintBenchmarkRunner:
         aggregated: dict[str, AggregatedKPI] = {}
         for policy_name, pr in policy_results.items():
             aggregated[policy_name] = _aggregate_kpis(
-                policy_name, pr.tick_kpis, cost_config=self._cost_config
+                policy_name, pr.tick_kpis, cost_config=self._cost_config,
+                engine_results=pr.engine_results,
+            )
+            # Count applied scale-ups from the migration log so we can compare
+            # applied vs recommended (an applied scale needs an idle GPU).
+            applied_scale = sum(
+                1 for m in pr.migration_log if m.get("action") == "scale_replicas"
+            )
+            aggregated[policy_name] = replace(
+                aggregated[policy_name], scale_up_applied=applied_scale,
             )
 
         fifo_kpi = aggregated.get(POLICY_FIFO)

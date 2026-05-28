@@ -2915,6 +2915,10 @@ class ClusterSimulator:
                 )
                 node_id = workload.node_ids[0] if workload and workload.node_ids else None
 
+                # Propagate workload class from the SimWorkload so the engine can
+                # apply spec workload-aware policies (batch ≠ critical). Optional
+                # fields stay None if no workload is found — engine defaults to
+                # "unknown" class which inherits standard-interactive behaviour.
                 iss = InferenceServiceState(
                     service_id=queue.service_id,
                     engine=runtime,
@@ -2942,6 +2946,14 @@ class ClusterSimulator:
                     preemptions_total=queue.preemptions_total,
                     tokens_per_s=max(0.0, queue.tokens_per_second),
                     error_rate_pct=max(0.0, min(100.0, queue.timeout_rate_pct)),
+                    workload_type=workload.workload_type if workload else None,
+                    priority_tier=workload.priority_tier if workload else None,
+                    latency_sensitive=workload.latency_sensitive if workload else None,
+                    flexibility=workload.flexibility if workload else None,
+                    migration_allowed=workload.migration_allowed if workload else None,
+                    latency_sla_p99_ms=workload.latency_sla_p99_ms if workload else None,
+                    queue_sla_p95_ms=workload.queue_sla_p95_ms if workload else None,
+                    sla_policy_id=workload.sla_policy_id if workload else None,
                 )
                 service_states[queue.service_id] = iss
 
