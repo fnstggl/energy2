@@ -34,3 +34,9 @@ Thumbs.db
 
 # Runtime lock files
 *.lock
+
+# Public-trace raw downloads + large normalized traces (downloaded, not
+# committed; see docs/PUBLIC_TRACE_BACKTESTS.md). The small backtest summary
+# JSON under processed/ IS committed.
+data/external/burstgpt/raw/*.csv
+data/external/burstgpt/processed/burstgpt_normalized.json
