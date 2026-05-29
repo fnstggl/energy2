@@ -22,33 +22,40 @@
   "method": "greedy",
   "policies": {
     "constraint_aware_with_energy_adapter": {
-      "candidates_accepted": 698,
+      "accepted_by_source": {
+        "current_price_only": 141,
+        "engine_optimized": 698
+      },
+      "candidates_accepted": 839,
       "candidates_deferred": 0,
+      "candidates_fallback": 161,
       "candidates_generated": 1000,
-      "candidates_rejected": 302,
-      "cost_per_sla_compliant_job": 58.269,
-      "da_planned_cost_usd": 22867.88,
-      "da_rt_basis_usd": 231.16,
+      "candidates_rejected": 0,
+      "cost_per_sla_compliant_job": 51.7256,
+      "da_planned_cost_usd": 16358.91,
+      "da_rt_basis_usd": 126.67,
       "deadline_misses": 0,
       "gpu_infra_cost_usd": 34894.0,
-      "gross_energy_savings_vs_fifo_usd": 47248.09,
-      "migrations": 552,
-      "net_energy_savings_vs_fifo_usd": 46972.09,
-      "network_cost_usd": 276.0,
+      "gross_energy_savings_vs_fifo_usd": 53861.55,
+      "migrations": 692,
+      "net_energy_savings_vs_fifo_usd": 53515.55,
+      "network_cost_usd": 346.0,
       "policy": "constraint_aware_with_energy_adapter",
-      "realized_energy_cost_usd": 23099.04,
+      "realized_energy_cost_usd": 16485.58,
       "rejection_reasons": {
         "ineligible_critical_interactive_inference": 137,
         "kpi_non_positive": 22,
         "sla_unsafe_deadline_with_warmup": 143
       },
       "sla_compliant_goodput": 17447.0,
-      "sla_safe_goodput_per_infra_dollar": 0.299421,
-      "total_infra_cost_usd": 58269.04
+      "sla_safe_goodput_per_infra_dollar": 0.337299,
+      "total_infra_cost_usd": 51725.58
     },
     "current_price_only": {
+      "accepted_by_source": {},
       "candidates_accepted": 0,
       "candidates_deferred": 0,
+      "candidates_fallback": 0,
       "candidates_generated": 0,
       "candidates_rejected": 0,
       "cost_per_sla_compliant_job": 57.4527,
@@ -68,8 +75,10 @@
       "total_infra_cost_usd": 57452.65
     },
     "fifo": {
+      "accepted_by_source": {},
       "candidates_accepted": 0,
       "candidates_deferred": 0,
+      "candidates_fallback": 0,
       "candidates_generated": 0,
       "candidates_rejected": 0,
       "cost_per_sla_compliant_job": 105.2411,
@@ -89,8 +98,10 @@
       "total_infra_cost_usd": 105241.13
     },
     "greedy_energy": {
+      "accepted_by_source": {},
       "candidates_accepted": 0,
       "candidates_deferred": 0,
+      "candidates_fallback": 0,
       "candidates_generated": 0,
       "candidates_rejected": 0,
       "cost_per_sla_compliant_job": 63.6713,
@@ -110,8 +121,10 @@
       "total_infra_cost_usd": 56094.45
     },
     "robust_energy_standalone": {
+      "accepted_by_source": {},
       "candidates_accepted": 0,
       "candidates_deferred": 0,
+      "candidates_fallback": 0,
       "candidates_generated": 0,
       "candidates_rejected": 0,
       "cost_per_sla_compliant_job": 58.2058,
@@ -131,8 +144,10 @@
       "total_infra_cost_usd": 49882.38
     },
     "sla_aware": {
+      "accepted_by_source": {},
       "candidates_accepted": 0,
       "candidates_deferred": 0,
+      "candidates_fallback": 0,
       "candidates_generated": 0,
       "candidates_rejected": 0,
       "cost_per_sla_compliant_job": 58.7092,
@@ -161,22 +176,30 @@
   "schema_version": 1,
   "seed": 20260201,
   "standalone_vs_wrapped_delta": {
-    "candidates_accepted": 698,
+    "accepted_by_source": {
+      "current_price_only": 141,
+      "engine_optimized": 698
+    },
+    "candidates_accepted_alternative": 839,
     "candidates_deferred": 0,
+    "candidates_fallback_home": 161,
     "candidates_generated": 1000,
-    "candidates_rejected": 302,
-    "rejection_reasons": {
+    "candidates_rejected": 0,
+    "current_price_only_goodput_per_dollar": 0.303676,
+    "standalone_deadline_misses": 143,
+    "standalone_energy_cost_usd": 14561.38,
+    "standalone_goodput_per_dollar": 0.300667,
+    "top_pick_not_taken_reasons": {
       "ineligible_critical_interactive_inference": 137,
       "kpi_non_positive": 22,
       "sla_unsafe_deadline_with_warmup": 143
     },
-    "standalone_deadline_misses": 143,
-    "standalone_energy_cost_usd": 14561.38,
-    "standalone_goodput_per_dollar": 0.300667,
+    "wrapped_beats_or_matches_cpo": true,
     "wrapped_deadline_misses": 0,
-    "wrapped_energy_cost_usd": 23099.04,
-    "wrapped_goodput_per_dollar": 0.299421,
-    "wrapped_minus_standalone_energy_usd": 8537.66
+    "wrapped_energy_cost_usd": 16485.58,
+    "wrapped_goodput_per_dollar": 0.337299,
+    "wrapped_minus_cpo_goodput_per_dollar": 0.033623,
+    "wrapped_minus_standalone_energy_usd": 1924.2
   },
   "window_end": "2026-02-27T00:00:00+00:00",
   "window_start": "2026-02-01T00:00:00+00:00"

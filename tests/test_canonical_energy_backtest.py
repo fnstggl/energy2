@@ -181,13 +181,32 @@ def test_wrapped_never_misses_more_deadlines_than_standalone(summary):
 def test_adapter_generated_and_classified_candidates(summary):
     wrapped = summary.policies[POLICY_CONSTRAINT_AWARE_ADAPTER]
     assert wrapped.candidates_generated == CANONICAL_JOB_COUNT
-    assert (wrapped.candidates_accepted + wrapped.candidates_rejected
-            + wrapped.candidates_deferred) == wrapped.candidates_generated
-    # The wrapper must reject the latency-critical region shifts the energy
-    # engine proposes (the core safety value of the adapter).
-    assert wrapped.candidates_rejected > 0
+    # Every job resolves to exactly one outcome: an accepted alternative, a safe
+    # home fallback, an explicit reject, or a defer.
+    assert (wrapped.candidates_accepted + wrapped.candidates_fallback
+            + wrapped.candidates_rejected + wrapped.candidates_deferred) \
+        == wrapped.candidates_generated
+    # The next-best search accepts both the engine's optimized placement AND the
+    # current_price_only fallback for deadline-edge jobs (Part D).
+    assert wrapped.accepted_by_source.get("engine_optimized", 0) > 0
+    assert wrapped.accepted_by_source.get("current_price_only", 0) > 0
+    # The wrapper still keeps the latency-critical region shifts safe (home).
+    assert wrapped.candidates_fallback > 0
     assert any("critical_interactive" in r or "latency" in r
                for r in wrapped.rejection_reasons)
+
+
+def test_wrapped_beats_current_price_only_with_zero_misses(summary):
+    """Part D target: constraint-aware-wrapped >= current_price_only goodput/$,
+    with 0 deadline misses and no SLA regression (lower churn is a bonus)."""
+    wrapped = summary.policies[POLICY_CONSTRAINT_AWARE_ADAPTER]
+    cpo = summary.policies[POLICY_CURRENT_PRICE_ONLY]
+    assert wrapped.sla_safe_goodput_per_infra_dollar >= \
+        cpo.sla_safe_goodput_per_infra_dollar - 1e-9
+    assert wrapped.deadline_misses == 0
+    assert wrapped.deadline_misses <= cpo.deadline_misses
+    # Lower or equal churn than the aggressive current_price_only baseline.
+    assert wrapped.migrations <= cpo.migrations
 
 
 def test_no_sla_regression_vs_fifo(summary):

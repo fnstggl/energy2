@@ -185,3 +185,30 @@ SPREADs with an explicit, reported suppression). High cache affinity can veto an
 energy move (proven in `tests/test_interactive_actions.py` /
 `tests/test_energy_adapter.py`), and all actions remain recommendation/simulation
 only.
+
+## H. Interactive alpha + energy next-best search audit (recommendation-only)
+
+Simulator/recommendation only — **not production savings**.
+
+**Canonical 1000-job energy backtest (frozen golden).** constraint_aware_with_
+energy_adapter goodput/$ **0.33730** now beats current_price_only **0.30368**
+(+11%) with **0 deadline misses, 0 SLA violations, fewer migrations (692 vs
+851)** — via the energy wrapper's next-best safe-alternative search
+(698 engine-optimized + 141 current_price_only fallback placements accepted, 161
+kept safely home).
+
+**Target scenarios (constraint-aware vs sla_aware headline, 24-step):**
+
+| scenario | result | precise cause |
+|---|---|---|
+| queue_surge_latency_sensitive | LOSS (unchanged) | surge arrival exceeds even fully-scaled regional GPU capacity → queue collapse the sim cannot drain |
+| proxy_bottleneck_ingress | LOSS (unchanged) | front-door proxy cap dominates; region-static arrival means a rerouted workload's load does not follow it — no clean reroute KPI path |
+| prefix_affinity_energy_arbitrage | LOSS (unchanged) | long-sequence inference keeps latency the binding constraint → energy/cache veto does not bind in the sim run |
+| **queue_surge_relievable_capacity (new)** | **relief demonstrated** | real idle GPU capacity + healthy proxy → scaling drains queue p95 ~99% and lifts goodput ~150% |
+| **proxy_bottleneck_no_safe_target (new, control)** | **correct KEEP** | proxy detected, scale suppressed (`blocked_useless_scale_proxy_bottleneck`), no fake reroute |
+
+The proxy/prefix scenario-level losses are honest simulator-architecture
+blockers (region-static arrival; long-sequence latency dominance), not
+regressions; the relief/suppression mechanisms are proven in the new control
+scenarios and the unit/adapter tests. All actions remain recommendation/
+simulation only.

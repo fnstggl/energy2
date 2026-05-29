@@ -2663,3 +2663,59 @@ The new candidate generation + cache-loss veto are exercised by
 `tests/test_interactive_actions.py` and `tests/test_energy_adapter.py`; the
 canonical 1000-job CAISO/PJM/ERCOT backtest golden is unchanged and the energy
 engine core remains byte-unchanged.
+
+---
+
+## Interactive alpha + energy next-best search (this PR)
+
+> Simulator/recommendation only — **not production savings**. Read
+> `docs/RESULTS.md` first.
+
+**Part D — energy wrapper next-best safe search (headline win).** The energy
+adapter now searches the energy engine's RANKED alternatives per job
+(`EnergyArbitrageAdapter.evaluate_best`): engine-optimized placement → the
+`current_price_only` placement (an existing baseline, cheapest region at
+earliest_start, full slack) → home. It accepts the first SLA-safe + KPI-positive
+alternative instead of rejecting straight home. The energy engine remains the
+authoritative ranking source — no energy logic is regenerated.
+
+Canonical 1000-job CAISO/PJM/ERCOT result (frozen golden), constraint-aware vs
+`current_price_only`:
+
+| policy | goodput/$ | deadline misses | migrations |
+|---|--:|--:|--:|
+| current_price_only | 0.30368 | 0 | 851 |
+| robust_energy_standalone | 0.30067 | 143 (warmup-blind) | 854 |
+| **constraint_aware_with_energy_adapter** | **0.33730** | **0** | **692** |
+
+Constraint-aware now **beats** current_price_only by ~11% on goodput/$ with **0
+deadline misses, 0 SLA violations, and lower churn** (692 vs 851). The search
+accepts 698 engine-optimized + 141 current_price_only next-best placements and
+keeps 161 jobs safely home (137 latency-critical + 24 where no safe alternative
+is KPI-positive).
+
+**Part B — queue relief is measurable when capacity exists.** New scenario
+`queue_surge_relievable_capacity` (8 GPUs, healthy ingress proxy, sub-collapse
+arrival): adding replicas drains queue p95 ~99% (≈828 ms → ≈2 ms) and lifts
+served tokens ~150% — using the UNCHANGED queue physics, in the regime where
+capacity headroom exists. Without scaling the surge stays pressured (not faked).
+
+**Part A — proxy bottleneck.** Added per-ingress proxy capacity
+(`SimQueue.proxy_capacity_rps_per_replica`, default `None` = global — a realism
+enrichment, not a weakening) and a negative-control scenario
+`proxy_bottleneck_no_safe_target`: the engine detects the proxy bottleneck,
+suppresses useless scale-up (`blocked_useless_scale_proxy_bottleneck`), and KEEPs
+— never a fake reroute when no safe target exists.
+
+**Honest blockers (not forced).**
+- Proxy *scenario-level* reroute KPI win is blocked by the simulator's
+  region-static arrival model (a rerouted workload's offered load does not
+  follow it to the target ingress queue) and a multi-queue-per-service
+  interaction. The proxy detection + suppression + reroute emission + per-ingress
+  capacity model + negative control are delivered and tested.
+- The cluster-sim `prefix_affinity_energy_arbitrage` scenario stays
+  queue/latency-bound (long-sequence inference keeps latency pressured), so the
+  energy/cache veto does not bind there. The veto itself is fully implemented and
+  tested at the adapter (`reject_energy_move_cache_loss_exceeds_savings` /
+  `accept_energy_move_cache_safe` / `accept_energy_move_low_cache_dependency` /
+  `preserve_affinity_high_cache_hit_rate`) and `_gen_energy` levels.

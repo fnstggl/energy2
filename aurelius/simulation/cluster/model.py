@@ -246,6 +246,11 @@ class SimQueue:
     cache_fragmentation_frac: Optional[float] = None
     # Migration-realism telemetry
     proxy_saturation: Optional[float] = None
+    # Per-ingress proxy capacity (rps per replica). None => use the global
+    # serving-config default. Lets a scenario model a HEALTHIER ingress in one
+    # region (a real, configurable property of front-door proxies) so rerouting
+    # to it can genuinely relieve a proxy bottleneck.
+    proxy_capacity_rps_per_replica: Optional[float] = None
     batch_efficiency: Optional[float] = None
     tokens_per_second: float = 0.0
     requests_per_second: float = 0.0

@@ -275,6 +275,8 @@ class PolicyMetrics:
     candidates_accepted: int = 0
     candidates_rejected: int = 0
     candidates_deferred: int = 0
+    candidates_fallback: int = 0
+    accepted_by_source: dict[str, int] = field(default_factory=dict)
     rejection_reasons: dict[str, int] = field(default_factory=dict)
 
     def to_dict(self) -> dict:
@@ -303,6 +305,8 @@ class PolicyMetrics:
             "candidates_accepted": self.candidates_accepted,
             "candidates_rejected": self.candidates_rejected,
             "candidates_deferred": self.candidates_deferred,
+            "candidates_fallback": self.candidates_fallback,
+            "accepted_by_source": dict(sorted(self.accepted_by_source.items())),
             "rejection_reasons": dict(sorted(self.rejection_reasons.items())),
         }
 
@@ -482,33 +486,76 @@ def run_canonical_backtest(
     fifo_schedule = asap_baseline
     baseline_regions = {d.job_id: d.region for d in asap_baseline}
 
-    # Energy candidates (verbatim from the engine), then gate them.
-    candidates = adapter.candidates_from_schedules(
+    # Next-best safe search (Part D): the adapter evaluates the energy engine's
+    # RANKED alternatives per job and accepts the first SLA-safe + KPI-positive
+    # one, instead of rejecting the top pick straight home. The ranking is the
+    # engine's own outputs — NOT regenerated energy logic:
+    #   rank 1: the robust engine's optimized placement,
+    #   rank 2: the current_price_only placement (an EXISTING baseline policy —
+    #           cheapest region at earliest_start, full slack, deadline-safe),
+    #   rank 3: home / ASAP no-move (guaranteed-safe fallback).
+    cpo_schedule = current_price_only_policy(jobs, da, carbon, cfg)
+    engine_cands = adapter.candidates_from_schedules(
         jobs=jobs, baseline_schedule=asap_baseline,
         optimized_schedule=standalone_schedule, da_price_data=da, rt_price_data=rt,
+        source="engine_optimized",
     )
-    verdicts = adapter.evaluate_all(candidates, _canonical_destination_contexts())
-
-    # Wrapped schedule: accepted -> engine's decision; rejected/deferred ->
-    # safe baseline placement. Standalone decisions are indexed by job_id.
+    cpo_cands = adapter.candidates_from_schedules(
+        jobs=jobs, baseline_schedule=asap_baseline,
+        optimized_schedule=cpo_schedule, da_price_data=da, rt_price_data=rt,
+        source="current_price_only",
+    )
+    home_cands = adapter.candidates_from_schedules(
+        jobs=jobs, baseline_schedule=asap_baseline,
+        optimized_schedule=asap_baseline, da_price_data=da, rt_price_data=rt,
+        source="home",
+    )
+    by_id = {
+        "engine_optimized": {c.job_id: c for c in engine_cands},
+        "current_price_only": {c.job_id: c for c in cpo_cands},
+        "home": {c.job_id: c for c in home_cands},
+    }
     standalone_by_id = {d.job_id: d for d in standalone_schedule}
+    cpo_by_id = {d.job_id: d for d in cpo_schedule}
     fifo_by_id = {d.job_id: d for d in fifo_schedule}
+    schedule_by_source = {
+        "engine_optimized": standalone_by_id,
+        "current_price_only": cpo_by_id,
+        "home": fifo_by_id,
+    }
+
+    dctx = _canonical_destination_contexts()
     wrapped_schedule: list[ScheduleDecision] = []
-    accepted = rejected = deferred = 0
+    accepted = rejected = deferred = fallback = 0
+    accepted_by_source: dict[str, int] = {}
     rejection_reasons: dict[str, int] = {}
-    for v in verdicts:
-        jid = v.candidate.job_id
+    for job in jobs:
+        jid = job.job_id
+        ranked = [
+            by_id["engine_optimized"][jid],
+            by_id["current_price_only"][jid],
+            by_id["home"][jid],
+        ]
+        v = adapter.evaluate_best(ranked, dctx)
+        src = v.candidate.source or "home"
+        wrapped_schedule.append(schedule_by_source.get(src, fifo_by_id)[jid])
         if v.decision in (GateDecision.ACCEPT, GateDecision.MODIFY):
-            accepted += 1
-            wrapped_schedule.append(standalone_by_id[jid])
-        else:
-            if v.decision is GateDecision.DEFER:
-                deferred += 1
+            if src == "home":
+                fallback += 1
             else:
-                rejected += 1
-            primary = v.primary_reason
-            rejection_reasons[primary] = rejection_reasons.get(primary, 0) + 1
-            wrapped_schedule.append(fifo_by_id[jid])
+                accepted += 1
+                accepted_by_source[src] = accepted_by_source.get(src, 0) + 1
+        elif v.decision is GateDecision.DEFER:
+            deferred += 1
+        else:
+            rejected += 1
+        # Record the top pick's rejection reason when the engine's #1 was not taken.
+        if src != "engine_optimized":
+            top = adapter.evaluate(ranked[0], dctx.get(ranked[0].recommended_region))
+            if top.decision not in (GateDecision.ACCEPT, GateDecision.MODIFY):
+                rejection_reasons[top.primary_reason] = (
+                    rejection_reasons.get(top.primary_reason, 0) + 1
+                )
 
     # sla_aware = energy engine + deadline/latency safety ONLY (no destination /
     # KPI gates). Latency-pinned jobs and deadline-unsafe moves revert to FIFO.
@@ -551,13 +598,16 @@ def run_canonical_backtest(
 
     # Adapter diagnostics on the wrapped policy.
     wm = metrics[POLICY_CONSTRAINT_AWARE_ADAPTER]
-    wm.candidates_generated = len(candidates)
+    wm.candidates_generated = len(jobs)
     wm.candidates_accepted = accepted
     wm.candidates_rejected = rejected
     wm.candidates_deferred = deferred
+    wm.candidates_fallback = fallback
+    wm.accepted_by_source = dict(sorted(accepted_by_source.items()))
     wm.rejection_reasons = rejection_reasons
 
     standalone_m = metrics[POLICY_ROBUST_STANDALONE]
+    cpo_m = metrics[POLICY_CURRENT_PRICE_ONLY]
     delta = {
         "standalone_energy_cost_usd": round(standalone_m.realized_energy_cost_usd, 2),
         "wrapped_energy_cost_usd": round(wm.realized_energy_cost_usd, 2),
@@ -572,11 +622,24 @@ def run_canonical_backtest(
         "wrapped_goodput_per_dollar": round(
             wm.sla_safe_goodput_per_infra_dollar, 6
         ),
-        "candidates_generated": len(candidates),
-        "candidates_accepted": accepted,
+        "current_price_only_goodput_per_dollar": round(
+            cpo_m.sla_safe_goodput_per_infra_dollar, 6
+        ),
+        "wrapped_minus_cpo_goodput_per_dollar": round(
+            wm.sla_safe_goodput_per_infra_dollar
+            - cpo_m.sla_safe_goodput_per_infra_dollar, 6
+        ),
+        "wrapped_beats_or_matches_cpo": (
+            wm.sla_safe_goodput_per_infra_dollar
+            >= cpo_m.sla_safe_goodput_per_infra_dollar - 1e-9
+        ),
+        "candidates_generated": len(jobs),
+        "candidates_accepted_alternative": accepted,
+        "accepted_by_source": dict(sorted(accepted_by_source.items())),
+        "candidates_fallback_home": fallback,
         "candidates_rejected": rejected,
         "candidates_deferred": deferred,
-        "rejection_reasons": dict(sorted(rejection_reasons.items())),
+        "top_pick_not_taken_reasons": dict(sorted(rejection_reasons.items())),
     }
 
     return CanonicalBacktestSummary(

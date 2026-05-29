@@ -114,15 +114,22 @@ def reroute_seconds(
 
 
 def proxy_saturation_factor(
-    offered_rps: float, replicas: int, config: Optional[dict] = None
+    offered_rps: float, replicas: int, config: Optional[dict] = None,
+    cap_per_override: Optional[float] = None,
 ) -> float:
     """Proxy/ingress queue amplification ≥ 1.0 as offered load nears capacity.
 
     Capacity = proxy_capacity_rps_per_replica × replicas. Replica count alone
     does NOT determine throughput: past ~capacity the proxy queues convexly
     (1/(1-load))^k. This lets proxy bottlenecks dominate queue wait / TTFT.
+
+    ``cap_per_override`` (a per-ingress capacity from the queue) takes precedence
+    over the global config default when provided.
     """
-    cap_per = migration_value("proxy_capacity_rps_per_replica", config)
+    cap_per = (
+        cap_per_override if cap_per_override is not None
+        else migration_value("proxy_capacity_rps_per_replica", config)
+    )
     k = migration_value("proxy_saturation_convexity", config)
     capacity = max(1e-6, cap_per * max(1, replicas))
     load = max(0.0, offered_rps) / capacity

@@ -171,6 +171,11 @@ class ExistingEnergyCandidate:
     cache_hit_rate: Optional[float] = None   # high => region move destroys affinity
     cache_sensitive: bool = False
     topology_heavy: bool = False
+    # Provenance of this candidate placement within the engine's ranked
+    # alternatives (e.g. "engine_optimized", "current_price_only", "home").
+    # Used by evaluate_best() to map the accepted alternative back to its
+    # concrete placement. Never alters gating — purely a label.
+    source: str = ""
 
     @property
     def is_region_move(self) -> bool:
@@ -377,6 +382,7 @@ class EnergyArbitrageAdapter:
         da_price_data: dict[str, dict[datetime, float]],
         rt_price_data: Optional[dict[str, dict[datetime, float]]] = None,
         forecast_confidence: float = 0.7,
+        source: str = "engine_optimized",
     ) -> list[ExistingEnergyCandidate]:
         """Diff baseline vs optimized schedules into energy candidates (pure)."""
         job_by_id = {j.job_id: j for j in jobs}
@@ -436,6 +442,7 @@ class EnergyArbitrageAdapter:
                 latency_sensitive=(job.workload_type in _CRITICAL_INTERACTIVE_TYPES),
                 gpu_count=job.gpu_count,
                 power_kw=job.power_kw,
+                source=source,
             ))
         return out
 
@@ -583,6 +590,45 @@ class EnergyArbitrageAdapter:
             self.evaluate(c, contexts.get(c.recommended_region))
             for c in candidates
         ]
+
+    def evaluate_best(
+        self,
+        ranked_candidates: list[ExistingEnergyCandidate],
+        destination_contexts: Optional[dict[str, DestinationContext]] = None,
+    ) -> ConstraintAwareEnergyCandidate:
+        """Search the energy engine's RANKED alternatives for the next-best safe
+        one (Part D), instead of rejecting the top pick straight to home.
+
+        ``ranked_candidates`` is the engine's own ranking for ONE workload, in
+        priority order (e.g. engine-optimized placement, then the
+        current_price_only placement, then home). The adapter does NOT generate
+        these — the caller derives them from the energy engine's schedule/cost
+        context. The first SLA-safe + KPI-positive alternative is accepted; if
+        none are, the last (home / no-move) verdict is returned as the safe
+        fallback. This preserves the engine's ranking and never forks energy
+        logic.
+        """
+        contexts = destination_contexts or {}
+        last: Optional[ConstraintAwareEnergyCandidate] = None
+        rejected_chain: list[str] = []
+        for c in ranked_candidates:
+            v = self.evaluate(c, contexts.get(c.recommended_region))
+            if v.decision in (GateDecision.ACCEPT, GateDecision.MODIFY):
+                # Record which earlier alternatives were skipped and why, so the
+                # explanation shows the search that found this safe alternative.
+                if rejected_chain:
+                    v.reasons.append("accepted_after_search")
+                    v.reason_details.append(
+                        "next-best safe alternative; skipped: " + "; ".join(rejected_chain)
+                    )
+                return v
+            rejected_chain.append(f"{c.source or c.recommended_region}={v.primary_reason}")
+            last = v
+        # All alternatives rejected — return the last (home/no-move) verdict.
+        return last if last is not None else ConstraintAwareEnergyCandidate(
+            candidate=ranked_candidates[-1] if ranked_candidates else None,  # type: ignore[arg-type]
+            decision=GateDecision.REJECT, reasons=["no_alternatives"],
+        )
 
     # -- individual gates -------------------------------------------------
 

@@ -375,6 +375,9 @@ class ClusterSimulator:
                 base_arrival_rate_per_sec=q_cfg.get("base_arrival_rate_per_sec", 1.0),
                 diurnal_amplitude=q_cfg.get("diurnal_amplitude", 0.4),
                 queue_depth=0,
+                proxy_capacity_rps_per_replica=q_cfg.get(
+                    "proxy_capacity_rps_per_replica"
+                ),
             )
             region.queues.append(queue)
 
@@ -1688,7 +1691,10 @@ class ClusterSimulator:
                 # (arrivals), independent of replica count — replica count alone
                 # does NOT set throughput once the proxy saturates.
                 if migstate is not None:
-                    proxy_sat = mig.proxy_saturation_factor(arrival_rate, replicas, cfg)
+                    proxy_sat = mig.proxy_saturation_factor(
+                        arrival_rate, replicas, cfg,
+                        cap_per_override=queue.proxy_capacity_rps_per_replica,
+                    )
                     migstate.proxy.saturation_factor = proxy_sat
                 else:
                     proxy_sat = 1.0

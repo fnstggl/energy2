@@ -918,6 +918,147 @@ _BUILTIN_SCENARIOS: dict[str, dict[str, Any]] = {
             {"tick": 16, "type": "queue_surge_end", "service_id": "proxy-bound-inference"},
         ],
     },
+    # Part B: a queue surge that is GENUINELY relievable by adding replicas —
+    # the region has ample idle GPU capacity and a HEALTHY ingress proxy (not
+    # the bottleneck), so scaling the bottlenecked service measurably drains the
+    # queue and lowers p95/p99. This is the regime where SCALE/PREWARM/RESERVE
+    # produce real KPI relief (vs the proxy-capped / over-subscribed regimes).
+    "queue_surge_relievable_capacity": {
+        "scenario_name": "queue_surge_relievable_capacity",
+        "description": (
+            "Latency-sensitive queue surge with ample idle GPU capacity and a "
+            "healthy ingress proxy: adding replicas measurably drains the queue."
+        ),
+        "seed": 42,
+        "tick_duration_hours": 1.0,
+        "expected_primary_constraint": "queue_bound",
+        "expected_events": ["queue_surge"],
+        "scenario_version": "v1",
+        "simulator_version": "1.0.0",
+        # Healthy ingress (high per-replica proxy capacity) so the proxy is NOT
+        # the bottleneck — replica count genuinely sets throughput here.
+        "serving_config": {"proxy_capacity_rps_per_replica": 200.0},
+        "regions": [
+            {
+                "region_id": "us-east",
+                "energy_price_trace": [50.0] * 24,
+                "ambient_temp_c": 20.0,
+                "nodes": [
+                    {
+                        "node_id": "us-east-node0",
+                        "gpu_type": "h100-sxm5-80gb",
+                        "gpu_count": 8,
+                        "topology_class": "nvswitch",
+                        "rack_id": "us-east-rack0",
+                        "zone": "us-east-1a",
+                    }
+                ],
+                "queues": [
+                    {
+                        # Tuned to the queue model's relievable regime: at ~4 rps
+                        # (base 2 x surge 2) a 2-GPU replica set is queue-pressured
+                        # (~750 ms p95, near the 500 ms queue SLA) but NOT collapsed,
+                        # so adding replicas (idle GPUs exist) drains it to ~10 ms.
+                        "queue_id": "us-east-q0",
+                        "service_id": "relievable-inference",
+                        "base_arrival_rate_per_sec": 2.0,
+                        "diurnal_amplitude": 0.1,
+                    }
+                ],
+            }
+        ],
+        "workloads": [
+            {
+                "workload_id": "relievable-wl",
+                "service_id": "relievable-inference",
+                "workload_type": "inference",
+                "priority_tier": "latency_sensitive",
+                "region_id": "us-east",
+                "gpu_count_required": 2,
+                "target_util_pct": 60.0,
+                "communication_intensity": "low",
+                "migration_allowed": False,
+                "latency_sensitive": True,
+                "latency_sla_p99_ms": 2000.0,
+                "queue_sla_p95_ms": 500.0,
+                "engine_runtime": "vllm",
+                "prefix_overlap": 0.3,
+                "avg_seq_len_tokens": 512,
+            }
+        ],
+        "events": [
+            {"tick": 4, "type": "queue_surge", "service_id": "relievable-inference",
+             "multiplier": 2.0},
+            {"tick": 20, "type": "queue_surge_end", "service_id": "relievable-inference"},
+        ],
+    },
+    # Negative control (Part A): proxy bottleneck with NO safe alternate ingress
+    # (single region, no peer) and a migratable workload. The engine must detect
+    # the proxy bottleneck, suppress useless scale-up
+    # (blocked_useless_scale_proxy_bottleneck), and KEEP — never invent a fake
+    # reroute when no safe target exists.
+    "proxy_bottleneck_no_safe_target": {
+        "scenario_name": "proxy_bottleneck_no_safe_target",
+        "description": (
+            "Proxy/ingress saturation with NO safe alternate ingress: the engine "
+            "suppresses useless scale-up and KEEPs (no reroute target exists)."
+        ),
+        "seed": 42,
+        "tick_duration_hours": 1.0,
+        "expected_primary_constraint": "queue_bound",
+        "expected_events": ["queue_surge"],
+        "scenario_version": "v1",
+        "simulator_version": "1.0.0",
+        "serving_config": {"proxy_capacity_rps_per_replica": 20.0},
+        "regions": [
+            {
+                "region_id": "us-east",
+                "energy_price_trace": [50.0] * 24,
+                "ambient_temp_c": 22.0,
+                "nodes": [
+                    {
+                        "node_id": "us-east-node0",
+                        "gpu_type": "h100-sxm5-80gb",
+                        "gpu_count": 4,
+                        "topology_class": "nvswitch",
+                        "rack_id": "us-east-rack0",
+                        "zone": "us-east-1a",
+                    }
+                ],
+                "queues": [
+                    {
+                        "queue_id": "us-east-q0",
+                        "service_id": "proxy-bound-inference",
+                        "base_arrival_rate_per_sec": 30.0,
+                        "diurnal_amplitude": 0.1,
+                    }
+                ],
+            }
+        ],
+        "workloads": [
+            {
+                "workload_id": "proxy-wl",
+                "service_id": "proxy-bound-inference",
+                "workload_type": "inference",
+                "priority_tier": "latency_sensitive",
+                "region_id": "us-east",
+                "gpu_count_required": 2,
+                "target_util_pct": 70.0,
+                "communication_intensity": "low",
+                "migration_allowed": True,
+                "latency_sensitive": True,
+                "latency_sla_p99_ms": 2000.0,
+                "engine_runtime": "vllm",
+                "prefix_overlap": 0.5,
+                "avg_seq_len_tokens": 1024,
+            }
+        ],
+        "events": [
+            {"tick": 8, "type": "queue_surge", "service_id": "proxy-bound-inference",
+             "multiplier": 3.0},
+            {"tick": 16, "type": "queue_surge_end", "service_id": "proxy-bound-inference"},
+        ],
+    },
 
     # -----------------------------------------------------------------------
     # 4f. Rack-density overload (AIR) — dense H100 rack overheats + throttles
