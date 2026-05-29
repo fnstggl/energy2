@@ -1,0 +1,233 @@
+{
+  "backtest": {
+    "headline_baseline": "sla_aware",
+    "n_requests": 17689,
+    "n_ticks": 34,
+    "outcome": {
+      "beats_fifo_sanity_baseline": true,
+      "constraint_aware_vs_headline": "ALPHA_WIN",
+      "fifo_margin_pct": 2.0069,
+      "loss_reasons": [],
+      "margin_pct": 26.3461,
+      "notes": "",
+      "safety_evidence": [
+        "p99<=0.5x_queue_aware",
+        "timeout<=0.5x_queue_aware"
+      ]
+    },
+    "policies": {
+      "cache_affinity_baseline": {
+        "active_gpu_hours": 1.1333,
+        "cache_savings_applied": true,
+        "cost_per_sla_compliant_token": 6.298979031679514e-07,
+        "energy_cost": 0.0565,
+        "gpu_infra_cost": 2.6387,
+        "latency_p95_ms": 13625.89,
+        "latency_p99_max_ms": 82513.75,
+        "latency_p99_ms": 28239.33,
+        "mean_reuse_fraction": 0.999274,
+        "migration_reroute_count": 0,
+        "policy": "cache_affinity_baseline",
+        "queue_p95_ms": 1455.96,
+        "queue_p99_ms": 2913.67,
+        "raw_tokens": 4677738,
+        "sla_compliant_goodput": 4278817,
+        "sla_safe_goodput_per_infra_dollar": 1587558.8646520185,
+        "timeout_rate_pct_mean": 8.7086,
+        "total_infrastructure_cost": 2.6952
+      },
+      "constraint_aware": {
+        "active_gpu_hours": 1.15,
+        "cache_savings_applied": true,
+        "cost_per_sla_compliant_token": 6.189291168283067e-07,
+        "energy_cost": 0.0577,
+        "gpu_infra_cost": 2.6895,
+        "latency_p95_ms": 11478.01,
+        "latency_p99_max_ms": 28859.03,
+        "latency_p99_ms": 23002.17,
+        "mean_reuse_fraction": 0.999274,
+        "migration_reroute_count": 17,
+        "policy": "constraint_aware",
+        "queue_p95_ms": 109.25,
+        "queue_p99_ms": 179.52,
+        "raw_tokens": 4677738,
+        "sla_compliant_goodput": 4438537,
+        "sla_safe_goodput_per_infra_dollar": 1615693.9022750868,
+        "timeout_rate_pct_mean": 5.096,
+        "total_infrastructure_cost": 2.7471
+      },
+      "fifo": {
+        "active_gpu_hours": 1.1333,
+        "cache_savings_applied": false,
+        "cost_per_sla_compliant_token": 6.313501148025894e-07,
+        "energy_cost": 0.0565,
+        "gpu_infra_cost": 2.6387,
+        "latency_p95_ms": 13771.19,
+        "latency_p99_max_ms": 83059.59,
+        "latency_p99_ms": 28559.78,
+        "mean_reuse_fraction": 0.999274,
+        "migration_reroute_count": 0,
+        "policy": "fifo",
+        "queue_p95_ms": 1455.96,
+        "queue_p99_ms": 2913.67,
+        "raw_tokens": 4677738,
+        "sla_compliant_goodput": 4268975,
+        "sla_safe_goodput_per_infra_dollar": 1583907.211789579,
+        "timeout_rate_pct_mean": 8.9195,
+        "total_infrastructure_cost": 2.6952
+      },
+      "queue_aware": {
+        "active_gpu_hours": 1.0333,
+        "cache_savings_applied": false,
+        "cost_per_sla_compliant_token": 7.159025560848133e-07,
+        "energy_cost": 0.0518,
+        "gpu_infra_cost": 2.4139,
+        "latency_p95_ms": 83011.5,
+        "latency_p99_max_ms": 928470.66,
+        "latency_p99_ms": 201416.36,
+        "mean_reuse_fraction": 0.999274,
+        "migration_reroute_count": 19,
+        "policy": "queue_aware",
+        "queue_p95_ms": 47558.54,
+        "queue_p99_ms": 100646.91,
+        "raw_tokens": 4677738,
+        "sla_compliant_goodput": 3444143,
+        "sla_safe_goodput_per_infra_dollar": 1396838.147175898,
+        "timeout_rate_pct_mean": 17.1217,
+        "total_infrastructure_cost": 2.4657
+      },
+      "sla_aware": {
+        "active_gpu_hours": 1.25,
+        "cache_savings_applied": false,
+        "cost_per_sla_compliant_token": 7.819927666175405e-07,
+        "energy_cost": 0.0631,
+        "gpu_infra_cost": 2.9352,
+        "latency_p95_ms": 50457.42,
+        "latency_p99_max_ms": 928470.66,
+        "latency_p99_ms": 120264.89,
+        "mean_reuse_fraction": 0.999274,
+        "migration_reroute_count": 23,
+        "policy": "sla_aware",
+        "queue_p95_ms": 25886.86,
+        "queue_p99_ms": 54811.69,
+        "raw_tokens": 4677738,
+        "sla_compliant_goodput": 3834081,
+        "sla_safe_goodput_per_infra_dollar": 1278784.2070783286,
+        "timeout_rate_pct_mean": 12.9515,
+        "total_infrastructure_cost": 2.9982
+      }
+    },
+    "primary_kpi": "sla_safe_goodput_per_infrastructure_dollar",
+    "tick_seconds": 60.0
+  },
+  "filters": {
+    "duration_s": 600000.0,
+    "include_failures": false,
+    "sample_size": null,
+    "scale_rps": 300.0,
+    "seed": 0,
+    "start_s": 0.0
+  },
+  "load_sensitivity_sweep": [
+    {
+      "ca_beats_fifo": false,
+      "ca_outcome": "ALPHA_WIN",
+      "ca_vs_sla_aware_pct": 7.56,
+      "goodput_per_dollar": {
+        "cache_affinity_baseline": 1091286.3007241723,
+        "constraint_aware": 1025833.7630106588,
+        "fifo": 1089325.2579579814,
+        "queue_aware": 966414.8414060578,
+        "sla_aware": 953722.5394891608
+      },
+      "load_factor": 0.33
+    },
+    {
+      "ca_beats_fifo": false,
+      "ca_outcome": "ALPHA_WIN",
+      "ca_vs_sla_aware_pct": 16.36,
+      "goodput_per_dollar": {
+        "cache_affinity_baseline": 1427190.02104069,
+        "constraint_aware": 1312249.4272859765,
+        "fifo": 1423830.2969103302,
+        "queue_aware": 1036520.0723808523,
+        "sla_aware": 1127740.309841801
+      },
+      "load_factor": 0.5
+    },
+    {
+      "ca_beats_fifo": true,
+      "ca_outcome": "ALPHA_WIN",
+      "ca_vs_sla_aware_pct": 26.35,
+      "goodput_per_dollar": {
+        "cache_affinity_baseline": 1587558.8646520185,
+        "constraint_aware": 1615693.9022750868,
+        "fifo": 1583907.211789579,
+        "queue_aware": 1396838.147175898,
+        "sla_aware": 1278784.2070783286
+      },
+      "load_factor": 1.0
+    },
+    {
+      "ca_beats_fifo": true,
+      "ca_outcome": "ALPHA_WIN",
+      "ca_vs_sla_aware_pct": 128.24,
+      "goodput_per_dollar": {
+        "cache_affinity_baseline": 1668092.134937617,
+        "constraint_aware": 2031055.9731713722,
+        "fifo": 1664008.6007546491,
+        "queue_aware": 954976.3980206735,
+        "sla_aware": 889861.3786665191
+      },
+      "load_factor": 2.0
+    },
+    {
+      "ca_beats_fifo": false,
+      "ca_outcome": "ALPHA_WIN",
+      "ca_vs_sla_aware_pct": 30.13,
+      "goodput_per_dollar": {
+        "cache_affinity_baseline": 2173154.928193935,
+        "constraint_aware": 2021685.8389069652,
+        "fifo": 2167071.9462902886,
+        "queue_aware": 1547648.6452668128,
+        "sla_aware": 1553649.003852904
+      },
+      "load_factor": 3.0
+    }
+  ],
+  "source": "csv:data/external/burstgpt/raw/BurstGPT_1.csv",
+  "trace_summary": {
+    "cache_key_reuse_rate_pct": 99.9887,
+    "dataset": "burstgpt",
+    "distinct_cache_keys": 2,
+    "duration_s": 1999.9666666666667,
+    "failure_rate_pct": 0.0,
+    "has_elapsed": false,
+    "has_session_ids": false,
+    "included_count": 17689,
+    "log_type_distribution": {
+      "API log": 309,
+      "Conversation log": 17380
+    },
+    "mean_requests_per_cache_key": 8844.5,
+    "model_distribution": {
+      "ChatGPT": 11841,
+      "GPT-4": 5848
+    },
+    "output_tokens_p50": 236.0,
+    "output_tokens_p95": 634.0,
+    "output_tokens_p99": 934.0,
+    "prompt_tokens_p50": 499.0,
+    "prompt_tokens_p95": 1862.0,
+    "prompt_tokens_p99": 2389.0,
+    "row_count": 17689,
+    "rps_max_per_min": 20.75,
+    "rps_mean_per_min": 8.671078,
+    "rps_p95_per_min": 17.516667,
+    "time_end_s": 2004.9666666666667,
+    "time_start_s": 5.0,
+    "total_tokens_p50": 735.0,
+    "total_tokens_p95": 2312.0,
+    "total_tokens_p99": 2894.0
+  }
+}

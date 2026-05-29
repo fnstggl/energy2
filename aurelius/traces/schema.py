@@ -1,0 +1,343 @@
+"""Shared normalized schema for public LLM-serving / cluster trace ingestion.
+
+This module defines the dataset-agnostic interface that every public-trace
+ingester in Aurelius normalizes into. Only **BurstGPT** is implemented today
+(``aurelius/traces/burstgpt.py``); the schema is intentionally shaped so the
+future datasets named in ``docs/PUBLIC_TRACE_BACKTESTS.md`` (Azure LLM/LMM,
+Alibaba GPU, Philly, MIT Supercloud) can normalize into the **same**
+``NormalizedLLMRequest`` without changing downstream replay / backtest code.
+
+Design rules (consistent with ``docs/RESULTS.md`` and the energy backtest):
+
+- Pure, deterministic, stdlib-only (``csv`` / ``statistics`` / ``math``). No
+  pandas / numpy dependency, no network here (download lives in the ingestion
+  script), no global state.
+- The normalized record is the contract. Ingesters map their raw columns onto
+  it; the replay / backtest layers only ever see ``NormalizedLLMRequest``.
+- Nothing in this module is a production claim. A trace is replayed serving
+  traffic, **not** customer telemetry, and a derived ``cache_affinity_key`` is
+  an honest *proxy* for prefix/session locality — it is **not** a measured KV
+  cache hit rate.
+"""
+
+from __future__ import annotations
+
+import math
+from dataclasses import dataclass
+from typing import Iterable, Optional, Protocol, Sequence, runtime_checkable
+
+# Canonical log-type labels (BurstGPT uses exactly these two strings).
+LOG_TYPE_CONVERSATION = "Conversation log"
+LOG_TYPE_API = "API log"
+
+
+class TraceSchemaError(ValueError):
+    """Raised when a raw trace is missing required columns or has bad values."""
+
+
+@dataclass(frozen=True)
+class NormalizedLLMRequest:
+    """One normalized LLM-serving request — the cross-dataset contract.
+
+    Fields map 1:1 to the mission spec. Optional fields (``session_id``,
+    ``elapsed_s``) are ``None`` when the source dataset does not provide them
+    (e.g. the published ``BurstGPT_1.csv`` carries neither a Session ID nor an
+    Elapsed-time column — see ``aurelius/traces/burstgpt.py``).
+
+    ``elapsed_s`` — when present — is the source's *end-to-end* final response
+    time. It is **not** TTFT and must never be reported as a measured TTFT.
+    """
+
+    request_id: str
+    timestamp_s: float
+    session_id: Optional[str]
+    model: str
+    prompt_tokens: int
+    output_tokens: int
+    total_tokens: int
+    elapsed_s: Optional[float]
+    log_type: str
+    is_failure: bool
+    # Proxy for prefix/session locality (NOT a measured KV hit rate). Always
+    # populated so the cache-affinity replay has a stable grouping key.
+    cache_affinity_key: str
+
+    def to_dict(self) -> dict:
+        return {
+            "request_id": self.request_id,
+            "timestamp_s": self.timestamp_s,
+            "session_id": self.session_id,
+            "model": self.model,
+            "prompt_tokens": self.prompt_tokens,
+            "output_tokens": self.output_tokens,
+            "total_tokens": self.total_tokens,
+            "elapsed_s": self.elapsed_s,
+            "log_type": self.log_type,
+            "is_failure": self.is_failure,
+            "cache_affinity_key": self.cache_affinity_key,
+        }
+
+    @classmethod
+    def from_dict(cls, d: dict) -> "NormalizedLLMRequest":
+        return cls(
+            request_id=str(d["request_id"]),
+            timestamp_s=float(d["timestamp_s"]),
+            session_id=(None if d.get("session_id") in (None, "") else str(d["session_id"])),
+            model=str(d["model"]),
+            prompt_tokens=int(d["prompt_tokens"]),
+            output_tokens=int(d["output_tokens"]),
+            total_tokens=int(d["total_tokens"]),
+            elapsed_s=(None if d.get("elapsed_s") in (None, "") else float(d["elapsed_s"])),
+            log_type=str(d["log_type"]),
+            is_failure=bool(d["is_failure"]),
+            cache_affinity_key=str(d["cache_affinity_key"]),
+        )
+
+
+@runtime_checkable
+class TraceSource(Protocol):
+    """Interface every dataset ingester implements.
+
+    Only ``BurstGPTSource`` implements this today. Future datasets
+    (Azure LLM/LMM, Alibaba GPU, Philly, MIT Supercloud) plug in by
+    implementing the same three members so the replay / backtest layers stay
+    dataset-agnostic.
+    """
+
+    name: str
+    required_columns: Sequence[str]
+    default_source_url: str
+
+    def normalize(self, rows: Iterable[dict]) -> list[NormalizedLLMRequest]:
+        """Map raw CSV ``DictReader`` rows onto ``NormalizedLLMRequest``."""
+        ...
+
+
+# ---------------------------------------------------------------------------
+# Validation helpers (shared by all ingesters)
+# ---------------------------------------------------------------------------
+
+def validate_columns(
+    header: Optional[Sequence[str]],
+    required: Sequence[str],
+    dataset_name: str,
+) -> None:
+    """Raise ``TraceSchemaError`` unless every required column is present.
+
+    Column matching is exact (BurstGPT headers are well defined). This is the
+    guard tests rely on to catch a malformed / wrong-dataset CSV early.
+    """
+    if not header:
+        raise TraceSchemaError(f"{dataset_name}: empty/missing CSV header row")
+    present = set(header)
+    missing = [c for c in required if c not in present]
+    if missing:
+        raise TraceSchemaError(
+            f"{dataset_name}: missing required column(s) {missing}; "
+            f"found header {list(header)}"
+        )
+
+
+# ---------------------------------------------------------------------------
+# Percentile + summary helpers (stdlib only, deterministic)
+# ---------------------------------------------------------------------------
+
+def percentile(values: Sequence[float], pct: float) -> float:
+    """Nearest-rank percentile (deterministic, no interpolation surprises).
+
+    ``pct`` in [0, 100]. Empty input returns 0.0.
+    """
+    if not values:
+        return 0.0
+    if pct <= 0:
+        return float(min(values))
+    if pct >= 100:
+        return float(max(values))
+    ordered = sorted(values)
+    # Nearest-rank: rank = ceil(pct/100 * n), 1-indexed.
+    rank = math.ceil((pct / 100.0) * len(ordered))
+    rank = max(1, min(len(ordered), rank))
+    return float(ordered[rank - 1])
+
+
+@dataclass(frozen=True)
+class TraceSummary:
+    """Dataset-agnostic descriptive stats over a normalized request list."""
+
+    dataset: str
+    row_count: int
+    included_count: int
+    time_start_s: float
+    time_end_s: float
+    duration_s: float
+    model_distribution: dict
+    log_type_distribution: dict
+    failure_rate_pct: float
+    prompt_tokens_p50: float
+    prompt_tokens_p95: float
+    prompt_tokens_p99: float
+    output_tokens_p50: float
+    output_tokens_p95: float
+    output_tokens_p99: float
+    total_tokens_p50: float
+    total_tokens_p95: float
+    total_tokens_p99: float
+    rps_mean_per_min: float
+    rps_p95_per_min: float
+    rps_max_per_min: float
+    distinct_cache_keys: int
+    cache_key_reuse_rate_pct: float
+    mean_requests_per_cache_key: float
+    has_session_ids: bool
+    has_elapsed: bool
+
+    def to_dict(self) -> dict:
+        return {
+            "dataset": self.dataset,
+            "row_count": self.row_count,
+            "included_count": self.included_count,
+            "time_start_s": self.time_start_s,
+            "time_end_s": self.time_end_s,
+            "duration_s": self.duration_s,
+            "model_distribution": self.model_distribution,
+            "log_type_distribution": self.log_type_distribution,
+            "failure_rate_pct": round(self.failure_rate_pct, 4),
+            "prompt_tokens_p50": self.prompt_tokens_p50,
+            "prompt_tokens_p95": self.prompt_tokens_p95,
+            "prompt_tokens_p99": self.prompt_tokens_p99,
+            "output_tokens_p50": self.output_tokens_p50,
+            "output_tokens_p95": self.output_tokens_p95,
+            "output_tokens_p99": self.output_tokens_p99,
+            "total_tokens_p50": self.total_tokens_p50,
+            "total_tokens_p95": self.total_tokens_p95,
+            "total_tokens_p99": self.total_tokens_p99,
+            "rps_mean_per_min": round(self.rps_mean_per_min, 6),
+            "rps_p95_per_min": round(self.rps_p95_per_min, 6),
+            "rps_max_per_min": round(self.rps_max_per_min, 6),
+            "distinct_cache_keys": self.distinct_cache_keys,
+            "cache_key_reuse_rate_pct": round(self.cache_key_reuse_rate_pct, 4),
+            "mean_requests_per_cache_key": round(self.mean_requests_per_cache_key, 4),
+            "has_session_ids": self.has_session_ids,
+            "has_elapsed": self.has_elapsed,
+        }
+
+
+def time_rescale(
+    requests: Sequence["NormalizedLLMRequest"], factor: float
+) -> list["NormalizedLLMRequest"]:
+    """Compress/dilate arrival timestamps about the first request by ``factor``.
+
+    ``factor > 1`` makes arrivals denser (busier serving tier); ``< 1`` sparser.
+    Token counts, models, sessions and failure flags are preserved exactly —
+    only the inter-arrival spacing scales. Used by the backtest's documented
+    load-regime sensitivity sweep so the same real burst SHAPE is replayed at
+    several load levels.
+    """
+    if not requests or factor <= 0 or factor == 1.0:
+        return list(requests)
+    ordered = sorted(requests, key=lambda r: (r.timestamp_s, r.request_id))
+    t0 = ordered[0].timestamp_s
+    out = []
+    for r in ordered:
+        new_ts = t0 + (r.timestamp_s - t0) / factor
+        out.append(
+            NormalizedLLMRequest(
+                request_id=r.request_id, timestamp_s=new_ts,
+                session_id=r.session_id, model=r.model,
+                prompt_tokens=r.prompt_tokens, output_tokens=r.output_tokens,
+                total_tokens=r.total_tokens, elapsed_s=r.elapsed_s,
+                log_type=r.log_type, is_failure=r.is_failure,
+                cache_affinity_key=r.cache_affinity_key,
+            )
+        )
+    return out
+
+
+def summarize_trace(
+    requests: Sequence[NormalizedLLMRequest],
+    *,
+    dataset: str,
+    bin_seconds: float = 60.0,
+) -> TraceSummary:
+    """Compute the descriptive stats the ingestion script prints.
+
+    RPS-by-minute uses ``bin_seconds`` fixed bins over the trace's own time
+    range, so the numbers are reproducible and independent of wall clock. The
+    cache-affinity stats are an honest *proxy* for prefix/session locality.
+    """
+    if not requests:
+        return TraceSummary(
+            dataset=dataset, row_count=0, included_count=0, time_start_s=0.0,
+            time_end_s=0.0, duration_s=0.0, model_distribution={},
+            log_type_distribution={}, failure_rate_pct=0.0,
+            prompt_tokens_p50=0.0, prompt_tokens_p95=0.0, prompt_tokens_p99=0.0,
+            output_tokens_p50=0.0, output_tokens_p95=0.0, output_tokens_p99=0.0,
+            total_tokens_p50=0.0, total_tokens_p95=0.0, total_tokens_p99=0.0,
+            rps_mean_per_min=0.0, rps_p95_per_min=0.0, rps_max_per_min=0.0,
+            distinct_cache_keys=0, cache_key_reuse_rate_pct=0.0,
+            mean_requests_per_cache_key=0.0, has_session_ids=False,
+            has_elapsed=False,
+        )
+
+    times = [r.timestamp_s for r in requests]
+    t0, t1 = min(times), max(times)
+    duration = max(0.0, t1 - t0)
+
+    model_dist: dict = {}
+    log_dist: dict = {}
+    for r in requests:
+        model_dist[r.model] = model_dist.get(r.model, 0) + 1
+        log_dist[r.log_type] = log_dist.get(r.log_type, 0) + 1
+
+    failures = sum(1 for r in requests if r.is_failure)
+    failure_rate = 100.0 * failures / len(requests)
+
+    prompt = [r.prompt_tokens for r in requests]
+    output = [r.output_tokens for r in requests]
+    total = [r.total_tokens for r in requests]
+
+    # RPS per fixed bin over the trace time range.
+    n_bins = max(1, int(math.ceil((duration + 1e-9) / bin_seconds))) if duration > 0 else 1
+    bin_counts = [0] * n_bins
+    for r in requests:
+        idx = 0 if duration <= 0 else min(n_bins - 1, int((r.timestamp_s - t0) / bin_seconds))
+        bin_counts[idx] += 1
+    rps_per_bin = [c / bin_seconds for c in bin_counts]
+
+    # Cache-affinity proxy: how often a cache_affinity_key recurs.
+    key_counts: dict = {}
+    for r in requests:
+        key_counts[r.cache_affinity_key] = key_counts.get(r.cache_affinity_key, 0) + 1
+    distinct_keys = len(key_counts)
+    reused_requests = sum(c - 1 for c in key_counts.values() if c > 1)
+    reuse_rate = 100.0 * reused_requests / len(requests)
+    mean_per_key = len(requests) / distinct_keys if distinct_keys else 0.0
+
+    return TraceSummary(
+        dataset=dataset,
+        row_count=len(requests),
+        included_count=len(requests),
+        time_start_s=t0,
+        time_end_s=t1,
+        duration_s=duration,
+        model_distribution=dict(sorted(model_dist.items())),
+        log_type_distribution=dict(sorted(log_dist.items())),
+        failure_rate_pct=failure_rate,
+        prompt_tokens_p50=percentile(prompt, 50),
+        prompt_tokens_p95=percentile(prompt, 95),
+        prompt_tokens_p99=percentile(prompt, 99),
+        output_tokens_p50=percentile(output, 50),
+        output_tokens_p95=percentile(output, 95),
+        output_tokens_p99=percentile(output, 99),
+        total_tokens_p50=percentile(total, 50),
+        total_tokens_p95=percentile(total, 95),
+        total_tokens_p99=percentile(total, 99),
+        rps_mean_per_min=sum(rps_per_bin) / len(rps_per_bin),
+        rps_p95_per_min=percentile(rps_per_bin, 95),
+        rps_max_per_min=max(rps_per_bin),
+        distinct_cache_keys=distinct_keys,
+        cache_key_reuse_rate_pct=reuse_rate,
+        mean_requests_per_cache_key=mean_per_key,
+        has_session_ids=any(r.session_id is not None for r in requests),
+        has_elapsed=any(r.elapsed_s is not None for r in requests),
+    )
