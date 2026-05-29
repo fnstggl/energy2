@@ -2944,6 +2944,7 @@ class ClusterSimulator:
                         if queue.prefix_cache_hit_rate_pct is not None else None
                     ),
                     preemptions_total=queue.preemptions_total,
+                    proxy_saturation=getattr(queue, "proxy_saturation", None),
                     tokens_per_s=max(0.0, queue.tokens_per_second),
                     error_rate_pct=max(0.0, min(100.0, queue.timeout_rate_pct)),
                     workload_type=workload.workload_type if workload else None,

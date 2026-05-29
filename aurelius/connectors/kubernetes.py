@@ -404,7 +404,8 @@ class KubernetesConnector:
                     "kubernetes package not available. "
                     "Install with: pip install kubernetes"
                 )
-            from kubernetes import client, config as k8s_config  # type: ignore
+            from kubernetes import client  # type: ignore
+            from kubernetes import config as k8s_config
             if self._cfg.in_cluster:
                 k8s_config.load_incluster_config()
             elif self._cfg.kubeconfig_path:

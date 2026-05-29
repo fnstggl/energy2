@@ -20,6 +20,15 @@ from aurelius.connectors.base import (
     RawMetricResult,
     TelemetrySnapshot,
 )
+from aurelius.connectors.kubernetes import (
+    FakeKubernetesConnector,
+    K8sPlacementSnapshot,
+    KubernetesConnector,
+    KubernetesConnectorConfig,
+    PodPlacement,
+    normalize_node_dict,
+    normalize_pod_dict,
+)
 from aurelius.connectors.metric_mapping import (
     MetricMapping,
     MetricMappingRegistry,
@@ -31,15 +40,6 @@ from aurelius.connectors.prometheus import (
     PrometheusClient,
     PrometheusTelemetryConnector,
     parse_prometheus_text,
-)
-from aurelius.connectors.kubernetes import (
-    FakeKubernetesConnector,
-    K8sPlacementSnapshot,
-    KubernetesConnector,
-    KubernetesConnectorConfig,
-    PodPlacement,
-    normalize_node_dict,
-    normalize_pod_dict,
 )
 from aurelius.connectors.topology import (
     FakeTopologyCollector,

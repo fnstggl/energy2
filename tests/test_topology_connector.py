@@ -21,14 +21,12 @@ from __future__ import annotations
 
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Optional
 
 import pytest
 
 from aurelius.connectors.topology import (
     FakeTopologyCollector,
     NvidiaSmiTopologyCollector,
-    PlacementScore,
     PlacementWorkloadSpec,
     _derive_interconnect_class,
     _parse_link_token,

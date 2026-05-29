@@ -11,7 +11,6 @@ Verifies:
 
 from __future__ import annotations
 
-
 import pytest
 
 from aurelius.simulation.cluster.engine import ClusterSimulator
@@ -19,7 +18,6 @@ from aurelius.simulation.cluster.scenarios import list_scenarios, load_scenario
 from aurelius.state.models import (
     ClusterState,
 )
-
 
 # ---------------------------------------------------------------------------
 # Fixtures

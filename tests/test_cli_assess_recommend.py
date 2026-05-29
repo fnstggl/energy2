@@ -11,12 +11,11 @@ No secrets appear in any report output.
 
 from __future__ import annotations
 
-import json
 import argparse
+import json
 from unittest.mock import patch
 
 import pytest
-
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -71,10 +70,11 @@ class TestFormatAssessmentText:
         assert "SANDBOX" in text
 
     def test_missing_signals_shown(self):
+        from datetime import datetime, timezone
+
+        from aurelius.constraints import ConstraintClassifier
         from aurelius.reporting.constraint_report import format_assessment_text
         from aurelius.state.models import ClusterState, Provenance
-        from aurelius.constraints import ConstraintClassifier
-        from datetime import datetime, timezone
         # Use an empty ClusterState — no GPU/queue/energy data → all scorers report missing
         ts = datetime(2024, 1, 1, 0, 0, 0, tzinfo=timezone.utc)
         prov = Provenance(source="test", fetched_at=ts, confidence="low")
@@ -94,8 +94,8 @@ class TestFormatAssessmentText:
 
 class TestFormatRecommendationsText:
     def test_basic_output(self):
-        from aurelius.reporting.constraint_report import format_recommendations_text
         from aurelius.constraints import ConstraintAwareEngine
+        from aurelius.reporting.constraint_report import format_recommendations_text
         state = _get_simulator_state()
         result = ConstraintAwareEngine().run(state)
         text = format_recommendations_text(result)
@@ -103,16 +103,16 @@ class TestFormatRecommendationsText:
         assert "recommendation_only" in text
 
     def test_sandbox_label(self):
-        from aurelius.reporting.constraint_report import format_recommendations_text
         from aurelius.constraints import ConstraintAwareEngine
+        from aurelius.reporting.constraint_report import format_recommendations_text
         state = _get_simulator_state()
         result = ConstraintAwareEngine().run(state)
         text = format_recommendations_text(result)
         assert "SANDBOX" in text
 
     def test_no_secrets(self):
-        from aurelius.reporting.constraint_report import format_recommendations_text
         from aurelius.constraints import ConstraintAwareEngine
+        from aurelius.reporting.constraint_report import format_recommendations_text
         state = _get_simulator_state()
         result = ConstraintAwareEngine().run(state)
         text = format_recommendations_text(result)
@@ -129,8 +129,8 @@ class TestFormatRecommendationsText:
 
 class TestFormatEngineResultJson:
     def test_json_valid(self):
-        from aurelius.reporting.constraint_report import format_engine_result_json
         from aurelius.constraints import ConstraintAwareEngine
+        from aurelius.reporting.constraint_report import format_engine_result_json
         state = _get_simulator_state()
         result = ConstraintAwareEngine().run(state)
         json_str = format_engine_result_json(result)
@@ -140,8 +140,8 @@ class TestFormatEngineResultJson:
         assert "elapsed_ms" in parsed
 
     def test_json_schema(self):
-        from aurelius.reporting.constraint_report import format_engine_result_json
         from aurelius.constraints import ConstraintAwareEngine
+        from aurelius.reporting.constraint_report import format_engine_result_json
         state = _get_simulator_state()
         result = ConstraintAwareEngine().run(state)
         parsed = json.loads(format_engine_result_json(result))
@@ -152,8 +152,8 @@ class TestFormatEngineResultJson:
         assert "scores" in assessment
 
     def test_json_no_secrets(self):
-        from aurelius.reporting.constraint_report import format_engine_result_json
         from aurelius.constraints import ConstraintAwareEngine
+        from aurelius.reporting.constraint_report import format_engine_result_json
         state = _get_simulator_state()
         result = ConstraintAwareEngine().run(state)
         json_str = format_engine_result_json(result)
@@ -163,8 +163,8 @@ class TestFormatEngineResultJson:
 
 class TestFormatTelemetryCheckText:
     def test_basic_output(self):
-        from aurelius.reporting.constraint_report import format_telemetry_check_text
         from aurelius.constraints import ConstraintClassifier
+        from aurelius.reporting.constraint_report import format_telemetry_check_text
         state = _get_simulator_state()
         assessment = ConstraintClassifier().assess(state)
         text = format_telemetry_check_text(assessment)
@@ -173,8 +173,8 @@ class TestFormatTelemetryCheckText:
         assert "COVERAGE SUMMARY" in text
 
     def test_shows_missing_signals(self):
-        from aurelius.reporting.constraint_report import format_telemetry_check_text
         from aurelius.constraints import ConstraintClassifier
+        from aurelius.reporting.constraint_report import format_telemetry_check_text
         state = _get_simulator_state()
         assessment = ConstraintClassifier().assess(state)
         text = format_telemetry_check_text(assessment)
@@ -182,8 +182,8 @@ class TestFormatTelemetryCheckText:
             assert "MISSING SIGNALS" in text
 
     def test_coverage_pct_is_valid(self):
-        from aurelius.reporting.constraint_report import format_telemetry_check_text
         from aurelius.constraints import ConstraintClassifier
+        from aurelius.reporting.constraint_report import format_telemetry_check_text
         state = _get_simulator_state(steps=10)
         assessment = ConstraintClassifier().assess(state)
         text = format_telemetry_check_text(assessment)
@@ -219,9 +219,9 @@ class TestFormatTopologyReportText:
 
 class TestFormatScenarioComparisonTable:
     def test_basic_table(self):
+        from aurelius.constraints import ConstraintAwareEngine
         from aurelius.reporting.constraint_report import format_scenario_comparison_table
         from aurelius.simulation.cluster import ClusterSimulator, load_scenario
-        from aurelius.constraints import ConstraintAwareEngine
 
         scenario = load_scenario("energy_price_arbitrage_multiregion", seed_override=42)
         sim = ClusterSimulator(scenario.config, seed=42)
@@ -242,9 +242,9 @@ class TestFormatScenarioComparisonTable:
         assert "No ticks run" in text
 
     def test_sandbox_label_present(self):
+        from aurelius.constraints import ConstraintAwareEngine
         from aurelius.reporting.constraint_report import format_scenario_comparison_table
         from aurelius.simulation.cluster import ClusterSimulator, load_scenario
-        from aurelius.constraints import ConstraintAwareEngine
 
         scenario = load_scenario("energy_price_arbitrage_multiregion", seed_override=42)
         sim = ClusterSimulator(scenario.config, seed=42)
@@ -407,8 +407,9 @@ class TestCmdSimulateConstraintScenario:
         assert "SCENARIO:" in out_file.read_text()
 
     def test_deterministic_with_seed(self):
-        from aurelius.cli_constraint import cmd_simulate_constraint_scenario
         import io
+
+        from aurelius.cli_constraint import cmd_simulate_constraint_scenario
         outputs = []
         for _ in range(2):
             buf = io.StringIO()
@@ -615,8 +616,9 @@ class TestSandboxInvariants:
                 )
 
     def test_missing_telemetry_never_fabricated_as_zero(self):
-        from aurelius.state.models import ClusterState, RegionState, Provenance
         from datetime import datetime, timezone
+
+        from aurelius.state.models import ClusterState, Provenance, RegionState
 
         # Create a ClusterState with no energy data to verify None not 0
         ts = datetime.now(tz=timezone.utc)

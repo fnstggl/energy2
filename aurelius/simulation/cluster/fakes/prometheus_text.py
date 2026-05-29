@@ -17,7 +17,6 @@ from typing import Optional
 
 from ..model import SimNode, SimQueue, SimWorkload
 
-
 # ---------------------------------------------------------------------------
 # DCGM metrics text generator
 # ---------------------------------------------------------------------------

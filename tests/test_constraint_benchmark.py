@@ -227,7 +227,6 @@ class TestMigrationFeedback:
         if not other_regions:
             pytest.skip("Only one region in this scenario")
 
-        src_region = wl_migrable.region_id
         old_hit_rate = wl_migrable.prefix_cache_hit_rate_frac
         target_region = other_regions[0]
 

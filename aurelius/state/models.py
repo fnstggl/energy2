@@ -408,6 +408,12 @@ class InferenceServiceState:
     # Preemptions (vLLM — rising = KV pressure)
     preemptions_total: Optional[float] = None
 
+    # Ingress proxy saturation factor (>1.0 = the front-door proxy/router is the
+    # throughput bottleneck, not replica count). Derived from arrival-rate vs
+    # proxy capacity. When this is high, adding replicas does NOT relieve queue
+    # wait — the correct action is to reroute traffic / relieve the proxy.
+    proxy_saturation: Optional[float] = None
+
     # Efficiency
     tokens_per_s: Optional[float] = None
 
@@ -496,6 +502,7 @@ class InferenceServiceState:
             "kv_cache_usage": self.kv_cache_usage,
             "prefix_cache_hit_rate": self.prefix_cache_hit_rate,
             "preemptions_total": self.preemptions_total,
+            "proxy_saturation": self.proxy_saturation,
             "tokens_per_s": self.tokens_per_s,
             "error_rate_pct": self.error_rate_pct,
             "replicas": self.replicas,
@@ -537,6 +544,7 @@ class InferenceServiceState:
             kv_cache_usage=d.get("kv_cache_usage"),
             prefix_cache_hit_rate=d.get("prefix_cache_hit_rate"),
             preemptions_total=d.get("preemptions_total"),
+            proxy_saturation=d.get("proxy_saturation"),
             tokens_per_s=d.get("tokens_per_s"),
             error_rate_pct=d.get("error_rate_pct"),
             replicas=d.get("replicas"),

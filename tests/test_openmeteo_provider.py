@@ -14,9 +14,9 @@ import pytest
 
 from aurelius.ingestion.weather_provider import (
     CANONICAL_COLS,
+    REGION_COORDS,
     OpenMeteoConfig,
     OpenMeteoWeatherProvider,
-    REGION_COORDS,
 )
 
 
@@ -81,11 +81,11 @@ def test_cache_roundtrip(tmp_path, monkeypatch):
 
     def fake_urlopen(url, timeout=0):
         calls["n"] += 1
-        import io, json
+        import json
         class _Resp:
-            def __enter__(self_): return self_
-            def __exit__(self_, *a): return False
-            def read(self_): return json.dumps(_fake_payload()).encode()
+            def __enter__(self): return self
+            def __exit__(self, *a): return False
+            def read(self): return json.dumps(_fake_payload()).encode()
         return _Resp()
 
     monkeypatch.setattr("urllib.request.urlopen", fake_urlopen)

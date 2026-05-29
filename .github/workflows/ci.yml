@@ -85,7 +85,8 @@ jobs:
             httpx \
             requests \
             pyyaml \
-            strictyaml
+            strictyaml \
+            sqlalchemy
 
       - name: Run tests (excluding live API tests)
         run: |

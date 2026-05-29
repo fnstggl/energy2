@@ -116,12 +116,62 @@ def _cheaper_regions(
     return sorted(cheaper, key=lambda x: x[1])
 
 
+# Prefix/KV cache-affinity floor (HEURISTIC). At/above this hit rate, a
+# cross-region energy move flushes the prefix cache and the cold-route TTFT
+# penalty dominates the energy saving — preserve affinity instead. The cost
+# model also penalises this; the generator-level guard makes the intent explicit
+# and testable (Part E.3).
+_PREFIX_AFFINITY_PRESERVE_HIT_RATE: float = 0.70
+
+# Ingress-proxy saturation floor (HEURISTIC). Above this, the front-door proxy
+# (not replica count) caps throughput; SCALE_REPLICAS is useless and the correct
+# relief is to reroute traffic / rebalance ingress (Part E.2). Matches the
+# realism model's "proxy dominates" regime (see test_migration_realism).
+_PROXY_SATURATION_BOTTLENECK: float = 1.5
+
+
+def _least_loaded_peer(
+    state: ClusterState, current_region: str
+) -> Optional[str]:
+    """Return a peer region with materially more spare capacity than current.
+
+    Used to reroute traffic away from a saturated ingress proxy. Deterministic:
+    ties broken by region id. Returns None when no clearly-better peer exists.
+    """
+    cur = state.regions.get(current_region)
+    cur_spare = cur.spare_capacity_pct if cur else None
+    best: Optional[tuple[float, str]] = None
+    for region_id, region in sorted(state.regions.items()):
+        if region_id == current_region:
+            continue
+        spare = region.spare_capacity_pct
+        if spare is None:
+            continue
+        # Require a materially-better destination (≥ 15 pct points more spare,
+        # and at least 10% absolute) so we do not reroute into another full region.
+        if spare < 10.0:
+            continue
+        if cur_spare is not None and spare < cur_spare + 15.0:
+            continue
+        if best is None or spare > best[0]:
+            best = (spare, region_id)
+    return best[1] if best else None
+
+
 def _gen_energy(
     service: InferenceServiceState,
     state: ClusterState,
     assessment: ConstraintAssessment,
 ) -> list[OptimizationAction]:
-    """ENERGY-bound: shift to cheaper region; offer DEFER for flexible workloads."""
+    """ENERGY-bound: shift to cheaper region; offer DEFER for flexible workloads.
+
+    Prefix-affinity guard (Part E.3): when the service has a high prefix-cache
+    hit rate, a cross-region move destroys that affinity (cold-route TTFT
+    penalty). In that case we do NOT emit CHOOSE_CHEAPER_REGION (preserve
+    affinity) and offer only the in-region DEFER. The energy move is allowed
+    only when cache confidence is low enough (hit rate below the floor) or the
+    destination would preserve affinity.
+    """
     candidates: list[OptimizationAction] = []
     current_region = service.region
     if current_region is None:
@@ -131,6 +181,29 @@ def _gen_energy(
     reg = state.regions.get(current_region)
     if reg and reg.energy:
         current_price = reg.energy.price_per_mwh
+
+    # Cache-affinity preservation: high prefix-cache hit rate ⇒ block the
+    # region move (the move would flush the cache and break TTFT/goodput).
+    preserve_affinity = (
+        service.prefix_cache_hit_rate is not None
+        and service.prefix_cache_hit_rate >= _PREFIX_AFFINITY_PRESERVE_HIT_RATE
+    )
+    if preserve_affinity:
+        # Only the in-region, affinity-preserving DEFER remains.
+        candidates.append(OptimizationAction(
+            action_type=ActionType.DEFER,
+            target_region=current_region,
+            expected_savings_pct=3.0,  # HEURISTIC
+            description=(
+                f"Preserve prefix-cache affinity for {service.service_id} "
+                f"(hit_rate={service.prefix_cache_hit_rate:.2f}≥"
+                f"{_PREFIX_AFFINITY_PRESERVE_HIT_RATE:.2f}): defer in-region "
+                "instead of a cache-destroying cross-region energy move"
+            ),
+            metadata={"preserve_affinity": True,
+                      "prefix_cache_hit_rate": service.prefix_cache_hit_rate},
+        ))
+        return candidates
 
     for target_region, target_price in _cheaper_regions(state, current_region):
         if current_price and current_price > 0:
@@ -203,15 +276,65 @@ def _gen_queue(
     state: ClusterState,
     assessment: ConstraintAssessment,
 ) -> list[OptimizationAction]:
-    """QUEUE-bound: add replicas; spread to reduce per-service queue depth."""
+    """QUEUE-bound relief.
+
+    Two regimes (Part E.1 / E.2):
+
+    * **Ingress-proxy bottleneck** (``proxy_saturation`` high): throughput is
+      capped by the front-door proxy, NOT replica count. Adding replicas is
+      useless, so we suppress SCALE_REPLICAS and instead reroute traffic to a
+      less-loaded peer region (when one is clearly safe) and spread to rebalance
+      ingress — flagging the proxy bottleneck in the rationale.
+    * **Replica-bound queue surge**: scale replicas (advertising prewarm /
+      reserve-capacity relief variants) and spread. The chosen action_type
+      remains SCALE_REPLICAS / SPREAD so multi-constraint routing is unchanged.
+    """
     current_region = service.region or "unknown"
+
+    proxy_sat = service.proxy_saturation
+    if proxy_sat is not None and proxy_sat >= _PROXY_SATURATION_BOTTLENECK:
+        candidates: list[OptimizationAction] = []
+        peer = _least_loaded_peer(state, current_region)
+        if peer is not None:
+            candidates.append(OptimizationAction(
+                action_type=ActionType.REROUTE,
+                target_region=peer,
+                expected_savings_pct=2.0,  # HEURISTIC: ingress relief avoids timeout
+                description=(
+                    f"Reroute traffic for {service.service_id} away from saturated "
+                    f"ingress proxy in {current_region} (saturation={proxy_sat:.2f}) "
+                    f"to less-loaded {peer}"
+                ),
+                metadata={"proxy_bottleneck": True, "proxy_saturation": proxy_sat,
+                          "flag": "proxy_bottleneck"},
+            ))
+        candidates.append(OptimizationAction(
+            action_type=ActionType.SPREAD,
+            target_region=current_region,
+            expected_savings_pct=0.0,
+            description=(
+                f"Rebalance ingress for {service.service_id} — proxy bottleneck "
+                f"(saturation={proxy_sat:.2f}); adding replicas would not help"
+            ),
+            metadata={"proxy_bottleneck": True, "flag": "proxy_bottleneck",
+                      "suppressed_action": "scale_replicas"},
+        ))
+        return candidates
+
     return [
         OptimizationAction(
             action_type=ActionType.SCALE_REPLICAS,
             target_region=current_region,
             expected_savings_pct=0.0,
             description=f"Add replicas for {service.service_id} to absorb queue surge",
-            metadata={"target_replicas_delta": 1},
+            # prewarm_replica / reserve_capacity_for_sla are execution variants of
+            # the same capacity-relief candidate (Part E.1): they all add SLA-safe
+            # serving capacity. Surfaced as variants so callers can pre-warm or
+            # reserve instead of cold-scaling, without changing the action_type
+            # (multi-constraint routing depends on the action_type set).
+            metadata={"target_replicas_delta": 1,
+                      "relief_variants": ["scale_replicas", "prewarm_replica",
+                                          "reserve_capacity_for_sla"]},
         ),
         OptimizationAction(
             action_type=ActionType.SPREAD,

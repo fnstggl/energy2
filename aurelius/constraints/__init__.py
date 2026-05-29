@@ -26,6 +26,14 @@ from .cost_model import (
     MigrationGovernor,
     RiskInputs,
 )
+from .energy_adapter import (
+    ConstraintAwareEnergyCandidate,
+    DestinationContext,
+    EnergyArbitrageAdapter,
+    EnergyCandidateAction,
+    ExistingEnergyCandidate,
+    GateDecision,
+)
 from .engine import ConstraintAwareEngine, EngineResult, WorkloadDescriptor
 from .observability import AureliusMetrics, AureliusObserver, ConnectorHealth
 
@@ -43,4 +51,11 @@ __all__ = [
     "AureliusObserver",
     "AureliusMetrics",
     "ConnectorHealth",
+    # Energy adapter (this PR): existing energy engine -> constraint-aware gates.
+    "EnergyArbitrageAdapter",
+    "ExistingEnergyCandidate",
+    "ConstraintAwareEnergyCandidate",
+    "DestinationContext",
+    "EnergyCandidateAction",
+    "GateDecision",
 ]

@@ -11,8 +11,8 @@ from datetime import datetime, timedelta, timezone
 
 import pandas as pd
 
-from aurelius.shadow.runner import LiveShadowRunner
 from aurelius.ingestion.job_logs import JobLogIngester
+from aurelius.shadow.runner import LiveShadowRunner
 
 REGIONS = ["us-west", "us-east", "us-south"]
 DECISION = datetime(2026, 1, 20, tzinfo=timezone.utc)

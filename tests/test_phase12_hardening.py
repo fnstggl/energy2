@@ -35,7 +35,6 @@ from aurelius.constraints.observability import AureliusMetrics
 from aurelius.simulation.cluster import ClusterSimulator, load_scenario
 from aurelius.state.models import ClusterState, Provenance
 
-
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
@@ -201,9 +200,10 @@ class TestKubernetesReadOnly:
 
     def test_kubernetes_snapshot_is_readable(self):
         """K8sPlacementSnapshot must be readable from FakeKubernetesConnector."""
-        from aurelius.connectors.kubernetes import FakeKubernetesConnector
         import json
         from pathlib import Path
+
+        from aurelius.connectors.kubernetes import FakeKubernetesConnector
         fixture_path = (
             Path(__file__).parent / "fixtures" / "kubernetes" / "node_list.json"
         )
@@ -493,8 +493,8 @@ class TestPrometheusTextExport:
 
     def test_blocked_by_sla_counts_sla_gate_rejections(self):
         obs = AureliusObserver()
-        from aurelius.state.models import ConstraintAssessment, ConstraintType
         from aurelius.constraints.engine import EngineResult
+        from aurelius.state.models import ConstraintAssessment, ConstraintType
         now = datetime.now(tz=timezone.utc)
         prov = Provenance(source="test", fetched_at=now, confidence="high", is_sandbox=True)
         assessment = ConstraintAssessment(
@@ -663,8 +663,9 @@ class TestProductionConfig:
 
     def test_production_config_yaml_parseable(self):
         pytest.importorskip("yaml")
-        import yaml
         from pathlib import Path
+
+        import yaml
         config_path = (
             Path(__file__).parent.parent
             / "configs" / "connectors" / "aurelius_constraint_production.yaml"
@@ -679,8 +680,9 @@ class TestProductionConfig:
 
     def test_production_config_engine_defaults(self):
         pytest.importorskip("yaml")
-        import yaml
         from pathlib import Path
+
+        import yaml
         config_path = (
             Path(__file__).parent.parent
             / "configs" / "connectors" / "aurelius_constraint_production.yaml"
@@ -692,8 +694,9 @@ class TestProductionConfig:
 
     def test_production_config_observability_enabled(self):
         pytest.importorskip("yaml")
-        import yaml
         from pathlib import Path
+
+        import yaml
         config_path = (
             Path(__file__).parent.parent
             / "configs" / "connectors" / "aurelius_constraint_production.yaml"

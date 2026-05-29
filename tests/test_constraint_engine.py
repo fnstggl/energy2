@@ -32,6 +32,8 @@ from typing import Optional
 
 import pytest
 
+from aurelius.constraints.classifier import ConstraintConfig
+from aurelius.constraints.cost_model import CostModelConfig
 from aurelius.constraints.engine import (
     ConstraintAwareEngine,
     EngineResult,
@@ -40,11 +42,9 @@ from aurelius.constraints.engine import (
     _cheaper_regions,
     _service_to_sla_workload_state,
 )
-from aurelius.constraints.classifier import ConstraintConfig
-from aurelius.constraints.cost_model import CostModelConfig
 from aurelius.sla.actions import ActionType
 from aurelius.sla.loader import SLARegistry
-from aurelius.sla.schema import HardSLA, SLAPolicy, PriorityTier
+from aurelius.sla.schema import HardSLA, PriorityTier, SLAPolicy
 from aurelius.state.models import (
     ClusterState,
     EnergyState,
@@ -54,8 +54,8 @@ from aurelius.state.models import (
     Provenance,
     RegionState,
     ThermalState,
-    TopologyState,
     TopologyLinkType,
+    TopologyState,
 )
 
 # ---------------------------------------------------------------------------
@@ -1053,10 +1053,6 @@ class TestPlacementScorerIntegration:
         This is higher degradation than the previous 0.3 heuristic,
         correctly reflecting that cross-region communication is worst-case.
         """
-        from aurelius.constraints.cost_model import MigrationCostModel, CostModelConfig
-        from aurelius.state.models import ConstraintType, ConstraintAssessment, Provenance
-
-        cost_model = MigrationCostModel(CostModelConfig())
         nvswitch_topo = self._make_nvswitch_topology()
         svc = _service("test-svc", region="r-nvswitch")
 

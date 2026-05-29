@@ -28,12 +28,11 @@ from aurelius.connectors.kubernetes import (
     K8sPlacementSnapshot,
     KubernetesConnector,
     KubernetesConnectorConfig,
-    PodPlacement,
-    _parse_gpu_qty,
+    _build_snapshot,
     _extract_topology_labels,
+    _parse_gpu_qty,
     normalize_node_dict,
     normalize_pod_dict,
-    _build_snapshot,
 )
 
 # ---------------------------------------------------------------------------

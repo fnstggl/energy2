@@ -15,19 +15,18 @@ from datetime import datetime, timezone
 
 import pytest
 
-from aurelius.simulation.cluster.engine import ClusterSimulator
-from aurelius.simulation.cluster.scenarios import load_scenario
 from aurelius.connectors.dcgm import DCGMAdapter
-from aurelius.connectors.prometheus import FakePrometheusClient
-from aurelius.connectors.metric_mapping import dcgm_registry, vllm_registry
-from aurelius.connectors.vllm import VLLMAdapter
 from aurelius.connectors.kubernetes import FakeKubernetesConnector
+from aurelius.connectors.metric_mapping import dcgm_registry, vllm_registry
+from aurelius.connectors.prometheus import FakePrometheusClient
 from aurelius.connectors.topology import (
     FakeTopologyCollector,
-    parse_nvidia_smi_topo,
     parse_nvidia_smi_list,
+    parse_nvidia_smi_topo,
 )
-
+from aurelius.connectors.vllm import VLLMAdapter
+from aurelius.simulation.cluster.engine import ClusterSimulator
+from aurelius.simulation.cluster.scenarios import load_scenario
 
 # ---------------------------------------------------------------------------
 # Fixtures

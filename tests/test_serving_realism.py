@@ -11,8 +11,6 @@ from __future__ import annotations
 
 import random
 
-import pytest
-
 from aurelius.benchmarks.constraint_runner import ConstraintBenchmarkRunner
 from aurelius.simulation.cluster import serving
 from aurelius.simulation.cluster.calibration import SERVING_PARAMS, calibration_table
