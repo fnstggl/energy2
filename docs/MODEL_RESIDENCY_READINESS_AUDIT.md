@@ -298,3 +298,49 @@ simulator constant.
   *log recommendations* on a conformant pilot feed," **not** ready to act, not
   production-real, and not autonomous. Promotion of any recommendation out of
   shadow mode remains out of scope and gated by §8b + `docs/RESULTS.md` §8.
+
+---
+
+## 9. Update — Model Residency Decision Engine v1 (this PR)
+
+This PR adds an explicit **decision layer** on top of the §8 telemetry substrate:
+`aurelius/residency/decision.py` (`choose_residency_decision`,
+`score_residency_candidate`, `SafetyContext`) + simulator execution
+(`aurelius/residency/sim.py`) + a per-request GenAI backtest
+(`aurelius/residency/backtest.py`,
+`scripts/run_genai_residency_decision_backtest.py`). Full design:
+`docs/MODEL_RESIDENCY_DECISION_ENGINE.md`; results:
+`docs/MODEL_RESIDENCY_DECISION_ENGINE_RESULTS.md`.
+
+### 9a. What is now implemented
+
+| capability | status | evidence |
+|---|---|---|
+| residency-aware routing decision (route-to-resident / preserve-affinity / keep) | **implemented (recommendation-only)** | `decision.choose_residency_decision`; optimizes SLA-safe goodput/$ (`docs/RESULTS.md` §1). |
+| prewarm / evict recommendations | **implemented (recommendation-only)** | `PREWARM_MODEL` / `PREWARM_ADAPTER` / `EVICT_CANDIDATE`, gated by warm-pool economics + memory pressure. |
+| per-candidate scoring (latency/cost/goodput-per-$) | **implemented** | `decision.score_residency_candidate` / `CandidateScore`. |
+| hard safety vetoes (memory, SLA, thermal, topology, region, telemetry) | **implemented (additive — no gate weakened)** | `SafetyContext`; vetoes in `ResidencyDecision.safety_vetoes`. |
+| no-substitution rule | **implemented (structural)** | the decision has no substitute-model field; a hit is credited only for the requested model/adapter; test enforces it. |
+| simulator execution | **implemented (simulator only)** | `sim.apply_residency_decision(mode=SIMULATOR_MODE)`. |
+| real/customer execution | **recommendation-only (no mutation)** | `REAL_MODE` is a no-op; `executable_in_real_cluster=False` and cannot be set true; test proves no mutation. |
+| GenAI per-request backtest (engine vs baselines) | **implemented** | `backtest.run_residency_backtest`; the existing tick-based ablation is preserved unchanged. |
+
+### 9b. What remains missing (unchanged from §8b)
+
+A real telemetry *source* (live `model_loaded_before_request` / load events),
+production-grade `container_join`, counterfactual *verification*, and the
+`docs/RESULTS.md` §8 production gate are all still unmet. The decision engine is
+validated **only** in the simulator on a public trace.
+
+### 9c. Does the verdict change?
+
+- **Model-residency *optimization* / production: NO.** Still
+  `TRACE_BACKTESTED_APPROXIMATION` and **not** production-ready, **not**
+  autonomous. The engine runs **recommendation-only** in real/customer mode and
+  is exercised only in **simulator** mode on a public trace; no live residency
+  is measured and no real cluster is mutated.
+- **What advanced:** the substrate now has *recommendation-only decision logic*
+  (not just telemetry), simulator-validated — consistent with
+  `SHADOW_PILOT_READY_READ_ONLY` for read-only recommendation/logging. Acting on
+  a recommendation in production remains out of scope and gated by §8b +
+  `docs/RESULTS.md` §8.
