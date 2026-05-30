@@ -80,7 +80,8 @@ baselines, not the serving-physics replay. Same canonical KPI
 | Dataset | Role | Status |
 |---|---|---|
 | **BurstGPT** | LLM inference traffic replay — real arrival/burst shape, request/response token counts, failure rows for the interactive serving scenarios. | **Implemented** (`CANONICAL_TRACE_BACKTEST_BURSTGPT_V1`) |
-| **Azure LLM inference traces** | Second, independent LLM inference trace — input/output token demand + arrival timing, to test whether inference alpha generalizes beyond BurstGPT. | **Implemented** (`CANONICAL_TRACE_BACKTEST_AZURE_LLM_V1`) |
+| **Azure LLM inference traces (2023)** | Second, independent LLM inference trace — input/output token demand + arrival timing, to test whether inference alpha generalizes beyond BurstGPT. | **Implemented** (`CANONICAL_TRACE_BACKTEST_AZURE_LLM_V1`) |
+| **Azure LLM Inference Dataset 2024 (week-long, multi-service)** | The **week-long** May 10–18 2024 conv+code trace used by DynamoLLM (HPCA 2025): real multi-day demand cycles + a **forecast-robustness / alpha-survival** experiment and lever attribution. | **Implemented** (`CANONICAL_TRACE_BACKTEST_AZURE_LLM_2024_WEEK_V1`) |
 | **Azure LMM (multimodal) inference traces (2025)** | Multimodal token demand (image + text). | Roadmap — **not ingested** (LLM path landed first; do not claim multimodal support) |
 | **Alibaba GPU cluster trace (v2023)** | Fragmentation / heterogeneous GPU scheduling — whole-GPU + fractional (`gpu_milli`) packing onto a heterogeneous fleet, with **executable** packing baselines (`first_fit`/`best_fit`/FFD/`greedy_packing`). | **Implemented** (`CANONICAL_TRACE_BACKTEST_ALIBABA_GPU_V2023_FRAGMENTATION_V1`) |
 | **Philly (Microsoft) traces** | Training / fine-tuning GPU jobs — multi-tenant **temporal** job scheduling (queueing, backfill, fragmentation, fairness, retry/failure) on a fixed fleet. | **Implemented** (`CANONICAL_TRACE_BACKTEST_PHILLY_TRAINING_V1`) |
@@ -149,6 +150,44 @@ results.
 
 See `docs/AZURE_LLM_BACKTEST_RESULTS.md` for the canonical run and results.
 
+## 3f. Azure LLM Inference Dataset 2024 (week-long, multi-service) specifics
+
+`CANONICAL_TRACE_BACKTEST_AZURE_LLM_2024_WEEK_V1`.
+
+- Source: https://github.com/Azure/AzurePublicDataset/blob/master/AzureLLMInferenceDataset2024.md —
+  the two **week-long** files on Azure blob storage (the actual 2024 dataset, not
+  2023): `AzureLLMInferenceTrace_code_1week.csv` and
+  `AzureLLMInferenceTrace_conv_1week.csv`. Licensed **CC-BY**; cite **DynamoLLM
+  (HPCA 2025)**, Stojkovic et al. (arxiv 2408.00741).
+- **Discovered schema (validated, NOT assumed from 2023):**
+  `TIMESTAMP,ContextTokens,GeneratedTokens`. The 2024 `TIMESTAMP` carries a
+  `+00:00` UTC offset + 6 fractional digits (distinct from the 2023 `.NET`
+  7-digit form) — the ingester handles both.
+- **Scale:** ~44.1M rows (code 16.8M + conv 27.3M), May 10–18 2024 (code is
+  7 days from May 10; conv 7 days from May 12; combined union 9 days). Streamed
+  in one memory-bounded pass (`azure_llm.stream_week_aggregate`).
+- **Missing fields (same honest degradation as 2023):** no model/service id, no
+  session/cache/prefix key, **no latency/TTFT/elapsed**. Token-demand + arrival
+  replay only; **no TTFT claimed**; `cache_affinity_baseline` omitted and
+  `constraint_aware` gets **zero** cache benefit. `log_type` = conv/code variant.
+- **Demand pattern:** bursty (CV ≈ 0.65, peak/mean ≈ 2.85), strongly **periodic**
+  (lag-1-day autocorrelation ≈ 0.68) and **multi-regime** (weekday/weekend RPS
+  ≈ 2.7×). The absolute rate is low (peak ≈ 6 replicas at 1×); the canonical
+  replays the real arrival SHAPE at documented busy-tier multipliers (1×/10×/50×).
+- **Forecast robustness:** a forecast-driven autoscaler is run under
+  `oracle_future` (analysis-only), `seasonal_time_of_day`, `moving_average`,
+  `ewma`, `noisy_forecast`, `no_forecast_reactive` — only the demand estimate
+  differs; **no future leakage except oracle**. `alpha_survival = alpha(mode) /
+  alpha(oracle)`.
+- **Headline result + attribution:** at 10× `constraint_aware` is an
+  `ALPHA_WIN` vs the `sla_aware` headline (+~26% goodput/$), but the attribution
+  shows the alpha is a **utilization / target-rho cost-efficiency** effect, NOT a
+  forecasting one: holding the utilization target fixed, the demand-forecasting
+  lever contributes <0.3% (oracle ceiling) and realistic forecasters retain only
+  ~24% (EWMA) — `seasonal_time_of_day` and a 15%-noisy forecast are
+  net-**negative**. Residency/affinity = 0 and prewarming is not modelled (no
+  model/session id). See `docs/AZURE_LLM_2024_BACKTEST_RESULTS.md`.
+
 ## 3c. Alibaba GPU v2023 specifics
 
 - Source: https://github.com/alibaba/clusterdata — `cluster-trace-gpu-v2023/csv/`
@@ -179,12 +218,18 @@ python scripts/run_burstgpt_backtest.py \
     --csv data/external/burstgpt/raw/BurstGPT_1.csv \
     --start-s 0 --duration-s 600000 --scale-rps 300 --tick-seconds 60
 
-# Azure LLM — ingest (downloads AzureLLMInferenceTrace_conv.csv):
+# Azure LLM (2023) — ingest (downloads AzureLLMInferenceTrace_conv.csv):
 python scripts/ingest_azure_llm.py --workload conv
-# Azure LLM — canonical backtest (busy interactive tier, real arrival shape):
+# Azure LLM (2023) — canonical backtest (busy interactive tier, real arrival shape):
 python scripts/run_azure_llm_backtest.py \
     --csv data/external/azure_llm/raw/AzureLLMInferenceTrace_conv.csv \
     --scale-rps 12 --tick-seconds 15
+
+# Azure LLM 2024 (week-long, multi-service) — ingest (downloads the two _1week
+# files, ~0.7-1.1 GB each, to data/external/azure_llm_2024/raw; streamed):
+python scripts/ingest_azure_llm_2024.py
+# Azure LLM 2024 — canonical week-long backtest + forecast robustness + attribution:
+python scripts/run_azure_llm_2024_backtest.py --primary-scale 10
 
 # Alibaba GPU v2023 — ingest (downloads pod list + GPU node inventory):
 python scripts/ingest_alibaba_gpu.py
@@ -262,10 +307,12 @@ demonstration** unless the tarball is downloaded.
 
 ## Non-goals
 
-- **Implemented so far:** BurstGPT + Azure LLM (LLM inference replay) +
+- **Implemented so far:** BurstGPT + Azure LLM 2023 + **Azure LLM 2024
+  (week-long, multi-service + forecast robustness)** (LLM inference replay) +
   Alibaba GPU v2023 (GPU bin-packing/fragmentation) + Philly (temporal GPU
   training-job scheduling) + Alibaba GenAI 2026 (multi-layer GenAI serving).
-- No Azure **LMM/multimodal** or MIT ingestion yet.
+- No Azure **LMM/multimodal** or MIT ingestion yet (this PR did **not** ingest
+  Azure LMM/multimodal).
 - No ML training, no neural forecasting.
 - No robust-energy-engine changes; no simulator constant tuning to force wins.
 - No production-savings claims.
