@@ -92,7 +92,7 @@ def job_work(job: NormalizedGPUJob) -> float:
 # ---------------------------------------------------------------------------
 
 class _NodeState:
-    __slots__ = ("node", "gpu_free", "cpu_free", "mem_free", "placed")
+    __slots__ = ("node", "gpu_free", "cpu_free", "mem_free", "placed", "ever_active")
 
     def __init__(self, node: GPUNode):
         self.node = node
@@ -100,6 +100,7 @@ class _NodeState:
         self.cpu_free = node.cpu_milli
         self.mem_free = node.memory_mib
         self.placed = 0
+        self.ever_active = False  # powered at least once (for temporal cost)
 
     @property
     def active(self) -> bool:
@@ -127,26 +128,42 @@ class _NodeState:
         # whole GPUs: need `gc` fully-free GPUs
         return sum(1 for free in self.gpu_free if free == GPU_MILLI_PER_GPU) >= max(1, gc)
 
-    def place(self, job: NormalizedGPUJob) -> None:
-        self.cpu_free -= (job.cpu_milli or 0)
-        self.mem_free -= (job.memory_mib or 0)
+    def place(self, job: NormalizedGPUJob) -> dict:
+        """Allocate resources for ``job``; return an allocation token that
+        ``release`` can later return to the pool (used by the temporal
+        scheduler). The static packer simply ignores the return value."""
+        cpu = job.cpu_milli or 0
+        mem = job.memory_mib or 0
+        self.cpu_free -= cpu
+        self.mem_free -= mem
         gc = job.gpu_count or 0
+        gpu_alloc: list[tuple[int, int]] = []
         if _is_fractional(job):
-            # best-fit within node: tightest GPU that still fits (pack shares)
             need = job.gpu_milli
             idx = min((i for i, f in enumerate(self.gpu_free) if f >= need),
                       key=lambda i: self.gpu_free[i], default=None)
             if idx is not None:
                 self.gpu_free[idx] -= need
+                gpu_alloc.append((idx, need))
         elif gc >= 1:
             taken = 0
             for i, f in enumerate(self.gpu_free):
                 if f == GPU_MILLI_PER_GPU:
                     self.gpu_free[i] = 0
+                    gpu_alloc.append((i, GPU_MILLI_PER_GPU))
                     taken += 1
                     if taken >= gc:
                         break
         self.placed += 1
+        self.ever_active = True
+        return {"cpu": cpu, "mem": mem, "gpu": gpu_alloc}
+
+    def release(self, token: dict) -> None:
+        self.cpu_free += token.get("cpu", 0)
+        self.mem_free += token.get("mem", 0)
+        for idx, milli in token.get("gpu", []):
+            self.gpu_free[idx] += milli
+        self.placed = max(0, self.placed - 1)
 
 
 # ---------------------------------------------------------------------------
@@ -161,9 +178,13 @@ PACKING_POLICIES = (
     "greedy_packing",
     "constraint_aware",
 )
-# Headline candidates for fragmentation are the real packing baselines — NOT
-# fifo (docs/RESULTS.md §3; mission requirement).
-HEADLINE_CANDIDATES = ("best_fit", "first_fit_decreasing", "greedy_packing")
+# Headline candidates are the real packing/scheduling baselines — NOT fifo
+# (docs/RESULTS.md §3; mission requirement). topology_aware / utilization_aware
+# are opt-in (not in the default PACKING_POLICIES) but, when run (e.g. Philly),
+# are eligible as the headline. select_headline only considers candidates that
+# were actually run, so the Alibaba default set is unaffected.
+HEADLINE_CANDIDATES = ("best_fit", "first_fit_decreasing", "greedy_packing",
+                       "topology_aware", "utilization_aware")
 
 
 def _job_order(jobs: Sequence[NormalizedGPUJob], policy: str) -> list[NormalizedGPUJob]:
@@ -220,6 +241,27 @@ def _select_node(states: list[_NodeState], job: NormalizedGPUJob, policy: str,
                 i,
             )
         return min(fitting, key=score)
+    if policy == "topology_aware":
+        # Right-size the node to the job to preserve large contiguous GPU blocks
+        # (locality) for multi-GPU training jobs: a small job goes to the
+        # smallest node that fits (don't fragment an 8-GPU node for a 1-GPU job);
+        # consolidate onto active nodes first.
+        need = max(1, job.gpu_count or 1)
+        return min(fitting, key=lambda i: (
+            0 if states[i].active else 1,
+            states[i].node.gpu_count < need,       # must hold the whole job
+            states[i].node.gpu_count,              # smallest adequate node
+            states[i].free_gpu_milli,
+            i,
+        ))
+    if policy == "utilization_aware":
+        # Pack onto the most-utilised node that still fits (maximise per-node
+        # utilisation before powering a fresh node).
+        return min(fitting, key=lambda i: (
+            0 if states[i].active else 1,
+            states[i].free_gpu_milli / states[i].total_gpu_milli,  # least free frac
+            i,
+        ))
     raise ValueError(f"unknown policy {policy}")  # pragma: no cover
 
 

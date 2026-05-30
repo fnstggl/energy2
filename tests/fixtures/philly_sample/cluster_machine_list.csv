@@ -1,0 +1,7 @@
+machineId,number of GPUs,single GPU mem
+m1,8,16GB
+m2,8,16GB
+m3,4,24GB
+m4,4,24GB
+m5,2,12GB
+m6,2,12GB

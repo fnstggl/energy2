@@ -1,0 +1,783 @@
+[
+ {
+  "status": "Pass",
+  "vc": "vc0",
+  "jobid": "job-000",
+  "submitted_time": "2017-10-07 01:00:00",
+  "user": "user0",
+  "attempts": [
+   {
+    "start_time": "2017-10-07 01:00:30",
+    "end_time": "2017-10-07 01:30:30",
+    "detail": [
+     {
+      "ip": "m1",
+      "gpus": [
+       "gpu0"
+      ]
+     }
+    ]
+   }
+  ]
+ },
+ {
+  "status": "Pass",
+  "vc": "vc1",
+  "jobid": "job-001",
+  "submitted_time": "2017-10-07 01:00:20",
+  "user": "user1",
+  "attempts": [
+   {
+    "start_time": "2017-10-07 01:00:50",
+    "end_time": "2017-10-07 01:40:50",
+    "detail": [
+     {
+      "ip": "m2",
+      "gpus": [
+       "gpu0"
+      ]
+     }
+    ]
+   }
+  ]
+ },
+ {
+  "status": "Pass",
+  "vc": "vc2",
+  "jobid": "job-002",
+  "submitted_time": "2017-10-07 01:00:40",
+  "user": "user2",
+  "attempts": [
+   {
+    "start_time": "2017-10-07 01:01:10",
+    "end_time": "2017-10-07 01:31:10",
+    "detail": [
+     {
+      "ip": "m3",
+      "gpus": [
+       "gpu0",
+       "gpu1"
+      ]
+     }
+    ]
+   }
+  ]
+ },
+ {
+  "status": "Pass",
+  "vc": "vc0",
+  "jobid": "job-003",
+  "submitted_time": "2017-10-07 01:01:00",
+  "user": "user3",
+  "attempts": [
+   {
+    "start_time": "2017-10-07 01:01:30",
+    "end_time": "2017-10-07 02:01:30",
+    "detail": [
+     {
+      "ip": "m4",
+      "gpus": [
+       "gpu0"
+      ]
+     }
+    ]
+   }
+  ]
+ },
+ {
+  "status": "Pass",
+  "vc": "vc1",
+  "jobid": "job-004",
+  "submitted_time": "2017-10-07 01:01:20",
+  "user": "user4",
+  "attempts": [
+   {
+    "start_time": "2017-10-07 01:01:50",
+    "end_time": "2017-10-07 01:41:50",
+    "detail": [
+     {
+      "ip": "m5",
+      "gpus": [
+       "gpu0",
+       "gpu1",
+       "gpu2",
+       "gpu3",
+       "gpu4",
+       "gpu5",
+       "gpu6",
+       "gpu7"
+      ]
+     }
+    ]
+   }
+  ]
+ },
+ {
+  "status": "Pass",
+  "vc": "vc2",
+  "jobid": "job-005",
+  "submitted_time": "2017-10-07 01:01:40",
+  "user": "user0",
+  "attempts": [
+   {
+    "start_time": "2017-10-07 01:02:10",
+    "end_time": "2017-10-07 01:22:10",
+    "detail": [
+     {
+      "ip": "m6",
+      "gpus": [
+       "gpu0"
+      ]
+     }
+    ]
+   }
+  ]
+ },
+ {
+  "status": "Pass",
+  "vc": "vc0",
+  "jobid": "job-006",
+  "submitted_time": "2017-10-07 01:02:00",
+  "user": "user1",
+  "attempts": [
+   {
+    "start_time": "2017-10-07 01:02:30",
+    "end_time": "2017-10-07 01:52:30",
+    "detail": [
+     {
+      "ip": "m1",
+      "gpus": [
+       "gpu0",
+       "gpu1",
+       "gpu2",
+       "gpu3"
+      ]
+     }
+    ]
+   }
+  ]
+ },
+ {
+  "status": "Killed",
+  "vc": "vc1",
+  "jobid": "job-007",
+  "submitted_time": "2017-10-07 01:02:20",
+  "user": "user2",
+  "attempts": [
+   {
+    "start_time": "2017-10-07 01:02:50",
+    "end_time": "2017-10-07 01:03:20",
+    "detail": [
+     {
+      "ip": "m2",
+      "gpus": [
+       "gpu0"
+      ]
+     }
+    ]
+   },
+   {
+    "start_time": "2017-10-07 01:03:50",
+    "end_time": "2017-10-07 01:18:50",
+    "detail": [
+     {
+      "ip": "m2",
+      "gpus": [
+       "gpu0"
+      ]
+     }
+    ]
+   }
+  ]
+ },
+ {
+  "status": "Pass",
+  "vc": "vc2",
+  "jobid": "job-008",
+  "submitted_time": "2017-10-07 01:02:40",
+  "user": "user3",
+  "attempts": [
+   {
+    "start_time": "2017-10-07 01:03:10",
+    "end_time": "2017-10-07 01:33:10",
+    "detail": [
+     {
+      "ip": "m3",
+      "gpus": [
+       "gpu0",
+       "gpu1"
+      ]
+     }
+    ]
+   }
+  ]
+ },
+ {
+  "status": "Pass",
+  "vc": "vc0",
+  "jobid": "job-009",
+  "submitted_time": "2017-10-07 01:03:00",
+  "user": "user4",
+  "attempts": [
+   {
+    "start_time": "2017-10-07 01:03:30",
+    "end_time": "2017-10-07 01:43:30",
+    "detail": [
+     {
+      "ip": "m4",
+      "gpus": [
+       "gpu0"
+      ]
+     }
+    ]
+   }
+  ]
+ },
+ {
+  "status": "Pass",
+  "vc": "vc1",
+  "jobid": "job-010",
+  "submitted_time": "2017-10-07 01:03:20",
+  "user": "user0",
+  "attempts": [
+   {
+    "start_time": "2017-10-07 01:03:50",
+    "end_time": "2017-10-07 02:03:50",
+    "detail": [
+     {
+      "ip": "m5",
+      "gpus": [
+       "gpu0",
+       "gpu1",
+       "gpu2",
+       "gpu3",
+       "gpu4",
+       "gpu5",
+       "gpu6",
+       "gpu7"
+      ]
+     }
+    ]
+   }
+  ]
+ },
+ {
+  "status": "Failed",
+  "vc": "vc2",
+  "jobid": "job-011",
+  "submitted_time": "2017-10-07 01:03:40",
+  "user": "user1",
+  "attempts": [
+   {
+    "start_time": "2017-10-07 01:04:10",
+    "end_time": "2017-10-07 01:29:10",
+    "detail": [
+     {
+      "ip": "m6",
+      "gpus": [
+       "gpu0"
+      ]
+     }
+    ]
+   }
+  ]
+ },
+ {
+  "status": "Pass",
+  "vc": "vc0",
+  "jobid": "job-012",
+  "submitted_time": "2017-10-07 01:04:00",
+  "user": "user2",
+  "attempts": [
+   {
+    "start_time": "2017-10-07 01:04:30",
+    "end_time": "2017-10-07 01:34:30",
+    "detail": [
+     {
+      "ip": "m1",
+      "gpus": [
+       "gpu0"
+      ]
+     }
+    ]
+   }
+  ]
+ },
+ {
+  "status": "Pass",
+  "vc": "vc1",
+  "jobid": "job-013",
+  "submitted_time": "2017-10-07 01:04:20",
+  "user": "user3",
+  "attempts": [
+   {
+    "start_time": "2017-10-07 01:04:50",
+    "end_time": "2017-10-07 01:05:20",
+    "detail": [
+     {
+      "ip": "m2",
+      "gpus": [
+       "gpu0",
+       "gpu1",
+       "gpu2",
+       "gpu3"
+      ]
+     }
+    ]
+   },
+   {
+    "start_time": "2017-10-07 01:05:50",
+    "end_time": "2017-10-07 01:45:50",
+    "detail": [
+     {
+      "ip": "m2",
+      "gpus": [
+       "gpu0",
+       "gpu1",
+       "gpu2",
+       "gpu3"
+      ]
+     }
+    ]
+   }
+  ]
+ },
+ {
+  "status": "Pass",
+  "vc": "vc2",
+  "jobid": "job-014",
+  "submitted_time": "2017-10-07 01:04:40",
+  "user": "user4",
+  "attempts": [
+   {
+    "start_time": "2017-10-07 01:05:10",
+    "end_time": "2017-10-07 01:25:10",
+    "detail": [
+     {
+      "ip": "m3",
+      "gpus": [
+       "gpu0",
+       "gpu1"
+      ]
+     }
+    ]
+   }
+  ]
+ },
+ {
+  "status": "Pass",
+  "vc": "vc0",
+  "jobid": "job-015",
+  "submitted_time": "2017-10-07 01:05:00",
+  "user": "user0",
+  "attempts": [
+   {
+    "start_time": "2017-10-07 01:05:30",
+    "end_time": "2017-10-07 01:55:30",
+    "detail": [
+     {
+      "ip": "m4",
+      "gpus": [
+       "gpu0"
+      ]
+     }
+    ]
+   }
+  ]
+ },
+ {
+  "status": "Killed",
+  "vc": "vc1",
+  "jobid": "job-016",
+  "submitted_time": "2017-10-07 01:05:20",
+  "user": "user1",
+  "attempts": [
+   {
+    "start_time": "2017-10-07 01:05:50",
+    "end_time": "2017-10-07 01:35:50",
+    "detail": [
+     {
+      "ip": "m5",
+      "gpus": [
+       "gpu0"
+      ]
+     }
+    ]
+   }
+  ]
+ },
+ {
+  "status": "Pass",
+  "vc": "vc2",
+  "jobid": "job-017",
+  "submitted_time": "2017-10-07 01:05:40",
+  "user": "user2",
+  "attempts": [
+   {
+    "start_time": "2017-10-07 01:06:10",
+    "end_time": "2017-10-07 01:36:10",
+    "detail": [
+     {
+      "ip": "m6",
+      "gpus": [
+       "gpu0",
+       "gpu1",
+       "gpu2",
+       "gpu3",
+       "gpu4",
+       "gpu5",
+       "gpu6",
+       "gpu7"
+      ]
+     }
+    ]
+   }
+  ]
+ },
+ {
+  "status": "Pass",
+  "vc": "vc0",
+  "jobid": "job-018",
+  "submitted_time": "2017-10-07 01:06:00",
+  "user": "user3",
+  "attempts": [
+   {
+    "start_time": "2017-10-07 01:06:30",
+    "end_time": "2017-10-07 01:46:30",
+    "detail": [
+     {
+      "ip": "m1",
+      "gpus": [
+       "gpu0",
+       "gpu1"
+      ]
+     }
+    ]
+   }
+  ]
+ },
+ {
+  "status": "Pass",
+  "vc": "vc1",
+  "jobid": "job-019",
+  "submitted_time": "2017-10-07 01:06:20",
+  "user": "user4",
+  "attempts": [
+   {
+    "start_time": "2017-10-07 01:06:50",
+    "end_time": "2017-10-07 01:26:50",
+    "detail": [
+     {
+      "ip": "m2",
+      "gpus": [
+       "gpu0"
+      ]
+     }
+    ]
+   }
+  ]
+ },
+ {
+  "status": "Pass",
+  "vc": "vc2",
+  "jobid": "job-020",
+  "submitted_time": "2017-10-07 01:06:40",
+  "user": "user0",
+  "attempts": [
+   {
+    "start_time": "2017-10-07 01:07:10",
+    "end_time": "2017-10-07 02:07:10",
+    "detail": [
+     {
+      "ip": "m3",
+      "gpus": [
+       "gpu0",
+       "gpu1",
+       "gpu2",
+       "gpu3"
+      ]
+     }
+    ]
+   }
+  ]
+ },
+ {
+  "status": "Pass",
+  "vc": "vc0",
+  "jobid": "job-021",
+  "submitted_time": "2017-10-07 01:07:00",
+  "user": "user1",
+  "attempts": [
+   {
+    "start_time": "2017-10-07 01:07:30",
+    "end_time": "2017-10-07 01:22:30",
+    "detail": [
+     {
+      "ip": "m4",
+      "gpus": [
+       "gpu0"
+      ]
+     }
+    ]
+   }
+  ]
+ },
+ {
+  "status": "Pass",
+  "vc": "vc1",
+  "jobid": "job-022",
+  "submitted_time": "2017-10-07 01:07:20",
+  "user": "user2",
+  "attempts": [
+   {
+    "start_time": "2017-10-07 01:07:50",
+    "end_time": "2017-10-07 01:47:50",
+    "detail": [
+     {
+      "ip": "m5",
+      "gpus": [
+       "gpu0"
+      ]
+     }
+    ]
+   }
+  ]
+ },
+ {
+  "status": "Pass",
+  "vc": "vc2",
+  "jobid": "job-023",
+  "submitted_time": "2017-10-07 01:07:40",
+  "user": "user3",
+  "attempts": [
+   {
+    "start_time": "2017-10-07 01:08:10",
+    "end_time": "2017-10-07 01:08:40",
+    "detail": [
+     {
+      "ip": "m6",
+      "gpus": [
+       "gpu0",
+       "gpu1"
+      ]
+     }
+    ]
+   },
+   {
+    "start_time": "2017-10-07 01:09:10",
+    "end_time": "2017-10-07 01:39:10",
+    "detail": [
+     {
+      "ip": "m6",
+      "gpus": [
+       "gpu0",
+       "gpu1"
+      ]
+     }
+    ]
+   }
+  ]
+ },
+ {
+  "status": "Failed",
+  "vc": "vc0",
+  "jobid": "job-024",
+  "submitted_time": "2017-10-07 01:08:00",
+  "user": "user4",
+  "attempts": [
+   {
+    "start_time": "2017-10-07 01:08:30",
+    "end_time": "2017-10-07 01:33:30",
+    "detail": [
+     {
+      "ip": "m1",
+      "gpus": [
+       "gpu0"
+      ]
+     }
+    ]
+   }
+  ]
+ },
+ {
+  "status": "Pass",
+  "vc": "vc1",
+  "jobid": "job-025",
+  "submitted_time": "2017-10-07 01:08:20",
+  "user": "user0",
+  "attempts": [
+   {
+    "start_time": "2017-10-07 01:08:50",
+    "end_time": "2017-10-07 01:48:50",
+    "detail": [
+     {
+      "ip": "m2",
+      "gpus": [
+       "gpu0",
+       "gpu1",
+       "gpu2",
+       "gpu3",
+       "gpu4",
+       "gpu5",
+       "gpu6",
+       "gpu7"
+      ]
+     }
+    ]
+   }
+  ]
+ },
+ {
+  "status": "Pass",
+  "vc": "vc2",
+  "jobid": "job-026",
+  "submitted_time": "2017-10-07 01:08:40",
+  "user": "user1",
+  "attempts": [
+   {
+    "start_time": "2017-10-07 01:09:10",
+    "end_time": "2017-10-07 01:39:10",
+    "detail": [
+     {
+      "ip": "m3",
+      "gpus": [
+       "gpu0"
+      ]
+     }
+    ]
+   }
+  ]
+ },
+ {
+  "status": "Pass",
+  "vc": "vc0",
+  "jobid": "job-027",
+  "submitted_time": "2017-10-07 01:09:00",
+  "user": "user2",
+  "attempts": [
+   {
+    "start_time": "2017-10-07 01:09:30",
+    "end_time": "2017-10-07 01:29:30",
+    "detail": [
+     {
+      "ip": "m4",
+      "gpus": [
+       "gpu0",
+       "gpu1",
+       "gpu2",
+       "gpu3"
+      ]
+     }
+    ]
+   }
+  ]
+ },
+ {
+  "status": "Pass",
+  "vc": "vc1",
+  "jobid": "job-028",
+  "submitted_time": "2017-10-07 01:09:20",
+  "user": "user3",
+  "attempts": [
+   {
+    "start_time": "2017-10-07 01:09:50",
+    "end_time": "2017-10-07 01:59:50",
+    "detail": [
+     {
+      "ip": "m5",
+      "gpus": [
+       "gpu0"
+      ]
+     }
+    ]
+   }
+  ]
+ },
+ {
+  "status": "Pass",
+  "vc": "vc2",
+  "jobid": "job-029",
+  "submitted_time": "2017-10-07 01:09:40",
+  "user": "user4",
+  "attempts": [
+   {
+    "start_time": "2017-10-07 01:10:10",
+    "end_time": "2017-10-07 01:40:10",
+    "detail": [
+     {
+      "ip": "m6",
+      "gpus": [
+       "gpu0",
+       "gpu1"
+      ]
+     }
+    ]
+   }
+  ]
+ },
+ {
+  "status": "Pass",
+  "vc": "vc0",
+  "jobid": "job-030",
+  "submitted_time": "2017-10-07 01:10:00",
+  "user": "user0",
+  "attempts": [
+   {
+    "start_time": "2017-10-07 01:10:30",
+    "end_time": "2017-10-07 01:50:30",
+    "detail": [
+     {
+      "ip": "m1",
+      "gpus": [
+       "gpu0"
+      ]
+     }
+    ]
+   }
+  ]
+ },
+ {
+  "status": "Pass",
+  "vc": "vc1",
+  "jobid": "job-031",
+  "submitted_time": "2017-10-07 01:10:20",
+  "user": "user1",
+  "attempts": [
+   {
+    "start_time": "2017-10-07 01:10:50",
+    "end_time": "2017-10-07 01:40:50",
+    "detail": [
+     {
+      "ip": "m2",
+      "gpus": [
+       "gpu0",
+       "gpu1",
+       "gpu2",
+       "gpu3",
+       "gpu4",
+       "gpu5",
+       "gpu6",
+       "gpu7",
+       "gpu8",
+       "gpu9",
+       "gpu10",
+       "gpu11",
+       "gpu12",
+       "gpu13",
+       "gpu14",
+       "gpu15"
+      ]
+     }
+    ]
+   }
+  ]
+ },
+ {
+  "status": "Failed",
+  "vc": "vc0",
+  "jobid": "job-noattempt",
+  "submitted_time": "2017-10-07 01:02:00",
+  "user": "user1",
+  "attempts": []
+ }
+]

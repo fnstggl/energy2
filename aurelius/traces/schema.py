@@ -400,6 +400,8 @@ class NormalizedGPUJob:
     cpu_milli: Optional[int] = None
     memory_mib: Optional[int] = None
     gpu_milli: Optional[int] = None
+    # Scheduling-queue delay (start − submit) when both exist; e.g. Philly.
+    queue_wait_s: Optional[float] = None
 
     def to_dict(self) -> dict:
         return {
@@ -423,6 +425,7 @@ class NormalizedGPUJob:
             "cpu_milli": self.cpu_milli,
             "memory_mib": self.memory_mib,
             "gpu_milli": self.gpu_milli,
+            "queue_wait_s": self.queue_wait_s,
         }
 
     @classmethod
@@ -460,6 +463,7 @@ class NormalizedGPUJob:
             cpu_milli=_i("cpu_milli"),
             memory_mib=_i("memory_mib"),
             gpu_milli=_i("gpu_milli"),
+            queue_wait_s=_f("queue_wait_s"),
         )
 
 

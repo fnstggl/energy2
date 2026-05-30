@@ -83,7 +83,7 @@ baselines, not the serving-physics replay. Same canonical KPI
 | **Azure LLM inference traces** | Second, independent LLM inference trace — input/output token demand + arrival timing, to test whether inference alpha generalizes beyond BurstGPT. | **Implemented** (`CANONICAL_TRACE_BACKTEST_AZURE_LLM_V1`) |
 | **Azure LMM (multimodal) inference traces (2025)** | Multimodal token demand (image + text). | Roadmap — **not ingested** (LLM path landed first; do not claim multimodal support) |
 | **Alibaba GPU cluster trace (v2023)** | Fragmentation / heterogeneous GPU scheduling — whole-GPU + fractional (`gpu_milli`) packing onto a heterogeneous fleet, with **executable** packing baselines (`first_fit`/`best_fit`/FFD/`greedy_packing`). | **Implemented** (`CANONICAL_TRACE_BACKTEST_ALIBABA_GPU_V2023_FRAGMENTATION_V1`) |
-| **Philly (Microsoft) traces** | Training / fine-tuning GPU jobs — multi-tenant job scheduling + topology-aware placement + RESERVE_CAPACITY crowding. | Roadmap — not ingested |
+| **Philly (Microsoft) traces** | Training / fine-tuning GPU jobs — multi-tenant **temporal** job scheduling (queueing, backfill, fragmentation, fairness, retry/failure) on a fixed fleet. | **Implemented** (`CANONICAL_TRACE_BACKTEST_PHILLY_TRAINING_V1`) |
 | **MIT Supercloud** | Utilization / power / monitoring calibration — to calibrate the simulator's utilization, power and thermal priors against real datacenter monitoring. | Roadmap — not ingested |
 
 Known sources (for the future ingestion PRs — **do not download/ingest here**):
@@ -189,19 +189,50 @@ python scripts/run_azure_llm_backtest.py \
 python scripts/ingest_alibaba_gpu.py
 # Alibaba GPU v2023 — canonical fragmentation/packing backtest:
 python scripts/run_alibaba_gpu_backtest.py
+
+# Philly — ingest (prints LFS download steps; uses fixture if full trace absent):
+python scripts/ingest_philly.py
+# Philly — canonical temporal training-job scheduling backtest:
+python scripts/run_philly_backtest.py
 ```
 
 Raw trace files are **downloaded, not committed** (`.gitignore`-d under
 `data/external/*/raw/`). Unit tests use the fixtures
 (`tests/fixtures/burstgpt_sample.csv`, `tests/fixtures/azure_llm_sample.csv`,
-`tests/fixtures/alibaba_gpu/`) and never require the full files; full-trace
-backtests are integration-only and are skipped if the raw file is absent.
+`tests/fixtures/alibaba_gpu/`, `tests/fixtures/philly_sample/`) and never
+require the full files; full-trace backtests are integration-only and are
+skipped if the raw file is absent. The Philly full trace is a ~1 GB git-LFS
+tarball (~6.6 GB extracted), so its canonical run is a **fixture-scale
+demonstration** unless the tarball is downloaded.
+
+## 3d. Philly specifics
+
+- Source: https://github.com/msr-fiddle/philly-traces — `cluster_job_log` (JSON
+  list) + `cluster_machine_list` (CSV), shipped as one ~1 GB git-LFS
+  `trace-data.tar.gz`.
+- **Discovered schema** (verified against the official analysis notebook): job =
+  `{status (Pass/Killed/Failed), vc, jobid, submitted_time, user, attempts}`;
+  each attempt = `{start_time, end_time, detail[{ip, gpus[]}]}`; times are
+  `%Y-%m-%d %H:%M:%S`. GPU count = `sum(len(detail.gpus))` of the first attempt.
+- **Missing (stated, not invented):** no GPU model/price (only per-GPU memory →
+  a `GPU-<mem>` label), no CPU/host-mem request, no deadline; the
+  `cluster_gpu_util` CSV is not parsed in this PR. `is_failed = status ∈
+  {Failed, Killed}`. goodput_unit = `gpu_seconds_work` (NOT inference tokens).
+- This is a **temporal scheduler-pressure** backtest (`gpu_scheduling.py`):
+  queueing, backfill, fragmentation (jobs blocked despite aggregate free GPUs),
+  size-class fairness, retry/failure (trace-observed). Headline = strongest
+  scheduling baseline (best_fit / topology_aware / …), **never** FIFO. Because
+  Philly has no GPU price signal, constraint_aware's heterogeneous-pricing lever
+  is inactive: it ties the strongest baseline and wins big vs naive FIFO (whose
+  strict head-of-line blocking collapses the queue) — a throughput/fairness
+  safety win. See `docs/PHILLY_BACKTEST_RESULTS.md`.
 
 ## Non-goals
 
 - **Implemented so far:** BurstGPT + Azure LLM (LLM inference replay) +
-  Alibaba GPU v2023 (GPU bin-packing/fragmentation).
-- No Azure **LMM/multimodal**, Philly, or MIT ingestion yet.
+  Alibaba GPU v2023 (GPU bin-packing/fragmentation) + Philly (temporal GPU
+  training-job scheduling).
+- No Azure **LMM/multimodal** or MIT ingestion yet.
 - No ML training, no neural forecasting.
 - No robust-energy-engine changes; no simulator constant tuning to force wins.
 - No production-savings claims.

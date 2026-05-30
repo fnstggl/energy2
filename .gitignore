@@ -44,3 +44,6 @@ data/external/azure_llm/raw/*.csv
 data/external/azure_llm/processed/azure_llm_normalized.json
 data/external/alibaba_gpu/raw/*.csv
 data/external/alibaba_gpu/processed/alibaba_gpu_normalized.json
+data/external/philly/raw/*
+!data/external/philly/raw/.gitkeep
+data/external/philly/processed/philly_normalized.json
