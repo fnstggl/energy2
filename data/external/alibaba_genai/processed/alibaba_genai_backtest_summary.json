@@ -1,0 +1,382 @@
+{
+  "backtest": {
+    "cold_start_calibration_s": {
+      "basemodel_load": 22.718,
+      "controlnet_load": 3.884,
+      "lora_load": 4.378
+    },
+    "goodput_unit": "completed_requests",
+    "headline_baseline": "sla_aware",
+    "n_requests": 26392,
+    "n_ticks": 553,
+    "outcome": {
+      "constraint_aware_vs_headline": "ALPHA_WIN",
+      "margin_pct": 89.4643,
+      "notes": "",
+      "safety_evidence": [
+        "e2e_p99<=0.5x_queue_aware",
+        "e2e_p99<=0.5x_utilization_aware"
+      ]
+    },
+    "policies": {
+      "constraint_aware": {
+        "affinity_routing": true,
+        "completed_requests": 26392,
+        "e2e_latency_s_p95": 45.11,
+        "e2e_latency_s_p99": 53.39,
+        "goodput_unit": "completed_requests",
+        "mean_cold_start_s": 2.87,
+        "policy": "constraint_aware",
+        "queue_wait_s_p95": 5.53,
+        "queue_wait_s_p99": 5.53,
+        "replica_gpu_hours": 894.0,
+        "scale_events": 117,
+        "sla_compliant_requests": 26392,
+        "sla_safe_goodput_per_infra_dollar": 9.84041759880686,
+        "timeout_rate_pct": 0.0,
+        "total_infrastructure_cost": 2682.0
+      },
+      "fifo": {
+        "affinity_routing": false,
+        "completed_requests": 26392,
+        "e2e_latency_s_p95": 53.07,
+        "e2e_latency_s_p99": 53.46,
+        "goodput_unit": "completed_requests",
+        "mean_cold_start_s": 23.55,
+        "policy": "fifo",
+        "queue_wait_s_p95": 0.25,
+        "queue_wait_s_p99": 0.25,
+        "replica_gpu_hours": 4977.0,
+        "scale_events": 0,
+        "sla_compliant_requests": 26392,
+        "sla_safe_goodput_per_infra_dollar": 1.7675976156988815,
+        "timeout_rate_pct": 0.0,
+        "total_infrastructure_cost": 14931.0
+      },
+      "queue_aware": {
+        "affinity_routing": false,
+        "completed_requests": 26392,
+        "e2e_latency_s_p95": 793.07,
+        "e2e_latency_s_p99": 1596.93,
+        "goodput_unit": "completed_requests",
+        "mean_cold_start_s": 23.55,
+        "policy": "queue_aware",
+        "queue_wait_s_p95": 194.75,
+        "queue_wait_s_p99": 194.75,
+        "replica_gpu_hours": 1005.0,
+        "scale_events": 142,
+        "sla_compliant_requests": 15815,
+        "sla_safe_goodput_per_infra_dollar": 5.2454394693200666,
+        "timeout_rate_pct": 8.899,
+        "total_infrastructure_cost": 3015.0
+      },
+      "sla_aware": {
+        "affinity_routing": false,
+        "completed_requests": 26392,
+        "e2e_latency_s_p95": 613.63,
+        "e2e_latency_s_p99": 1219.35,
+        "goodput_unit": "completed_requests",
+        "mean_cold_start_s": 23.55,
+        "policy": "sla_aware",
+        "queue_wait_s_p95": 148.67,
+        "queue_wait_s_p99": 148.67,
+        "replica_gpu_hours": 1142.0,
+        "scale_events": 202,
+        "sla_compliant_requests": 17794,
+        "sla_safe_goodput_per_infra_dollar": 5.193812025685931,
+        "timeout_rate_pct": 6.339,
+        "total_infrastructure_cost": 3426.0
+      },
+      "utilization_aware": {
+        "affinity_routing": false,
+        "completed_requests": 26392,
+        "e2e_latency_s_p95": 238.71,
+        "e2e_latency_s_p99": 406.27,
+        "goodput_unit": "completed_requests",
+        "mean_cold_start_s": 23.55,
+        "policy": "utilization_aware",
+        "queue_wait_s_p95": 60.3,
+        "queue_wait_s_p99": 60.3,
+        "replica_gpu_hours": 881.0,
+        "scale_events": 123,
+        "sla_compliant_requests": 18045,
+        "sla_safe_goodput_per_infra_dollar": 6.827468785471056,
+        "timeout_rate_pct": 8.408,
+        "total_infrastructure_cost": 2643.0
+      }
+    },
+    "primary_kpi": "sla_safe_goodput_per_infrastructure_dollar",
+    "tick_seconds": 3600.0
+  },
+  "discovery": {
+    "empty": [],
+    "files": {
+      "MLoRA-Pipeline.png": {
+        "classification": "documentation",
+        "kind": "skip",
+        "layer": "n/a",
+        "status": "missing"
+      },
+      "README.md": {
+        "classification": "documentation",
+        "kind": "skip",
+        "layer": "n/a",
+        "status": "missing"
+      },
+      "basemodel_update_latency_anon.csv": {
+        "classification": "primary",
+        "kind": "pipeline",
+        "layer": "scheduler",
+        "rows": 7531,
+        "stage": "basemodel_load",
+        "status": "present",
+        "unit": "ms"
+      },
+      "controlnet_latency_data_anon.csv": {
+        "classification": "primary",
+        "kind": "pipeline",
+        "layer": "scheduler",
+        "rows": 29221,
+        "stage": "controlnet_load",
+        "status": "present",
+        "unit": "ms"
+      },
+      "data_trace_processed.csv": {
+        "classification": "derived",
+        "kind": "skip",
+        "layer": "mixed",
+        "status": "missing"
+      },
+      "lora_request_processing.ipynb": {
+        "classification": "documentation",
+        "kind": "skip",
+        "layer": "n/a",
+        "status": "missing"
+      },
+      "lora_request_trace.csv": {
+        "classification": "primary",
+        "kind": "request",
+        "layer": "application",
+        "rows": 26823,
+        "status": "present"
+      },
+      "lora_update_latency_anon.csv": {
+        "classification": "primary",
+        "kind": "pipeline",
+        "layer": "scheduler",
+        "rows": 27415,
+        "stage": "lora_load",
+        "status": "present",
+        "unit": "ms"
+      },
+      "model_predict_data_anon.csv": {
+        "classification": "primary",
+        "kind": "pipeline",
+        "layer": "scheduler",
+        "rows": 6254,
+        "stage": "model_predict",
+        "status": "present",
+        "unit": "ms"
+      },
+      "pipeline_inference_data_anon.csv": {
+        "classification": "primary",
+        "kind": "pipeline",
+        "layer": "scheduler",
+        "rows": 34421,
+        "stage": "pipeline_inference",
+        "status": "present",
+        "unit": "ms"
+      },
+      "pipeline_update_latency_anon.csv": {
+        "classification": "primary",
+        "kind": "pipeline",
+        "layer": "scheduler",
+        "rows": 36046,
+        "stage": "pipeline_update",
+        "status": "present",
+        "unit": "ms"
+      },
+      "pod_gpu_duty_cycle_anon.csv": {
+        "classification": "primary",
+        "field": "gpu_utilization",
+        "kind": "infra",
+        "layer": "infrastructure",
+        "rows": 157417,
+        "status": "present",
+        "unit": "pct"
+      },
+      "pod_gpu_memory_used_bytes_anon.csv": {
+        "classification": "primary",
+        "field": "gpu_memory_used",
+        "kind": "infra",
+        "layer": "infrastructure",
+        "rows": 161413,
+        "status": "present",
+        "unit": "bytes"
+      },
+      "pod_memory_util_anon.csv": {
+        "classification": "primary",
+        "field": "memory_used",
+        "kind": "infra",
+        "layer": "infrastructure",
+        "rows": 214890,
+        "status": "present",
+        "unit": "frac"
+      },
+      "qps.csv": {
+        "classification": "primary",
+        "field": "arrival_rate",
+        "kind": "gateway",
+        "layer": "middleware",
+        "rows": 24627,
+        "status": "present",
+        "unit": "rps"
+      },
+      "queue_rt_raw_anon.csv": {
+        "classification": "primary",
+        "field": "waiting_time_s",
+        "kind": "gateway",
+        "layer": "middleware",
+        "rows": 23478,
+        "status": "present",
+        "unit": "ms"
+      },
+      "queue_size_raw_anon.csv": {
+        "classification": "primary",
+        "field": "queue_depth",
+        "kind": "gateway",
+        "layer": "middleware",
+        "rows": 1434,
+        "status": "present",
+        "unit": "tasks"
+      }
+    },
+    "layers_present": [
+      "application",
+      "infrastructure",
+      "middleware",
+      "scheduler"
+    ],
+    "missing": [
+      "data_trace_processed.csv",
+      "README.md",
+      "MLoRA-Pipeline.png",
+      "lora_request_processing.ipynb"
+    ],
+    "primary_present": [
+      "lora_request_trace.csv",
+      "qps.csv",
+      "queue_size_raw_anon.csv",
+      "queue_rt_raw_anon.csv",
+      "pipeline_inference_data_anon.csv",
+      "pipeline_update_latency_anon.csv",
+      "model_predict_data_anon.csv",
+      "basemodel_update_latency_anon.csv",
+      "controlnet_latency_data_anon.csv",
+      "lora_update_latency_anon.csv",
+      "pod_gpu_duty_cycle_anon.csv",
+      "pod_gpu_memory_used_bytes_anon.csv",
+      "pod_memory_util_anon.csv"
+    ],
+    "skipped": []
+  },
+  "layer_summary": {
+    "application": {
+      "distinct_models": 79,
+      "duration_s": 1989355.0,
+      "e2e_latency_s_p50": 23.0,
+      "e2e_latency_s_p95": 70.0,
+      "e2e_latency_s_p99": 106.0,
+      "failed": 0,
+      "lora_request_frac": 0.1652,
+      "model_top": {
+        "M0001": 3978,
+        "M0002": 8229,
+        "M0003": 1951,
+        "M0004": 2506,
+        "M0010": 2113
+      },
+      "request_count": 26392,
+      "request_type_distribution": {
+        "IMG_2_IMG": 2152,
+        "INPAINTING": 180,
+        "TXT_2_IMG": 24060
+      },
+      "time_end_s": 1733679225.0,
+      "time_start_s": 1731689870.0
+    },
+    "infrastructure": {
+      "container_mem_frac_p95": 0.8773185809453329,
+      "distinct_containers": 207,
+      "gpu_mem_used_bytes_p50": 24823201792.0,
+      "gpu_mem_used_bytes_p95": 33569112064.0,
+      "gpu_util_pct_p50": 0.0,
+      "gpu_util_pct_p95": 31.733333333333334,
+      "samples": 533720
+    },
+    "middleware": {
+      "arrival_rate_p95": 0.18000000000000002,
+      "queue_depth_p50": 0.0,
+      "queue_depth_p95": 0.3333333333333333,
+      "samples": 49539,
+      "waiting_time_s_p50": 0.203,
+      "waiting_time_s_p95": 0.451,
+      "waiting_time_s_p99": 0.628
+    },
+    "scheduler": {
+      "events": 140888,
+      "stage_duration_s_p50": {
+        "basemodel_load": 22.718,
+        "controlnet_load": 3.884,
+        "lora_load": 4.378,
+        "model_predict": 35.044,
+        "pipeline_inference": 15.132,
+        "pipeline_update": 8.454
+      },
+      "stage_duration_s_p95": {
+        "basemodel_load": 45.449,
+        "controlnet_load": 11.266,
+        "lora_load": 6.767,
+        "model_predict": 79.367,
+        "pipeline_inference": 35.457,
+        "pipeline_update": 39.531
+      }
+    }
+  },
+  "linkage_matrix": {
+    "application": {
+      "application": "self",
+      "infrastructure": "no_join",
+      "middleware": "no_join",
+      "scheduler": "no_join"
+    },
+    "infrastructure": {
+      "application": "no_join",
+      "infrastructure": "self",
+      "middleware": "container_join",
+      "scheduler": "container_join"
+    },
+    "middleware": {
+      "application": "no_join",
+      "infrastructure": "container_join",
+      "middleware": "self",
+      "scheduler": "container_join"
+    },
+    "scheduler": {
+      "application": "no_join",
+      "infrastructure": "container_join",
+      "middleware": "container_join",
+      "scheduler": "self"
+    }
+  },
+  "predictive_layer_analysis": {
+    "contributions_s": {
+      "gateway_queue_wait_s": 0.628,
+      "request_exec_variance_s": 83.0,
+      "scheduler_pipeline_cold_start_s": 22.72
+    },
+    "most_addressable_of_p99": "scheduler_pipeline_cold_start_s",
+    "most_predictive_of_p99": "request_exec_variance_s"
+  },
+  "source": "raw:data/external/alibaba_genai/raw"
+}

@@ -84,6 +84,7 @@ baselines, not the serving-physics replay. Same canonical KPI
 | **Azure LMM (multimodal) inference traces (2025)** | Multimodal token demand (image + text). | Roadmap — **not ingested** (LLM path landed first; do not claim multimodal support) |
 | **Alibaba GPU cluster trace (v2023)** | Fragmentation / heterogeneous GPU scheduling — whole-GPU + fractional (`gpu_milli`) packing onto a heterogeneous fleet, with **executable** packing baselines (`first_fit`/`best_fit`/FFD/`greedy_packing`). | **Implemented** (`CANONICAL_TRACE_BACKTEST_ALIBABA_GPU_V2023_FRAGMENTATION_V1`) |
 | **Philly (Microsoft) traces** | Training / fine-tuning GPU jobs — multi-tenant **temporal** job scheduling (queueing, backfill, fragmentation, fairness, retry/failure) on a fixed fleet. | **Implemented** (`CANONICAL_TRACE_BACKTEST_PHILLY_TRAINING_V1`) |
+| **Alibaba GenAI 2026 (GenTD26)** | Top-down **multi-layer** stable-diffusion serving — application (requests + e2e latency), middleware (gateway queues), scheduler (pipeline/cold-start), infrastructure (GPU util/memory). Layers ingested with **classified linkage quality** (no faked joins). | **Implemented** (`CANONICAL_TRACE_BACKTEST_ALIBABA_GENAI_2026_V1`) |
 | **MIT Supercloud** | Utilization / power / monitoring calibration — to calibrate the simulator's utilization, power and thermal priors against real datacenter monitoring. | Roadmap — not ingested |
 
 Known sources (for the future ingestion PRs — **do not download/ingest here**):
@@ -194,14 +195,46 @@ python scripts/run_alibaba_gpu_backtest.py
 python scripts/ingest_philly.py
 # Philly — canonical temporal training-job scheduling backtest:
 python scripts/run_philly_backtest.py
+
+# Alibaba GenAI 2026 — ingest all layers (downloads small layer files):
+python scripts/ingest_alibaba_genai.py
+# Alibaba GenAI 2026 — canonical multi-layer serving backtest:
+python scripts/run_alibaba_genai_backtest.py --source-dir data/external/alibaba_genai/raw
 ```
 
 Raw trace files are **downloaded, not committed** (`.gitignore`-d under
 `data/external/*/raw/`). Unit tests use the fixtures
 (`tests/fixtures/burstgpt_sample.csv`, `tests/fixtures/azure_llm_sample.csv`,
-`tests/fixtures/alibaba_gpu/`, `tests/fixtures/philly_sample/`) and never
-require the full files; full-trace backtests are integration-only and are
-skipped if the raw file is absent. The Philly full trace is a ~1 GB git-LFS
+`tests/fixtures/alibaba_gpu/`, `tests/fixtures/philly_sample/`,
+`tests/fixtures/alibaba_genai_sample/`) and never require the full files;
+full-trace backtests are integration-only and are skipped if the raw file is
+absent.
+
+## 3e. Alibaba GenAI 2026 (GenTD26) specifics
+
+- Source: https://github.com/alibaba/clusterdata/tree/master/cluster-trace-v2026-GenAI
+  — a top-down stable-diffusion serving trace; all layer files are small
+  (< 5 MB compressed).
+- **Layers + normalized records:** application →
+  `NormalizedGenAIRequest` (`lora_request_trace.csv`: real `exec_time_seconds`
+  e2e latency, model id, type, status, prompt size, `num_lora`); middleware →
+  `NormalizedGatewayQueueSample` (`qps`/`queue_size`/`queue_rt`); scheduler →
+  `NormalizedSchedulerPipelineEvent` (`pipeline_*`/`model_predict`/
+  `basemodel`/`controlnet`/`lora_update` load latencies); infrastructure →
+  `NormalizedInfraSample` (`pod_gpu_duty_cycle`/`pod_gpu_memory_used`/
+  `pod_memory_util`).
+- **Cross-layer linkage is classified from data, never faked:** the application
+  layer is **`no_join`** to every metric layer (incompatible anonymized time
+  bases — 2024 requests vs a 2022 metric epoch — and no `container_ip` in
+  requests); the metric layers join to each other by `container_ip`
+  (`container_join`). **No request→GPU causality is claimed.**
+- The backtest is a request-level serving replay (application layer only);
+  pipeline cold-start latencies are used as a **distribution calibration**
+  (medians), not a per-request join. goodput_unit = **completed_requests**.
+  The decisive lever is **model-affinity / prewarm** (87 base models, ~23 s
+  measured base-model load): `constraint_aware` cuts mean cold-start ~23 s → ~3 s,
+  winning both economic alpha and tail-latency safety vs the `sla_aware`
+  headline. See `docs/ALIBABA_GENAI_BACKTEST_RESULTS.md`. The Philly full trace is a ~1 GB git-LFS
 tarball (~6.6 GB extracted), so its canonical run is a **fixture-scale
 demonstration** unless the tarball is downloaded.
 
@@ -231,7 +264,7 @@ demonstration** unless the tarball is downloaded.
 
 - **Implemented so far:** BurstGPT + Azure LLM (LLM inference replay) +
   Alibaba GPU v2023 (GPU bin-packing/fragmentation) + Philly (temporal GPU
-  training-job scheduling).
+  training-job scheduling) + Alibaba GenAI 2026 (multi-layer GenAI serving).
 - No Azure **LMM/multimodal** or MIT ingestion yet.
 - No ML training, no neural forecasting.
 - No robust-energy-engine changes; no simulator constant tuning to force wins.
