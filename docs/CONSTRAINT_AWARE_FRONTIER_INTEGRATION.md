@@ -156,3 +156,16 @@ The Azure 2024 number reproduces the committed `frontier_controller_v1` result (
 - **GenAI 2026 path.** GenAI's `constraint_aware` sizer (`_size_for_sla`) probes-up-to-SLA instead of using a fixed rho target; integrating the adapter there would require a different shim than the rho-target path used here.
 - **Customer-specific safety thresholds.** `max_timeout_pct=10`, `max_queue_p99_ms=2000` are pre-registered defaults from the Azure 2024 audit. Per-tenant SLAs must override these explicitly.
 - **Production executor.** Real-mode execution remains a deliberate stub. Promoting it requires the binding-boundary work in `docs/SAFE_UTILIZATION_FRONTIER_CONTROLLER.md` §"Real-mode execution boundary".
+
+## 11. Dynamic Safe Frontier Estimator (companion v1)
+
+A telemetry-driven companion now lives in the same package
+(`aurelius.frontier.dynamic_*`). It is **opt-in**, **disabled by
+default**, runs in **shadow / simulator mode**, and feeds the
+constraint-aware integration through the same `FrontierDecision`
+adapter (`aurelius.frontier.dynamic_estimate_to_frontier_decision`).
+The static frontier controller documented here remains the committed
+default; the dynamic estimator does not replace it. See
+`docs/DYNAMIC_SAFE_FRONTIER_ESTIMATOR.md` and
+`docs/AZURE_2024_DYNAMIC_FRONTIER_RESULTS.md` for the design and the
+streaming-replay benchmark.

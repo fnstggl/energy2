@@ -217,3 +217,19 @@ controller stays in shadow / simulator mode. The committed
 - The product thesis (`maximum sustainable usage across constraints`) is
   *supported* by the Azure 2024 audit, but the customer-specific safe
   rho remains an open empirical question.
+
+---
+
+## 11. Companion: Dynamic Safe Frontier Estimator (v1)
+
+A telemetry-driven companion to the static controller documented here
+lives in the same package (`aurelius.frontier.dynamic_*`). It accepts a
+recent telemetry window and emits a recommendation-only
+`DynamicFrontierDecision` (RAISE / KEEP / LOWER / INSUFFICIENT_TELEMETRY)
+without any future leakage. The dynamic path is **opt-in** and the
+static controller documented above remains the committed default;
+see `docs/DYNAMIC_SAFE_FRONTIER_ESTIMATOR.md` and
+`docs/AZURE_2024_DYNAMIC_FRONTIER_RESULTS.md`. All hard rules in this
+document (no production mutation by default, no future leakage, safety
+gates as vetoes, missing telemetry stays INSUFFICIENT) apply to the
+dynamic path verbatim.

@@ -33,6 +33,40 @@ from .controller import (
     FrontierControllerConfig,
     choose_safe_utilization_target,
 )
+from .dynamic_adapter import (
+    dynamic_estimate_to_frontier_decision,
+)
+from .dynamic_controller import (
+    DynamicControllerConfig,
+    choose_dynamic_rho,
+)
+from .dynamic_estimator import (
+    DynamicEstimatorConfig,
+    estimate_dynamic_frontier,
+)
+from .dynamic_models import (
+    DYNAMIC_ACTIONS,
+    DynamicFrontierCandidate,
+    DynamicFrontierDecision,
+    DynamicFrontierEstimate,
+    ServingTelemetryTick,
+)
+from .dynamic_shadow import (
+    DynamicFrontierOutcome,
+    DynamicFrontierShadowLog,
+    compare_prediction_to_observed,
+    read_outcomes as read_dynamic_outcomes,
+    read_shadow_log as read_dynamic_shadow_log,
+    write_outcome as write_dynamic_outcome,
+    write_shadow_log_entry as write_dynamic_shadow_log_entry,
+)
+from .dynamic_telemetry import (
+    DEFAULT_REQUIRED_FIELDS,
+    TelemetryWindowValidation,
+    build_serving_telemetry_window,
+    telemetry_tick_from_arrival_tick,
+    validate_dynamic_window,
+)
 from .estimator import (
     ANTICIPATORY,
     REACTIVE,
@@ -58,6 +92,14 @@ from .models import (
     FrontierPoint,
     SafetyStatus,
     WorkloadFrontierProfile,
+)
+from .risk import (
+    RiskConfig,
+    RiskEstimate,
+    estimate_churn_risk,
+    estimate_queue_blowup_risk,
+    estimate_required_headroom,
+    estimate_sla_risk,
 )
 from .safety import (
     SafetyConfig,
@@ -100,9 +142,38 @@ __all__ = [
     "SIMULATOR_MODE",
     "REAL_DISABLED",
     "REAL_ENABLED",
-    # shadow logging
+    # shadow logging (static)
     "FrontierShadowDecisionLog",
     "FrontierShadowLog",
     "write_shadow_log_entry",
     "read_shadow_log",
+    # dynamic v1 — telemetry-driven estimator
+    "ServingTelemetryTick",
+    "DynamicFrontierCandidate",
+    "DynamicFrontierEstimate",
+    "DynamicFrontierDecision",
+    "DYNAMIC_ACTIONS",
+    "DEFAULT_REQUIRED_FIELDS",
+    "TelemetryWindowValidation",
+    "build_serving_telemetry_window",
+    "telemetry_tick_from_arrival_tick",
+    "validate_dynamic_window",
+    "DynamicEstimatorConfig",
+    "estimate_dynamic_frontier",
+    "DynamicControllerConfig",
+    "choose_dynamic_rho",
+    "RiskConfig",
+    "RiskEstimate",
+    "estimate_sla_risk",
+    "estimate_queue_blowup_risk",
+    "estimate_required_headroom",
+    "estimate_churn_risk",
+    "DynamicFrontierShadowLog",
+    "DynamicFrontierOutcome",
+    "compare_prediction_to_observed",
+    "write_dynamic_shadow_log_entry",
+    "read_dynamic_shadow_log",
+    "write_dynamic_outcome",
+    "read_dynamic_outcomes",
+    "dynamic_estimate_to_frontier_decision",
 ]
