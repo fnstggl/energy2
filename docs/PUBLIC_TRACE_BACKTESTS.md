@@ -187,6 +187,19 @@ See `docs/AZURE_LLM_BACKTEST_RESULTS.md` for the canonical run and results.
   ~24% (EWMA) — `seasonal_time_of_day` and a 15%-noisy forecast are
   net-**negative**. Residency/affinity = 0 and prewarming is not modelled (no
   model/session id). See `docs/AZURE_LLM_2024_BACKTEST_RESULTS.md`.
+- **Safe-utilization frontier audit + controller:** the
+  `docs/AZURE_2024_SAFE_UTILIZATION_FRONTIER.md` audit established that
+  `constraint_aware` at rho ≈ 0.65 is SAFE but conservative — the
+  anticipatory safe peak on the audit is `anticipatory@0.75`. The
+  **Safe Utilization Frontier Controller v1**
+  (`docs/SAFE_UTILIZATION_FRONTIER_CONTROLLER.md`,
+  `docs/AZURE_2024_FRONTIER_CONTROLLER_RESULTS.md`) turns that audit into a
+  recommendation-only controller that estimates the safe frontier, vetoes
+  unsafe points (timeout / queue / latency / telemetry gates) and selects
+  the highest SLA-safe goodput/$ point — **simulator / shadow-mode only**,
+  real-cluster execution disabled by default. The committed
+  `constraint_aware` engine default (rho ≈ 0.65) is **unchanged** by this
+  controller.
 
 ## 3c. Alibaba GPU v2023 specifics
 
