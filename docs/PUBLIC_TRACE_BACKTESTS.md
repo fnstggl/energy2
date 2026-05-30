@@ -68,8 +68,10 @@ provisioning/routing decision differs.
 
 | Dataset | Role | Status |
 |---|---|---|
-| **BurstGPT** | LLM inference traffic replay — real arrival/burst shape, request/response token counts, failure rows for the interactive serving scenarios. | **Implemented** (this PR) |
-| **Azure LLM / LMM inference traces** | Second inference / multimodal trace — input/output token demand + traffic shape for batch-inference / embedding goodput and cache-affinity realism. | Roadmap — not ingested |
+| **BurstGPT** | LLM inference traffic replay — real arrival/burst shape, request/response token counts, failure rows for the interactive serving scenarios. | **Implemented** (`CANONICAL_TRACE_BACKTEST_BURSTGPT_V1`) |
+| **Azure LLM inference traces** | Second, independent LLM inference trace — input/output token demand + arrival timing, to test whether inference alpha generalizes beyond BurstGPT. | **Implemented** (`CANONICAL_TRACE_BACKTEST_AZURE_LLM_V1`) |
+| **Azure LMM (multimodal) inference traces (2025)** | Multimodal token demand (image + text). | Roadmap — **not ingested** (LLM path landed first; do not claim multimodal support) |
+| **Alibaba GPU cluster traces** | Fragmentation / heterogeneous GPU scheduling — utilization, placement, multi-tenant behavior to calibrate the packing baselines (`first_fit`/`best_fit`/FFD). | Roadmap — not ingested |
 | **Alibaba GPU cluster traces** | Fragmentation / heterogeneous GPU scheduling — utilization, placement, multi-tenant behavior to calibrate the packing baselines (`first_fit`/`best_fit`/FFD). | Roadmap — not ingested |
 | **Philly (Microsoft) traces** | Training / fine-tuning GPU jobs — multi-tenant job scheduling + topology-aware placement + RESERVE_CAPACITY crowding. | Roadmap — not ingested |
 | **MIT Supercloud** | Utilization / power / monitoring calibration — to calibrate the simulator's utilization, power and thermal priors against real datacenter monitoring. | Roadmap — not ingested |
@@ -106,29 +108,67 @@ Known sources (for the future ingestion PRs — **do not download/ingest here**)
 See `docs/BURSTGPT_BACKTEST_RESULTS.md` for the canonical run, policies, and
 results.
 
+## 3b. Azure LLM specifics
+
+- Source: https://github.com/Azure/AzurePublicDataset —
+  `AzureLLMInferenceTrace_conv.csv` / `_code.csv` (2023) and the `_1week`
+  variants (2024).
+- **Discovered schema** (verified against the raw files):
+  `TIMESTAMP,ContextTokens,GeneratedTokens` — **exactly three columns**.
+  `TIMESTAMP` is absolute sub-second; `ContextTokens` = input/prompt tokens;
+  `GeneratedTokens` = output tokens.
+- Azure provides **far less** than BurstGPT. Honest degradation:
+  - **no model / service id** ⇒ `model = "azure-llm"`;
+  - **no request / session id, no prefix info** ⇒ `session_id = None`,
+    `cache_affinity_key = None`. Real cache affinity is **unavailable**, so the
+    backtest **omits `cache_affinity_baseline`** (not applicable) and
+    `constraint_aware` gets **zero** cache benefit;
+  - **no latency / TTFT / elapsed** ⇒ `elapsed_s = None`. This is a
+    **token-demand and arrival replay, NOT a measured-latency replay**; no TTFT
+    is measured from Azure;
+  - **no failure column** ⇒ a row is a failure only if `GeneratedTokens == 0`.
+- The two file variants (`conv`, `code`) are the only logical-workload signal;
+  the variant is recorded as `log_type`.
+- Azure conv is **much smoother** than BurstGPT (peak/mean RPS ≈ 1.5× vs ≈ 75×),
+  which is the key contrast: see `docs/AZURE_LLM_BACKTEST_RESULTS.md`. The
+  inference alpha *vs the reactive `sla_aware` headline* generalizes, but
+  `constraint_aware`'s clean win over **every** baseline does not — on smooth
+  load a leaner static/queue baseline is cheaper and CA's value is tail-latency
+  safety, reported honestly.
+
+See `docs/AZURE_LLM_BACKTEST_RESULTS.md` for the canonical run and results.
+
 ## 4. Reproduce
 
 ```bash
-# Ingest (downloads BurstGPT_1.csv to data/external/burstgpt/raw if missing):
+# BurstGPT — ingest (downloads BurstGPT_1.csv to data/external/burstgpt/raw):
 python scripts/ingest_burstgpt.py
-
-# Canonical backtest (busy interactive tier, real burst shape):
+# BurstGPT — canonical backtest (busy interactive tier, real burst shape):
 python scripts/run_burstgpt_backtest.py \
     --csv data/external/burstgpt/raw/BurstGPT_1.csv \
     --start-s 0 --duration-s 600000 --scale-rps 300 --tick-seconds 60
+
+# Azure LLM — ingest (downloads AzureLLMInferenceTrace_conv.csv):
+python scripts/ingest_azure_llm.py --workload conv
+# Azure LLM — canonical backtest (busy interactive tier, real arrival shape):
+python scripts/run_azure_llm_backtest.py \
+    --csv data/external/azure_llm/raw/AzureLLMInferenceTrace_conv.csv \
+    --scale-rps 12 --tick-seconds 15
 ```
 
-Raw `BurstGPT_1.csv` (~50 MB) is **downloaded, not committed** (it is
-`.gitignore`-able under `data/external/burstgpt/raw/`). Unit tests use
-`tests/fixtures/burstgpt_sample.csv` and never require the full CSV; the
-full-trace backtest is integration-only and is skipped if the raw file is
-absent.
+Raw trace files are **downloaded, not committed** (`.gitignore`-d under
+`data/external/*/raw/`). Unit tests use the fixtures
+(`tests/fixtures/burstgpt_sample.csv`, `tests/fixtures/azure_llm_sample.csv`)
+and never require the full files; full-trace backtests are integration-only and
+are skipped if the raw file is absent.
 
-## Non-goals (this PR)
+## Non-goals
 
-- No Azure / Alibaba / Philly / MIT ingestion.
+- **Implemented so far:** BurstGPT + Azure LLM (LLM inference replay only).
+- No Azure **LMM/multimodal**, Alibaba, Philly, or MIT ingestion yet.
 - No ML training, no neural forecasting.
 - No robust-energy-engine changes; no simulator constant tuning to force wins.
 - No production-savings claims.
-- BurstGPT is **not** customer telemetry; the Session/cache-affinity key is
-  **not** a real KV cache hit rate.
+- Public traces are **not** customer telemetry. BurstGPT's Session/cache key is
+  **not** a real KV cache hit rate; Azure has **no** cache/session/latency
+  signal at all (token-demand + arrival replay only).

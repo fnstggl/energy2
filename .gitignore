@@ -40,3 +40,5 @@ Thumbs.db
 # JSON under processed/ IS committed.
 data/external/burstgpt/raw/*.csv
 data/external/burstgpt/processed/burstgpt_normalized.json
+data/external/azure_llm/raw/*.csv
+data/external/azure_llm/processed/azure_llm_normalized.json

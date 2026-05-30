@@ -1,0 +1,217 @@
+{
+  "backtest": {
+    "headline_baseline": "sla_aware",
+    "n_requests": 19366,
+    "n_ticks": 20,
+    "outcome": {
+      "beats_fifo_sanity_baseline": false,
+      "constraint_aware_vs_headline": "ALPHA_WIN",
+      "fifo_margin_pct": -7.5225,
+      "loss_reasons": [],
+      "margin_pct": 19.8614,
+      "notes": "static FIFO (do-nothing, mean-sized) beats CA on goodput/$ at this load \u2014 honest caveat: static provisioning is cheapest under mild burst-load",
+      "safety_evidence": []
+    },
+    "policies": {
+      "constraint_aware": {
+        "active_gpu_hours": 0.8125,
+        "cache_savings_applied": true,
+        "cost_per_sla_compliant_token": 4.2989351090334425e-07,
+        "energy_cost": 0.0325,
+        "gpu_infra_cost": 1.625,
+        "latency_p95_ms": 9768.47,
+        "latency_p99_max_ms": 24930.12,
+        "latency_p99_ms": 19710.51,
+        "mean_reuse_fraction": 0.0,
+        "migration_reroute_count": 11,
+        "policy": "constraint_aware",
+        "queue_p95_ms": 7.82,
+        "queue_p99_ms": 13.41,
+        "raw_tokens": 4088665,
+        "sla_compliant_goodput": 3855606,
+        "sla_safe_goodput_per_infra_dollar": 2326157.466063349,
+        "timeout_rate_pct_mean": 5.6864,
+        "total_infrastructure_cost": 1.6575
+      },
+      "fifo": {
+        "active_gpu_hours": 0.75,
+        "cache_savings_applied": false,
+        "cost_per_sla_compliant_token": 3.975545974980563e-07,
+        "energy_cost": 0.03,
+        "gpu_infra_cost": 1.5,
+        "latency_p95_ms": 9855.03,
+        "latency_p99_max_ms": 25308.58,
+        "latency_p99_ms": 19924.61,
+        "mean_reuse_fraction": 0.0,
+        "migration_reroute_count": 0,
+        "policy": "fifo",
+        "queue_p95_ms": 13.33,
+        "queue_p99_ms": 23.63,
+        "raw_tokens": 4088665,
+        "sla_compliant_goodput": 3848528,
+        "sla_safe_goodput_per_infra_dollar": 2515377.7777777785,
+        "timeout_rate_pct_mean": 5.843,
+        "total_infrastructure_cost": 1.53
+      },
+      "queue_aware": {
+        "active_gpu_hours": 0.5958,
+        "cache_savings_applied": false,
+        "cost_per_sla_compliant_token": 3.4254682365672616e-07,
+        "energy_cost": 0.0238,
+        "gpu_infra_cost": 1.1917,
+        "latency_p95_ms": 14489.59,
+        "latency_p99_max_ms": 219262.38,
+        "latency_p99_ms": 31418.76,
+        "mean_reuse_fraction": 0.0,
+        "migration_reroute_count": 6,
+        "policy": "queue_aware",
+        "queue_p95_ms": 2877.9,
+        "queue_p99_ms": 5939.14,
+        "raw_tokens": 4088665,
+        "sla_compliant_goodput": 3548420,
+        "sla_safe_goodput_per_infra_dollar": 2919308.9263677495,
+        "timeout_rate_pct_mean": 9.771,
+        "total_infrastructure_cost": 1.2155
+      },
+      "sla_aware": {
+        "active_gpu_hours": 0.975,
+        "cache_savings_applied": false,
+        "cost_per_sla_compliant_token": 5.15276564138979e-07,
+        "energy_cost": 0.039,
+        "gpu_infra_cost": 1.95,
+        "latency_p95_ms": 9704.06,
+        "latency_p99_max_ms": 24840.88,
+        "latency_p99_ms": 19574.73,
+        "mean_reuse_fraction": 0.0,
+        "migration_reroute_count": 13,
+        "policy": "sla_aware",
+        "queue_p95_ms": 5.85,
+        "queue_p99_ms": 10.05,
+        "raw_tokens": 4088665,
+        "sla_compliant_goodput": 3860063,
+        "sla_safe_goodput_per_infra_dollar": 1940705.379587733,
+        "timeout_rate_pct_mean": 5.5827,
+        "total_infrastructure_cost": 1.989
+      }
+    },
+    "primary_kpi": "sla_safe_goodput_per_infrastructure_dollar",
+    "tick_seconds": 15.0
+  },
+  "burstgpt_comparison": {
+    "beats_fifo": true,
+    "ca_vs_sla_aware_pct": 26.3461,
+    "outcome": "ALPHA_WIN"
+  },
+  "cache_affinity_baseline": "omitted_not_applicable_no_session_or_prefix_info",
+  "filters": {
+    "duration_s": null,
+    "include_failures": false,
+    "sample_size": null,
+    "scale_rps": 12.0,
+    "seed": 0,
+    "start_s": null
+  },
+  "load_sensitivity_sweep": [
+    {
+      "ca_beats_fifo": false,
+      "ca_outcome": "ALPHA_WIN",
+      "ca_vs_sla_aware_pct": 20.33,
+      "goodput_per_dollar": {
+        "constraint_aware": 2210220.9469153527,
+        "fifo": 2551338.650714525,
+        "queue_aware": 2547455.2873172406,
+        "sla_aware": 1836817.337461298
+      },
+      "load_factor": 0.33
+    },
+    {
+      "ca_beats_fifo": true,
+      "ca_outcome": "ALPHA_WIN",
+      "ca_vs_sla_aware_pct": 24.94,
+      "goodput_per_dollar": {
+        "constraint_aware": 2324696.8325791843,
+        "fifo": 2324383.1070889886,
+        "queue_aware": 2834092.272202997,
+        "sla_aware": 1860689.00675024
+      },
+      "load_factor": 0.5
+    },
+    {
+      "ca_beats_fifo": false,
+      "ca_outcome": "ALPHA_WIN",
+      "ca_vs_sla_aware_pct": 19.86,
+      "goodput_per_dollar": {
+        "constraint_aware": 2326157.466063349,
+        "fifo": 2515377.7777777785,
+        "queue_aware": 2919308.9263677495,
+        "sla_aware": 1940705.379587733
+      },
+      "load_factor": 1.0
+    },
+    {
+      "ca_beats_fifo": false,
+      "ca_outcome": "ALPHA_WIN",
+      "ca_vs_sla_aware_pct": 19.45,
+      "goodput_per_dollar": {
+        "constraint_aware": 2338263.796240146,
+        "fifo": 2660111.418685122,
+        "queue_aware": 3253401.229148376,
+        "sla_aware": 1957531.4401622715
+      },
+      "load_factor": 2.0
+    },
+    {
+      "ca_beats_fifo": false,
+      "ca_outcome": "ALPHA_WIN",
+      "ca_vs_sla_aware_pct": 21.31,
+      "goodput_per_dollar": {
+        "constraint_aware": 2267998.8235294116,
+        "fifo": 2685371.1484593838,
+        "queue_aware": 2744320.5456095487,
+        "sla_aware": 1869600.0968288549
+      },
+      "load_factor": 3.0
+    }
+  ],
+  "policies": [
+    "fifo",
+    "sla_aware",
+    "constraint_aware",
+    "queue_aware"
+  ],
+  "source": "csv:data/external/azure_llm/raw/AzureLLMInferenceTrace_conv.csv",
+  "trace_summary": {
+    "cache_key_reuse_rate_pct": 0.0,
+    "dataset": "azure_llm",
+    "distinct_cache_keys": 0,
+    "duration_s": 291.8101613521576,
+    "failure_rate_pct": 0.0,
+    "has_cache_affinity": false,
+    "has_elapsed": false,
+    "has_session_ids": false,
+    "included_count": 19366,
+    "log_type_distribution": {
+      "conv": 19366
+    },
+    "mean_requests_per_cache_key": 0.0,
+    "model_distribution": {
+      "azure-llm": 19366
+    },
+    "output_tokens_p50": 129.0,
+    "output_tokens_p95": 451.0,
+    "output_tokens_p99": 601.0,
+    "prompt_tokens_p50": 1020.0,
+    "prompt_tokens_p95": 4083.0,
+    "prompt_tokens_p99": 4142.0,
+    "row_count": 19366,
+    "rps_max_per_min": 87.866667,
+    "rps_mean_per_min": 64.553333,
+    "rps_p95_per_min": 87.866667,
+    "time_end_s": 1700158838.4907513,
+    "time_start_s": 1700158546.68059,
+    "total_tokens_p50": 1412.0,
+    "total_tokens_p95": 4136.0,
+    "total_tokens_p99": 4259.0
+  },
+  "workload": "conv"
+}

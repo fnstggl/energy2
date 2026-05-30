@@ -120,13 +120,19 @@ def requests_to_arrival_ticks(
         output_mean = sum(r.output_tokens for r in served) / len(served)
         failures = sum(1 for r in bucket if r.is_failure)
 
+        # Reuse is only counted for requests that carry an affinity key. A trace
+        # with no session/prefix/logical-stream signal (cache_affinity_key=None,
+        # e.g. Azure LLM) gets ZERO reuse — no invented cache benefit.
         reused = 0
         keys_this_tick: set = set()
         for r in bucket:
-            keys_this_tick.add(r.cache_affinity_key)
-            if r.cache_affinity_key in seen_keys:
+            key = r.cache_affinity_key
+            if key is None:
+                continue
+            keys_this_tick.add(key)
+            if key in seen_keys:
                 reused += 1
-            seen_keys.add(r.cache_affinity_key)
+            seen_keys.add(key)
 
         model_mix: dict = {}
         log_mix: dict = {}

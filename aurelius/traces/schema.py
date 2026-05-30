@@ -58,9 +58,11 @@ class NormalizedLLMRequest:
     elapsed_s: Optional[float]
     log_type: str
     is_failure: bool
-    # Proxy for prefix/session locality (NOT a measured KV hit rate). Always
-    # populated so the cache-affinity replay has a stable grouping key.
-    cache_affinity_key: str
+    # Proxy for prefix/session locality (NOT a measured KV hit rate). ``None``
+    # when the source has no session/prefix/logical-stream signal at all (e.g.
+    # the Azure LLM inference trace), in which case the replay applies NO cache
+    # affinity benefit — see ``aurelius/traces/replay.py``.
+    cache_affinity_key: Optional[str]
 
     def to_dict(self) -> dict:
         return {
@@ -90,7 +92,10 @@ class NormalizedLLMRequest:
             elapsed_s=(None if d.get("elapsed_s") in (None, "") else float(d["elapsed_s"])),
             log_type=str(d["log_type"]),
             is_failure=bool(d["is_failure"]),
-            cache_affinity_key=str(d["cache_affinity_key"]),
+            cache_affinity_key=(
+                None if d.get("cache_affinity_key") in (None, "")
+                else str(d["cache_affinity_key"])
+            ),
         )
 
 
@@ -190,6 +195,7 @@ class TraceSummary:
     mean_requests_per_cache_key: float
     has_session_ids: bool
     has_elapsed: bool
+    has_cache_affinity: bool = False
 
     def to_dict(self) -> dict:
         return {
@@ -219,6 +225,7 @@ class TraceSummary:
             "mean_requests_per_cache_key": round(self.mean_requests_per_cache_key, 4),
             "has_session_ids": self.has_session_ids,
             "has_elapsed": self.has_elapsed,
+            "has_cache_affinity": self.has_cache_affinity,
         }
 
 
@@ -304,14 +311,19 @@ def summarize_trace(
         bin_counts[idx] += 1
     rps_per_bin = [c / bin_seconds for c in bin_counts]
 
-    # Cache-affinity proxy: how often a cache_affinity_key recurs.
+    # Cache-affinity proxy: how often a cache_affinity_key recurs. Requests with
+    # NO affinity key (None) are excluded — a trace without any session/prefix/
+    # logical-stream signal has no honest cache-affinity proxy at all.
     key_counts: dict = {}
     for r in requests:
+        if r.cache_affinity_key is None:
+            continue
         key_counts[r.cache_affinity_key] = key_counts.get(r.cache_affinity_key, 0) + 1
     distinct_keys = len(key_counts)
+    keyed_requests = sum(key_counts.values())
     reused_requests = sum(c - 1 for c in key_counts.values() if c > 1)
-    reuse_rate = 100.0 * reused_requests / len(requests)
-    mean_per_key = len(requests) / distinct_keys if distinct_keys else 0.0
+    reuse_rate = 100.0 * reused_requests / keyed_requests if keyed_requests else 0.0
+    mean_per_key = keyed_requests / distinct_keys if distinct_keys else 0.0
 
     return TraceSummary(
         dataset=dataset,
@@ -340,4 +352,5 @@ def summarize_trace(
         mean_requests_per_cache_key=mean_per_key,
         has_session_ids=any(r.session_id is not None for r in requests),
         has_elapsed=any(r.elapsed_s is not None for r in requests),
+        has_cache_affinity=distinct_keys > 0,
     )
