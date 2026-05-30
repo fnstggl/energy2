@@ -42,6 +42,10 @@ data/external/burstgpt/raw/*.csv
 data/external/burstgpt/processed/burstgpt_normalized.json
 data/external/azure_llm/raw/*.csv
 data/external/azure_llm/processed/azure_llm_normalized.json
+# Azure LLM 2024 week-long raw files (~0.7-1.1 GB each; downloaded, not committed).
+# The small processed summary JSONs ARE committed.
+data/external/azure_llm_2024/raw/*.csv
+!data/external/azure_llm_2024/raw/.gitkeep
 data/external/alibaba_gpu/raw/*.csv
 data/external/alibaba_gpu/processed/alibaba_gpu_normalized.json
 data/external/philly/raw/*
