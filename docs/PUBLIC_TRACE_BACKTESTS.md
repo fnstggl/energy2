@@ -64,6 +64,17 @@ these arrivals through the **unchanged** serving physics
 constants, and cost basis are identical across all policies — only the
 provisioning/routing decision differs.
 
+### GPU cluster traces — a second contract (`NormalizedGPUJob`)
+
+GPU cluster traces (Alibaba v2023) describe **jobs requesting GPUs on a
+heterogeneous fleet**, not token-level serving requests. They normalize into
+`schema.NormalizedGPUJob` (+ `NormalizedGPUUtilizationSample` when a dataset has
+utilization — Alibaba v2023 does not) and are scored by a **bin-packing**
+backtest (`aurelius/traces/gpu_packing.py`) with **executable** packing
+baselines, not the serving-physics replay. Same canonical KPI
+(`docs/RESULTS.md` §1); `goodput_unit = completed_gpu_job_work` (token_equivalent
+= effective_GPU × duration), labelled honestly.
+
 ## 2. Dataset roles
 
 | Dataset | Role | Status |
@@ -71,8 +82,7 @@ provisioning/routing decision differs.
 | **BurstGPT** | LLM inference traffic replay — real arrival/burst shape, request/response token counts, failure rows for the interactive serving scenarios. | **Implemented** (`CANONICAL_TRACE_BACKTEST_BURSTGPT_V1`) |
 | **Azure LLM inference traces** | Second, independent LLM inference trace — input/output token demand + arrival timing, to test whether inference alpha generalizes beyond BurstGPT. | **Implemented** (`CANONICAL_TRACE_BACKTEST_AZURE_LLM_V1`) |
 | **Azure LMM (multimodal) inference traces (2025)** | Multimodal token demand (image + text). | Roadmap — **not ingested** (LLM path landed first; do not claim multimodal support) |
-| **Alibaba GPU cluster traces** | Fragmentation / heterogeneous GPU scheduling — utilization, placement, multi-tenant behavior to calibrate the packing baselines (`first_fit`/`best_fit`/FFD). | Roadmap — not ingested |
-| **Alibaba GPU cluster traces** | Fragmentation / heterogeneous GPU scheduling — utilization, placement, multi-tenant behavior to calibrate the packing baselines (`first_fit`/`best_fit`/FFD). | Roadmap — not ingested |
+| **Alibaba GPU cluster trace (v2023)** | Fragmentation / heterogeneous GPU scheduling — whole-GPU + fractional (`gpu_milli`) packing onto a heterogeneous fleet, with **executable** packing baselines (`first_fit`/`best_fit`/FFD/`greedy_packing`). | **Implemented** (`CANONICAL_TRACE_BACKTEST_ALIBABA_GPU_V2023_FRAGMENTATION_V1`) |
 | **Philly (Microsoft) traces** | Training / fine-tuning GPU jobs — multi-tenant job scheduling + topology-aware placement + RESERVE_CAPACITY crowding. | Roadmap — not ingested |
 | **MIT Supercloud** | Utilization / power / monitoring calibration — to calibrate the simulator's utilization, power and thermal priors against real datacenter monitoring. | Roadmap — not ingested |
 
@@ -138,6 +148,26 @@ results.
 
 See `docs/AZURE_LLM_BACKTEST_RESULTS.md` for the canonical run and results.
 
+## 3c. Alibaba GPU v2023 specifics
+
+- Source: https://github.com/alibaba/clusterdata — `cluster-trace-gpu-v2023/csv/`
+  (`openb_pod_list_default.csv` pods + `openb_node_list_gpu_node.csv` fleet).
+- **Discovered schema** (verified against the raw files):
+  pods `name,cpu_milli,memory_mib,num_gpu,gpu_milli,gpu_spec,qos,pod_phase,creation_time,deletion_time,scheduled_time`;
+  nodes `sn,cpu_milli,memory_mib,gpu,model`. `gpu_milli` = thousandths of a GPU
+  (sharing); models are heterogeneous (T4/V100/P100/A10/G2/G3).
+- **Missing (stated, not invented):** no GPU utilization time-series, no
+  GPU-memory column, no per-pod node placement in the default pod list, no
+  deadline/user columns. `NormalizedGPUUtilizationSample` is therefore empty for
+  this dataset.
+- This is a **bin-packing / fragmentation** backtest, not a serving replay. The
+  headline baseline is the strongest **packing** baseline (`best_fit`/FFD/
+  `greedy_packing`), **never** FIFO (`docs/RESULTS.md` §3). `constraint_aware`
+  adds heterogeneous GPU-type **price-aware** placement on top of best-fit
+  consolidation: it wins economic alpha when the fleet has spare cheap capacity
+  to route to, and ties best-fit under saturation — reported with a
+  fleet-contention sweep. See `docs/ALIBABA_GPU_BACKTEST_RESULTS.md`.
+
 ## 4. Reproduce
 
 ```bash
@@ -154,18 +184,24 @@ python scripts/ingest_azure_llm.py --workload conv
 python scripts/run_azure_llm_backtest.py \
     --csv data/external/azure_llm/raw/AzureLLMInferenceTrace_conv.csv \
     --scale-rps 12 --tick-seconds 15
+
+# Alibaba GPU v2023 — ingest (downloads pod list + GPU node inventory):
+python scripts/ingest_alibaba_gpu.py
+# Alibaba GPU v2023 — canonical fragmentation/packing backtest:
+python scripts/run_alibaba_gpu_backtest.py
 ```
 
 Raw trace files are **downloaded, not committed** (`.gitignore`-d under
 `data/external/*/raw/`). Unit tests use the fixtures
-(`tests/fixtures/burstgpt_sample.csv`, `tests/fixtures/azure_llm_sample.csv`)
-and never require the full files; full-trace backtests are integration-only and
-are skipped if the raw file is absent.
+(`tests/fixtures/burstgpt_sample.csv`, `tests/fixtures/azure_llm_sample.csv`,
+`tests/fixtures/alibaba_gpu/`) and never require the full files; full-trace
+backtests are integration-only and are skipped if the raw file is absent.
 
 ## Non-goals
 
-- **Implemented so far:** BurstGPT + Azure LLM (LLM inference replay only).
-- No Azure **LMM/multimodal**, Alibaba, Philly, or MIT ingestion yet.
+- **Implemented so far:** BurstGPT + Azure LLM (LLM inference replay) +
+  Alibaba GPU v2023 (GPU bin-packing/fragmentation).
+- No Azure **LMM/multimodal**, Philly, or MIT ingestion yet.
 - No ML training, no neural forecasting.
 - No robust-energy-engine changes; no simulator constant tuning to force wins.
 - No production-savings claims.

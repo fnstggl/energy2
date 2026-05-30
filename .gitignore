@@ -42,3 +42,5 @@ data/external/burstgpt/raw/*.csv
 data/external/burstgpt/processed/burstgpt_normalized.json
 data/external/azure_llm/raw/*.csv
 data/external/azure_llm/processed/azure_llm_normalized.json
+data/external/alibaba_gpu/raw/*.csv
+data/external/alibaba_gpu/processed/alibaba_gpu_normalized.json

@@ -354,3 +354,138 @@ def summarize_trace(
         has_elapsed=any(r.elapsed_s is not None for r in requests),
         has_cache_affinity=distinct_keys > 0,
     )
+
+
+# ===========================================================================
+# GPU cluster / job-scheduling trace schema (fragmentation / packing backtests)
+# ===========================================================================
+# A SEPARATE normalized contract from NormalizedLLMRequest: GPU cluster traces
+# (e.g. Alibaba cluster-trace-gpu-v2023) describe *jobs requesting GPUs on a
+# heterogeneous fleet*, not token-level serving requests. The replay/backtest
+# for these is a bin-packing / placement problem, not a serving-physics replay.
+
+
+@dataclass(frozen=True)
+class NormalizedGPUJob:
+    """One normalized GPU-cluster job — the cross-dataset job contract.
+
+    Fields map 1:1 to the mission spec. Optional fields are ``None`` when the
+    source dataset does not provide them. Resource-request fields
+    (``cpu_milli`` / ``memory_mib`` / ``gpu_milli``) are kept because real GPU
+    fragmentation/packing needs the full request vector — ``gpu_milli`` is the
+    thousandths-of-a-GPU sharing request (Alibaba v2023). ``token_equivalent_work``
+    is a GPU-work proxy (effective_gpu × duration), labelled honestly as
+    ``completed_gpu_job_work`` (token_equivalent) in reports — NOT inference
+    output tokens.
+    """
+
+    job_id: str
+    submit_time_s: Optional[float]
+    start_time_s: Optional[float]
+    end_time_s: Optional[float]
+    duration_s: Optional[float]
+    gpu_count: int
+    gpu_type: Optional[str]
+    gpu_memory_gb: Optional[float]
+    status: Optional[str]
+    user_or_group: Optional[str]
+    workload_type: Optional[str]
+    priority: Optional[str]
+    placement_nodes: Optional[str]
+    placement_gpus: Optional[str]
+    is_failed: bool
+    deadline_s: Optional[float] = None
+    token_equivalent_work: Optional[float] = None
+    # Extra request vector for packing (None when the source lacks them).
+    cpu_milli: Optional[int] = None
+    memory_mib: Optional[int] = None
+    gpu_milli: Optional[int] = None
+
+    def to_dict(self) -> dict:
+        return {
+            "job_id": self.job_id,
+            "submit_time_s": self.submit_time_s,
+            "start_time_s": self.start_time_s,
+            "end_time_s": self.end_time_s,
+            "duration_s": self.duration_s,
+            "gpu_count": self.gpu_count,
+            "gpu_type": self.gpu_type,
+            "gpu_memory_gb": self.gpu_memory_gb,
+            "status": self.status,
+            "user_or_group": self.user_or_group,
+            "workload_type": self.workload_type,
+            "priority": self.priority,
+            "placement_nodes": self.placement_nodes,
+            "placement_gpus": self.placement_gpus,
+            "is_failed": self.is_failed,
+            "deadline_s": self.deadline_s,
+            "token_equivalent_work": self.token_equivalent_work,
+            "cpu_milli": self.cpu_milli,
+            "memory_mib": self.memory_mib,
+            "gpu_milli": self.gpu_milli,
+        }
+
+    @classmethod
+    def from_dict(cls, d: dict) -> "NormalizedGPUJob":
+        def _f(k):
+            v = d.get(k)
+            return None if v in (None, "") else float(v)
+
+        def _i(k):
+            v = d.get(k)
+            return None if v in (None, "") else int(float(v))
+
+        return cls(
+            job_id=str(d["job_id"]),
+            submit_time_s=_f("submit_time_s"),
+            start_time_s=_f("start_time_s"),
+            end_time_s=_f("end_time_s"),
+            duration_s=_f("duration_s"),
+            gpu_count=int(d.get("gpu_count") or 0),
+            gpu_type=(None if d.get("gpu_type") in (None, "") else str(d["gpu_type"])),
+            gpu_memory_gb=_f("gpu_memory_gb"),
+            status=(None if d.get("status") in (None, "") else str(d["status"])),
+            user_or_group=(None if d.get("user_or_group") in (None, "")
+                           else str(d["user_or_group"])),
+            workload_type=(None if d.get("workload_type") in (None, "")
+                           else str(d["workload_type"])),
+            priority=(None if d.get("priority") in (None, "") else str(d["priority"])),
+            placement_nodes=(None if d.get("placement_nodes") in (None, "")
+                             else str(d["placement_nodes"])),
+            placement_gpus=(None if d.get("placement_gpus") in (None, "")
+                            else str(d["placement_gpus"])),
+            is_failed=bool(d.get("is_failed")),
+            deadline_s=_f("deadline_s"),
+            token_equivalent_work=_f("token_equivalent_work"),
+            cpu_milli=_i("cpu_milli"),
+            memory_mib=_i("memory_mib"),
+            gpu_milli=_i("gpu_milli"),
+        )
+
+
+@dataclass(frozen=True)
+class NormalizedGPUUtilizationSample:
+    """One normalized GPU utilization sample (time-series).
+
+    Defined for the shared schema / future datasets (e.g. MIT Supercloud). The
+    Alibaba v2023 trace has **no** utilization time-series, so its ingester
+    returns an empty list — documented, not invented.
+    """
+
+    timestamp_s: float
+    node_id: str
+    gpu_id: str
+    gpu_type: Optional[str]
+    gpu_utilization: Optional[float]
+    memory_utilization: Optional[float]
+    power_w: Optional[float] = None
+    temperature_c: Optional[float] = None
+
+    def to_dict(self) -> dict:
+        return {
+            "timestamp_s": self.timestamp_s, "node_id": self.node_id,
+            "gpu_id": self.gpu_id, "gpu_type": self.gpu_type,
+            "gpu_utilization": self.gpu_utilization,
+            "memory_utilization": self.memory_utilization,
+            "power_w": self.power_w, "temperature_c": self.temperature_c,
+        }

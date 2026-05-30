@@ -1,0 +1,280 @@
+{
+  "backtest": {
+    "fleet_gpu_count": 6212,
+    "goodput_unit": "completed_gpu_job_work (token_equivalent)",
+    "headline_baseline": "best_fit",
+    "headline_is_packing_baseline": true,
+    "n_gpu_jobs": 5195,
+    "n_jobs": 6282,
+    "n_nodes": 1213,
+    "outcome": {
+      "beats_fifo_sanity_baseline": true,
+      "constraint_aware_vs_headline": "ALPHA_WIN",
+      "fifo_margin_pct": 56.4302,
+      "loss_reasons": [],
+      "margin_pct": 6.0017,
+      "notes": "",
+      "safety_evidence": []
+    },
+    "policies": {
+      "best_fit": {
+        "active_gpu_count": 4692,
+        "active_nodes": 1023,
+        "allocated_gpu_hours": 50562.76,
+        "cost_per_unit_work": 0.1286745,
+        "fragmentation_score": 0.097,
+        "goodput_unit": "completed_gpu_job_work (token_equivalent)",
+        "gpu_utilization_pct": 89.71,
+        "infra_cost": 23422098.14,
+        "placed_jobs": 5195,
+        "placed_work_gpu_seconds": 182025944.86,
+        "policy": "best_fit",
+        "provisioned_gpu_hours": 16816857.87,
+        "sla_safe_goodput_per_infra_dollar": 7.7715,
+        "stranded_gpu_demand": 0.0,
+        "stranded_jobs": 0
+      },
+      "constraint_aware": {
+        "active_gpu_count": 4688,
+        "active_nodes": 1004,
+        "allocated_gpu_hours": 50562.76,
+        "cost_per_unit_work": 0.12138907,
+        "fragmentation_score": 0.0998,
+        "goodput_unit": "completed_gpu_job_work (token_equivalent)",
+        "gpu_utilization_pct": 89.786,
+        "infra_cost": 22095960.58,
+        "placed_jobs": 5195,
+        "placed_work_gpu_seconds": 182025944.86,
+        "policy": "constraint_aware",
+        "provisioned_gpu_hours": 16802521.24,
+        "sla_safe_goodput_per_infra_dollar": 8.238,
+        "stranded_gpu_demand": 0.0,
+        "stranded_jobs": 0
+      },
+      "fifo": {
+        "active_gpu_count": 6205,
+        "active_nodes": 1208,
+        "allocated_gpu_hours": 46782.16,
+        "cost_per_unit_work": 0.18988923,
+        "fragmentation_score": 0.2863,
+        "goodput_unit": "completed_gpu_job_work (token_equivalent)",
+        "gpu_utilization_pct": 66.546,
+        "infra_cost": 31980344.78,
+        "placed_jobs": 5185,
+        "placed_work_gpu_seconds": 168415792.86,
+        "policy": "fifo",
+        "provisioned_gpu_hours": 22239685.22,
+        "sla_safe_goodput_per_infra_dollar": 5.2662,
+        "stranded_gpu_demand": 80.0,
+        "stranded_jobs": 10
+      },
+      "first_fit": {
+        "active_gpu_count": 4658,
+        "active_nodes": 891,
+        "allocated_gpu_hours": 50562.76,
+        "cost_per_unit_work": 0.13262242,
+        "fragmentation_score": 0.0911,
+        "goodput_unit": "completed_gpu_job_work (token_equivalent)",
+        "gpu_utilization_pct": 90.364,
+        "infra_cost": 24140721.33,
+        "placed_jobs": 5195,
+        "placed_work_gpu_seconds": 182025944.86,
+        "policy": "first_fit",
+        "provisioned_gpu_hours": 16694996.58,
+        "sla_safe_goodput_per_infra_dollar": 7.5402,
+        "stranded_gpu_demand": 0.0,
+        "stranded_jobs": 0
+      },
+      "first_fit_decreasing": {
+        "active_gpu_count": 4694,
+        "active_nodes": 896,
+        "allocated_gpu_hours": 50562.76,
+        "cost_per_unit_work": 0.13374083,
+        "fragmentation_score": 0.0835,
+        "goodput_unit": "completed_gpu_job_work (token_equivalent)",
+        "gpu_utilization_pct": 89.671,
+        "infra_cost": 24344301.36,
+        "placed_jobs": 5195,
+        "placed_work_gpu_seconds": 182025944.86,
+        "policy": "first_fit_decreasing",
+        "provisioned_gpu_hours": 16824026.18,
+        "sla_safe_goodput_per_infra_dollar": 7.4771,
+        "stranded_gpu_demand": 0.0,
+        "stranded_jobs": 0
+      },
+      "greedy_packing": {
+        "active_gpu_count": 4812,
+        "active_nodes": 1038,
+        "allocated_gpu_hours": 50562.76,
+        "cost_per_unit_work": 0.13245505,
+        "fragmentation_score": 0.0896,
+        "goodput_unit": "completed_gpu_job_work (token_equivalent)",
+        "gpu_utilization_pct": 87.472,
+        "infra_cost": 24110256.01,
+        "placed_jobs": 5195,
+        "placed_work_gpu_seconds": 182025944.86,
+        "policy": "greedy_packing",
+        "provisioned_gpu_hours": 17246956.53,
+        "sla_safe_goodput_per_infra_dollar": 7.5497,
+        "stranded_gpu_demand": 0.0,
+        "stranded_jobs": 0
+      }
+    },
+    "primary_kpi": "sla_safe_goodput_per_infrastructure_dollar"
+  },
+  "cross_trace_note": "BurstGPT (bursty LLM serving) + Azure LLM (smooth serving) are serving-replay backtests; this is a GPU bin-packing/fragmentation backtest \u2014 a different workload class, not a like-for-like number.",
+  "filters": {
+    "duration_s": null,
+    "include_failed": false,
+    "sample_size": null,
+    "seed": 0,
+    "start_s": null
+  },
+  "load_sensitivity_sweep": [
+    {
+      "ca_outcome": "ALPHA_WIN",
+      "ca_vs_headline_pct": 6.0,
+      "fleet_gpu_count": 6212,
+      "goodput_per_dollar": {
+        "best_fit": 7.771547318774772,
+        "constraint_aware": 8.237973782780202,
+        "fifo": 5.266228153010006,
+        "first_fit": 7.540203191118796,
+        "first_fit_decreasing": 7.477147989379221,
+        "greedy_packing": 7.549730867630152
+      },
+      "headline": "best_fit",
+      "node_fraction": 1.0,
+      "stranded_jobs": {
+        "best_fit": 0,
+        "constraint_aware": 0,
+        "fifo": 10,
+        "first_fit": 0,
+        "first_fit_decreasing": 0,
+        "greedy_packing": 0
+      }
+    },
+    {
+      "ca_outcome": "TIE",
+      "ca_vs_headline_pct": -0.02,
+      "fleet_gpu_count": 4303,
+      "goodput_per_dollar": {
+        "best_fit": 8.239188130083667,
+        "constraint_aware": 8.237756759365896,
+        "fifo": 7.627211583042098,
+        "first_fit": 8.239224222680326,
+        "first_fit_decreasing": 7.623594977897938,
+        "greedy_packing": 7.484603929805941
+      },
+      "headline": "best_fit",
+      "node_fraction": 0.7,
+      "stranded_jobs": {
+        "best_fit": 399,
+        "constraint_aware": 402,
+        "fifo": 414,
+        "first_fit": 396,
+        "first_fit_decreasing": 750,
+        "greedy_packing": 849
+      }
+    },
+    {
+      "ca_outcome": "TIE",
+      "ca_vs_headline_pct": -0.1,
+      "fleet_gpu_count": 3017,
+      "goodput_per_dollar": {
+        "best_fit": 11.463441944137141,
+        "constraint_aware": 11.45210535370008,
+        "fifo": 10.616542793151579,
+        "first_fit": 11.449146148665553,
+        "first_fit_decreasing": 10.262259688603248,
+        "greedy_packing": 10.249392907337379
+      },
+      "headline": "best_fit",
+      "node_fraction": 0.5,
+      "stranded_jobs": {
+        "best_fit": 1767,
+        "constraint_aware": 1813,
+        "fifo": 1589,
+        "first_fit": 1782,
+        "first_fit_decreasing": 2337,
+        "greedy_packing": 2352
+      }
+    },
+    {
+      "ca_outcome": "TIE",
+      "ca_vs_headline_pct": -0.33,
+      "fleet_gpu_count": 2073,
+      "goodput_per_dollar": {
+        "best_fit": 14.636571074598024,
+        "constraint_aware": 14.588721622035816,
+        "fifo": 14.654937793174353,
+        "first_fit": 14.611436225149555,
+        "first_fit_decreasing": 14.323479646802017,
+        "greedy_packing": 14.32578135664216
+      },
+      "headline": "best_fit",
+      "node_fraction": 0.35,
+      "stranded_jobs": {
+        "best_fit": 2762,
+        "constraint_aware": 2794,
+        "fifo": 2637,
+        "first_fit": 2768,
+        "first_fit_decreasing": 3248,
+        "greedy_packing": 3255
+      }
+    }
+  ],
+  "node_fraction": 1.0,
+  "source": "pod:data/external/alibaba_gpu/raw/openb_pod_list_default.csv node:data/external/alibaba_gpu/raw/openb_node_list_gpu_node.csv",
+  "trace_summary": {
+    "cpu_only_count": 1087,
+    "duration_s": 12898342.0,
+    "failed_jobs": 0,
+    "fleet_gpu_by_model": {
+      "A10": 2,
+      "G2": 4392,
+      "G3": 312,
+      "P100": 265,
+      "T4": 842,
+      "V100M16": 195,
+      "V100M32": 204
+    },
+    "fleet_gpu_count": 6212,
+    "fleet_node_count": 1213,
+    "gpu_count_distribution": {
+      "0": 1087,
+      "1": 5176,
+      "2": 7,
+      "4": 1,
+      "8": 11
+    },
+    "gpu_demand_to_capacity_ratio": 0.6776,
+    "gpu_job_count": 5195,
+    "gpu_type_distribution": {
+      "any": 6282
+    },
+    "gpu_utilization_samples": 0,
+    "job_count": 6282,
+    "job_duration_s_p50": 613.0,
+    "job_duration_s_p95": 19189.0,
+    "job_duration_s_p99": 170469.0,
+    "missing_fields": [
+      "gpu_utilization_timeseries",
+      "gpu_memory_gb",
+      "per_pod_node_placement",
+      "deadline",
+      "user_or_group"
+    ],
+    "queue_wait_s_p50": 3.0,
+    "queue_wait_s_p95": 245.0,
+    "queue_wait_s_p99": 1217.0,
+    "status_distribution": {
+      "Pending": 897,
+      "Running": 5193,
+      "Succeeded": 192
+    },
+    "time_end_s": 12898342.0,
+    "time_start_s": 0.0,
+    "total_gpu_demand_effective": 4209.17
+  }
+}
