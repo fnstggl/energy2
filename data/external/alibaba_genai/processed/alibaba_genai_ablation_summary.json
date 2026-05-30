@@ -1,0 +1,165 @@
+{
+  "attribution": {
+    "constraint_aware_vs_sla_aware_gain_pct": 89.46,
+    "headline_baseline": "sla_aware",
+    "prewarm_equals_affinity": true,
+    "shapley_attribution_of_ca_vs_sla_gain": {
+      "affinity_goodput_per_dollar": 2.887,
+      "affinity_share_pct": 62.1,
+      "interaction_goodput_per_dollar": 0.0,
+      "interaction_share_pct": 0.0,
+      "sizing_goodput_per_dollar": 1.759,
+      "sizing_share_pct": 37.9
+    },
+    "single_factor_lift_vs_fifo_pct": {
+      "anticipatory_sizing_alone": 299.12,
+      "combined_constraint_aware": 456.71,
+      "model_affinity_alone": 79.99,
+      "prewarm_alone": 79.99,
+      "queue_awareness_alone": 196.76,
+      "utilization_awareness_alone": 286.26
+    },
+    "verdict": "primarily a model-affinity / prewarming effect (~62% of the gain); anticipatory sizing is secondary"
+  },
+  "cold_start_calibration_s": {
+    "basemodel_load": 22.718,
+    "controlnet_load": 3.884,
+    "lora_load": 4.378,
+    "model_predict": 35.044,
+    "pipeline_inference": 15.132,
+    "pipeline_update": 8.892
+  },
+  "configs": {
+    "constraint_aware": {
+      "affinity": true,
+      "completed_requests": 26392,
+      "config": "constraint_aware",
+      "e2e_latency_s_p99": 53.39,
+      "infra_cost": 2682.0,
+      "mean_cold_start_s": 2.87,
+      "replica_gpu_hours": 894.0,
+      "sizing": "anticipatory_sla",
+      "sla_compliant_requests": 26392,
+      "sla_safe_goodput_per_infra_dollar": 9.8404,
+      "timeout_rate_pct": 0.0
+    },
+    "constraint_aware_no_affinity": {
+      "affinity": false,
+      "completed_requests": 26392,
+      "config": "constraint_aware_no_affinity",
+      "e2e_latency_s_p99": 66.43,
+      "infra_cost": 3741.0,
+      "mean_cold_start_s": 23.55,
+      "replica_gpu_hours": 1247.0,
+      "sizing": "anticipatory_sla",
+      "sla_compliant_requests": 26392,
+      "sla_safe_goodput_per_infra_dollar": 7.0548,
+      "timeout_rate_pct": 0.0
+    },
+    "fifo": {
+      "affinity": false,
+      "completed_requests": 26392,
+      "config": "fifo",
+      "e2e_latency_s_p99": 53.46,
+      "infra_cost": 14931.0,
+      "mean_cold_start_s": 23.55,
+      "replica_gpu_hours": 4977.0,
+      "sizing": "static_peak",
+      "sla_compliant_requests": 26392,
+      "sla_safe_goodput_per_infra_dollar": 1.7676,
+      "timeout_rate_pct": 0.0
+    },
+    "fifo_plus_affinity": {
+      "affinity": true,
+      "completed_requests": 26392,
+      "config": "fifo_plus_affinity",
+      "e2e_latency_s_p99": 35.91,
+      "infra_cost": 8295.0,
+      "mean_cold_start_s": 2.87,
+      "replica_gpu_hours": 2765.0,
+      "sizing": "static_peak",
+      "sla_compliant_requests": 26391,
+      "sla_safe_goodput_per_infra_dollar": 3.1816,
+      "timeout_rate_pct": 0.0
+    },
+    "queue_aware": {
+      "affinity": false,
+      "completed_requests": 26392,
+      "config": "queue_aware",
+      "e2e_latency_s_p99": 1596.93,
+      "infra_cost": 3015.0,
+      "mean_cold_start_s": 23.55,
+      "replica_gpu_hours": 1005.0,
+      "sizing": "queue_target",
+      "sla_compliant_requests": 15815,
+      "sla_safe_goodput_per_infra_dollar": 5.2454,
+      "timeout_rate_pct": 8.899
+    },
+    "queue_aware_plus_affinity": {
+      "affinity": true,
+      "completed_requests": 26392,
+      "config": "queue_aware_plus_affinity",
+      "e2e_latency_s_p99": 1366.55,
+      "infra_cost": 2349.0,
+      "mean_cold_start_s": 2.87,
+      "replica_gpu_hours": 783.0,
+      "sizing": "queue_target",
+      "sla_compliant_requests": 18109,
+      "sla_safe_goodput_per_infra_dollar": 7.7092,
+      "timeout_rate_pct": 5.623
+    },
+    "sla_aware": {
+      "affinity": false,
+      "completed_requests": 26392,
+      "config": "sla_aware",
+      "e2e_latency_s_p99": 1219.35,
+      "infra_cost": 3426.0,
+      "mean_cold_start_s": 23.55,
+      "replica_gpu_hours": 1142.0,
+      "sizing": "reactive_sla",
+      "sla_compliant_requests": 17794,
+      "sla_safe_goodput_per_infra_dollar": 5.1938,
+      "timeout_rate_pct": 6.339
+    },
+    "sla_aware_plus_affinity": {
+      "affinity": true,
+      "completed_requests": 26392,
+      "config": "sla_aware_plus_affinity",
+      "e2e_latency_s_p99": 846.39,
+      "infra_cost": 2493.0,
+      "mean_cold_start_s": 2.87,
+      "replica_gpu_hours": 831.0,
+      "sizing": "reactive_sla",
+      "sla_compliant_requests": 20399,
+      "sla_safe_goodput_per_infra_dollar": 8.1825,
+      "timeout_rate_pct": 4.569
+    },
+    "utilization_aware": {
+      "affinity": false,
+      "completed_requests": 26392,
+      "config": "utilization_aware",
+      "e2e_latency_s_p99": 406.27,
+      "infra_cost": 2643.0,
+      "mean_cold_start_s": 23.55,
+      "replica_gpu_hours": 881.0,
+      "sizing": "util_target",
+      "sla_compliant_requests": 18045,
+      "sla_safe_goodput_per_infra_dollar": 6.8275,
+      "timeout_rate_pct": 8.408
+    },
+    "utilization_aware_plus_affinity": {
+      "affinity": true,
+      "completed_requests": 26392,
+      "config": "utilization_aware_plus_affinity",
+      "e2e_latency_s_p99": 369.72,
+      "infra_cost": 2112.0,
+      "mean_cold_start_s": 2.87,
+      "replica_gpu_hours": 704.0,
+      "sizing": "util_target",
+      "sla_compliant_requests": 19119,
+      "sla_safe_goodput_per_infra_dollar": 9.0526,
+      "timeout_rate_pct": 5.291
+    }
+  },
+  "source": "raw:data/external/alibaba_genai/raw"
+}
