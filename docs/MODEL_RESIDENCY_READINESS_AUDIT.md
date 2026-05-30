@@ -22,7 +22,17 @@ Read first: `docs/RESULTS.md`, `docs/MODEL_RESIDENCY_COLD_START_SPEC.md`,
 |---|---|
 | How much residency/cold-start intelligence exists? | **Cache (prefix) affinity:** partial *read-only* real path (vLLM `prefix_cache_hit_rate` → `PRESERVE_AFFINITY`/`PREWARM_REPLICA` candidate actions). **Model/adapter residency + cold-start latency:** simulated / trace-calibrated only — **no real model-load telemetry.** |
 | How much public-trace alpha depends on it? | On Alibaba GenAI 2026, **~62% of the +89.5% goodput/$ win** is the model-affinity/prewarm lever (Shapley); with-affinity goodput/$ **9.84** vs without **7.05**; mean cold-start **2.9 s vs 23.6 s** (modelled). |
-| Readiness verdict | **`TRACE_BACKTESTED_APPROXIMATION`** — not production-ready, not yet shadow-pilot-ready for *model* residency. |
+| Readiness verdict | **Model-residency *optimization*: `TRACE_BACKTESTED_APPROXIMATION`** (unchanged) — not production-ready, not autonomous. **Telemetry *ingestion + shadow-logging substrate* (this PR, §8): `SHADOW_PILOT_READY_READ_ONLY` — read-only ingestion/logging only.** |
+
+> **Update (this PR).** A read-only telemetry substrate now exists
+> (`aurelius/residency/`): residency data models, JSONL/CSV + vLLM ingestion
+> adapters, a no-fake-join linkage classifier, honest derived metrics, a
+> recommendation-only shadow log, and a `scripts/audit_residency_telemetry.py`
+> CLI (sample report: `docs/RESIDENCY_TELEMETRY_AUDIT.md`). See **§8** for what
+> this does and does **not** change. The machine-readable summary's
+> `readiness_verdict` (`...model_residency_audit_summary.json`) remains
+> `TRACE_BACKTESTED_APPROXIMATION` — the substrate is plumbing for *observation*,
+> not a measured live result.
 
 ---
 
@@ -237,3 +247,54 @@ All six are observation/measurement/safety tasks; none requires new optimizer
   claim.
 - Production-claim gate (`docs/RESULTS.md` §8) is **not** met for model
   residency.
+
+---
+
+## 8. Update — read-only telemetry ingestion + shadow logging (this PR)
+
+This PR adds the **observation substrate** the §5/§6 next-fixes called for, as a
+strictly **read-only** package (`aurelius/residency/`). It mutates no cluster,
+loads/evicts no real model, calls no Kubernetes write API, trains no model, tunes
+no optimizer constant, and changes neither the robust energy engine nor any
+simulator constant.
+
+### 8a. What is now implemented
+
+| §6 next-fix | status after this PR | evidence |
+|---|---|---|
+| (1) load-event **schema** + optional residency fields | **implemented (data model)** | `aurelius/residency/models.py`: `ModelResidencyEvent`, `ModelResidencySnapshot`, `RequestResidencyObservation` with conservative `Optional` fields (`model_loaded_before_request`, `adapter_id`, `model_load_latency_s`, …); missing ≠ zero. |
+| (1) live engine **reader** | **still missing (read-only ingest only)** | ingestion accepts *exported* pilot logs; no live serving-engine reader is added. The vLLM adapter (`ingest.adapt_vllm`) is **honest**: vLLM exposes no model-load events, so it emits **none** and sets residency fields `None`. |
+| (2) request record + **linkage-quality classifier** | **implemented** | `aurelius/residency/linkage.py` (`exact_join`/`container_join`/`time_join`/`no_join`, no fake joins) + the K8s/Prometheus/DCGM join helper re-exported from `ingest.py`. |
+| (3) **residency metrics** (hit rate, cold-start rate, p50/p95/p99, warm-pool GPU-hours, churn, missingness/confidence) | **implemented (diagnostics)** | `aurelius/residency/metrics.py`; never folded into the canonical KPI (`docs/RESULTS.md` §1–§2). |
+| (4) **no-substitution** gate + test | **implemented (for shadow recs)** | `aurelius/residency/shadow.py` has no substitute-model field by construction; `tests/test_residency_shadow.py::test_no_substitution_decision_never_changes_requested_model`. |
+| (5) **shadow recommendation log** | **implemented (recommendation-only)** | `ResidencyShadowDecision` / `ResidencyShadowLog` (`executed=False`, refuses executed decisions); `prewarm`/`preserve_affinity`/`no_op`/`evict_candidate`/`insufficient_telemetry`. |
+| (6) **separate affinity/prewarm attribution** | **unchanged (still satisfied)** | existing `aurelius/traces/genai_ablation.py` Shapley method; this PR does not alter it. |
+| CLI / report | **implemented** | `scripts/audit_residency_telemetry.py` → JSON + markdown; sample over fixtures: `docs/RESIDENCY_TELEMETRY_AUDIT.md`. |
+
+### 8b. What remains missing (before any production claim)
+
+1. **A real telemetry *source*.** No live serving engine yet emits
+   `model_loaded_before_request` / model-load timestamps. The substrate can
+   *ingest* them when a pilot exports them, but no connector *produces* them, and
+   vLLM structurally cannot (the adapter says so rather than inventing events).
+2. **Production-grade `container_join`.** Demonstrated only on fixtures; a real
+   pilot must achieve ≥ `container_join` between its request stream and GPU
+   metrics (contract §4 honesty gate) for residency to be *attributed*.
+3. **Counterfactual *verification*.** The shadow log records recommendations +
+   directional `expected_*` estimates but does not yet *realize* them against a
+   later observed outcome (the analogue of `aurelius/shadow/realizer.py`); every
+   recommendation is therefore `unverified` (spec §5.4).
+4. **The `docs/RESULTS.md` §8 production gate** (real customer telemetry,
+   calibrated priors, customer cost basis, ≥1 clean shadow cycle) — unmet.
+
+### 8c. Does the verdict change?
+
+- **Model-residency *optimization*: NO.** Still `TRACE_BACKTESTED_APPROXIMATION`.
+  No live residency is measured; no autonomous prewarming exists; the affinity
+  economic result is still a trace-calibrated backtest.
+- **Telemetry *ingestion + shadow-logging substrate*: YES — to
+  `SHADOW_PILOT_READY_READ_ONLY`,** and **only** for read-only
+  ingestion/logging. This is conservative: it means "ready to *observe* and
+  *log recommendations* on a conformant pilot feed," **not** ready to act, not
+  production-real, and not autonomous. Promotion of any recommendation out of
+  shadow mode remains out of scope and gated by §8b + `docs/RESULTS.md` §8.
