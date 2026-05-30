@@ -1,0 +1,117 @@
+{
+  "azure_llm": "NOT_APPLICABLE (no model/session/cache fields)",
+  "biggest_missing_pieces": [
+    "real model_loaded_before_request / model-load timestamps from a serving engine (vLLM/Triton/SGLang) \u2014 entirely absent",
+    "adapter_id/lora_id residency tracking \u2014 absent",
+    "per-request residency hit-rate + cold-start p50/p95/p99 \u2014 only simulated/calibrated, never measured",
+    "explicit warm-pool GPU-hour cost line item \u2014 implicit only",
+    "explicit no-substitution gate + test \u2014 implicitly safe (no action substitutes a model) but not asserted",
+    "shadow-mode residency recommendation logging + counterfactual \u2014 the energy/scheduling shadow runner exists but emits no residency log"
+  ],
+  "burstgpt_affinity_proxy": {
+    "cache_affinity_baseline_goodput_per_dollar": 1587558.8646520185,
+    "cache_proxy_lift_pct": 0.231,
+    "fifo_goodput_per_dollar": 1583907.211789579,
+    "note": "model-level cache_affinity_key proxy (no session id); negligible economic effect, NOT a measured KV hit rate"
+  },
+  "dataset_coverage": [
+    {
+      "adapter_id_lora": "yes (num_lora count, not per-adapter id)",
+      "can_measure_vs_simulate": "cold-start CALIBRATED + affinity SIMULATED; residency NOT measured per-request",
+      "cold_start_latency": "CALIBRATED distribution (pipeline layer)",
+      "dataset": "alibaba_genai_2026",
+      "model_id": "yes",
+      "per_request_residency_hit": "NO (app\u2194infra no_join)",
+      "real_e2e_latency": "yes (exec_time_seconds)"
+    },
+    {
+      "adapter_id_lora": "no",
+      "can_measure_vs_simulate": "affinity PROXY only; economic effect ~0.231% (negligible, model-level key)",
+      "cold_start_latency": "no",
+      "dataset": "burstgpt",
+      "model_id": "yes",
+      "per_request_residency_hit": "model-level proxy only (no session id)",
+      "real_e2e_latency": "elapsed (not TTFT)"
+    },
+    {
+      "adapter_id_lora": "no",
+      "can_measure_vs_simulate": "NOT APPLICABLE (no model/session/cache fields)",
+      "cold_start_latency": "no",
+      "dataset": "azure_llm",
+      "model_id": "no",
+      "per_request_residency_hit": "no",
+      "real_e2e_latency": "no"
+    },
+    {
+      "adapter_id_lora": "no",
+      "can_measure_vs_simulate": "prefix_cache_hit_rate + kv_cache_usage are REAL; model residency / cold-start are NOT",
+      "cold_start_latency": "NO (not exposed by vLLM /metrics)",
+      "dataset": "live_vllm_connector",
+      "model_id": "service_id only",
+      "per_request_residency_hit": "NO (no model_loaded_before_request)",
+      "real_e2e_latency": "yes (TTFT/TPOT/e2e)"
+    }
+  ],
+  "directional_only_not_production_savings": true,
+  "genai_2026_affinity_dependence": {
+    "affinity_prewarm_share_pct": 62.1,
+    "anticipatory_sizing_share_pct": 37.9,
+    "cold_start_calibration_s": {
+      "basemodel_load": 22.718,
+      "controlnet_load": 3.884,
+      "lora_load": 4.378
+    },
+    "constraint_aware_vs_sla_aware_gain_pct": 89.46,
+    "interaction_share_pct": 0.0,
+    "with_vs_without": {
+      "cold_start_p50_p95_p99_note": "NOT per-request measured; only a calibrated pipeline-layer distribution (basemodel/LoRA/ControlNet load medians) exists",
+      "fifo": {
+        "e2e_latency_s_p99": 53.46,
+        "goodput_per_dollar": 1.7676,
+        "mean_cold_start_s": 23.55,
+        "replica_gpu_hours": 4977.0,
+        "sla_compliant_requests": 26392
+      },
+      "fifo_plus_affinity": {
+        "e2e_latency_s_p99": 35.91,
+        "goodput_per_dollar": 3.1816,
+        "mean_cold_start_s": 2.87,
+        "replica_gpu_hours": 2765.0,
+        "sla_compliant_requests": 26391
+      },
+      "mean_cold_start_avoided_s": 20.68,
+      "residency_hit_rate_note": "NOT measured; the affinity model uses switch_rate\u2248distinct_models/N as a proxy (app\u2194infra layers are no_join in GenTD26)",
+      "sla_aware_headline": {
+        "e2e_latency_s_p99": 1219.35,
+        "goodput_per_dollar": 5.1938,
+        "mean_cold_start_s": 23.55,
+        "replica_gpu_hours": 1142.0,
+        "sla_compliant_requests": 17794
+      },
+      "warm_pool_gpu_hours_note": "NOT separately metered; affinity reduces required replica-hours (894.0 vs 1247.0) rather than charging an explicit warm-pool line item",
+      "with_affinity_prewarm": {
+        "e2e_latency_s_p99": 53.39,
+        "goodput_per_dollar": 9.8404,
+        "mean_cold_start_s": 2.87,
+        "replica_gpu_hours": 894.0,
+        "sla_compliant_requests": 26392
+      },
+      "without_affinity_prewarm": {
+        "e2e_latency_s_p99": 66.43,
+        "goodput_per_dollar": 7.0548,
+        "mean_cold_start_s": 23.55,
+        "replica_gpu_hours": 1247.0,
+        "sla_compliant_requests": 26392
+      }
+    }
+  },
+  "kpi": "sla_safe_goodput_per_infrastructure_dollar",
+  "readiness_ladder": [
+    "SPEC_ONLY",
+    "SIMULATOR_APPROXIMATION",
+    "TRACE_BACKTESTED_APPROXIMATION",
+    "SHADOW_PILOT_READY_READ_ONLY",
+    "PRODUCTION_READY"
+  ],
+  "readiness_verdict": "TRACE_BACKTESTED_APPROXIMATION"
+}
