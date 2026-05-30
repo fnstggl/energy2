@@ -1,0 +1,768 @@
+{
+  "directional_only_not_production_savings": true,
+  "ingestion": {
+    "events": {
+      "errors": [],
+      "field_coverage": {
+        "adapter_id": {
+          "coverage": 0.3,
+          "is_key_field": false,
+          "present": 3,
+          "total": 10
+        },
+        "confidence": {
+          "coverage": 1.0,
+          "is_key_field": false,
+          "present": 10,
+          "total": 10
+        },
+        "container_id": {
+          "coverage": 0.8,
+          "is_key_field": true,
+          "present": 8,
+          "total": 10
+        },
+        "duration_s": {
+          "coverage": 0.4,
+          "is_key_field": true,
+          "present": 4,
+          "total": 10
+        },
+        "event_type": {
+          "coverage": 1.0,
+          "is_key_field": false,
+          "present": 10,
+          "total": 10
+        },
+        "gpu_id": {
+          "coverage": 0.8,
+          "is_key_field": true,
+          "present": 8,
+          "total": 10
+        },
+        "model_id": {
+          "coverage": 1.0,
+          "is_key_field": false,
+          "present": 10,
+          "total": 10
+        },
+        "node_id": {
+          "coverage": 0.8,
+          "is_key_field": true,
+          "present": 8,
+          "total": 10
+        },
+        "region": {
+          "coverage": 0.1,
+          "is_key_field": false,
+          "present": 1,
+          "total": 10
+        },
+        "request_id": {
+          "coverage": 0.6,
+          "is_key_field": true,
+          "present": 6,
+          "total": 10
+        },
+        "source": {
+          "coverage": 1.0,
+          "is_key_field": false,
+          "present": 10,
+          "total": 10
+        },
+        "status": {
+          "coverage": 1.0,
+          "is_key_field": false,
+          "present": 10,
+          "total": 10
+        },
+        "tenant_id": {
+          "coverage": 0.1,
+          "is_key_field": false,
+          "present": 1,
+          "total": 10
+        },
+        "timestamp": {
+          "coverage": 1.0,
+          "is_key_field": false,
+          "present": 10,
+          "total": 10
+        },
+        "workload_id": {
+          "coverage": 0.1,
+          "is_key_field": false,
+          "present": 1,
+          "total": 10
+        }
+      },
+      "n_errors": 0,
+      "n_rows": 10,
+      "n_valid": 10,
+      "record_type": "event",
+      "sources": {
+        "pilot_export": 10
+      }
+    },
+    "observations": {
+      "errors": [],
+      "field_coverage": {
+        "adapter_id": {
+          "coverage": 0.2857,
+          "is_key_field": false,
+          "present": 2,
+          "total": 7
+        },
+        "adapter_load_latency_s": {
+          "coverage": 0.1429,
+          "is_key_field": false,
+          "present": 1,
+          "total": 7
+        },
+        "adapter_loaded_before_request": {
+          "coverage": 0.1429,
+          "is_key_field": true,
+          "present": 1,
+          "total": 7
+        },
+        "confidence": {
+          "coverage": 1.0,
+          "is_key_field": false,
+          "present": 7,
+          "total": 7
+        },
+        "container_id": {
+          "coverage": 0.8571,
+          "is_key_field": true,
+          "present": 6,
+          "total": 7
+        },
+        "e2e_latency_s": {
+          "coverage": 0.8571,
+          "is_key_field": false,
+          "present": 6,
+          "total": 7
+        },
+        "endpoint_id": {
+          "coverage": 1.0,
+          "is_key_field": false,
+          "present": 7,
+          "total": 7
+        },
+        "gpu_id": {
+          "coverage": 0.8571,
+          "is_key_field": true,
+          "present": 6,
+          "total": 7
+        },
+        "model_id": {
+          "coverage": 1.0,
+          "is_key_field": false,
+          "present": 7,
+          "total": 7
+        },
+        "model_load_latency_s": {
+          "coverage": 0.4286,
+          "is_key_field": true,
+          "present": 3,
+          "total": 7
+        },
+        "model_loaded_before_request": {
+          "coverage": 1.0,
+          "is_key_field": true,
+          "present": 7,
+          "total": 7
+        },
+        "node_id": {
+          "coverage": 0.8571,
+          "is_key_field": true,
+          "present": 6,
+          "total": 7
+        },
+        "queue_wait_s": {
+          "coverage": 0.5714,
+          "is_key_field": false,
+          "present": 4,
+          "total": 7
+        },
+        "region": {
+          "coverage": 1.0,
+          "is_key_field": false,
+          "present": 7,
+          "total": 7
+        },
+        "request_id": {
+          "coverage": 1.0,
+          "is_key_field": false,
+          "present": 7,
+          "total": 7
+        },
+        "source": {
+          "coverage": 1.0,
+          "is_key_field": false,
+          "present": 7,
+          "total": 7
+        },
+        "status": {
+          "coverage": 1.0,
+          "is_key_field": false,
+          "present": 7,
+          "total": 7
+        },
+        "tenant_id": {
+          "coverage": 1.0,
+          "is_key_field": false,
+          "present": 7,
+          "total": 7
+        },
+        "timestamp": {
+          "coverage": 1.0,
+          "is_key_field": false,
+          "present": 7,
+          "total": 7
+        },
+        "tpot_s": {
+          "coverage": 0.1429,
+          "is_key_field": false,
+          "present": 1,
+          "total": 7
+        },
+        "ttft_s": {
+          "coverage": 0.5714,
+          "is_key_field": false,
+          "present": 4,
+          "total": 7
+        },
+        "workload_id": {
+          "coverage": 1.0,
+          "is_key_field": false,
+          "present": 7,
+          "total": 7
+        }
+      },
+      "n_errors": 0,
+      "n_rows": 7,
+      "n_valid": 7,
+      "record_type": "observation",
+      "sources": {
+        "pilot_export": 7
+      }
+    },
+    "snapshots": {
+      "errors": [],
+      "field_coverage": {
+        "confidence": {
+          "coverage": 1.0,
+          "is_key_field": false,
+          "present": 6,
+          "total": 6
+        },
+        "container_id": {
+          "coverage": 1.0,
+          "is_key_field": true,
+          "present": 6,
+          "total": 6
+        },
+        "gpu_id": {
+          "coverage": 1.0,
+          "is_key_field": true,
+          "present": 6,
+          "total": 6
+        },
+        "gpu_memory_total": {
+          "coverage": 1.0,
+          "is_key_field": true,
+          "present": 6,
+          "total": 6
+        },
+        "gpu_memory_used": {
+          "coverage": 1.0,
+          "is_key_field": true,
+          "present": 6,
+          "total": 6
+        },
+        "loaded_adapter_ids": {
+          "coverage": 1.0,
+          "is_key_field": false,
+          "present": 6,
+          "total": 6
+        },
+        "loaded_model_ids": {
+          "coverage": 1.0,
+          "is_key_field": true,
+          "present": 6,
+          "total": 6
+        },
+        "node_id": {
+          "coverage": 1.0,
+          "is_key_field": true,
+          "present": 6,
+          "total": 6
+        },
+        "region": {
+          "coverage": 1.0,
+          "is_key_field": false,
+          "present": 6,
+          "total": 6
+        },
+        "source": {
+          "coverage": 1.0,
+          "is_key_field": false,
+          "present": 6,
+          "total": 6
+        },
+        "timestamp": {
+          "coverage": 1.0,
+          "is_key_field": false,
+          "present": 6,
+          "total": 6
+        }
+      },
+      "n_errors": 0,
+      "n_rows": 6,
+      "n_valid": 6,
+      "record_type": "snapshot",
+      "sources": {
+        "pilot_export": 6
+      }
+    }
+  },
+  "inputs": {
+    "events_path": "tests/fixtures/residency/events.jsonl",
+    "gpu_hour_cost": 2.5,
+    "requests_path": "tests/fixtures/residency/requests.jsonl",
+    "slo_s": 5.0,
+    "snapshots_path": "tests/fixtures/residency/snapshots.jsonl"
+  },
+  "kpi_note": "residency metrics are diagnostics; NEVER folded into the canonical KPI (docs/RESULTS.md \u00a71-\u00a72)",
+  "linkage": {
+    "attributable": true,
+    "attribution_gate_quality": "container_join",
+    "observations_to_events": {
+      "attributable": true,
+      "has_container_key": true,
+      "has_gpu_key": true,
+      "has_request_id_key": true,
+      "n_joined": 5,
+      "n_left": 7,
+      "n_right": 10,
+      "notes": [
+        "1/7 observations carry no node/gpu/container join key"
+      ],
+      "per_quality": {
+        "container_join": 2,
+        "exact_join": 3,
+        "no_join": 0,
+        "time_join": 2
+      },
+      "quality": "exact_join"
+    },
+    "observations_to_snapshots": {
+      "attributable": true,
+      "has_container_key": true,
+      "has_gpu_key": true,
+      "has_request_id_key": false,
+      "n_joined": 6,
+      "n_left": 7,
+      "n_right": 6,
+      "notes": [
+        "1/7 observations carry no node/gpu/container join key"
+      ],
+      "per_quality": {
+        "container_join": 6,
+        "exact_join": 0,
+        "no_join": 0,
+        "time_join": 1
+      },
+      "quality": "container_join"
+    }
+  },
+  "metrics": {
+    "adapter_load_latency_p50": {
+      "denominator": 1,
+      "linkage_quality": "container_join",
+      "name": "adapter_load_latency_p50",
+      "note": null,
+      "numerator": null,
+      "value": 4.3,
+      "window_s": 120.0
+    },
+    "adapter_load_latency_p95": {
+      "denominator": 1,
+      "linkage_quality": "container_join",
+      "name": "adapter_load_latency_p95",
+      "note": null,
+      "numerator": null,
+      "value": 4.3,
+      "window_s": 120.0
+    },
+    "adapter_load_latency_p99": {
+      "denominator": 1,
+      "linkage_quality": "container_join",
+      "name": "adapter_load_latency_p99",
+      "note": null,
+      "numerator": null,
+      "value": 4.3,
+      "window_s": 120.0
+    },
+    "adapter_residency_hit_rate": {
+      "denominator": 1,
+      "extra": {
+        "adapter_flag_unknown": 1,
+        "adapter_requests": 2
+      },
+      "linkage_quality": "container_join",
+      "name": "adapter_residency_hit_rate",
+      "note": null,
+      "numerator": 0,
+      "value": 0.0,
+      "window_s": 120.0
+    },
+    "cold_start_attributed_sla_violations": {
+      "denominator": 4,
+      "extra": {
+        "evaluable_requests": 4,
+        "slo_s": 5.0,
+        "total_violations": 4
+      },
+      "linkage_quality": "container_join",
+      "name": "cold_start_attributed_sla_violations",
+      "note": null,
+      "numerator": 4,
+      "value": 4.0,
+      "window_s": 120.0
+    },
+    "cold_start_rate": {
+      "denominator": 7,
+      "extra": {
+        "unclassifiable": 0
+      },
+      "linkage_quality": "container_join",
+      "name": "cold_start_rate",
+      "note": null,
+      "numerator": 4,
+      "value": 0.5714285714285714,
+      "window_s": 120.0
+    },
+    "model_load_latency_p50": {
+      "denominator": 3,
+      "linkage_quality": "container_join",
+      "name": "model_load_latency_p50",
+      "note": null,
+      "numerator": null,
+      "value": 30.1,
+      "window_s": 120.0
+    },
+    "model_load_latency_p95": {
+      "denominator": 3,
+      "linkage_quality": "container_join",
+      "name": "model_load_latency_p95",
+      "note": null,
+      "numerator": null,
+      "value": 40.0,
+      "window_s": 120.0
+    },
+    "model_load_latency_p99": {
+      "denominator": 3,
+      "linkage_quality": "container_join",
+      "name": "model_load_latency_p99",
+      "note": null,
+      "numerator": null,
+      "value": 40.0,
+      "window_s": 120.0
+    },
+    "model_residency_hit_rate": {
+      "denominator": 7,
+      "extra": {
+        "unknown_excluded": 0
+      },
+      "linkage_quality": "container_join",
+      "name": "model_residency_hit_rate",
+      "note": null,
+      "numerator": 4,
+      "value": 0.5714285714285714,
+      "window_s": 120.0
+    },
+    "residency_churn_score": {
+      "denominator": 2,
+      "extra": {
+        "distinct_models": 2,
+        "transitions": 5,
+        "window_hours": 0.0503
+      },
+      "linkage_quality": "container_join",
+      "name": "residency_churn_score",
+      "note": null,
+      "numerator": 5,
+      "value": 49.723757,
+      "window_s": 181.0
+    },
+    "telemetry_confidence": {
+      "denominator": null,
+      "extra": {
+        "join_key_frac": 0.8571,
+        "known_residency_flag_frac": 1.0,
+        "linkage_weight": 0.8,
+        "mean_provenance_weight": 0.8609,
+        "n_events": 10,
+        "n_observations": 7,
+        "n_snapshots": 6
+      },
+      "linkage_quality": "container_join",
+      "name": "telemetry_confidence",
+      "note": null,
+      "numerator": null,
+      "value": 0.8895,
+      "window_s": null
+    },
+    "warm_pool_gpu_hours": {
+      "denominator": null,
+      "extra": {
+        "dropped_stale_intervals": 1,
+        "gpu_hour_cost": 2.5,
+        "gpus": 3,
+        "resident_intervals": 2,
+        "warm_pool_cost": 0.1389
+      },
+      "linkage_quality": "container_join",
+      "name": "warm_pool_gpu_hours",
+      "note": null,
+      "numerator": null,
+      "value": 0.055556,
+      "window_s": 100140.0
+    }
+  },
+  "missing_fields_preventing_pilot_readiness": [
+    "observation.container_id: present in only 86% of records",
+    "observation.gpu_id: present in only 86% of records",
+    "event.request_id: present in only 60% of records"
+  ],
+  "missingness": {
+    "events": {
+      "container_id": {
+        "missing": 2,
+        "missing_frac": 0.2,
+        "total": 10
+      },
+      "duration_s": {
+        "missing": 6,
+        "missing_frac": 0.6,
+        "total": 10
+      },
+      "gpu_id": {
+        "missing": 2,
+        "missing_frac": 0.2,
+        "total": 10
+      },
+      "node_id": {
+        "missing": 2,
+        "missing_frac": 0.2,
+        "total": 10
+      },
+      "request_id": {
+        "missing": 4,
+        "missing_frac": 0.4,
+        "total": 10
+      }
+    },
+    "observations": {
+      "adapter_loaded_before_request": {
+        "missing": 6,
+        "missing_frac": 0.8571,
+        "total": 7
+      },
+      "container_id": {
+        "missing": 1,
+        "missing_frac": 0.1429,
+        "total": 7
+      },
+      "e2e_latency_s": {
+        "missing": 1,
+        "missing_frac": 0.1429,
+        "total": 7
+      },
+      "gpu_id": {
+        "missing": 1,
+        "missing_frac": 0.1429,
+        "total": 7
+      },
+      "model_load_latency_s": {
+        "missing": 4,
+        "missing_frac": 0.5714,
+        "total": 7
+      },
+      "model_loaded_before_request": {
+        "missing": 0,
+        "missing_frac": 0.0,
+        "total": 7
+      },
+      "node_id": {
+        "missing": 1,
+        "missing_frac": 0.1429,
+        "total": 7
+      },
+      "ttft_s": {
+        "missing": 3,
+        "missing_frac": 0.4286,
+        "total": 7
+      }
+    },
+    "snapshots": {
+      "container_id": {
+        "missing": 0,
+        "missing_frac": 0.0,
+        "total": 6
+      },
+      "gpu_id": {
+        "missing": 0,
+        "missing_frac": 0.0,
+        "total": 6
+      },
+      "gpu_memory_total": {
+        "missing": 0,
+        "missing_frac": 0.0,
+        "total": 6
+      },
+      "gpu_memory_used": {
+        "missing": 0,
+        "missing_frac": 0.0,
+        "total": 6
+      },
+      "loaded_model_ids": {
+        "missing": 0,
+        "missing_frac": 0.0,
+        "total": 6
+      }
+    }
+  },
+  "readiness_ladder": [
+    "SPEC_ONLY",
+    "SIMULATOR_APPROXIMATION",
+    "TRACE_BACKTESTED_APPROXIMATION",
+    "SHADOW_PILOT_READY_READ_ONLY",
+    "PRODUCTION_READY"
+  ],
+  "readiness_verdict": "SHADOW_PILOT_READY_READ_ONLY",
+  "shadow": {
+    "cluster_mutation": false,
+    "decisions": [
+      {
+        "adapter_id": null,
+        "confidence": "high",
+        "current_location": "pod-a",
+        "executed": false,
+        "expected_cold_start_saved_s": null,
+        "expected_sla_risk_delta": null,
+        "expected_warm_pool_cost": null,
+        "model_id": "llama-3-8b",
+        "reason": "warm residency hit; keep request on its already-warm replica (avoid a cold reroute)",
+        "recommended_action": "preserve_affinity",
+        "request_id": "req-1",
+        "timestamp": 1780000010.0,
+        "workload_id": "chat-prod"
+      },
+      {
+        "adapter_id": null,
+        "confidence": "high",
+        "current_location": "pod-b",
+        "executed": false,
+        "expected_cold_start_saved_s": 22.4,
+        "expected_sla_risk_delta": -1.0,
+        "expected_warm_pool_cost": 2.5,
+        "model_id": "mistral-7b",
+        "reason": "cold start paid ~22.4s load latency >= 5.0s threshold",
+        "recommended_action": "prewarm",
+        "request_id": "req-2",
+        "timestamp": 1780000030.0,
+        "workload_id": "chat-prod"
+      },
+      {
+        "adapter_id": "lora-finance",
+        "confidence": "high",
+        "current_location": "pod-a",
+        "executed": false,
+        "expected_cold_start_saved_s": null,
+        "expected_sla_risk_delta": null,
+        "expected_warm_pool_cost": null,
+        "model_id": "llama-3-8b",
+        "reason": "cold start below prewarm threshold or load latency unmeasured; no prewarm recommended",
+        "recommended_action": "no_op",
+        "request_id": "req-3",
+        "timestamp": 1780000050.0,
+        "workload_id": "chat-prod"
+      },
+      {
+        "adapter_id": "lora-legal",
+        "confidence": "medium",
+        "current_location": "pod-a",
+        "executed": false,
+        "expected_cold_start_saved_s": null,
+        "expected_sla_risk_delta": null,
+        "expected_warm_pool_cost": null,
+        "model_id": "llama-3-8b",
+        "reason": "warm residency hit; keep request on its already-warm replica (avoid a cold reroute)",
+        "recommended_action": "preserve_affinity",
+        "request_id": "req-4",
+        "timestamp": 1780000070.0,
+        "workload_id": "chat-prod"
+      },
+      {
+        "adapter_id": null,
+        "confidence": "high",
+        "current_location": "pod-b",
+        "executed": false,
+        "expected_cold_start_saved_s": null,
+        "expected_sla_risk_delta": null,
+        "expected_warm_pool_cost": null,
+        "model_id": "mistral-7b",
+        "reason": "warm residency hit; keep request on its already-warm replica (avoid a cold reroute)",
+        "recommended_action": "preserve_affinity",
+        "request_id": "req-5",
+        "timestamp": 1780000090.0,
+        "workload_id": "chat-prod"
+      },
+      {
+        "adapter_id": null,
+        "confidence": "low",
+        "current_location": null,
+        "executed": false,
+        "expected_cold_start_saved_s": 30.1,
+        "expected_sla_risk_delta": -1.0,
+        "expected_warm_pool_cost": 2.5,
+        "model_id": "llama-3-8b",
+        "reason": "cold start paid ~30.1s load latency >= 5.0s threshold",
+        "recommended_action": "prewarm",
+        "request_id": "req-6",
+        "timestamp": 1780000110.0,
+        "workload_id": "chat-prod"
+      },
+      {
+        "adapter_id": null,
+        "confidence": "high",
+        "current_location": "pod-c",
+        "executed": false,
+        "expected_cold_start_saved_s": 40.0,
+        "expected_sla_risk_delta": -1.0,
+        "expected_warm_pool_cost": 2.5,
+        "model_id": "mixtral-8x7b",
+        "reason": "cold start paid ~40.0s load latency >= 5.0s threshold",
+        "recommended_action": "prewarm",
+        "request_id": "req-7",
+        "timestamp": 1780000130.0,
+        "workload_id": "batch-embed"
+      }
+    ],
+    "posture": "recommendation_only",
+    "summary": {
+      "action_counts": {
+        "evict_candidate": 0,
+        "insufficient_telemetry": 0,
+        "no_op": 1,
+        "preserve_affinity": 3,
+        "prewarm": 3
+      },
+      "all_recommendation_only": true,
+      "n_decisions": 7,
+      "total_expected_cold_start_saved_s": 92.5
+    }
+  }
+}
