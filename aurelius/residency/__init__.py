@@ -21,14 +21,33 @@ Hard boundaries (enforced by design, asserted by tests):
   diagnostics until the ``docs/RESULTS.md`` §8 production-claim gate is met.
 """
 
+from .decision import (  # noqa: E402
+    CandidateScore,
+    SafetyContext,
+    choose_residency_decision,
+    score_residency_candidate,
+)
 from .models import (
     CONFIDENCE_LEVELS,
     EVENT_TYPES,
+    PRIORITY_CLASSES,
+    RESIDENCY_ACTIONS,
+    ModelLoadProfile,
+    ModelLocationState,
     ModelResidencyEvent,
+    ModelResidencyRequest,
     ModelResidencySnapshot,
     RequestResidencyObservation,
+    ResidencyAction,
+    ResidencyDecision,
     ResidencySchemaError,
     parse_timestamp,
+)
+from .sim import (  # noqa: E402
+    REAL_MODE,
+    SIMULATOR_MODE,
+    RealModeMutationError,
+    apply_residency_decision,
 )
 
 __all__ = [
@@ -39,4 +58,21 @@ __all__ = [
     "EVENT_TYPES",
     "CONFIDENCE_LEVELS",
     "parse_timestamp",
+    # decision engine
+    "ModelResidencyRequest",
+    "ModelLocationState",
+    "ModelLoadProfile",
+    "ResidencyDecision",
+    "ResidencyAction",
+    "RESIDENCY_ACTIONS",
+    "PRIORITY_CLASSES",
+    "choose_residency_decision",
+    "score_residency_candidate",
+    "SafetyContext",
+    "CandidateScore",
+    # simulator execution
+    "apply_residency_decision",
+    "SIMULATOR_MODE",
+    "REAL_MODE",
+    "RealModeMutationError",
 ]

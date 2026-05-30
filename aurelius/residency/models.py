@@ -23,7 +23,7 @@ this package (``docs/MODEL_RESIDENCY_COLD_START_SPEC.md`` §5).
 
 from __future__ import annotations
 
-from dataclasses import asdict, dataclass
+from dataclasses import asdict, dataclass, field
 from datetime import datetime, timezone
 from typing import Optional
 
@@ -459,3 +459,201 @@ def _latency_from_span(start, end, timestamp_unit: str) -> Optional[float]:
     if s is None or e is None or e < s:
         return None
     return e - s
+
+
+# ===========================================================================
+# Decision-engine models (Model Residency Decision Engine v1)
+# ===========================================================================
+#
+# These models drive ``aurelius/residency/decision.py``. The decision engine is
+# RECOMMENDATION-ONLY in real/customer mode; only the simulator
+# (``aurelius/residency/sim.py``) may mutate (simulated) ``ModelLocationState``.
+# A decision NEVER changes which model/adapter the user requested — only
+# placement / routing / prewarm / evict recommendations.
+
+
+class ResidencyAction:
+    """Canonical residency decision actions (string enum)."""
+
+    ROUTE_TO_RESIDENT_MODEL = "ROUTE_TO_RESIDENT_MODEL"
+    PRESERVE_AFFINITY = "PRESERVE_AFFINITY"
+    PREWARM_MODEL = "PREWARM_MODEL"
+    PREWARM_ADAPTER = "PREWARM_ADAPTER"
+    KEEP_CURRENT_ROUTE = "KEEP_CURRENT_ROUTE"
+    REJECT_UNSAFE_ROUTE = "REJECT_UNSAFE_ROUTE"
+    EVICT_CANDIDATE = "EVICT_CANDIDATE"
+    INSUFFICIENT_TELEMETRY = "INSUFFICIENT_TELEMETRY"
+
+
+RESIDENCY_ACTIONS = frozenset({
+    ResidencyAction.ROUTE_TO_RESIDENT_MODEL, ResidencyAction.PRESERVE_AFFINITY,
+    ResidencyAction.PREWARM_MODEL, ResidencyAction.PREWARM_ADAPTER,
+    ResidencyAction.KEEP_CURRENT_ROUTE, ResidencyAction.REJECT_UNSAFE_ROUTE,
+    ResidencyAction.EVICT_CANDIDATE, ResidencyAction.INSUFFICIENT_TELEMETRY,
+})
+
+PRIORITY_CLASSES = frozenset({"critical", "standard", "best_effort", "batch"})
+
+
+@dataclass(frozen=True)
+class ModelResidencyRequest:
+    """A request for which the engine recommends a placement/residency action.
+
+    The requested ``(model_id, adapter_id)`` is the contract — it is NEVER
+    substituted. ``current_route`` is the location key the request is currently
+    assigned to (if any), so the engine can recommend KEEP/PRESERVE vs reroute.
+    """
+
+    request_id: str
+    timestamp: float
+    workload_id: str
+    model_id: str
+    priority_class: str = "standard"
+    tenant_id: Optional[str] = None
+    adapter_id: Optional[str] = None
+    prompt_tokens: Optional[int] = None
+    output_tokens: Optional[int] = None
+    latency_sla_ms: Optional[float] = None
+    deadline_s: Optional[float] = None
+    region: Optional[str] = None
+    current_route: Optional[str] = None
+    allowed_regions: Optional[tuple[str, ...]] = None
+
+    @property
+    def is_safety_critical(self) -> bool:
+        return self.priority_class in ("critical",)
+
+    def to_dict(self) -> dict:
+        d = asdict(self)
+        if d.get("allowed_regions") is not None:
+            d["allowed_regions"] = list(d["allowed_regions"])
+        return d
+
+
+@dataclass
+class ModelLocationState:
+    """A serving location (node/gpu/container) and what is resident on it.
+
+    MUTABLE: the simulator (``sim.py``) mutates ``loaded_model_ids`` /
+    ``loaded_adapter_ids`` / ``gpu_memory_used`` / ``queue_depth`` in simulator
+    mode only. The decision engine treats it as READ-ONLY. Memory fields are in
+    bytes (consistent with :class:`ModelResidencySnapshot` / the telemetry
+    contract); :class:`ModelLoadProfile.memory_required_gb` is converted on use.
+    """
+
+    region: str
+    node_id: str
+    gpu_id: str
+    container_id: str
+    loaded_model_ids: list = field(default_factory=list)
+    loaded_adapter_ids: list = field(default_factory=list)
+    gpu_memory_used: Optional[float] = None
+    gpu_memory_total: Optional[float] = None
+    gpu_utilization: Optional[float] = None
+    queue_depth: Optional[int] = None
+    estimated_queue_wait_s: Optional[float] = None
+    thermal_risk: Optional[float] = None
+    topology_score: Optional[float] = None
+    telemetry_confidence: str = "unknown"
+    last_updated_s: Optional[float] = None
+
+    @property
+    def location_key(self) -> str:
+        return f"{self.region}/{self.node_id}/{self.gpu_id}/{self.container_id}"
+
+    def has_model(self, model_id: str) -> bool:
+        return model_id in self.loaded_model_ids
+
+    def has_adapter(self, adapter_id: Optional[str]) -> bool:
+        return adapter_id is not None and adapter_id in self.loaded_adapter_ids
+
+    @property
+    def memory_free_gb(self) -> Optional[float]:
+        """Free GPU memory in GB, or ``None`` if memory telemetry is missing
+        (NOT treated as zero / unlimited)."""
+        if self.gpu_memory_total is None or self.gpu_memory_used is None:
+            return None
+        return max(0.0, (self.gpu_memory_total - self.gpu_memory_used)) / 1e9
+
+    def to_dict(self) -> dict:
+        d = asdict(self)
+        d["location_key"] = self.location_key
+        return d
+
+
+@dataclass(frozen=True)
+class ModelLoadProfile:
+    """Calibrated cold-load characteristics for a ``(model_id[, adapter_id])``.
+
+    Latencies are seconds. ``None`` means *unknown* and MUST NOT be read as 0 —
+    a request that needs a load whose latency is unknown cannot be assumed free.
+    """
+
+    model_id: str
+    cold_load_p50_s: Optional[float] = None
+    cold_load_p95_s: Optional[float] = None
+    adapter_id: Optional[str] = None
+    adapter_load_p50_s: Optional[float] = None
+    adapter_load_p95_s: Optional[float] = None
+    memory_required_gb: Optional[float] = None
+    gpu_type_requirements: Optional[tuple[str, ...]] = None
+    source: str = "unknown"
+    confidence: str = "unknown"
+
+    def model_load_penalty_s(self, *, safety_critical: bool) -> Optional[float]:
+        """p95 for safety-critical, else p50. ``None`` (unknown) stays ``None``."""
+        return (self.cold_load_p95_s if safety_critical else self.cold_load_p50_s)
+
+    def adapter_load_penalty_s(self, *, safety_critical: bool) -> Optional[float]:
+        return (self.adapter_load_p95_s if safety_critical else self.adapter_load_p50_s)
+
+    def to_dict(self) -> dict:
+        d = asdict(self)
+        if d.get("gpu_type_requirements") is not None:
+            d["gpu_type_requirements"] = list(d["gpu_type_requirements"])
+        return d
+
+
+@dataclass(frozen=True)
+class ResidencyDecision:
+    """A recommendation-only residency decision.
+
+    ``executable_in_real_cluster`` is ``False`` by default and is NEVER set true
+    by the engine — real/customer mode is recommendation-only
+    (``docs/MODEL_RESIDENCY_COLD_START_SPEC.md`` §5). ``expected_*`` fields are
+    directional estimates, not measured outcomes.
+    """
+
+    request_id: str
+    action: str
+    reason: str
+    target_location: Optional[str] = None
+    current_location: Optional[str] = None
+    expected_cold_start_saved_s: Optional[float] = None
+    expected_queue_delta_s: Optional[float] = None
+    expected_latency_delta_s: Optional[float] = None
+    expected_cost_delta: Optional[float] = None
+    expected_goodput_per_dollar_delta: Optional[float] = None
+    safety_vetoes: tuple = ()
+    confidence: str = "unknown"
+    executable_in_simulator: bool = True
+    executable_in_real_cluster: bool = False
+
+    def __post_init__(self):
+        if self.action not in RESIDENCY_ACTIONS:
+            raise ResidencySchemaError(
+                f"unknown residency action {self.action!r}; "
+                f"expected one of {sorted(RESIDENCY_ACTIONS)}")
+        if self.executable_in_real_cluster:
+            raise ResidencySchemaError(
+                "residency decisions are recommendation-only in real/customer "
+                "mode; executable_in_real_cluster must be False")
+
+    def to_dict(self) -> dict:
+        d = asdict(self)
+        d["safety_vetoes"] = list(self.safety_vetoes)
+        return d
+
+    def to_json(self) -> str:
+        import json
+        return json.dumps(self.to_dict())
