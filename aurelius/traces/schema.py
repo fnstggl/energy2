@@ -493,3 +493,135 @@ class NormalizedGPUUtilizationSample:
             "memory_utilization": self.memory_utilization,
             "power_w": self.power_w, "temperature_c": self.temperature_c,
         }
+
+# ===========================================================================
+# Multi-layer GenAI serving trace schema (Alibaba cluster-trace-v2026-GenAI)
+# ===========================================================================
+# A top-down GenAI (stable-diffusion) serving trace spans three layers:
+# application (user requests + e2e latency), middleware (gateway queues), and
+# infrastructure (container/GPU utilisation + memory). These are SEPARATE
+# normalized records; the layers are NOT necessarily joinable (the application
+# layer and the metric layers use incompatible anonymized time bases and the
+# request layer has no container_ip), so linkage quality is classified per pair
+# rather than assumed — see ``aurelius/traces/alibaba_genai.py``.
+
+
+@dataclass(frozen=True)
+class NormalizedGenAIRequest:
+    """Application-layer GenAI serving request (e.g. stable-diffusion)."""
+
+    request_id: str
+    timestamp_s: Optional[float]
+    service_id: Optional[str]          # model / checkpoint id
+    prompt_or_input_size: Optional[float]
+    output_size: Optional[float]       # e.g. images-per-prompt; None if absent
+    e2e_latency_s: Optional[float]     # measured end-to-end execution time
+    status: Optional[str]
+    request_type: Optional[str]
+    is_failed: bool
+    # extra GenAI fields kept because they drive cold-start modelling
+    num_lora: Optional[int] = None
+    num_inference_steps: Optional[float] = None
+    group_id: Optional[str] = None
+
+    def to_dict(self) -> dict:
+        return {
+            "request_id": self.request_id, "timestamp_s": self.timestamp_s,
+            "service_id": self.service_id,
+            "prompt_or_input_size": self.prompt_or_input_size,
+            "output_size": self.output_size, "e2e_latency_s": self.e2e_latency_s,
+            "status": self.status, "request_type": self.request_type,
+            "is_failed": self.is_failed, "num_lora": self.num_lora,
+            "num_inference_steps": self.num_inference_steps,
+            "group_id": self.group_id,
+        }
+
+    @classmethod
+    def from_dict(cls, d: dict) -> "NormalizedGenAIRequest":
+        def _f(k):
+            v = d.get(k)
+            return None if v in (None, "") else float(v)
+        return cls(
+            request_id=str(d["request_id"]),
+            timestamp_s=_f("timestamp_s"), service_id=d.get("service_id"),
+            prompt_or_input_size=_f("prompt_or_input_size"),
+            output_size=_f("output_size"), e2e_latency_s=_f("e2e_latency_s"),
+            status=d.get("status"), request_type=d.get("request_type"),
+            is_failed=bool(d.get("is_failed")),
+            num_lora=(None if d.get("num_lora") in (None, "") else int(float(d["num_lora"]))),
+            num_inference_steps=_f("num_inference_steps"),
+            group_id=d.get("group_id"),
+        )
+
+
+@dataclass(frozen=True)
+class NormalizedGatewayQueueSample:
+    """Middleware-layer gateway/queue telemetry sample."""
+
+    timestamp_s: float
+    gateway_id: Optional[str]
+    service_id: Optional[str]
+    queue_depth: Optional[float] = None
+    waiting_time_s: Optional[float] = None
+    arrival_rate: Optional[float] = None
+    dispatch_rate: Optional[float] = None
+
+    def to_dict(self) -> dict:
+        return {
+            "timestamp_s": self.timestamp_s, "gateway_id": self.gateway_id,
+            "service_id": self.service_id, "queue_depth": self.queue_depth,
+            "waiting_time_s": self.waiting_time_s, "arrival_rate": self.arrival_rate,
+            "dispatch_rate": self.dispatch_rate,
+        }
+
+
+@dataclass(frozen=True)
+class NormalizedSchedulerPipelineEvent:
+    """Middleware/scheduler-layer pipeline-stage timing event."""
+
+    timestamp_s: float
+    request_id: Optional[str]
+    service_id: Optional[str]
+    stage: Optional[str]
+    container_id: Optional[str]
+    gpu_id: Optional[str] = None
+    node_id: Optional[str] = None
+    start_time_s: Optional[float] = None
+    end_time_s: Optional[float] = None
+    duration_s: Optional[float] = None
+    status: Optional[str] = None
+
+    def to_dict(self) -> dict:
+        return {
+            "timestamp_s": self.timestamp_s, "request_id": self.request_id,
+            "service_id": self.service_id, "stage": self.stage,
+            "container_id": self.container_id, "gpu_id": self.gpu_id,
+            "node_id": self.node_id, "start_time_s": self.start_time_s,
+            "end_time_s": self.end_time_s, "duration_s": self.duration_s,
+            "status": self.status,
+        }
+
+
+@dataclass(frozen=True)
+class NormalizedInfraSample:
+    """Infrastructure-layer container/GPU resource sample."""
+
+    timestamp_s: float
+    node_id: Optional[str]
+    container_id: Optional[str]
+    gpu_id: Optional[str]
+    gpu_utilization: Optional[float] = None
+    gpu_memory_used: Optional[float] = None
+    gpu_memory_total: Optional[float] = None
+    cpu_utilization: Optional[float] = None
+    memory_used: Optional[float] = None
+
+    def to_dict(self) -> dict:
+        return {
+            "timestamp_s": self.timestamp_s, "node_id": self.node_id,
+            "container_id": self.container_id, "gpu_id": self.gpu_id,
+            "gpu_utilization": self.gpu_utilization,
+            "gpu_memory_used": self.gpu_memory_used,
+            "gpu_memory_total": self.gpu_memory_total,
+            "cpu_utilization": self.cpu_utilization, "memory_used": self.memory_used,
+        }

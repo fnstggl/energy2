@@ -47,3 +47,6 @@ data/external/alibaba_gpu/processed/alibaba_gpu_normalized.json
 data/external/philly/raw/*
 !data/external/philly/raw/.gitkeep
 data/external/philly/processed/philly_normalized.json
+data/external/alibaba_genai/raw/*
+!data/external/alibaba_genai/raw/.gitkeep
+data/external/alibaba_genai/processed/alibaba_genai_normalized.json
