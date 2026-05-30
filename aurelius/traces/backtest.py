@@ -307,12 +307,51 @@ def _run_policy(
     ticks: Sequence[ArrivalTick],
     *,
     tick_hours: float,
+    frontier_integration=None,
+    frontier_workload_metadata=None,
+    frontier_service_state=None,
+    frontier_counters=None,
 ) -> PolicyResult:
     cache_aware = policy in ("constraint_aware", "cache_affinity_baseline")
     fixed = policy in ("fifo", "cache_affinity_baseline")
 
     # Static provisioning baselines size once for the mean load.
     fixed_replicas = _global_fixed_replicas(ticks, target_rho=0.70)
+
+    # Opt-in frontier-controller integration for constraint_aware ONLY. When
+    # `frontier_integration` is None (the default) or `enabled=False`, this
+    # whole block is a no-op and constraint_aware keeps its hard-coded
+    # target_rho=0.65 (asserted byte-for-byte by
+    # tests/test_constraint_aware_frontier_integration.py).
+    ca_target_rho = 0.65
+    frontier_telemetry = None
+    if (policy == "constraint_aware"
+            and frontier_integration is not None
+            and getattr(frontier_integration, "enabled", False)):
+        from aurelius.constraints.frontier_integration import (
+            CONSTRAINT_AWARE_DEFAULT_RHO,
+            select_constraint_aware_rho,
+        )
+        service_state = dict(frontier_service_state or {})
+        service_state.setdefault("telemetry_ticks", list(ticks))
+        service_state.setdefault(
+            "telemetry_window_ticks", len(ticks))
+        service_state.setdefault("request_metrics_present", True)
+        service_state.setdefault("queue_metrics_present", True)
+        wl_meta = dict(frontier_workload_metadata or {})
+        wl_meta.setdefault("workload_id", "constraint_aware_backtest")
+        wl_meta.setdefault("workload_type", "inference_standard")
+        wl_meta.setdefault("telemetry_confidence", "medium")
+        wl_meta.setdefault("latency_sla_ms", 30000.0)
+        result = select_constraint_aware_rho(
+            service_state, wl_meta, frontier_integration,
+            current_rho=CONSTRAINT_AWARE_DEFAULT_RHO,
+            telemetry_window=ticks,
+            tick_seconds=tick_hours * 3600.0)
+        ca_target_rho = result.selected_rho
+        frontier_telemetry = result
+        if frontier_counters is not None:
+            frontier_counters.record(result)
 
     evals: list[TickEval] = []
     prev_replicas: Optional[int] = None
@@ -358,7 +397,7 @@ def _run_policy(
             plan_rate = max(t.arrival_rate_rps, ewma_rate)
             plan_out = max(t.output_tokens_mean, ewma_out) if t.request_count else ewma_out
             base = _size_for_target(plan_rate, max(1.0, plan_out), throughput,
-                                    target_rho=0.65)
+                                    target_rho=ca_target_rho)
             # cache savings let us serve the same load with fewer replicas: probe
             # downward while SLA stays safe.
             replicas = _constraint_trim(t, base, prefill_savings, tick_hours,
@@ -374,7 +413,12 @@ def _run_policy(
         prev_tick = t
         evals.append(ev)
 
-    return _aggregate(policy, evals, cache_aware, ticks)
+    result = _aggregate(policy, evals, cache_aware, ticks)
+    if frontier_telemetry is not None:
+        # Attach observability metadata to the policy result so the caller
+        # can include it in reports without changing any KPI field.
+        result.frontier_integration = frontier_telemetry  # type: ignore[attr-defined]
+    return result
 
 
 def _queue_aware_size(tick: ArrivalTick, tick_hours: float, threshold_ms: float) -> int:
@@ -574,13 +618,30 @@ def run_backtest(
     *,
     tick_seconds: float = 60.0,
     policies: Sequence[str] = ALL_POLICIES,
+    frontier_integration=None,
+    frontier_workload_metadata=None,
+    frontier_service_state=None,
+    frontier_counters=None,
 ) -> BacktestResult:
-    """Replay ``requests`` through every policy and score the canonical KPI."""
+    """Replay ``requests`` through every policy and score the canonical KPI.
+
+    ``frontier_integration`` (default ``None``) is an opt-in
+    :class:`aurelius.constraints.frontier_integration.FrontierIntegrationConfig`
+    applied to the ``constraint_aware`` policy only. When ``None`` or
+    ``enabled=False`` the constraint_aware policy keeps its hard-coded
+    ``target_rho=0.65`` and the function returns byte-for-byte identical
+    output to every prior release.
+    """
     arrival_ticks = requests_to_arrival_ticks(requests, tick_seconds=tick_seconds)
     tick_hours = tick_seconds / 3600.0
     results: dict = {}
     for policy in policies:
-        results[policy] = _run_policy(policy, arrival_ticks, tick_hours=tick_hours)
+        results[policy] = _run_policy(
+            policy, arrival_ticks, tick_hours=tick_hours,
+            frontier_integration=frontier_integration,
+            frontier_workload_metadata=frontier_workload_metadata,
+            frontier_service_state=frontier_service_state,
+            frontier_counters=frontier_counters)
     outcome = (classify_outcome(results) if "constraint_aware" in results
                else OutcomeAnalysis("TIE", 0.0, HEADLINE_BASELINE))
     return BacktestResult(

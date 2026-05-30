@@ -1,0 +1,253 @@
+{
+  "config": {
+    "allow_real_execution": false,
+    "candidate_rhos": [
+      0.45,
+      0.55,
+      0.65,
+      0.75,
+      0.85,
+      0.95
+    ],
+    "max_queue_p99_ms": 2000.0,
+    "max_timeout_pct": 10.0,
+    "min_telemetry_confidence": "medium",
+    "regression_tolerance_pct": 1.0,
+    "shadow_only": true
+  },
+  "per_trace": [
+    {
+      "applicable": true,
+      "comparison": {
+        "delta_goodput_per_dollar_pct": 1.467572488301403,
+        "delta_timeout_pct_absolute": 0.5127760700447084,
+        "regression_tolerance_pct": 1.0,
+        "verdict": "INTEGRATION_WIN"
+      },
+      "constraint_aware_current": {
+        "goodput_per_dollar": 212102.93386422936,
+        "gpu_hours": 0.933333333333334,
+        "infra_cost": 2.055025793650795,
+        "latency_p99_ms": 30065.20173667058,
+        "policy": "constraint_aware_current",
+        "queue_p95_ms": 220.6565218492329,
+        "queue_p99_ms": 335.75493833994466,
+        "rho_target": 0.65,
+        "safe": true,
+        "sla_compliant_goodput": 435877,
+        "timeout_pct_mean": 4.637743005672445
+      },
+      "constraint_aware_frontier_opt_in": {
+        "frontier_action": "RECOMMEND_RHO",
+        "frontier_confidence": "medium",
+        "frontier_fallback_reason": null,
+        "frontier_reason": "highest SLA-safe goodput/$ at rho 0.75 (predicted 215,060.85 across all SLA / queue / latency / telemetry gates)",
+        "frontier_safety_vetoes": [],
+        "frontier_used": true,
+        "goodput_per_dollar": 215215.6981685009,
+        "gpu_hours": 0.9166666666666674,
+        "infra_cost": 2.0148948412698426,
+        "latency_p99_ms": 31046.252239252546,
+        "policy": "constraint_aware_frontier_opt_in",
+        "queue_p95_ms": 435.1168102589504,
+        "queue_p99_ms": 740.8655773637048,
+        "rho_target": 0.75,
+        "safe": true,
+        "sla_compliant_goodput": 433637,
+        "timeout_pct_mean": 5.1505190757171535
+      },
+      "counters_with_frontier_disabled": {
+        "frontier_error_count": 0,
+        "frontier_fallback_count": 0,
+        "frontier_ineligible_count": 0,
+        "frontier_low_confidence_count": 0,
+        "frontier_lower_rho_count": 0,
+        "frontier_unsafe_recommendation_count": 0,
+        "frontier_used_count": 0
+      },
+      "counters_with_frontier_enabled": {
+        "frontier_error_count": 0,
+        "frontier_fallback_count": 0,
+        "frontier_ineligible_count": 0,
+        "frontier_low_confidence_count": 0,
+        "frontier_lower_rho_count": 0,
+        "frontier_unsafe_recommendation_count": 0,
+        "frontier_used_count": 1
+      },
+      "n_ticks": 55,
+      "scale": 25.0,
+      "source": "fixture:/home/user/energy2/tests/fixtures/burstgpt_sample.csv",
+      "tick_seconds": 60.0,
+      "trace": "burstgpt"
+    },
+    {
+      "applicable": true,
+      "comparison": {
+        "delta_goodput_per_dollar_pct": 0.0,
+        "delta_timeout_pct_absolute": 0.0,
+        "regression_tolerance_pct": 1.0,
+        "verdict": "SAFE_TIE"
+      },
+      "constraint_aware_current": {
+        "goodput_per_dollar": 1740426.4705882352,
+        "gpu_hours": 0.03333333333333333,
+        "infra_cost": 0.068,
+        "latency_p99_ms": 10739.58161899531,
+        "policy": "constraint_aware_current",
+        "queue_p95_ms": 94.1807836985862,
+        "queue_p99_ms": 159.65415447553877,
+        "rho_target": 0.65,
+        "safe": true,
+        "sla_compliant_goodput": 118349,
+        "timeout_pct_mean": 4.1120379643360785
+      },
+      "constraint_aware_frontier_opt_in": {
+        "frontier_action": null,
+        "frontier_confidence": "unknown",
+        "frontier_fallback_reason": "ineligible: telemetry_window_ticks=1 below required 8",
+        "frontier_reason": null,
+        "frontier_safety_vetoes": [],
+        "frontier_used": false,
+        "goodput_per_dollar": 1740426.4705882352,
+        "gpu_hours": 0.03333333333333333,
+        "infra_cost": 0.068,
+        "latency_p99_ms": 10739.58161899531,
+        "policy": "constraint_aware_frontier_opt_in",
+        "queue_p95_ms": 94.1807836985862,
+        "queue_p99_ms": 159.65415447553877,
+        "rho_target": 0.65,
+        "safe": true,
+        "sla_compliant_goodput": 118349,
+        "timeout_pct_mean": 4.1120379643360785
+      },
+      "counters_with_frontier_disabled": {
+        "frontier_error_count": 0,
+        "frontier_fallback_count": 0,
+        "frontier_ineligible_count": 0,
+        "frontier_low_confidence_count": 0,
+        "frontier_lower_rho_count": 0,
+        "frontier_unsafe_recommendation_count": 0,
+        "frontier_used_count": 0
+      },
+      "counters_with_frontier_enabled": {
+        "frontier_error_count": 0,
+        "frontier_fallback_count": 1,
+        "frontier_ineligible_count": 1,
+        "frontier_low_confidence_count": 0,
+        "frontier_lower_rho_count": 0,
+        "frontier_unsafe_recommendation_count": 0,
+        "frontier_used_count": 0
+      },
+      "n_ticks": 1,
+      "scale": 25.0,
+      "source": "fixture:/home/user/energy2/tests/fixtures/azure_llm_sample.csv",
+      "tick_seconds": 60.0,
+      "trace": "azure_llm_2023"
+    },
+    {
+      "applicable": true,
+      "comparison": {
+        "delta_goodput_per_dollar_pct": 12.978232894049526,
+        "delta_timeout_pct_absolute": 1.8259999999999996,
+        "regression_tolerance_pct": 1.0,
+        "verdict": "INTEGRATION_WIN"
+      },
+      "constraint_aware_current": {
+        "goodput_per_dollar": 2555324.54,
+        "gpu_hours": 5796.1,
+        "infra_cost": 11824.01,
+        "latency_p99_ms": 9953.9,
+        "policy": "constraint_aware_current",
+        "queue_p95_ms": 0.38,
+        "queue_p99_ms": 0.63,
+        "rho_target": 0.65,
+        "safe": true,
+        "sla_compliant_goodput": 30214182940,
+        "timeout_pct_mean": 7.639
+      },
+      "constraint_aware_frontier_opt_in": {
+        "frontier_action": "RECOMMEND_RHO",
+        "frontier_confidence": "medium",
+        "frontier_fallback_reason": null,
+        "frontier_reason": "highest SLA-safe goodput/$ at rho 0.75 (predicted 2,886,960.51 across all SLA / queue / latency / telemetry gates)",
+        "frontier_safety_vetoes": [],
+        "frontier_used": true,
+        "goodput_per_dollar": 2886960.51,
+        "gpu_hours": 5037.8,
+        "infra_cost": 10277.15,
+        "latency_p99_ms": 10936.3,
+        "policy": "constraint_aware_frontier_opt_in",
+        "queue_p95_ms": 1.56,
+        "queue_p99_ms": 2.82,
+        "rho_target": 0.75,
+        "safe": true,
+        "sla_compliant_goodput": 29669714655,
+        "timeout_pct_mean": 9.465
+      },
+      "counters_with_frontier_disabled": {
+        "frontier_fallback_count": 1,
+        "frontier_used_count": 0
+      },
+      "counters_with_frontier_enabled": {
+        "frontier_error_count": 0,
+        "frontier_fallback_count": 0,
+        "frontier_ineligible_count": 0,
+        "frontier_low_confidence_count": 0,
+        "frontier_lower_rho_count": 0,
+        "frontier_unsafe_recommendation_count": 0,
+        "frontier_used_count": 1
+      },
+      "n_ticks": 12960,
+      "scale": 10.0,
+      "source": "committed_integration_summary",
+      "tick_seconds": 60.0,
+      "trace": "azure_llm_2024_week"
+    },
+    {
+      "applicable": false,
+      "comparison": null,
+      "constraint_aware_current": null,
+      "constraint_aware_frontier_opt_in": null,
+      "exclusion_reason": "GenAI 2026's constraint_aware uses _size_for_sla (probe-up-to-SLA), not a fixed rho target \u2014 the v1 integration adapter applies only to the rho-target sizer in aurelius/traces/backtest.py.",
+      "trace": "alibaba_genai_2026"
+    },
+    {
+      "applicable": false,
+      "comparison": null,
+      "constraint_aware_current": null,
+      "constraint_aware_frontier_opt_in": null,
+      "exclusion_reason": "Bin-packing / fragmentation trace. No continuous serving rho target; frontier integration is structurally not applicable.",
+      "trace": "alibaba_gpu_v2023"
+    },
+    {
+      "applicable": false,
+      "comparison": null,
+      "constraint_aware_current": null,
+      "constraint_aware_frontier_opt_in": null,
+      "exclusion_reason": "Training-job scheduling trace. Deadlines / job-progress dominate, not serving rho; frontier integration is structurally not applicable.",
+      "trace": "microsoft_philly"
+    }
+  ],
+  "synthesis": {
+    "any_regression": false,
+    "applicable_traces": [
+      "burstgpt",
+      "azure_llm_2023",
+      "azure_llm_2024_week"
+    ],
+    "n_applicable": 3,
+    "n_skipped": 3,
+    "regression_pct": 0.0,
+    "safe_or_win_pct": 100.0,
+    "skipped_traces": [
+      "alibaba_genai_2026",
+      "alibaba_gpu_v2023",
+      "microsoft_philly"
+    ],
+    "verdict_counts": {
+      "INTEGRATION_REGRESSION": 0,
+      "INTEGRATION_WIN": 2,
+      "SAFE_TIE": 1
+    }
+  }
+}
