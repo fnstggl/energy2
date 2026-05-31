@@ -233,3 +233,22 @@ see `docs/DYNAMIC_SAFE_FRONTIER_ESTIMATOR.md` and
 document (no production mutation by default, no future leakage, safety
 gates as vetoes, missing telemetry stays INSUFFICIENT) apply to the
 dynamic path verbatim.
+
+---
+
+## 12. Sibling: Training Safe Utilization Frontier (v1)
+
+The training-workload **sibling** of the serving frontier controller
+lives in the same package
+(`aurelius.frontier.training_*`). It applies the same product thesis
+("maximum sustainable usage across constraints") to the training /
+fine-tuning / GPU-batch domain: optimize **GPU occupancy / packing
+density / backfill aggressiveness** subject to **queue / starvation /
+fragmentation / gang-scheduling / retry** constraints. It does **NOT**
+import or extend the serving rho controllers and does **NOT** use rho
+as a candidate. See
+`docs/TRAINING_SAFE_UTILIZATION_FRONTIER.md` +
+`docs/TRAINING_SAFE_UTILIZATION_FRONTIER_RESULTS.md`. All hard rules
+in this document (opt-in, recommendation-only, real execution
+disabled by default, missing telemetry stays INSUFFICIENT, no
+production-savings claims) apply to the training path verbatim.

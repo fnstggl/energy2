@@ -111,6 +111,46 @@ from .shadow import (
     read_shadow_log,
     write_shadow_log_entry,
 )
+from .training_alibaba_gpu import (
+    ALIBABA_POLICY_CANDIDATES,
+    estimate_alibaba_gpu_training_frontier,
+    load_alibaba_gpu_summary,
+)
+from .training_controller import (
+    TrainingControllerConfig,
+    TrainingRealExecutionDisabledError,
+    choose_training_frontier_target,
+    execute_training_frontier_decision,
+)
+from .training_models import (
+    TRAINING_FRONTIER_ACTIONS,
+    TRAINING_SAFETY_STATUSES,
+    TRAINING_TRACE_SOURCES,
+    TRAINING_WORKLOAD_TYPES,
+    TrainingFrontierAction,
+    TrainingFrontierCandidate,
+    TrainingFrontierDecision,
+    TrainingFrontierPoint,
+    TrainingFrontierSchemaError,
+    TrainingSafetyStatus,
+    TrainingWorkloadProfile,
+)
+from .training_philly import (
+    PHILLY_POLICY_CANDIDATES,
+    estimate_philly_training_frontier,
+    load_philly_summary,
+)
+from .training_safety import (
+    ALL_TRAINING_VETOES,
+    TrainingSafetyConfig,
+    classify_training_frontier_point,
+    is_training_frontier_point_safe,
+)
+from .training_shadow import (
+    TrainingFrontierShadowLog,
+    read_training_shadow_log,
+    write_training_shadow_log_entry,
+)
 
 __all__ = [
     # models
@@ -176,4 +216,33 @@ __all__ = [
     "write_dynamic_outcome",
     "read_dynamic_outcomes",
     "dynamic_estimate_to_frontier_decision",
+    # training frontier v1 — sibling of serving frontier
+    "TrainingWorkloadProfile",
+    "TrainingFrontierCandidate",
+    "TrainingFrontierPoint",
+    "TrainingFrontierDecision",
+    "TrainingFrontierAction",
+    "TRAINING_FRONTIER_ACTIONS",
+    "TrainingSafetyStatus",
+    "TRAINING_SAFETY_STATUSES",
+    "TRAINING_TRACE_SOURCES",
+    "TRAINING_WORKLOAD_TYPES",
+    "TrainingFrontierSchemaError",
+    "TrainingSafetyConfig",
+    "ALL_TRAINING_VETOES",
+    "classify_training_frontier_point",
+    "is_training_frontier_point_safe",
+    "TrainingControllerConfig",
+    "choose_training_frontier_target",
+    "execute_training_frontier_decision",
+    "TrainingRealExecutionDisabledError",
+    "PHILLY_POLICY_CANDIDATES",
+    "estimate_philly_training_frontier",
+    "load_philly_summary",
+    "ALIBABA_POLICY_CANDIDATES",
+    "estimate_alibaba_gpu_training_frontier",
+    "load_alibaba_gpu_summary",
+    "TrainingFrontierShadowLog",
+    "write_training_shadow_log_entry",
+    "read_training_shadow_log",
 ]
