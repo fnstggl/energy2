@@ -1,0 +1,748 @@
+{
+  "alpha_finding": {
+    "evidence": "wins=0 ties=3 losses=0 across the small / medium / large capacity sweep",
+    "verdict": "NO \u2014 even on the real bounded MIT sample, Training Frontier safely TIES `constraint_aware` at every capacity point. Consistent with the Philly + Alibaba GPU + v1 fixture result: `constraint_aware` is already on or near the safe training frontier on this trace family."
+  },
+  "capacity_sensitivity": [
+    {
+      "action": "KEEP_CURRENT_POLICY",
+      "backtest_seconds": 86.32,
+      "current_goodput_per_dollar": 314.83285942938585,
+      "current_policy": "constraint_aware",
+      "fleet": {
+        "avg_demand_gpu": 103.3318036851253,
+        "fleet_gpu_target": 310,
+        "gpus_per_node": 16,
+        "label": "small",
+        "n_nodes": 20,
+        "node_overhead_factor": 3.0,
+        "peak_demand_gpu": 16,
+        "total_gpus": 320
+      },
+      "fleet_label": "small",
+      "frontier_rows": [
+        {
+          "backfill_success_rate_pct": 0.0,
+          "cost": 808727.8666666665,
+          "fragmentation_block_rate_pct": 32.35161617299246,
+          "goodput_per_dollar": 270.58455881080073,
+          "gpu_hours": 169306.9788888889,
+          "gpu_occupancy": 0.31402462905115663,
+          "policy": "fifo",
+          "queue_wait_p95_s": 154836.0,
+          "queue_wait_p99_s": 203793.0,
+          "safety_status": "UNSAFE",
+          "safety_vetoes": [
+            "queue_wait_p95_exceeded",
+            "queue_wait_p99_exceeded",
+            "starvation_rate_exceeded"
+          ],
+          "starvation_rate_pct": 47.06
+        },
+        {
+          "backfill_success_rate_pct": 38.16,
+          "cost": 786469.7333333336,
+          "fragmentation_block_rate_pct": 10.450272026760182,
+          "goodput_per_dollar": 314.81764078905843,
+          "gpu_hours": 169306.9788888889,
+          "gpu_occupancy": 0.3229119412605496,
+          "policy": "first_fit",
+          "queue_wait_p95_s": 20385.0,
+          "queue_wait_p99_s": 26291.0,
+          "safety_status": "SAFE",
+          "safety_vetoes": [],
+          "starvation_rate_pct": 4.11
+        },
+        {
+          "backfill_success_rate_pct": 42.51,
+          "cost": 786469.7333333336,
+          "fragmentation_block_rate_pct": 10.794186584395751,
+          "goodput_per_dollar": 314.83285942938585,
+          "gpu_hours": 169306.9788888889,
+          "gpu_occupancy": 0.32291194126054956,
+          "policy": "best_fit",
+          "queue_wait_p95_s": 20322.0,
+          "queue_wait_p99_s": 26110.0,
+          "safety_status": "SAFE",
+          "safety_vetoes": [],
+          "starvation_rate_pct": 3.86
+        },
+        {
+          "backfill_success_rate_pct": 38.16,
+          "cost": 786469.7333333336,
+          "fragmentation_block_rate_pct": 10.450272026760182,
+          "goodput_per_dollar": 314.81764078905843,
+          "gpu_hours": 169306.9788888889,
+          "gpu_occupancy": 0.3229119412605496,
+          "policy": "first_fit_decreasing",
+          "queue_wait_p95_s": 20385.0,
+          "queue_wait_p99_s": 26291.0,
+          "safety_status": "SAFE",
+          "safety_vetoes": [],
+          "starvation_rate_pct": 4.11
+        },
+        {
+          "backfill_success_rate_pct": 42.51,
+          "cost": 786469.7333333336,
+          "fragmentation_block_rate_pct": 10.794186584395751,
+          "goodput_per_dollar": 314.83285942938585,
+          "gpu_hours": 169306.9788888889,
+          "gpu_occupancy": 0.32291194126054956,
+          "policy": "greedy_packing",
+          "queue_wait_p95_s": 20322.0,
+          "queue_wait_p99_s": 26110.0,
+          "safety_status": "SAFE",
+          "safety_vetoes": [],
+          "starvation_rate_pct": 3.86
+        },
+        {
+          "backfill_success_rate_pct": 42.51,
+          "cost": 786469.7333333336,
+          "fragmentation_block_rate_pct": 10.794186584395751,
+          "goodput_per_dollar": 314.83285942938585,
+          "gpu_hours": 169306.9788888889,
+          "gpu_occupancy": 0.32291194126054956,
+          "policy": "topology_aware",
+          "queue_wait_p95_s": 20322.0,
+          "queue_wait_p99_s": 26110.0,
+          "safety_status": "SAFE",
+          "safety_vetoes": [],
+          "starvation_rate_pct": 3.86
+        },
+        {
+          "backfill_success_rate_pct": 42.51,
+          "cost": 786469.7333333336,
+          "fragmentation_block_rate_pct": 10.794186584395751,
+          "goodput_per_dollar": 314.83285942938585,
+          "gpu_hours": 169306.9788888889,
+          "gpu_occupancy": 0.32291194126054956,
+          "policy": "utilization_aware",
+          "queue_wait_p95_s": 20322.0,
+          "queue_wait_p99_s": 26110.0,
+          "safety_status": "SAFE",
+          "safety_vetoes": [],
+          "starvation_rate_pct": 3.86
+        },
+        {
+          "backfill_success_rate_pct": 42.51,
+          "cost": 786469.7333333336,
+          "fragmentation_block_rate_pct": 10.794186584395751,
+          "goodput_per_dollar": 314.83285942938585,
+          "gpu_hours": 169306.9788888889,
+          "gpu_occupancy": 0.32291194126054956,
+          "policy": "constraint_aware",
+          "queue_wait_p95_s": 20322.0,
+          "queue_wait_p99_s": 26110.0,
+          "safety_status": "SAFE",
+          "safety_vetoes": [],
+          "starvation_rate_pct": 3.86
+        }
+      ],
+      "reason": "current candidate 'constraint_aware' within KPI deadband (0.0000 \u2264 0.01) and packing-density deadband (0.0000 \u2264 0.05)",
+      "selected_goodput_per_dollar": 314.83285942938585,
+      "selected_policy": "constraint_aware",
+      "verdict": "TIE"
+    },
+    {
+      "action": "KEEP_CURRENT_POLICY",
+      "backtest_seconds": 47.79,
+      "current_goodput_per_dollar": 162.67694471989012,
+      "current_policy": "constraint_aware",
+      "fleet": {
+        "avg_demand_gpu": 103.3318036851253,
+        "fleet_gpu_target": 620,
+        "gpus_per_node": 16,
+        "label": "medium",
+        "n_nodes": 39,
+        "node_overhead_factor": 6.0,
+        "peak_demand_gpu": 16,
+        "total_gpus": 624
+      },
+      "fleet_label": "medium",
+      "frontier_rows": [
+        {
+          "backfill_success_rate_pct": 0.0,
+          "cost": 1543583.079999999,
+          "fragmentation_block_rate_pct": 17.21614667095529,
+          "goodput_per_dollar": 160.5597069643962,
+          "gpu_hours": 169306.9788888889,
+          "gpu_occupancy": 0.16452659505268233,
+          "policy": "fifo",
+          "queue_wait_p95_s": 29885.0,
+          "queue_wait_p99_s": 44635.0,
+          "safety_status": "UNSAFE",
+          "safety_vetoes": [
+            "queue_wait_p95_exceeded",
+            "queue_wait_p99_exceeded",
+            "starvation_rate_exceeded"
+          ],
+          "starvation_rate_pct": 7.35
+        },
+        {
+          "backfill_success_rate_pct": 7.12,
+          "cost": 1533615.9799999993,
+          "fragmentation_block_rate_pct": 4.1024091056527,
+          "goodput_per_dollar": 162.67694471989012,
+          "gpu_hours": 169306.9788888889,
+          "gpu_occupancy": 0.16559586731310208,
+          "policy": "first_fit",
+          "queue_wait_p95_s": 2680.0,
+          "queue_wait_p99_s": 7434.0,
+          "safety_status": "SAFE",
+          "safety_vetoes": [],
+          "starvation_rate_pct": 0.06
+        },
+        {
+          "backfill_success_rate_pct": 7.12,
+          "cost": 1533615.9799999993,
+          "fragmentation_block_rate_pct": 4.155400178299086,
+          "goodput_per_dollar": 162.67694471989012,
+          "gpu_hours": 169306.9788888889,
+          "gpu_occupancy": 0.16559586731310216,
+          "policy": "best_fit",
+          "queue_wait_p95_s": 2680.0,
+          "queue_wait_p99_s": 7434.0,
+          "safety_status": "SAFE",
+          "safety_vetoes": [],
+          "starvation_rate_pct": 0.06
+        },
+        {
+          "backfill_success_rate_pct": 7.12,
+          "cost": 1533615.9799999993,
+          "fragmentation_block_rate_pct": 4.1024091056527,
+          "goodput_per_dollar": 162.67694471989012,
+          "gpu_hours": 169306.9788888889,
+          "gpu_occupancy": 0.16559586731310208,
+          "policy": "first_fit_decreasing",
+          "queue_wait_p95_s": 2680.0,
+          "queue_wait_p99_s": 7434.0,
+          "safety_status": "SAFE",
+          "safety_vetoes": [],
+          "starvation_rate_pct": 0.06
+        },
+        {
+          "backfill_success_rate_pct": 7.12,
+          "cost": 1533615.9799999993,
+          "fragmentation_block_rate_pct": 4.155400178299086,
+          "goodput_per_dollar": 162.67694471989012,
+          "gpu_hours": 169306.9788888889,
+          "gpu_occupancy": 0.16559586731310216,
+          "policy": "greedy_packing",
+          "queue_wait_p95_s": 2680.0,
+          "queue_wait_p99_s": 7434.0,
+          "safety_status": "SAFE",
+          "safety_vetoes": [],
+          "starvation_rate_pct": 0.06
+        },
+        {
+          "backfill_success_rate_pct": 7.12,
+          "cost": 1533615.9799999993,
+          "fragmentation_block_rate_pct": 4.155400178299086,
+          "goodput_per_dollar": 162.67694471989012,
+          "gpu_hours": 169306.9788888889,
+          "gpu_occupancy": 0.16559586731310216,
+          "policy": "topology_aware",
+          "queue_wait_p95_s": 2680.0,
+          "queue_wait_p99_s": 7434.0,
+          "safety_status": "SAFE",
+          "safety_vetoes": [],
+          "starvation_rate_pct": 0.06
+        },
+        {
+          "backfill_success_rate_pct": 7.12,
+          "cost": 1533615.9799999993,
+          "fragmentation_block_rate_pct": 4.155400178299086,
+          "goodput_per_dollar": 162.67694471989012,
+          "gpu_hours": 169306.9788888889,
+          "gpu_occupancy": 0.16559586731310216,
+          "policy": "utilization_aware",
+          "queue_wait_p95_s": 2680.0,
+          "queue_wait_p99_s": 7434.0,
+          "safety_status": "SAFE",
+          "safety_vetoes": [],
+          "starvation_rate_pct": 0.06
+        },
+        {
+          "backfill_success_rate_pct": 7.12,
+          "cost": 1533615.9799999993,
+          "fragmentation_block_rate_pct": 4.155400178299086,
+          "goodput_per_dollar": 162.67694471989012,
+          "gpu_hours": 169306.9788888889,
+          "gpu_occupancy": 0.16559586731310216,
+          "policy": "constraint_aware",
+          "queue_wait_p95_s": 2680.0,
+          "queue_wait_p99_s": 7434.0,
+          "safety_status": "SAFE",
+          "safety_vetoes": [],
+          "starvation_rate_pct": 0.06
+        }
+      ],
+      "reason": "current candidate 'constraint_aware' within KPI deadband (0.0000 \u2264 0.01) and packing-density deadband (0.0000 \u2264 0.05)",
+      "selected_goodput_per_dollar": 162.67694471989012,
+      "selected_policy": "constraint_aware",
+      "verdict": "TIE"
+    },
+    {
+      "action": "KEEP_CURRENT_POLICY",
+      "backtest_seconds": 15.4,
+      "current_goodput_per_dollar": 96.12728551629868,
+      "current_policy": "constraint_aware",
+      "fleet": {
+        "avg_demand_gpu": 103.3318036851253,
+        "fleet_gpu_target": 1240,
+        "gpus_per_node": 16,
+        "label": "large",
+        "n_nodes": 78,
+        "node_overhead_factor": 12.0,
+        "peak_demand_gpu": 16,
+        "total_gpus": 1248
+      },
+      "fleet_label": "large",
+      "frontier_rows": [
+        {
+          "backfill_success_rate_pct": 0.0,
+          "cost": 3067231.9600000014,
+          "fragmentation_block_rate_pct": 8.558888076079006,
+          "goodput_per_dollar": 81.32976744282486,
+          "gpu_hours": 169306.9788888889,
+          "gpu_occupancy": 0.08279793365655096,
+          "policy": "fifo",
+          "queue_wait_p95_s": 0.0,
+          "queue_wait_p99_s": 7237.0,
+          "safety_status": "SAFE",
+          "safety_vetoes": [],
+          "starvation_rate_pct": 0.0
+        },
+        {
+          "backfill_success_rate_pct": 0.0,
+          "cost": 2595350.1199999996,
+          "fragmentation_block_rate_pct": 0.0,
+          "goodput_per_dollar": 96.12728551629868,
+          "gpu_hours": 169306.9788888889,
+          "gpu_occupancy": 0.08279793365655091,
+          "policy": "first_fit",
+          "queue_wait_p95_s": 0.0,
+          "queue_wait_p99_s": 0.0,
+          "safety_status": "SAFE",
+          "safety_vetoes": [],
+          "starvation_rate_pct": 0.0
+        },
+        {
+          "backfill_success_rate_pct": 0.0,
+          "cost": 2595350.1199999996,
+          "fragmentation_block_rate_pct": 0.0,
+          "goodput_per_dollar": 96.12728551629868,
+          "gpu_hours": 169306.9788888889,
+          "gpu_occupancy": 0.08279793365655091,
+          "policy": "best_fit",
+          "queue_wait_p95_s": 0.0,
+          "queue_wait_p99_s": 0.0,
+          "safety_status": "SAFE",
+          "safety_vetoes": [],
+          "starvation_rate_pct": 0.0
+        },
+        {
+          "backfill_success_rate_pct": 0.0,
+          "cost": 2595350.1199999996,
+          "fragmentation_block_rate_pct": 0.0,
+          "goodput_per_dollar": 96.12728551629868,
+          "gpu_hours": 169306.9788888889,
+          "gpu_occupancy": 0.08279793365655091,
+          "policy": "first_fit_decreasing",
+          "queue_wait_p95_s": 0.0,
+          "queue_wait_p99_s": 0.0,
+          "safety_status": "SAFE",
+          "safety_vetoes": [],
+          "starvation_rate_pct": 0.0
+        },
+        {
+          "backfill_success_rate_pct": 0.0,
+          "cost": 2595350.1199999996,
+          "fragmentation_block_rate_pct": 0.0,
+          "goodput_per_dollar": 96.12728551629868,
+          "gpu_hours": 169306.9788888889,
+          "gpu_occupancy": 0.08279793365655091,
+          "policy": "greedy_packing",
+          "queue_wait_p95_s": 0.0,
+          "queue_wait_p99_s": 0.0,
+          "safety_status": "SAFE",
+          "safety_vetoes": [],
+          "starvation_rate_pct": 0.0
+        },
+        {
+          "backfill_success_rate_pct": 0.0,
+          "cost": 2595350.1199999996,
+          "fragmentation_block_rate_pct": 0.0,
+          "goodput_per_dollar": 96.12728551629868,
+          "gpu_hours": 169306.9788888889,
+          "gpu_occupancy": 0.08279793365655091,
+          "policy": "topology_aware",
+          "queue_wait_p95_s": 0.0,
+          "queue_wait_p99_s": 0.0,
+          "safety_status": "SAFE",
+          "safety_vetoes": [],
+          "starvation_rate_pct": 0.0
+        },
+        {
+          "backfill_success_rate_pct": 0.0,
+          "cost": 2595350.1199999996,
+          "fragmentation_block_rate_pct": 0.0,
+          "goodput_per_dollar": 96.12728551629868,
+          "gpu_hours": 169306.9788888889,
+          "gpu_occupancy": 0.08279793365655091,
+          "policy": "utilization_aware",
+          "queue_wait_p95_s": 0.0,
+          "queue_wait_p99_s": 0.0,
+          "safety_status": "SAFE",
+          "safety_vetoes": [],
+          "starvation_rate_pct": 0.0
+        },
+        {
+          "backfill_success_rate_pct": 0.0,
+          "cost": 2595350.1199999996,
+          "fragmentation_block_rate_pct": 0.0,
+          "goodput_per_dollar": 96.12728551629868,
+          "gpu_hours": 169306.9788888889,
+          "gpu_occupancy": 0.08279793365655091,
+          "policy": "constraint_aware",
+          "queue_wait_p95_s": 0.0,
+          "queue_wait_p99_s": 0.0,
+          "safety_status": "SAFE",
+          "safety_vetoes": [],
+          "starvation_rate_pct": 0.0
+        }
+      ],
+      "reason": "current candidate 'constraint_aware' within KPI deadband (0.0000 \u2264 0.01) and packing-density deadband (0.0000 \u2264 0.05)",
+      "selected_goodput_per_dollar": 96.12728551629868,
+      "selected_policy": "constraint_aware",
+      "verdict": "TIE"
+    }
+  ],
+  "config": {
+    "end_time_max_s": null,
+    "gpu_jobs_only": true,
+    "include_utilization": true,
+    "labelled_only": false,
+    "max_jobs": 10000,
+    "max_util_files": 50,
+    "sample_size": null,
+    "start_time_min_s": null
+  },
+  "execution_mode_default": "shadow",
+  "gpu_sample_coverage": {
+    "coverage_pct_of_gpu_jobs": 0.07,
+    "coverage_pct_of_jobs": 0.07,
+    "matched_gpu_job_ids": 7,
+    "matched_job_ids": 7,
+    "n_gpu_sample_files": 20,
+    "n_gpu_samples": 65966,
+    "sampled_job_ids": 20,
+    "utilization_pct_p50": 0.0,
+    "utilization_pct_p95": 94.0,
+    "utilization_pct_p99": 95.0
+  },
+  "join_quality": {
+    "joins": [
+      {
+        "confidence": "none",
+        "join_kind": "exact_job_id_join",
+        "join_name": "label_to_job",
+        "left_total": 3430,
+        "matched_left": 0,
+        "matched_right": 0,
+        "notes": "job_id appears in labelled_jobids.csv",
+        "right_total": 10000
+      },
+      {
+        "confidence": "high",
+        "join_kind": "exact_job_id_join",
+        "join_name": "gpu_util_to_job",
+        "left_total": 20,
+        "matched_left": 7,
+        "matched_right": 7,
+        "notes": "GPU sample file name == job_id (per the MIT intro notebook); join is exact",
+        "right_total": 10000
+      },
+      {
+        "confidence": "none",
+        "join_kind": "node_time_join",
+        "join_name": "node_util_to_job",
+        "left_total": 0,
+        "matched_left": 0,
+        "matched_right": 0,
+        "notes": "node snapshot \u2194 job by node-name intersection + [start,end] window overlap; medium confidence because snapshots are 5-min granular",
+        "right_total": 10000
+      }
+    ],
+    "n_jobs": 10000,
+    "n_jobs_with_gpu_util": 7,
+    "n_jobs_with_label": 0,
+    "n_jobs_with_node_util_match": 0
+  },
+  "real_execution_disabled_by_default": true,
+  "safety_config": {
+    "max_fragmentation_block_rate_pct": 95.0,
+    "max_gang_scheduling_failure_pct": null,
+    "max_queue_wait_p95_s": 21600.0,
+    "max_queue_wait_p99_s": 43200.0,
+    "max_starvation_rate_pct": 5.0,
+    "min_completed_work_ratio": 0.5,
+    "min_telemetry_confidence": "low"
+  },
+  "source": {
+    "bucket": "https://mit-supercloud-dataset.s3.amazonaws.com/datacenter-challenge/202201/",
+    "downloaded_files": [
+      {
+        "downloaded": true,
+        "local_path": "/home/user/energy2/data/external/mit_supercloud/raw/LICENSE",
+        "reason": "downloaded in full",
+        "s3_uri": "s3://mit-supercloud-dataset/datacenter-challenge/202201/LICENSE",
+        "sample_policy": "full_file",
+        "sha256": "a68e8239ee146c3e58c8988b66b176708310d2595095bf8d16ebb65da728dd0f",
+        "size_bytes": 285
+      },
+      {
+        "downloaded": true,
+        "local_path": "/home/user/energy2/data/external/mit_supercloud/raw/README.md",
+        "reason": "downloaded in full",
+        "s3_uri": "s3://mit-supercloud-dataset/datacenter-challenge/202201/README.md",
+        "sample_policy": "full_file",
+        "sha256": "915b12d2110266fe4cad8a8d0f831f75d3ae08cf9ba42d106ac82a5a5f84c771",
+        "size_bytes": 7616
+      },
+      {
+        "downloaded": true,
+        "local_path": "/home/user/energy2/data/external/mit_supercloud/raw/gpu/0000/32585007376605-r8939293-n208530.csv",
+        "reason": "downloaded in full (per-job CSV)",
+        "s3_uri": "s3://mit-supercloud-dataset/datacenter-challenge/202201/gpu/0000/32585007376605-r8939293-n208530.csv",
+        "sample_policy": "gpu_sample_n=20_max_mb=30",
+        "sha256": "aed443c1aa707f2d04cd988eb656491473d8008ba2f07eaf66aeec08548ec08d",
+        "size_bytes": 157396
+      },
+      {
+        "downloaded": true,
+        "local_path": "/home/user/energy2/data/external/mit_supercloud/raw/gpu/0000/63281038950145-r2652301-n43543.csv",
+        "reason": "downloaded in full (per-job CSV)",
+        "s3_uri": "s3://mit-supercloud-dataset/datacenter-challenge/202201/gpu/0000/63281038950145-r2652301-n43543.csv",
+        "sample_policy": "gpu_sample_n=20_max_mb=30",
+        "sha256": "4dc4cd54e0ab6115debb233db628b35a391a55e2c52344af3b3aab1314d728cc",
+        "size_bytes": 167170
+      },
+      {
+        "downloaded": true,
+        "local_path": "/home/user/energy2/data/external/mit_supercloud/raw/gpu/0000/32482686106814-r8937440-n43543.csv",
+        "reason": "downloaded in full (per-job CSV)",
+        "s3_uri": "s3://mit-supercloud-dataset/datacenter-challenge/202201/gpu/0000/32482686106814-r8937440-n43543.csv",
+        "sample_policy": "gpu_sample_n=20_max_mb=30",
+        "sha256": "13e1ed40a9ff9649fd2460728eadce4822d008ed581c54af574a44cdae9ca3ee",
+        "size_bytes": 166659
+      },
+      {
+        "downloaded": true,
+        "local_path": "/home/user/energy2/data/external/mit_supercloud/raw/gpu/0000/75173921402868-r1682297-n43543.csv",
+        "reason": "downloaded in full (per-job CSV)",
+        "s3_uri": "s3://mit-supercloud-dataset/datacenter-challenge/202201/gpu/0000/75173921402868-r1682297-n43543.csv",
+        "sample_policy": "gpu_sample_n=20_max_mb=30",
+        "sha256": "e5cae29c79ac1659250fa7ffbebed2a7a227e1113bb0a029b40cdf1d3a82c2e6",
+        "size_bytes": 166274
+      },
+      {
+        "downloaded": true,
+        "local_path": "/home/user/energy2/data/external/mit_supercloud/raw/gpu/0000/63435844151296-r8642123-n911952.csv",
+        "reason": "downloaded in full (per-job CSV)",
+        "s3_uri": "s3://mit-supercloud-dataset/datacenter-challenge/202201/gpu/0000/63435844151296-r8642123-n911952.csv",
+        "sample_policy": "gpu_sample_n=20_max_mb=30",
+        "sha256": "75a80ca98bcf62b9897f14c95f2875075cba7219337d5e1eca6c66b5560daa9b",
+        "size_bytes": 131547
+      },
+      {
+        "downloaded": true,
+        "local_path": "/home/user/energy2/data/external/mit_supercloud/raw/gpu/0000/6575560256580-r1485405-n685852.csv",
+        "reason": "downloaded in full (per-job CSV)",
+        "s3_uri": "s3://mit-supercloud-dataset/datacenter-challenge/202201/gpu/0000/6575560256580-r1485405-n685852.csv",
+        "sample_policy": "gpu_sample_n=20_max_mb=30",
+        "sha256": "a63e503f9d7802a609441dbb4a744d5b25c7b436e6022f49bc26c6629eb70ab8",
+        "size_bytes": 166985
+      },
+      {
+        "downloaded": true,
+        "local_path": "/home/user/energy2/data/external/mit_supercloud/raw/gpu/0000/90841990794011-r7217787-n43543.csv",
+        "reason": "downloaded in full (per-job CSV)",
+        "s3_uri": "s3://mit-supercloud-dataset/datacenter-challenge/202201/gpu/0000/90841990794011-r7217787-n43543.csv",
+        "sample_policy": "gpu_sample_n=20_max_mb=30",
+        "sha256": "f3d5540acf1f8497aee6a8ace5be719164937e22c372d017a72682d0aaf872d2",
+        "size_bytes": 158652
+      },
+      {
+        "downloaded": true,
+        "local_path": "/home/user/energy2/data/external/mit_supercloud/raw/gpu/0000/19439987563587-r629115-n830961.csv",
+        "reason": "downloaded in full (per-job CSV)",
+        "s3_uri": "s3://mit-supercloud-dataset/datacenter-challenge/202201/gpu/0000/19439987563587-r629115-n830961.csv",
+        "sample_policy": "gpu_sample_n=20_max_mb=30",
+        "sha256": "a77379e218dd2211de34e339d47c6a77d3863754c299b41182cc414868362026",
+        "size_bytes": 140316
+      },
+      {
+        "downloaded": true,
+        "local_path": "/home/user/energy2/data/external/mit_supercloud/raw/gpu/0000/79192399314227-r9192091-n43543.csv",
+        "reason": "downloaded in full (per-job CSV)",
+        "s3_uri": "s3://mit-supercloud-dataset/datacenter-challenge/202201/gpu/0000/79192399314227-r9192091-n43543.csv",
+        "sample_policy": "gpu_sample_n=20_max_mb=30",
+        "sha256": "5060cc44e708f12d062bfe2a759630abf7c3cd43a78ee0749f467f743f7c062d",
+        "size_bytes": 141982
+      },
+      {
+        "downloaded": true,
+        "local_path": "/home/user/energy2/data/external/mit_supercloud/raw/gpu/0000/5399923315118-r2998125-n208530.csv",
+        "reason": "downloaded in full (per-job CSV)",
+        "s3_uri": "s3://mit-supercloud-dataset/datacenter-challenge/202201/gpu/0000/5399923315118-r2998125-n208530.csv",
+        "sample_policy": "gpu_sample_n=20_max_mb=30",
+        "sha256": "a790badbbd7885f5f3270cf4d3005371edfd01d740e425b8e4f2b1757e5937b4",
+        "size_bytes": 156553
+      },
+      {
+        "downloaded": true,
+        "local_path": "/home/user/energy2/data/external/mit_supercloud/raw/gpu/0000/54381036425027-r9102715-n830961.csv",
+        "reason": "downloaded in full (per-job CSV)",
+        "s3_uri": "s3://mit-supercloud-dataset/datacenter-challenge/202201/gpu/0000/54381036425027-r9102715-n830961.csv",
+        "sample_policy": "gpu_sample_n=20_max_mb=30",
+        "sha256": "4bc3666d81a715fc0ed20edb124ba82b4f979815ff981d7b02db3c41e8326b4e",
+        "size_bytes": 148474
+      },
+      {
+        "downloaded": true,
+        "local_path": "/home/user/energy2/data/external/mit_supercloud/raw/gpu/0000/43238601009423-r4822976-n208530.csv",
+        "reason": "downloaded in full (per-job CSV)",
+        "s3_uri": "s3://mit-supercloud-dataset/datacenter-challenge/202201/gpu/0000/43238601009423-r4822976-n208530.csv",
+        "sample_policy": "gpu_sample_n=20_max_mb=30",
+        "sha256": "ab9b9d084a26183ec3ae2f9515858d9b4dba3f3a4f68b821cdaefe529d6403cf",
+        "size_bytes": 151560
+      },
+      {
+        "downloaded": true,
+        "local_path": "/home/user/energy2/data/external/mit_supercloud/raw/gpu/0000/31001519108118-r4229531-n386398.csv",
+        "reason": "downloaded in full (per-job CSV)",
+        "s3_uri": "s3://mit-supercloud-dataset/datacenter-challenge/202201/gpu/0000/31001519108118-r4229531-n386398.csv",
+        "sample_policy": "gpu_sample_n=20_max_mb=30",
+        "sha256": "1ccbbc943ae849fe0068c3e91b3ebc3e8389382c87ab7399c05b0fb0c000ef7d",
+        "size_bytes": 143129
+      },
+      {
+        "downloaded": true,
+        "local_path": "/home/user/energy2/data/external/mit_supercloud/raw/gpu/0000/78299339974881-r6272977-n851693.csv",
+        "reason": "downloaded in full (per-job CSV)",
+        "s3_uri": "s3://mit-supercloud-dataset/datacenter-challenge/202201/gpu/0000/78299339974881-r6272977-n851693.csv",
+        "sample_policy": "gpu_sample_n=20_max_mb=30",
+        "sha256": "37a84d4e7ceb756cc3c13729f488fb5138d440c8e21124c43ca249d1eec371af",
+        "size_bytes": 167406
+      },
+      {
+        "downloaded": true,
+        "local_path": "/home/user/energy2/data/external/mit_supercloud/raw/gpu/0000/46449034615364-r3741709-n43543.csv",
+        "reason": "downloaded in full (per-job CSV)",
+        "s3_uri": "s3://mit-supercloud-dataset/datacenter-challenge/202201/gpu/0000/46449034615364-r3741709-n43543.csv",
+        "sample_policy": "gpu_sample_n=20_max_mb=30",
+        "sha256": "58071befe6d3585041449b69e2a98e12b0b5dae50a23737257608df898eea57e",
+        "size_bytes": 151103
+      },
+      {
+        "downloaded": true,
+        "local_path": "/home/user/energy2/data/external/mit_supercloud/raw/gpu/0000/84849662026062-r1682297-n43543.csv",
+        "reason": "downloaded in full (per-job CSV)",
+        "s3_uri": "s3://mit-supercloud-dataset/datacenter-challenge/202201/gpu/0000/84849662026062-r1682297-n43543.csv",
+        "sample_policy": "gpu_sample_n=20_max_mb=30",
+        "sha256": "58a4f48b76e6f4d8d154442c86a344ad862bc178d5e9eff429e94cacdfe5df96",
+        "size_bytes": 166603
+      },
+      {
+        "downloaded": true,
+        "local_path": "/home/user/energy2/data/external/mit_supercloud/raw/gpu/0000/8622029461267-r1485405-n685852.csv",
+        "reason": "downloaded in full (per-job CSV)",
+        "s3_uri": "s3://mit-supercloud-dataset/datacenter-challenge/202201/gpu/0000/8622029461267-r1485405-n685852.csv",
+        "sample_policy": "gpu_sample_n=20_max_mb=30",
+        "sha256": "6648e551285ac6fbbb8efbed19b19ae1ee6f64c64b86d0df01535275b020203d",
+        "size_bytes": 151853
+      },
+      {
+        "downloaded": true,
+        "local_path": "/home/user/energy2/data/external/mit_supercloud/raw/gpu/0000/70906003034474-r4179716-n851693.csv",
+        "reason": "downloaded in full (per-job CSV)",
+        "s3_uri": "s3://mit-supercloud-dataset/datacenter-challenge/202201/gpu/0000/70906003034474-r4179716-n851693.csv",
+        "sample_policy": "gpu_sample_n=20_max_mb=30",
+        "sha256": "0b6b2e0bb850df3bbcfc2453028167f195697e411565206764c89cfbc6191b4a",
+        "size_bytes": 133826
+      },
+      {
+        "downloaded": true,
+        "local_path": "/home/user/energy2/data/external/mit_supercloud/raw/gpu/0000/18895765180183-r3226521-n685852.csv",
+        "reason": "downloaded in full (per-job CSV)",
+        "s3_uri": "s3://mit-supercloud-dataset/datacenter-challenge/202201/gpu/0000/18895765180183-r3226521-n685852.csv",
+        "sample_policy": "gpu_sample_n=20_max_mb=30",
+        "sha256": "198356b0fbf24a5f74cb0f10dcfe54dcac317259365bcea158b8f4b4497a7edb",
+        "size_bytes": 165110
+      },
+      {
+        "downloaded": true,
+        "local_path": "/home/user/energy2/data/external/mit_supercloud/raw/gpu/0000/68581317360449-r2582019-n976057.csv",
+        "reason": "downloaded in full (per-job CSV)",
+        "s3_uri": "s3://mit-supercloud-dataset/datacenter-challenge/202201/gpu/0000/68581317360449-r2582019-n976057.csv",
+        "sample_policy": "gpu_sample_n=20_max_mb=30",
+        "sha256": "3b0c1dbb08a62099cff18fca00a39147b6961299d650b0e5127facee5dbdd111",
+        "size_bytes": 163679
+      }
+    ],
+    "raw_dir": "/home/user/energy2/data/external/mit_supercloud/raw",
+    "total_downloaded_mb": 2.96
+  },
+  "tie_band_pct": 1.0,
+  "trace_summary": {
+    "duration_s_p50": 9013.0,
+    "duration_s_p95": 182921.0,
+    "duration_s_p99": 614130.0,
+    "gpu_count_distribution": {
+      "1": 8965,
+      "10": 1,
+      "16": 53,
+      "2": 796,
+      "3": 12,
+      "4": 132,
+      "6": 7,
+      "8": 34
+    },
+    "gpu_job_count": 10000,
+    "gpu_type_distribution": {
+      "gpu:volta": 10000
+    },
+    "job_count": 10000,
+    "labelled_job_count": 0,
+    "missing_fields": [
+      "per_job_gpu_utilization_unless_gpu_util_loaded",
+      "per_job_cpu_utilization_unless_cpu_util_loaded",
+      "node_utilization_unless_node_data_loaded",
+      "node_assignment_unless_present_in_scheduler_log"
+    ],
+    "n_filtered_multinode": 0,
+    "n_fittable_for_single_node_simulator": 10000,
+    "queue_wait_s_p50": 167.0,
+    "queue_wait_s_p95": 234074.0,
+    "queue_wait_s_p99": 412686.0,
+    "status_distribution": {
+      "CANCELLED": 1535,
+      "COMPLETED": 6669,
+      "FAILED": 1144,
+      "NODE_FAIL": 15,
+      "OUT_OF_MEMORY": 298,
+      "TIMEOUT": 339
+    },
+    "time_end_s": 1617389164.0,
+    "time_start_s": 1612560915.0,
+    "workload_label_distribution": {}
+  },
+  "unavailable_metrics": [
+    "Per-job gang-scheduling failure \u2014 MIT scheduler-log does not cleanly label gang failures (gate disabled by default).",
+    "Per-job retry / wasted-GPU-hours \u2014 MIT scheduler-log lacks attempt history (Philly has it; MIT does not).",
+    "Per-node capacity \u2014 MIT publishes node utilization (`node-data.csv`) but not per-node capacity; fleet is synthesized over three sizing points (small / medium / large).",
+    "Realized utilization in KPI \u2014 GPU CSVs match job_id exactly, but the KPI uses requested GPU-seconds to stay comparable across traces. Realized utilization is reported separately as `gpu_sample_coverage` and NOT folded into goodput/$.",
+    "Full ~1\u20132 TB dataset \u2014 bounded download only; full archive lives at https://dcc.mit.edu/data and s3://mit-supercloud-dataset/datacenter-challenge/202201/, NOT committed."
+  ]
+}

@@ -1,0 +1,270 @@
+{
+  "bucket": "https://mit-supercloud-dataset.s3.amazonaws.com/datacenter-challenge/202201/",
+  "config": {
+    "bucket": "https://mit-supercloud-dataset.s3.amazonaws.com/datacenter-challenge/202201/",
+    "download_gpu_sample": "true",
+    "download_labels": "false",
+    "download_node_sample": "false",
+    "download_scheduler": "false",
+    "download_tres": "false",
+    "dry_run": false,
+    "gpu_job_id_sample": null,
+    "gpu_shard_prefix": "0000",
+    "manifest_path": null,
+    "max_gpu_bytes_mb": 30,
+    "max_gpu_files": 20,
+    "node_sample_bytes_mb": 50,
+    "node_sample_rows": 200000,
+    "raw_dir": "/home/user/energy2/data/external/mit_supercloud/raw",
+    "seed": 0
+  },
+  "dry_run": false,
+  "files": [
+    {
+      "downloaded": false,
+      "local_path": "/home/user/energy2/data/external/mit_supercloud/raw/slurm-log.csv",
+      "reason": "skipped: --download-* flag disabled for scheduler",
+      "s3_uri": "s3://mit-supercloud-dataset/datacenter-challenge/202201/slurm-log.csv",
+      "sample_policy": "full_file",
+      "sha256": null,
+      "size_bytes": 0
+    },
+    {
+      "downloaded": false,
+      "local_path": "/home/user/energy2/data/external/mit_supercloud/raw/labelled_jobids.csv",
+      "reason": "skipped: --download-* flag disabled for label",
+      "s3_uri": "s3://mit-supercloud-dataset/datacenter-challenge/202201/labelled_jobids.csv",
+      "sample_policy": "full_file",
+      "sha256": null,
+      "size_bytes": 0
+    },
+    {
+      "downloaded": false,
+      "local_path": "/home/user/energy2/data/external/mit_supercloud/raw/labelled_job_stats.csv",
+      "reason": "skipped: --download-* flag disabled for label_stats",
+      "s3_uri": "s3://mit-supercloud-dataset/datacenter-challenge/202201/labelled_job_stats.csv",
+      "sample_policy": "full_file",
+      "sha256": null,
+      "size_bytes": 0
+    },
+    {
+      "downloaded": false,
+      "local_path": "/home/user/energy2/data/external/mit_supercloud/raw/tres-mapping.txt",
+      "reason": "skipped: --download-* flag disabled for tres_mapping",
+      "s3_uri": "s3://mit-supercloud-dataset/datacenter-challenge/202201/tres-mapping.txt",
+      "sample_policy": "full_file",
+      "sha256": null,
+      "size_bytes": 0
+    },
+    {
+      "downloaded": true,
+      "local_path": "/home/user/energy2/data/external/mit_supercloud/raw/LICENSE",
+      "reason": "downloaded in full",
+      "s3_uri": "s3://mit-supercloud-dataset/datacenter-challenge/202201/LICENSE",
+      "sample_policy": "full_file",
+      "sha256": "a68e8239ee146c3e58c8988b66b176708310d2595095bf8d16ebb65da728dd0f",
+      "size_bytes": 285
+    },
+    {
+      "downloaded": true,
+      "local_path": "/home/user/energy2/data/external/mit_supercloud/raw/README.md",
+      "reason": "downloaded in full",
+      "s3_uri": "s3://mit-supercloud-dataset/datacenter-challenge/202201/README.md",
+      "sample_policy": "full_file",
+      "sha256": "915b12d2110266fe4cad8a8d0f831f75d3ae08cf9ba42d106ac82a5a5f84c771",
+      "size_bytes": 7616
+    },
+    {
+      "downloaded": false,
+      "local_path": "/home/user/energy2/data/external/mit_supercloud/raw/node-data.csv",
+      "reason": "skipped: --download-node-sample false",
+      "s3_uri": "s3://mit-supercloud-dataset/datacenter-challenge/202201/node-data.csv",
+      "sample_policy": "range_get_first_N_MB",
+      "sha256": null,
+      "size_bytes": 0
+    },
+    {
+      "downloaded": true,
+      "local_path": "/home/user/energy2/data/external/mit_supercloud/raw/gpu/0000/32585007376605-r8939293-n208530.csv",
+      "reason": "downloaded in full (per-job CSV)",
+      "s3_uri": "s3://mit-supercloud-dataset/datacenter-challenge/202201/gpu/0000/32585007376605-r8939293-n208530.csv",
+      "sample_policy": "gpu_sample_n=20_max_mb=30",
+      "sha256": "aed443c1aa707f2d04cd988eb656491473d8008ba2f07eaf66aeec08548ec08d",
+      "size_bytes": 157396
+    },
+    {
+      "downloaded": true,
+      "local_path": "/home/user/energy2/data/external/mit_supercloud/raw/gpu/0000/63281038950145-r2652301-n43543.csv",
+      "reason": "downloaded in full (per-job CSV)",
+      "s3_uri": "s3://mit-supercloud-dataset/datacenter-challenge/202201/gpu/0000/63281038950145-r2652301-n43543.csv",
+      "sample_policy": "gpu_sample_n=20_max_mb=30",
+      "sha256": "4dc4cd54e0ab6115debb233db628b35a391a55e2c52344af3b3aab1314d728cc",
+      "size_bytes": 167170
+    },
+    {
+      "downloaded": true,
+      "local_path": "/home/user/energy2/data/external/mit_supercloud/raw/gpu/0000/32482686106814-r8937440-n43543.csv",
+      "reason": "downloaded in full (per-job CSV)",
+      "s3_uri": "s3://mit-supercloud-dataset/datacenter-challenge/202201/gpu/0000/32482686106814-r8937440-n43543.csv",
+      "sample_policy": "gpu_sample_n=20_max_mb=30",
+      "sha256": "13e1ed40a9ff9649fd2460728eadce4822d008ed581c54af574a44cdae9ca3ee",
+      "size_bytes": 166659
+    },
+    {
+      "downloaded": true,
+      "local_path": "/home/user/energy2/data/external/mit_supercloud/raw/gpu/0000/75173921402868-r1682297-n43543.csv",
+      "reason": "downloaded in full (per-job CSV)",
+      "s3_uri": "s3://mit-supercloud-dataset/datacenter-challenge/202201/gpu/0000/75173921402868-r1682297-n43543.csv",
+      "sample_policy": "gpu_sample_n=20_max_mb=30",
+      "sha256": "e5cae29c79ac1659250fa7ffbebed2a7a227e1113bb0a029b40cdf1d3a82c2e6",
+      "size_bytes": 166274
+    },
+    {
+      "downloaded": true,
+      "local_path": "/home/user/energy2/data/external/mit_supercloud/raw/gpu/0000/63435844151296-r8642123-n911952.csv",
+      "reason": "downloaded in full (per-job CSV)",
+      "s3_uri": "s3://mit-supercloud-dataset/datacenter-challenge/202201/gpu/0000/63435844151296-r8642123-n911952.csv",
+      "sample_policy": "gpu_sample_n=20_max_mb=30",
+      "sha256": "75a80ca98bcf62b9897f14c95f2875075cba7219337d5e1eca6c66b5560daa9b",
+      "size_bytes": 131547
+    },
+    {
+      "downloaded": true,
+      "local_path": "/home/user/energy2/data/external/mit_supercloud/raw/gpu/0000/6575560256580-r1485405-n685852.csv",
+      "reason": "downloaded in full (per-job CSV)",
+      "s3_uri": "s3://mit-supercloud-dataset/datacenter-challenge/202201/gpu/0000/6575560256580-r1485405-n685852.csv",
+      "sample_policy": "gpu_sample_n=20_max_mb=30",
+      "sha256": "a63e503f9d7802a609441dbb4a744d5b25c7b436e6022f49bc26c6629eb70ab8",
+      "size_bytes": 166985
+    },
+    {
+      "downloaded": true,
+      "local_path": "/home/user/energy2/data/external/mit_supercloud/raw/gpu/0000/90841990794011-r7217787-n43543.csv",
+      "reason": "downloaded in full (per-job CSV)",
+      "s3_uri": "s3://mit-supercloud-dataset/datacenter-challenge/202201/gpu/0000/90841990794011-r7217787-n43543.csv",
+      "sample_policy": "gpu_sample_n=20_max_mb=30",
+      "sha256": "f3d5540acf1f8497aee6a8ace5be719164937e22c372d017a72682d0aaf872d2",
+      "size_bytes": 158652
+    },
+    {
+      "downloaded": true,
+      "local_path": "/home/user/energy2/data/external/mit_supercloud/raw/gpu/0000/19439987563587-r629115-n830961.csv",
+      "reason": "downloaded in full (per-job CSV)",
+      "s3_uri": "s3://mit-supercloud-dataset/datacenter-challenge/202201/gpu/0000/19439987563587-r629115-n830961.csv",
+      "sample_policy": "gpu_sample_n=20_max_mb=30",
+      "sha256": "a77379e218dd2211de34e339d47c6a77d3863754c299b41182cc414868362026",
+      "size_bytes": 140316
+    },
+    {
+      "downloaded": true,
+      "local_path": "/home/user/energy2/data/external/mit_supercloud/raw/gpu/0000/79192399314227-r9192091-n43543.csv",
+      "reason": "downloaded in full (per-job CSV)",
+      "s3_uri": "s3://mit-supercloud-dataset/datacenter-challenge/202201/gpu/0000/79192399314227-r9192091-n43543.csv",
+      "sample_policy": "gpu_sample_n=20_max_mb=30",
+      "sha256": "5060cc44e708f12d062bfe2a759630abf7c3cd43a78ee0749f467f743f7c062d",
+      "size_bytes": 141982
+    },
+    {
+      "downloaded": true,
+      "local_path": "/home/user/energy2/data/external/mit_supercloud/raw/gpu/0000/5399923315118-r2998125-n208530.csv",
+      "reason": "downloaded in full (per-job CSV)",
+      "s3_uri": "s3://mit-supercloud-dataset/datacenter-challenge/202201/gpu/0000/5399923315118-r2998125-n208530.csv",
+      "sample_policy": "gpu_sample_n=20_max_mb=30",
+      "sha256": "a790badbbd7885f5f3270cf4d3005371edfd01d740e425b8e4f2b1757e5937b4",
+      "size_bytes": 156553
+    },
+    {
+      "downloaded": true,
+      "local_path": "/home/user/energy2/data/external/mit_supercloud/raw/gpu/0000/54381036425027-r9102715-n830961.csv",
+      "reason": "downloaded in full (per-job CSV)",
+      "s3_uri": "s3://mit-supercloud-dataset/datacenter-challenge/202201/gpu/0000/54381036425027-r9102715-n830961.csv",
+      "sample_policy": "gpu_sample_n=20_max_mb=30",
+      "sha256": "4bc3666d81a715fc0ed20edb124ba82b4f979815ff981d7b02db3c41e8326b4e",
+      "size_bytes": 148474
+    },
+    {
+      "downloaded": true,
+      "local_path": "/home/user/energy2/data/external/mit_supercloud/raw/gpu/0000/43238601009423-r4822976-n208530.csv",
+      "reason": "downloaded in full (per-job CSV)",
+      "s3_uri": "s3://mit-supercloud-dataset/datacenter-challenge/202201/gpu/0000/43238601009423-r4822976-n208530.csv",
+      "sample_policy": "gpu_sample_n=20_max_mb=30",
+      "sha256": "ab9b9d084a26183ec3ae2f9515858d9b4dba3f3a4f68b821cdaefe529d6403cf",
+      "size_bytes": 151560
+    },
+    {
+      "downloaded": true,
+      "local_path": "/home/user/energy2/data/external/mit_supercloud/raw/gpu/0000/31001519108118-r4229531-n386398.csv",
+      "reason": "downloaded in full (per-job CSV)",
+      "s3_uri": "s3://mit-supercloud-dataset/datacenter-challenge/202201/gpu/0000/31001519108118-r4229531-n386398.csv",
+      "sample_policy": "gpu_sample_n=20_max_mb=30",
+      "sha256": "1ccbbc943ae849fe0068c3e91b3ebc3e8389382c87ab7399c05b0fb0c000ef7d",
+      "size_bytes": 143129
+    },
+    {
+      "downloaded": true,
+      "local_path": "/home/user/energy2/data/external/mit_supercloud/raw/gpu/0000/78299339974881-r6272977-n851693.csv",
+      "reason": "downloaded in full (per-job CSV)",
+      "s3_uri": "s3://mit-supercloud-dataset/datacenter-challenge/202201/gpu/0000/78299339974881-r6272977-n851693.csv",
+      "sample_policy": "gpu_sample_n=20_max_mb=30",
+      "sha256": "37a84d4e7ceb756cc3c13729f488fb5138d440c8e21124c43ca249d1eec371af",
+      "size_bytes": 167406
+    },
+    {
+      "downloaded": true,
+      "local_path": "/home/user/energy2/data/external/mit_supercloud/raw/gpu/0000/46449034615364-r3741709-n43543.csv",
+      "reason": "downloaded in full (per-job CSV)",
+      "s3_uri": "s3://mit-supercloud-dataset/datacenter-challenge/202201/gpu/0000/46449034615364-r3741709-n43543.csv",
+      "sample_policy": "gpu_sample_n=20_max_mb=30",
+      "sha256": "58071befe6d3585041449b69e2a98e12b0b5dae50a23737257608df898eea57e",
+      "size_bytes": 151103
+    },
+    {
+      "downloaded": true,
+      "local_path": "/home/user/energy2/data/external/mit_supercloud/raw/gpu/0000/84849662026062-r1682297-n43543.csv",
+      "reason": "downloaded in full (per-job CSV)",
+      "s3_uri": "s3://mit-supercloud-dataset/datacenter-challenge/202201/gpu/0000/84849662026062-r1682297-n43543.csv",
+      "sample_policy": "gpu_sample_n=20_max_mb=30",
+      "sha256": "58a4f48b76e6f4d8d154442c86a344ad862bc178d5e9eff429e94cacdfe5df96",
+      "size_bytes": 166603
+    },
+    {
+      "downloaded": true,
+      "local_path": "/home/user/energy2/data/external/mit_supercloud/raw/gpu/0000/8622029461267-r1485405-n685852.csv",
+      "reason": "downloaded in full (per-job CSV)",
+      "s3_uri": "s3://mit-supercloud-dataset/datacenter-challenge/202201/gpu/0000/8622029461267-r1485405-n685852.csv",
+      "sample_policy": "gpu_sample_n=20_max_mb=30",
+      "sha256": "6648e551285ac6fbbb8efbed19b19ae1ee6f64c64b86d0df01535275b020203d",
+      "size_bytes": 151853
+    },
+    {
+      "downloaded": true,
+      "local_path": "/home/user/energy2/data/external/mit_supercloud/raw/gpu/0000/70906003034474-r4179716-n851693.csv",
+      "reason": "downloaded in full (per-job CSV)",
+      "s3_uri": "s3://mit-supercloud-dataset/datacenter-challenge/202201/gpu/0000/70906003034474-r4179716-n851693.csv",
+      "sample_policy": "gpu_sample_n=20_max_mb=30",
+      "sha256": "0b6b2e0bb850df3bbcfc2453028167f195697e411565206764c89cfbc6191b4a",
+      "size_bytes": 133826
+    },
+    {
+      "downloaded": true,
+      "local_path": "/home/user/energy2/data/external/mit_supercloud/raw/gpu/0000/18895765180183-r3226521-n685852.csv",
+      "reason": "downloaded in full (per-job CSV)",
+      "s3_uri": "s3://mit-supercloud-dataset/datacenter-challenge/202201/gpu/0000/18895765180183-r3226521-n685852.csv",
+      "sample_policy": "gpu_sample_n=20_max_mb=30",
+      "sha256": "198356b0fbf24a5f74cb0f10dcfe54dcac317259365bcea158b8f4b4497a7edb",
+      "size_bytes": 165110
+    },
+    {
+      "downloaded": true,
+      "local_path": "/home/user/energy2/data/external/mit_supercloud/raw/gpu/0000/68581317360449-r2582019-n976057.csv",
+      "reason": "downloaded in full (per-job CSV)",
+      "s3_uri": "s3://mit-supercloud-dataset/datacenter-challenge/202201/gpu/0000/68581317360449-r2582019-n976057.csv",
+      "sample_policy": "gpu_sample_n=20_max_mb=30",
+      "sha256": "3b0c1dbb08a62099cff18fca00a39147b6961299d650b0e5127facee5dbdd111",
+      "size_bytes": 163679
+    }
+  ],
+  "raw_dir": "/home/user/energy2/data/external/mit_supercloud/raw",
+  "total_downloaded_bytes": 3104178,
+  "total_downloaded_mb": 2.96
+}

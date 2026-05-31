@@ -71,6 +71,22 @@ DEFAULT_TRES_MAPPING: dict = {
     1001: "gpu:tesla", 1002: "gpu:volta",
 }
 
+# Slurm ``state`` is published as an integer in MIT's slurm-log.csv
+# (PENDING=0 / RUNNING=1 / SUSPENDED=2 / COMPLETED=3 / CANCELLED=4 /
+# FAILED=5 / TIMEOUT=6 / NODE_FAIL=7 / PREEMPTED=8 / BOOT_FAIL=9 /
+# DEADLINE=10 / OOM=11). The loader exposes both the integer and the
+# resolved string label so reports stay readable.
+SLURM_STATE_INTEGER_TO_LABEL: dict = {
+    0: "PENDING", 1: "RUNNING", 2: "SUSPENDED", 3: "COMPLETED",
+    4: "CANCELLED", 5: "FAILED", 6: "TIMEOUT", 7: "NODE_FAIL",
+    8: "PREEMPTED", 9: "BOOT_FAIL", 10: "DEADLINE",
+    11: "OUT_OF_MEMORY",
+}
+SLURM_FAILED_LABELS = frozenset({
+    "FAILED", "CANCELLED", "TIMEOUT", "NODE_FAIL", "OUT_OF_MEMORY",
+    "BOOT_FAIL", "PREEMPTED", "DEADLINE",
+})
+
 # Workload-type label set is intentionally narrow — MIT Supercloud
 # tags Slurm jobs with DNN model names. We expose them verbatim.
 WORKLOAD_TYPE = "mit_supercloud_dnn_training"
@@ -280,15 +296,54 @@ def _row_get(row: dict, *keys):
     return None
 
 
+def _parse_nodelist(raw) -> Optional[str]:
+    """The MIT slurm-log.csv stores ``nodelist`` as a stringified Python
+    list: ``"['r9189566-n911952']"``. Strip brackets/quotes; return a
+    comma-joined string of node IDs (or ``None`` when empty)."""
+    if raw is None:
+        return None
+    s = str(raw).strip()
+    if not s or s == "[]":
+        return None
+    # Tolerate plain "node01,node02" and Python-list-stringified inputs.
+    s = s.strip("[]")
+    parts = [p.strip().strip("'").strip('"') for p in s.split(",")]
+    parts = [p for p in parts if p]
+    return ",".join(parts) if parts else None
+
+
+def _resolve_state_label(raw) -> Optional[str]:
+    """Slurm state is published as an integer in MIT's slurm-log.csv;
+    map it to the canonical string label so ``is_failed`` and reports
+    are readable. Strings pass through unchanged."""
+    if raw is None or raw == "":
+        return None
+    s = str(raw).strip()
+    if s.isdigit():
+        return SLURM_STATE_INTEGER_TO_LABEL.get(int(s), s)
+    return s.upper()
+
+
 def load_scheduler_log(path: str, *,
                         tres_mapping: Optional[dict] = None,
                         labels_by_jobid: Optional[dict] = None,
                         sample_size: Optional[int] = None,
                         gpu_jobs_only: bool = False,
                         labelled_only: bool = False,
+                        max_jobs: Optional[int] = None,
+                        start_time_min_s: Optional[float] = None,
+                        end_time_max_s: Optional[float] = None,
                         seed: int = 0,
                         ) -> list[NormalizedMITTrainingJob]:
-    """Stream-parse a MIT Supercloud Slurm scheduler log."""
+    """Stream-parse a MIT Supercloud Slurm scheduler log.
+
+    Memory-safe for the ~100 MB ``slurm-log.csv``: the file is read
+    line-by-line via ``csv.DictReader`` and only the rows that pass
+    filters (``gpu_jobs_only`` / ``labelled_only`` / time window /
+    ``max_jobs``) are materialized as :class:`NormalizedMITTrainingJob`
+    instances. ``sample_size`` post-filter random-samples the kept rows
+    (seeded).
+    """
     if not os.path.exists(path):
         raise FileNotFoundError(path)
     tres_mapping = tres_mapping or DEFAULT_TRES_MAPPING
@@ -335,16 +390,25 @@ def load_scheduler_log(path: str, *,
                 start_time_s - submit_time_s
                 if (start_time_s is not None and submit_time_s is not None
                     and start_time_s >= submit_time_s) else None)
-            status = _row_get(row, "state", "status", "JobState")
+            # Time-window filter (post-decode so we can use whichever
+            # timestamp is available).
+            if start_time_min_s is not None:
+                anchor = submit_time_s or start_time_s
+                if anchor is None or anchor < start_time_min_s:
+                    continue
+            if end_time_max_s is not None:
+                anchor = end_time_s or start_time_s or submit_time_s
+                if anchor is None or anchor > end_time_max_s:
+                    continue
+            status = _resolve_state_label(
+                _row_get(row, "state", "status", "JobState"))
             is_failed = (status is not None
-                          and str(status).upper() in ("FAILED", "CANCELLED",
-                                                       "TIMEOUT", "NODE_FAIL",
-                                                       "OUT_OF_MEMORY",
-                                                       "BOOT_FAIL",
-                                                       "PREEMPTED"))
+                          and status in SLURM_FAILED_LABELS)
             node_count = _to_optional_int(
-                _row_get(row, "nnodes", "nodes_count", "NNodes"))
-            nodes = _row_get(row, "nodelist", "NodeList", "nodes")
+                _row_get(row, "nnodes", "nodes_count", "NNodes",
+                          "nodes_alloc"))
+            nodes = _parse_nodelist(
+                _row_get(row, "nodelist", "NodeList", "nodes"))
             user_or_group = _row_get(row, "id_user", "id_group", "user",
                                       "UserName", "User")
             memory_requested_mib = _to_optional_int(
@@ -383,6 +447,8 @@ def load_scheduler_log(path: str, *,
                 gpu_seconds=gpu_seconds,
                 memory_requested_mib=memory_requested_mib or memory_mib,
             ))
+            if max_jobs is not None and len(out) >= max_jobs:
+                break
     if sample_size is not None and 0 <= sample_size < len(out):
         rng = random.Random(seed)
         out = rng.sample(out, sample_size)
@@ -464,14 +530,26 @@ def _iter_gpu_csvs(gpu_dir: str, *, max_files: Optional[int] = None
                 return
 
 
+def gpu_filename_to_job_id(filename: str) -> str:
+    """Extract id_job from a MIT Supercloud GPU CSV filename.
+
+    Real-bucket filenames are ``<id_job>-r<id_array_job>-n<id_user>.csv``
+    (e.g. ``32585007376605-r8939293-n208530.csv``). The synthetic
+    fixture uses ``<id_job>.csv`` (e.g. ``1001.csv``). Both are handled:
+    the leading dash-delimited token is the id_job.
+    """
+    base = os.path.basename(filename).rsplit(".csv", 1)[0]
+    # Take the leading token before the first '-' (works for both
+    # ``32585007376605-r...-n...`` and ``1001``).
+    return base.split("-", 1)[0]
+
+
 def load_gpu_utilization_file(path: str
                                ) -> list[NormalizedMITGPUUtilizationSample]:
     """Parse one per-job nvidia-smi CSV (100 ms cadence)."""
     if not os.path.exists(path):
         return []
-    # The MIT GPU CSVs name the file after the job_id; extract it.
-    base = os.path.basename(path)
-    job_id = base.rsplit(".csv", 1)[0]
+    job_id = gpu_filename_to_job_id(path)
     out: list[NormalizedMITGPUUtilizationSample] = []
     with open(path, encoding="utf-8", newline="") as fh:
         reader = csv.DictReader(fh)
@@ -493,7 +571,8 @@ def load_gpu_utilization_file(path: str
                 timestamp_s=ts,
                 job_id=job_id,
                 node_id=_row_get(row, "node", "node_id", "hostname"),
-                gpu_id=_row_get(row, "gpu", "gpu_id", "index"),
+                gpu_id=_row_get(row, "gpu", "gpu_id", "gpu_index",
+                                 "index"),
                 gpu_utilization_pct=_to_optional_float(
                     _row_get(row, "utilization_gpu_pct",
                               "gpu_utilization", "utilization.gpu")),
@@ -752,11 +831,32 @@ def compute_join_quality(
 # and the training_philly-style estimator).
 # ---------------------------------------------------------------------------
 
+# Slurm uses INT64-near sentinels (e.g. 9223372036854775807) to mean
+# "no limit" on memory / time_limit fields. Drop sentinel-like values
+# so the downstream scheduling simulator's mem-gate does not reject
+# every job. The threshold is generous (1 PiB) — real per-job
+# memory requests never approach this.
+_MEM_SENTINEL_MIB = 1 << 40  # 1 PiB in MiB
+
+
+def _clamp_mem_sentinel(mem_mib: Optional[int]) -> Optional[int]:
+    if mem_mib is None:
+        return None
+    if mem_mib < 0 or mem_mib > _MEM_SENTINEL_MIB:
+        return None
+    return mem_mib
+
+
 def to_normalized_gpu_job(job: NormalizedMITTrainingJob
                            ) -> NormalizedGPUJob:
     """Convert a MIT-Supercloud job to the cross-dataset
     :class:`NormalizedGPUJob` contract used by the existing training
-    frontier + scheduling backtest. Missing fields stay ``None``."""
+    frontier + scheduling backtest. Missing fields stay ``None``.
+
+    ``memory_mib`` is clamped to ``None`` when the source row used a
+    Slurm INT64-near sentinel for "no limit" (otherwise the scheduling
+    simulator's per-node memory gate would reject every job).
+    """
     return NormalizedGPUJob(
         job_id=job.job_id,
         submit_time_s=job.submit_time_s,
@@ -776,7 +876,7 @@ def to_normalized_gpu_job(job: NormalizedMITTrainingJob
         deadline_s=None,
         token_equivalent_work=job.token_equivalent_work,
         cpu_milli=None,
-        memory_mib=job.memory_requested_mib,
+        memory_mib=_clamp_mem_sentinel(job.memory_requested_mib),
         gpu_milli=None,
         queue_wait_s=job.queue_wait_s,
     )
@@ -854,9 +954,20 @@ def load_all_layers(
     sample_size: Optional[int] = None,
     gpu_jobs_only: bool = False,
     labelled_only: bool = False,
+    max_jobs: Optional[int] = None,
+    start_time_min_s: Optional[float] = None,
+    end_time_max_s: Optional[float] = None,
     seed: int = 0,
 ) -> dict:
-    """Load every present primary-telemetry layer from ``source_dir``."""
+    """Load every present primary-telemetry layer from ``source_dir``.
+
+    Additional bounded-real-sample parameters:
+
+    - ``max_jobs`` short-circuits the scheduler-log read after N
+      surviving rows (cheap on the ~100 MB MIT log).
+    - ``start_time_min_s`` / ``end_time_max_s`` apply a time window in
+      Slurm Unix seconds.
+    """
     disc = discover(source_dir)
     tres = parse_tres_mapping(os.path.join(source_dir, TRES_MAPPING_FILE))
     labels = load_labelled_jobids(
@@ -867,7 +978,10 @@ def load_all_layers(
         jobs = load_scheduler_log(
             sched_path, tres_mapping=tres, labels_by_jobid=labels,
             sample_size=sample_size, gpu_jobs_only=gpu_jobs_only,
-            labelled_only=labelled_only, seed=seed)
+            labelled_only=labelled_only,
+            max_jobs=max_jobs,
+            start_time_min_s=start_time_min_s,
+            end_time_max_s=end_time_max_s, seed=seed)
     node_samples = load_node_data(
         os.path.join(source_dir, NODE_DATA_FILE))
     gpu_samples = []
