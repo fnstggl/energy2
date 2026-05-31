@@ -157,6 +157,170 @@ TARGETS = [
 
 
 # ---------------------------------------------------------------------------
+# Analysis-tier TARGETS (50-100 MiB; gitignored raw + analysis_sample;
+# committed only the summary, schema profile/mapping, statistical_rollups,
+# and a 5-row fixture).
+#
+# Stratification + schema mappings reuse the focused-tier mappings: the CARA
+# train/test splits share an identical schema per the dataset README, and the
+# SwissAI per-model bucket-reuse files all share the qwen3-32b schema.
+# ---------------------------------------------------------------------------
+
+_ANALYSIS_TIER_BYTES = 80 * 1024 * 1024  # 80 MiB head per analysis-tier file
+
+ANALYSIS_TIER_TARGETS = [
+    {
+        "dataset_id": "asdwb/cara_latency_prediction",
+        "config_name": "train_flat",
+        "raw_file": "train.jsonl",
+        "split": "train",
+        "trace_type": "telemetry_trace",
+        "is_nested": False,
+        "stratification_keys": ["instance_type"],
+        "latency_field": "actual_e2e_latency_s",
+        "max_download_bytes": _ANALYSIS_TIER_BYTES,
+        "limitations": [
+            "Bounded head-sample of 392.3 MB train.jsonl (80 MiB cap; ~75k rows).",
+            "Train split identical schema to test split (CARA README, sweep 2).",
+            "vLLM scheduler state + measured latency; CloudLab research cluster, "
+            "NOT a production pilot.",
+        ],
+    },
+    {
+        "dataset_id": "asdwb/cara_latency_prediction",
+        "config_name": "train_queue_details",
+        "raw_file": "train_queue_details.jsonl",
+        "split": "train",
+        "trace_type": "telemetry_trace",
+        "is_nested": True,
+        "stratification_keys": ["instance_type"],
+        "latency_field": None,
+        "max_download_bytes": _ANALYSIS_TIER_BYTES,
+        "limitations": [
+            "Bounded head-sample of 812.4 MB train_queue_details.jsonl "
+            "(80 MiB cap; ~36k rows).",
+            "Identical schema to test_queue_details (per CARA README, sweep 2).",
+            "Per-request running_requests[] + waiting_requests[] arrays preserved "
+            "at the raw level; the normalised committed sample uses flattened "
+            "schedule_state.* counters only.",
+        ],
+    },
+    {
+        "dataset_id": "eth-easl/swissai-serving-trace",
+        "config_name": "trace_analysis",
+        "raw_file": "trace.jsonl",
+        "split": None,
+        "trace_type": "request_shape_trace",
+        "is_nested": False,
+        "stratification_keys": ["model_id", "status"],
+        "latency_field": None,
+        "max_download_bytes": _ANALYSIS_TIER_BYTES,
+        "limitations": [
+            "Bounded head-sample of 7.0 GB trace.jsonl (80 MiB cap; ~190k rows).",
+            "Identical schema to the 10 MiB focused audit (trace config).",
+            "reported_token_input / reported_token_output frequently -1 "
+            "('unavailable'); treated as missing in statistics.",
+            "License: 'other' — only summary statistics committed.",
+        ],
+    },
+    {
+        "dataset_id": "eth-easl/swissai-serving-trace",
+        "config_name": "qwen3_32b_buckets_analysis",
+        "raw_file": "qwen3-32b-buckets.jsonl",
+        "split": None,
+        "trace_type": "cache_residency_trace",
+        "is_nested": False,
+        "stratification_keys": ["model_id", "status"],
+        "latency_field": None,
+        "max_download_bytes": _ANALYSIS_TIER_BYTES,
+        "limitations": [
+            "Bounded head-sample of 4.6 GB qwen3-32b-buckets.jsonl "
+            "(80 MiB cap; ~60k rows).",
+            "Same schema as the 10 MiB focused audit (qwen3_32b_buckets).",
+        ],
+    },
+    {
+        "dataset_id": "eth-easl/swissai-serving-trace",
+        "config_name": "qwen3_32b_bucket_reuse_analysis",
+        "raw_file": "qwen3-32b-bucket-reuse.jsonl",
+        "split": None,
+        "trace_type": "cache_residency_trace",
+        "is_nested": False,
+        "stratification_keys": [],
+        "latency_field": None,
+        "max_download_bytes": _ANALYSIS_TIER_BYTES,
+        "limitations": [
+            "Bounded head-sample of 3.7 GB qwen3-32b-bucket-reuse.jsonl "
+            "(80 MiB cap; ~250k rows).",
+            "Same schema as the 10 MiB focused audit (qwen3_32b_bucket_reuse).",
+        ],
+    },
+    {
+        "dataset_id": "eth-easl/swissai-serving-trace",
+        "config_name": "apertus_70b_bucket_reuse",
+        "raw_file": "apertus-70b-bucket-reuse.jsonl",
+        "split": None,
+        "trace_type": "cache_residency_trace",
+        "is_nested": False,
+        "stratification_keys": [],
+        "latency_field": None,
+        # apertus-70b file is 40 MB total — entire file fits in the budget.
+        "max_download_bytes": 50 * 1024 * 1024,
+        "limitations": [
+            "Whole-file sample of 40 MB apertus-70b-bucket-reuse.jsonl "
+            "(50 MiB cap covers the entire file).",
+            "Same row schema as qwen3-32b-bucket-reuse; Apertus-70B served.",
+        ],
+    },
+    {
+        "dataset_id": "eth-easl/swissai-serving-trace",
+        "config_name": "qwen380b_instruct_bucket_reuse",
+        "raw_file": "qwen380b_instruct_bucket-reuse.jsonl",
+        "split": None,
+        "trace_type": "cache_residency_trace",
+        "is_nested": False,
+        "stratification_keys": [],
+        "latency_field": None,
+        "max_download_bytes": _ANALYSIS_TIER_BYTES,
+        "limitations": [
+            "Bounded head-sample of 307 MB qwen380b-instruct-bucket-reuse.jsonl "
+            "(80 MiB cap).",
+        ],
+    },
+    {
+        "dataset_id": "eth-easl/swissai-serving-trace",
+        "config_name": "qwen380b_thinking_bucket_reuse",
+        "raw_file": "qwen380b_thinking_bucket-reuse.jsonl",
+        "split": None,
+        "trace_type": "cache_residency_trace",
+        "is_nested": False,
+        "stratification_keys": [],
+        "latency_field": None,
+        "max_download_bytes": _ANALYSIS_TIER_BYTES,
+        "limitations": [
+            "Bounded head-sample of 385 MB qwen380b-thinking-bucket-reuse.jsonl "
+            "(80 MiB cap).",
+        ],
+    },
+    {
+        "dataset_id": "eth-easl/swissai-serving-trace",
+        "config_name": "llama3_70b_bucket_reuse",
+        "raw_file": "llama3-70b_bucket-reuse.jsonl",
+        "split": None,
+        "trace_type": "cache_residency_trace",
+        "is_nested": False,
+        "stratification_keys": [],
+        "latency_field": None,
+        "max_download_bytes": _ANALYSIS_TIER_BYTES,
+        "limitations": [
+            "Bounded head-sample of 4.9 GB llama3-70b_bucket-reuse.jsonl "
+            "(80 MiB cap; ~125k rows).",
+        ],
+    },
+]
+
+
+# ---------------------------------------------------------------------------
 # Manual schema_mapping per (dataset, config). Keyed by raw_column_name or
 # flattened nested key (e.g. "model_parameters.temperature"). Every observed
 # column the profiler finds will be classified. Unmapped columns are recorded
@@ -576,6 +740,23 @@ MAPPINGS = {
     ("eth-easl/swissai-serving-trace", "qwen3_32b_buckets"): SWISS_BUCKETS_MAPPING,
     ("eth-easl/swissai-serving-trace", "qwen3_32b_bucket_reuse"):
         SWISS_BUCKET_REUSE_MAPPING,
+    # Analysis-tier configs reuse the same per-(dataset, schema-family) mappings.
+    ("asdwb/cara_latency_prediction", "train_flat"): CARA_FLAT_MAPPING,
+    ("asdwb/cara_latency_prediction", "train_queue_details"):
+        CARA_QUEUE_DETAILS_MAPPING,
+    ("eth-easl/swissai-serving-trace", "trace_analysis"): SWISS_TRACE_MAPPING,
+    ("eth-easl/swissai-serving-trace", "qwen3_32b_buckets_analysis"):
+        SWISS_BUCKETS_MAPPING,
+    ("eth-easl/swissai-serving-trace", "qwen3_32b_bucket_reuse_analysis"):
+        SWISS_BUCKET_REUSE_MAPPING,
+    ("eth-easl/swissai-serving-trace", "apertus_70b_bucket_reuse"):
+        SWISS_BUCKET_REUSE_MAPPING,
+    ("eth-easl/swissai-serving-trace", "qwen380b_instruct_bucket_reuse"):
+        SWISS_BUCKET_REUSE_MAPPING,
+    ("eth-easl/swissai-serving-trace", "qwen380b_thinking_bucket_reuse"):
+        SWISS_BUCKET_REUSE_MAPPING,
+    ("eth-easl/swissai-serving-trace", "llama3_70b_bucket_reuse"):
+        SWISS_BUCKET_REUSE_MAPPING,
 }
 
 
@@ -980,6 +1161,23 @@ def audit_one(target: dict, *, token: str | None, force_redownload: bool) -> dic
         "per_subgroup_summary": per_subgroup,
         "rejected_columns_count": len(mapping.get("rejected_columns") or []),
     }
+    # 11b. Statistical rollups (committed; the raw analysis_sample.jsonl is
+    # gitignored, so rollups carry the per-config descriptive evidence).
+    rollups = _compute_statistical_rollups(
+        analysis_rows, trace_type=target["trace_type"], target=target,
+    )
+    rollups_path = os.path.join(processed_dir, "statistical_rollups.json")
+    with open(rollups_path, "w") as fh:
+        json.dump(rollups, fh, indent=2, sort_keys=True)
+    summary["statistical_rollups_path"] = os.path.relpath(
+        rollups_path, REPO_ROOT).replace(os.sep, "/")
+    summary["rollups_subgroup_count"] = len(
+        rollups.get("per_instance_type_latency", {}) or {}
+    )
+    summary["rollups_insufficient_groups"] = list(
+        rollups.get("insufficient_sample_groups", []) or []
+    )
+
     os.makedirs(os.path.dirname(summary_path), exist_ok=True)
     with open(summary_path, "w") as fh:
         json.dump(summary, fh, indent=2, sort_keys=True)
@@ -992,7 +1190,177 @@ def audit_one(target: dict, *, token: str | None, force_redownload: bool) -> dic
         "target": target, "manifest": manifest, "profile": profile,
         "mapping": mapping, "summary": summary, "decision": decision,
         "entry": entry, "audit_status": "completed",
+        "rollups": rollups,
     }
+
+
+# ---------------------------------------------------------------------------
+# Statistical rollups (committed) — descriptive per-subgroup distributions
+# that summarise the larger gitignored analysis sample.
+# ---------------------------------------------------------------------------
+
+
+_PROMPT_TOKEN_BINS = [(0, 50), (50, 200), (200, 800), (800, 3200), (3200, 1_000_000)]
+_QUEUE_DEPTH_BINS = [(0, 1), (1, 5), (5, 20), (20, 100), (100, 1_000_000)]
+_KV_UTIL_BINS = [(0.0, 0.1), (0.1, 0.4), (0.4, 0.7), (0.7, 0.9), (0.9, 1.01)]
+
+
+def _bin_label(v, bins):
+    if v is None:
+        return "missing"
+    try:
+        v = float(v)
+    except (TypeError, ValueError):
+        return "missing"
+    for lo, hi in bins:
+        if lo <= v < hi:
+            return f"[{lo},{hi})"
+    return f">={bins[-1][1]}"
+
+
+def _compute_statistical_rollups(rows, *, trace_type, target):
+    """Per-trace-type descriptive rollups.
+
+    Numeric distributions use ``schema_profile.compute_numeric_summary``
+    (which treats -1 as a missing sentinel and computes p50/p95/p99).
+    Per-subgroup p99 is flagged INSUFFICIENT_SAMPLE_P99 below 100 rows.
+    """
+    from aurelius.traces.hf_corpus import schema_profile as _sp
+
+    out = {
+        "trace_type": trace_type,
+        "config_name": target["config_name"],
+        "row_count": len(rows),
+        "per_instance_type_latency": {},
+        "per_prompt_bin_latency": {},
+        "per_queue_depth_bin_latency": {},
+        "per_kv_util_bin_latency": {},
+        "queue_vs_latency_correlation_proxy": None,
+        "kv_util_vs_latency_correlation_proxy": None,
+        "reuse_percentage_distribution": None,
+        "prompt_tokens_distribution": None,
+        "output_tokens_distribution": None,
+        "ttft_overall": None,
+        "tpot_overall": None,
+        "e2e_overall": None,
+        "insufficient_sample_groups": [],
+    }
+    if not rows:
+        return out
+
+    if trace_type == "telemetry_trace":
+        # Overall latency distributions.
+        for field, key in (
+            ("actual_ttft_s", "ttft_overall"),
+            ("actual_tpot_s", "tpot_overall"),
+            ("actual_e2e_latency_s", "e2e_overall"),
+        ):
+            if any(field in r for r in rows):
+                out[key] = _sp.compute_numeric_summary(rows, field=field)
+
+        # Per-(instance_type) p50/p95/p99 for e2e + ttft + tpot.
+        for field_label, field in (
+            ("e2e", "actual_e2e_latency_s"),
+            ("ttft", "actual_ttft_s"),
+            ("tpot", "actual_tpot_s"),
+        ):
+            if not any(field in r for r in rows):
+                continue
+            grp = _sp.per_subgroup_latency_summary(
+                rows, field=field,
+                stratification_keys=["instance_type"],
+            )
+            out["per_instance_type_latency"][field_label] = grp["subgroups"]
+            out["insufficient_sample_groups"].extend(
+                f"{field_label}@{g}" for g in grp["insufficient_sample_groups"]
+            )
+
+        # Prompt-token-bin × e2e latency.
+        if any("num_prompt_tokens" in r and "actual_e2e_latency_s" in r for r in rows):
+            binned = {}
+            for r in rows:
+                if "actual_e2e_latency_s" not in r:
+                    continue
+                lab = _bin_label(r.get("num_prompt_tokens"), _PROMPT_TOKEN_BINS)
+                binned.setdefault(lab, []).append(r)
+            for lab, group in binned.items():
+                s = _sp.compute_numeric_summary(group, field="actual_e2e_latency_s")
+                if s["count"] < 100:
+                    s["p99"] = None
+                    s["flags"] = ["INSUFFICIENT_SAMPLE_P99"]
+                    out["insufficient_sample_groups"].append(
+                        f"e2e@prompt_bin={lab}"
+                    )
+                out["per_prompt_bin_latency"][lab] = s
+
+        # Queue-depth bin × e2e latency.
+        if any("num_running" in r and "actual_e2e_latency_s" in r for r in rows):
+            binned = {}
+            for r in rows:
+                if "actual_e2e_latency_s" not in r:
+                    continue
+                lab = _bin_label(r.get("num_running"), _QUEUE_DEPTH_BINS)
+                binned.setdefault(lab, []).append(r)
+            for lab, group in binned.items():
+                s = _sp.compute_numeric_summary(group, field="actual_e2e_latency_s")
+                if s["count"] < 100:
+                    s["p99"] = None
+                    s["flags"] = ["INSUFFICIENT_SAMPLE_P99"]
+                    out["insufficient_sample_groups"].append(
+                        f"e2e@queue_depth_bin={lab}"
+                    )
+                out["per_queue_depth_bin_latency"][lab] = s
+
+            # Correlation proxy: per-bin mean e2e.
+            out["queue_vs_latency_correlation_proxy"] = {
+                lab: s.get("mean")
+                for lab, s in out["per_queue_depth_bin_latency"].items()
+                if isinstance(s, dict)
+            }
+
+        # KV-cache-util bin × e2e latency.
+        if any("kv_cache_utilization" in r and "actual_e2e_latency_s" in r for r in rows):
+            binned = {}
+            for r in rows:
+                if "actual_e2e_latency_s" not in r:
+                    continue
+                lab = _bin_label(r.get("kv_cache_utilization"), _KV_UTIL_BINS)
+                binned.setdefault(lab, []).append(r)
+            for lab, group in binned.items():
+                s = _sp.compute_numeric_summary(group, field="actual_e2e_latency_s")
+                if s["count"] < 100:
+                    s["p99"] = None
+                    s["flags"] = ["INSUFFICIENT_SAMPLE_P99"]
+                    out["insufficient_sample_groups"].append(
+                        f"e2e@kv_util_bin={lab}"
+                    )
+                out["per_kv_util_bin_latency"][lab] = s
+            out["kv_util_vs_latency_correlation_proxy"] = {
+                lab: s.get("mean")
+                for lab, s in out["per_kv_util_bin_latency"].items()
+                if isinstance(s, dict)
+            }
+
+    elif trace_type == "cache_residency_trace":
+        if any("reuse_percentage" in r for r in rows):
+            out["reuse_percentage_distribution"] = _sp.compute_numeric_summary(
+                rows, field="reuse_percentage")
+        if any("bucket_count" in r for r in rows):
+            out["bucket_count_distribution"] = _sp.compute_numeric_summary(
+                rows, field="bucket_count")
+        if any("token_count" in r for r in rows):
+            out["token_count_distribution"] = _sp.compute_numeric_summary(
+                rows, field="token_count")
+
+    elif trace_type == "request_shape_trace":
+        if any("prompt_tokens" in r for r in rows):
+            out["prompt_tokens_distribution"] = _sp.compute_numeric_summary(
+                rows, field="prompt_tokens")
+        if any("output_tokens" in r for r in rows):
+            out["output_tokens_distribution"] = _sp.compute_numeric_summary(
+                rows, field="output_tokens")
+
+    return out
 
 
 _LICENSE_PER_DATASET = {
@@ -1011,6 +1379,25 @@ _TRUST_TIER_PER_TARGET = {
     ("eth-easl/swissai-serving-trace", "qwen3_32b_buckets"):
         "tier_4_latency_benchmark_traces",
     ("eth-easl/swissai-serving-trace", "qwen3_32b_bucket_reuse"):
+        "tier_4_latency_benchmark_traces",
+    # Analysis-tier (50-100 MiB samples).
+    ("asdwb/cara_latency_prediction", "train_flat"):
+        "tier_2_public_telemetry_traces",
+    ("asdwb/cara_latency_prediction", "train_queue_details"):
+        "tier_2_public_telemetry_traces",
+    ("eth-easl/swissai-serving-trace", "trace_analysis"):
+        "tier_5_request_shape_traces",
+    ("eth-easl/swissai-serving-trace", "qwen3_32b_buckets_analysis"):
+        "tier_4_latency_benchmark_traces",
+    ("eth-easl/swissai-serving-trace", "qwen3_32b_bucket_reuse_analysis"):
+        "tier_4_latency_benchmark_traces",
+    ("eth-easl/swissai-serving-trace", "apertus_70b_bucket_reuse"):
+        "tier_4_latency_benchmark_traces",
+    ("eth-easl/swissai-serving-trace", "qwen380b_instruct_bucket_reuse"):
+        "tier_4_latency_benchmark_traces",
+    ("eth-easl/swissai-serving-trace", "qwen380b_thinking_bucket_reuse"):
+        "tier_4_latency_benchmark_traces",
+    ("eth-easl/swissai-serving-trace", "llama3_70b_bucket_reuse"):
         "tier_4_latency_benchmark_traces",
 }
 
@@ -1039,6 +1426,14 @@ def main(argv=None) -> int:
             "hf_dataset_candidates.json"
         )
     )
+    p.add_argument(
+        "--target-set",
+        choices=("focused", "analysis_tier", "all"),
+        default="focused",
+        help="Which TARGETS list to ingest: focused (default, 10 MiB audit "
+             "samples), analysis_tier (50-100 MiB samples per file for "
+             "forecasting robustness), or all (both).",
+    )
     p.add_argument("--log-level", default="INFO")
     args = p.parse_args(argv)
 
@@ -1047,8 +1442,15 @@ def main(argv=None) -> int:
 
     token = os.environ.get("HF_TOKEN")
 
+    if args.target_set == "focused":
+        target_list = TARGETS
+    elif args.target_set == "analysis_tier":
+        target_list = ANALYSIS_TIER_TARGETS
+    else:
+        target_list = TARGETS + ANALYSIS_TIER_TARGETS
+
     results = []
-    for tgt in TARGETS:
+    for tgt in target_list:
         print(f"\n=== {tgt['dataset_id']} / {tgt['config_name']} ===")
         r = audit_one(tgt, token=token, force_redownload=args.force_redownload)
         results.append(r)

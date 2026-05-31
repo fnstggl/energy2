@@ -1,0 +1,485 @@
+{
+  "accepted_columns": [
+    "actual_e2e_latency",
+    "actual_output_tokens",
+    "actual_tpot",
+    "actual_ttft",
+    "completion_timestamp",
+    "decode_ctx_max",
+    "decode_ctx_p50",
+    "decode_ctx_p95",
+    "ema_decode_iter_ms",
+    "ema_decode_tok_per_s",
+    "ema_prefill_tok_per_s",
+    "instance_id",
+    "instance_type",
+    "kv_cache_utilization",
+    "kv_evictions_per_s",
+    "kv_free_blocks",
+    "max_num_seqs",
+    "num_active_decode_seqs",
+    "num_predicted_output_tokens",
+    "num_preempted",
+    "num_prompt_tokens",
+    "num_running",
+    "num_waiting",
+    "pending_decode_tokens",
+    "pending_prefill_tokens",
+    "prediction_latency_ms",
+    "prediction_timestamp",
+    "prefill_chunk_size",
+    "probe_latency_ms",
+    "request_id",
+    "running_requests_count",
+    "token_budget_per_iter",
+    "waiting_requests_count"
+  ],
+  "columns": [
+    {
+      "aurelius_signal_category": "latency",
+      "field_quality": "real",
+      "missing_rate": 0.0,
+      "normalized_field": "actual_e2e_latency_s",
+      "notes": "Client-measured end-to-end latency.",
+      "presence_rate": 1.0,
+      "raw_column_name": "actual_e2e_latency",
+      "units": "seconds",
+      "usable_for": [
+        "latency_prior",
+        "constraint_aware_backtest",
+        "dynamic_frontier_calibration"
+      ]
+    },
+    {
+      "aurelius_signal_category": "tokens",
+      "field_quality": "derived",
+      "missing_rate": 0.0,
+      "normalized_field": "actual_output_tokens",
+      "notes": "Recovered via round((e2e-ttft)/tpot)+1 (per README); derived.",
+      "presence_rate": 1.0,
+      "raw_column_name": "actual_output_tokens",
+      "units": "tokens",
+      "usable_for": [
+        "latency_prior",
+        "throughput_prior"
+      ]
+    },
+    {
+      "aurelius_signal_category": "latency",
+      "field_quality": "real",
+      "missing_rate": 0.0,
+      "normalized_field": "actual_tpot_s",
+      "notes": "Mean inter-token latency.",
+      "presence_rate": 1.0,
+      "raw_column_name": "actual_tpot",
+      "units": "seconds_per_token",
+      "usable_for": [
+        "latency_prior",
+        "throughput_prior"
+      ]
+    },
+    {
+      "aurelius_signal_category": "latency",
+      "field_quality": "real",
+      "missing_rate": 0.0,
+      "normalized_field": "actual_ttft_s",
+      "notes": "Time-to-first-token, client-measured.",
+      "presence_rate": 1.0,
+      "raw_column_name": "actual_ttft",
+      "units": "seconds",
+      "usable_for": [
+        "latency_prior",
+        "constraint_aware_backtest"
+      ]
+    },
+    {
+      "aurelius_signal_category": "request_completion",
+      "field_quality": "real",
+      "missing_rate": 0.0,
+      "normalized_field": "completion_timestamp_s",
+      "notes": "Unix time of completion.",
+      "presence_rate": 1.0,
+      "raw_column_name": "completion_timestamp",
+      "units": "seconds_unix",
+      "usable_for": [
+        "constraint_aware_backtest"
+      ]
+    },
+    {
+      "aurelius_signal_category": "queue",
+      "field_quality": "real",
+      "missing_rate": 0.0,
+      "normalized_field": "decode_ctx_max",
+      "notes": "Decode-context length max.",
+      "presence_rate": 1.0,
+      "raw_column_name": "decode_ctx_max",
+      "units": "tokens",
+      "usable_for": [
+        "latency_prior"
+      ]
+    },
+    {
+      "aurelius_signal_category": "queue",
+      "field_quality": "real",
+      "missing_rate": 0.0,
+      "normalized_field": "decode_ctx_p50",
+      "notes": "Decode-context length p50 (0 on some instances).",
+      "presence_rate": 1.0,
+      "raw_column_name": "decode_ctx_p50",
+      "units": "tokens",
+      "usable_for": [
+        "latency_prior"
+      ]
+    },
+    {
+      "aurelius_signal_category": "queue",
+      "field_quality": "real",
+      "missing_rate": 0.0,
+      "normalized_field": "decode_ctx_p95",
+      "notes": "Decode-context length p95.",
+      "presence_rate": 1.0,
+      "raw_column_name": "decode_ctx_p95",
+      "units": "tokens",
+      "usable_for": [
+        "latency_prior"
+      ]
+    },
+    {
+      "aurelius_signal_category": "latency",
+      "field_quality": "real",
+      "missing_rate": 0.0,
+      "normalized_field": "ema_decode_iter_ms",
+      "notes": "EMA per-iteration decode latency.",
+      "presence_rate": 1.0,
+      "raw_column_name": "ema_decode_iter_ms",
+      "units": "milliseconds",
+      "usable_for": [
+        "latency_prior"
+      ]
+    },
+    {
+      "aurelius_signal_category": "throughput",
+      "field_quality": "real",
+      "missing_rate": 0.0,
+      "normalized_field": "ema_decode_tok_per_s",
+      "notes": "Exponential moving avg decode tok/s.",
+      "presence_rate": 1.0,
+      "raw_column_name": "ema_decode_tok_per_s",
+      "units": "tokens_per_second",
+      "usable_for": [
+        "throughput_prior"
+      ]
+    },
+    {
+      "aurelius_signal_category": "throughput",
+      "field_quality": "real",
+      "missing_rate": 0.0,
+      "normalized_field": "ema_prefill_tok_per_s",
+      "notes": "EMA prefill tok/s.",
+      "presence_rate": 1.0,
+      "raw_column_name": "ema_prefill_tok_per_s",
+      "units": "tokens_per_second",
+      "usable_for": [
+        "throughput_prior"
+      ]
+    },
+    {
+      "aurelius_signal_category": "metadata_only",
+      "field_quality": "real",
+      "missing_rate": 0.0,
+      "normalized_field": "instance_id",
+      "notes": "CloudLab hostname + port; identifies serving instance.",
+      "presence_rate": 1.0,
+      "raw_column_name": "instance_id",
+      "units": null,
+      "usable_for": [
+        "constraint_aware_backtest"
+      ]
+    },
+    {
+      "aurelius_signal_category": "gpu_resource",
+      "field_quality": "real",
+      "missing_rate": 0.0,
+      "normalized_field": "instance_type",
+      "notes": "model+gpu, e.g. 'qwen2.5-3b_p100'. Stratification key.",
+      "presence_rate": 1.0,
+      "raw_column_name": "instance_type",
+      "units": null,
+      "usable_for": [
+        "constraint_aware_backtest",
+        "latency_prior",
+        "throughput_prior"
+      ]
+    },
+    {
+      "aurelius_signal_category": "cache_residency",
+      "field_quality": "real",
+      "missing_rate": 0.0,
+      "normalized_field": "kv_cache_utilization",
+      "notes": "KV-cache utilisation \u2208 [0,1].",
+      "presence_rate": 1.0,
+      "raw_column_name": "kv_cache_utilization",
+      "units": "fraction",
+      "usable_for": [
+        "dynamic_frontier_calibration",
+        "cache_residency_evaluation"
+      ]
+    },
+    {
+      "aurelius_signal_category": "cache_residency",
+      "field_quality": "real",
+      "missing_rate": 0.0,
+      "normalized_field": "kv_evictions_per_s",
+      "notes": "KV-cache eviction rate.",
+      "presence_rate": 1.0,
+      "raw_column_name": "kv_evictions_per_s",
+      "units": "events_per_second",
+      "usable_for": [
+        "cache_residency_evaluation"
+      ]
+    },
+    {
+      "aurelius_signal_category": "cache_residency",
+      "field_quality": "real",
+      "missing_rate": 0.0,
+      "normalized_field": "kv_free_blocks",
+      "notes": "Free KV-cache blocks.",
+      "presence_rate": 1.0,
+      "raw_column_name": "kv_free_blocks",
+      "units": "blocks",
+      "usable_for": [
+        "cache_residency_evaluation"
+      ]
+    },
+    {
+      "aurelius_signal_category": "scheduler_state",
+      "field_quality": "real",
+      "missing_rate": 0.0,
+      "normalized_field": "max_num_seqs",
+      "notes": "Max concurrent sequences allowed.",
+      "presence_rate": 1.0,
+      "raw_column_name": "max_num_seqs",
+      "units": "sequences",
+      "usable_for": [
+        "constraint_aware_backtest"
+      ]
+    },
+    {
+      "aurelius_signal_category": "queue",
+      "field_quality": "real",
+      "missing_rate": 0.0,
+      "normalized_field": "num_active_decode_seqs",
+      "notes": "Sequences in decode phase.",
+      "presence_rate": 1.0,
+      "raw_column_name": "num_active_decode_seqs",
+      "units": "sequences",
+      "usable_for": [
+        "dynamic_frontier_calibration"
+      ]
+    },
+    {
+      "aurelius_signal_category": "tokens",
+      "field_quality": "real",
+      "missing_rate": 0.0,
+      "normalized_field": "num_predicted_output_tokens",
+      "notes": "Max-tokens parameter; 1024 for all rows in CARA sweep 2.",
+      "presence_rate": 1.0,
+      "raw_column_name": "num_predicted_output_tokens",
+      "units": "tokens",
+      "usable_for": [
+        "latency_prior"
+      ]
+    },
+    {
+      "aurelius_signal_category": "failure_timeout",
+      "field_quality": "real",
+      "missing_rate": 0.0,
+      "normalized_field": "num_preempted",
+      "notes": "Cumulative preemption count.",
+      "presence_rate": 1.0,
+      "raw_column_name": "num_preempted",
+      "units": "requests",
+      "usable_for": [
+        "dynamic_frontier_calibration"
+      ]
+    },
+    {
+      "aurelius_signal_category": "tokens",
+      "field_quality": "real",
+      "missing_rate": 0.0,
+      "normalized_field": "num_prompt_tokens",
+      "notes": "Input prompt length.",
+      "presence_rate": 1.0,
+      "raw_column_name": "num_prompt_tokens",
+      "units": "tokens",
+      "usable_for": [
+        "latency_prior",
+        "throughput_prior",
+        "constraint_aware_backtest"
+      ]
+    },
+    {
+      "aurelius_signal_category": "queue",
+      "field_quality": "real",
+      "missing_rate": 0.0,
+      "normalized_field": "num_running",
+      "notes": "Concurrent active requests on the instance at decision time.",
+      "presence_rate": 1.0,
+      "raw_column_name": "num_running",
+      "units": "requests",
+      "usable_for": [
+        "dynamic_frontier_calibration",
+        "latency_prior",
+        "constraint_aware_backtest"
+      ]
+    },
+    {
+      "aurelius_signal_category": "queue",
+      "field_quality": "real",
+      "missing_rate": 0.0,
+      "normalized_field": "num_waiting",
+      "notes": "Queued requests; usually 0 (vLLM continuous batching).",
+      "presence_rate": 1.0,
+      "raw_column_name": "num_waiting",
+      "units": "requests",
+      "usable_for": [
+        "dynamic_frontier_calibration"
+      ]
+    },
+    {
+      "aurelius_signal_category": "queue",
+      "field_quality": "real",
+      "missing_rate": 0.0,
+      "normalized_field": "pending_decode_tokens",
+      "notes": "Pending decode work; 0 on some instances.",
+      "presence_rate": 1.0,
+      "raw_column_name": "pending_decode_tokens",
+      "units": "tokens",
+      "usable_for": [
+        "dynamic_frontier_calibration"
+      ]
+    },
+    {
+      "aurelius_signal_category": "queue",
+      "field_quality": "real",
+      "missing_rate": 0.0,
+      "normalized_field": "pending_prefill_tokens",
+      "notes": "Pending prefill work; often 0.",
+      "presence_rate": 1.0,
+      "raw_column_name": "pending_prefill_tokens",
+      "units": "tokens",
+      "usable_for": [
+        "dynamic_frontier_calibration"
+      ]
+    },
+    {
+      "aurelius_signal_category": "metadata_only",
+      "field_quality": "real",
+      "missing_rate": 0.0,
+      "normalized_field": "prediction_latency_ms",
+      "notes": "Predictor inference overhead \u2014 not the workload latency.",
+      "presence_rate": 1.0,
+      "raw_column_name": "prediction_latency_ms",
+      "units": "milliseconds",
+      "usable_for": [
+        "not_usable"
+      ]
+    },
+    {
+      "aurelius_signal_category": "request_dispatch",
+      "field_quality": "real",
+      "missing_rate": 0.0,
+      "normalized_field": "prediction_timestamp_s",
+      "notes": "Unix time of scheduling decision.",
+      "presence_rate": 1.0,
+      "raw_column_name": "prediction_timestamp",
+      "units": "seconds_unix",
+      "usable_for": [
+        "constraint_aware_backtest"
+      ]
+    },
+    {
+      "aurelius_signal_category": "scheduler_state",
+      "field_quality": "real",
+      "missing_rate": 0.0,
+      "normalized_field": "prefill_chunk_size",
+      "notes": "Chunked-prefill size.",
+      "presence_rate": 1.0,
+      "raw_column_name": "prefill_chunk_size",
+      "units": "tokens",
+      "usable_for": [
+        "dynamic_frontier_calibration"
+      ]
+    },
+    {
+      "aurelius_signal_category": "metadata_only",
+      "field_quality": "real",
+      "missing_rate": 0.0,
+      "normalized_field": "probe_latency_ms",
+      "notes": "vLLM /instance_stats fetch overhead \u2014 out-of-band.",
+      "presence_rate": 1.0,
+      "raw_column_name": "probe_latency_ms",
+      "units": "milliseconds",
+      "usable_for": [
+        "not_usable"
+      ]
+    },
+    {
+      "aurelius_signal_category": "metadata_only",
+      "field_quality": "real",
+      "missing_rate": 0.0,
+      "normalized_field": "request_id",
+      "notes": "UUID per CARA request.",
+      "presence_rate": 1.0,
+      "raw_column_name": "request_id",
+      "units": null,
+      "usable_for": [
+        "constraint_aware_backtest",
+        "dynamic_frontier_calibration"
+      ]
+    },
+    {
+      "aurelius_signal_category": "queue",
+      "field_quality": "derived",
+      "missing_rate": 0.0,
+      "normalized_field": "running_requests_count",
+      "notes": "Derived from running_requests[] list (flat files only).",
+      "presence_rate": 1.0,
+      "raw_column_name": "running_requests_count",
+      "units": "requests",
+      "usable_for": [
+        "constraint_aware_backtest"
+      ]
+    },
+    {
+      "aurelius_signal_category": "scheduler_state",
+      "field_quality": "real",
+      "missing_rate": 0.0,
+      "normalized_field": "token_budget_per_iter",
+      "notes": "vLLM scheduler iter budget.",
+      "presence_rate": 1.0,
+      "raw_column_name": "token_budget_per_iter",
+      "units": "tokens",
+      "usable_for": [
+        "dynamic_frontier_calibration"
+      ]
+    },
+    {
+      "aurelius_signal_category": "queue",
+      "field_quality": "derived",
+      "missing_rate": 0.0,
+      "normalized_field": "waiting_requests_count",
+      "notes": "Derived from waiting_requests[] list (flat files only).",
+      "presence_rate": 1.0,
+      "raw_column_name": "waiting_requests_count",
+      "units": "requests",
+      "usable_for": [
+        "constraint_aware_backtest"
+      ]
+    }
+  ],
+  "config_name": "train_flat",
+  "dataset_id": "asdwb/cara_latency_prediction",
+  "extra_mapped_not_observed": [],
+  "rejected_columns": []
+}

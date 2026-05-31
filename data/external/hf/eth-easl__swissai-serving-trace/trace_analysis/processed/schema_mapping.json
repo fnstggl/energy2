@@ -1,0 +1,213 @@
+{
+  "accepted_columns": [
+    "created_at",
+    "finished_at",
+    "id",
+    "model",
+    "model_parameters",
+    "model_parameters.frequency_penalty",
+    "model_parameters.max_tokens",
+    "model_parameters.presence_penalty",
+    "model_parameters.seed",
+    "model_parameters.temperature",
+    "model_parameters.top_p",
+    "reported_token_input",
+    "reported_token_output",
+    "status"
+  ],
+  "columns": [
+    {
+      "aurelius_signal_category": "request_arrival",
+      "field_quality": "real",
+      "missing_rate": 0.0,
+      "normalized_field": "created_at_iso",
+      "notes": "Request arrival ISO-8601.",
+      "presence_rate": 1.0,
+      "raw_column_name": "created_at",
+      "units": "iso8601_string",
+      "usable_for": [
+        "workload_shape_only",
+        "constraint_aware_backtest"
+      ]
+    },
+    {
+      "aurelius_signal_category": "request_completion",
+      "field_quality": "real",
+      "missing_rate": 0.0,
+      "normalized_field": "finished_at_iso",
+      "notes": "Request completion ISO-8601; latency = finished - created.",
+      "presence_rate": 1.0,
+      "raw_column_name": "finished_at",
+      "units": "iso8601_string",
+      "usable_for": [
+        "workload_shape_only",
+        "latency_prior"
+      ]
+    },
+    {
+      "aurelius_signal_category": "metadata_only",
+      "field_quality": "real",
+      "missing_rate": 0.0,
+      "normalized_field": "request_id",
+      "notes": "Composite request id; anonymised.",
+      "presence_rate": 1.0,
+      "raw_column_name": "id",
+      "units": null,
+      "usable_for": [
+        "workload_shape_only"
+      ]
+    },
+    {
+      "aurelius_signal_category": "metadata_only",
+      "field_quality": "real",
+      "missing_rate": 0.0,
+      "normalized_field": "model_id",
+      "notes": "Served model identifier (Qwen/Qwen3-32B etc).",
+      "presence_rate": 1.0,
+      "raw_column_name": "model",
+      "units": null,
+      "usable_for": [
+        "workload_shape_only"
+      ]
+    },
+    {
+      "aurelius_signal_category": "metadata_only",
+      "field_quality": "real",
+      "missing_rate": 0.0,
+      "normalized_field": "model_parameters_json",
+      "notes": "Heterogeneous; JSON-stringified into model_parameters_json.",
+      "presence_rate": 1.0,
+      "raw_column_name": "model_parameters",
+      "units": "json_string",
+      "usable_for": [
+        "workload_shape_only"
+      ]
+    },
+    {
+      "aurelius_signal_category": "metadata_only",
+      "field_quality": "real",
+      "missing_rate": 0.0,
+      "normalized_field": null,
+      "notes": "Recorded but not extracted (heterogeneous types).",
+      "presence_rate": 1.0,
+      "raw_column_name": "model_parameters.frequency_penalty",
+      "units": null,
+      "usable_for": [
+        "workload_shape_only"
+      ]
+    },
+    {
+      "aurelius_signal_category": "metadata_only",
+      "field_quality": "real",
+      "missing_rate": 0.78645,
+      "normalized_field": "max_tokens_param",
+      "notes": "max_tokens param.",
+      "presence_rate": 1.0,
+      "raw_column_name": "model_parameters.max_tokens",
+      "units": "tokens",
+      "usable_for": [
+        "workload_shape_only"
+      ]
+    },
+    {
+      "aurelius_signal_category": "metadata_only",
+      "field_quality": "real",
+      "missing_rate": 0.0,
+      "normalized_field": null,
+      "notes": "Recorded but not extracted (heterogeneous types).",
+      "presence_rate": 1.0,
+      "raw_column_name": "model_parameters.presence_penalty",
+      "units": null,
+      "usable_for": [
+        "workload_shape_only"
+      ]
+    },
+    {
+      "aurelius_signal_category": "metadata_only",
+      "field_quality": "real",
+      "missing_rate": 0.0,
+      "normalized_field": "seed",
+      "notes": "Sampling seed.",
+      "presence_rate": 1.0,
+      "raw_column_name": "model_parameters.seed",
+      "units": null,
+      "usable_for": [
+        "workload_shape_only"
+      ]
+    },
+    {
+      "aurelius_signal_category": "metadata_only",
+      "field_quality": "real",
+      "missing_rate": 0.0,
+      "normalized_field": "temperature",
+      "notes": "Sampling temp.",
+      "presence_rate": 1.0,
+      "raw_column_name": "model_parameters.temperature",
+      "units": null,
+      "usable_for": [
+        "workload_shape_only"
+      ]
+    },
+    {
+      "aurelius_signal_category": "metadata_only",
+      "field_quality": "real",
+      "missing_rate": 0.0,
+      "normalized_field": "top_p",
+      "notes": "nucleus-sampling top_p.",
+      "presence_rate": 1.0,
+      "raw_column_name": "model_parameters.top_p",
+      "units": null,
+      "usable_for": [
+        "workload_shape_only"
+      ]
+    },
+    {
+      "aurelius_signal_category": "tokens",
+      "field_quality": "real",
+      "missing_rate": 0.374156,
+      "normalized_field": "prompt_tokens",
+      "notes": "Frequently -1 (missing). Treated as missing in stats.",
+      "presence_rate": 1.0,
+      "raw_column_name": "reported_token_input",
+      "units": "tokens",
+      "usable_for": [
+        "workload_shape_only",
+        "latency_prior"
+      ]
+    },
+    {
+      "aurelius_signal_category": "tokens",
+      "field_quality": "real",
+      "missing_rate": 0.374156,
+      "normalized_field": "output_tokens",
+      "notes": "Frequently -1 (missing).",
+      "presence_rate": 1.0,
+      "raw_column_name": "reported_token_output",
+      "units": "tokens",
+      "usable_for": [
+        "workload_shape_only",
+        "latency_prior"
+      ]
+    },
+    {
+      "aurelius_signal_category": "failure_timeout",
+      "field_quality": "real",
+      "missing_rate": 0.0,
+      "normalized_field": "status",
+      "notes": "Request status: DEFAULT|ERROR|... ",
+      "presence_rate": 1.0,
+      "raw_column_name": "status",
+      "units": null,
+      "usable_for": [
+        "workload_shape_only",
+        "constraint_aware_backtest"
+      ]
+    }
+  ],
+  "config_name": "trace_analysis",
+  "dataset_id": "eth-easl/swissai-serving-trace",
+  "extra_mapped_not_observed": [
+    "model_parameters.n"
+  ],
+  "rejected_columns": []
+}
