@@ -2772,3 +2772,74 @@ registry, every ingester, and every evaluator carry explicit
 - Bounded metadata-only audit of the WEKA CC traces with an explicit budget.
 - Synthetic telemetry-trace smoke fixture so `telemetry_calibration_smoke_v1`
   has a positive test path before real telemetry lands.
+
+## 2026-05-31 — CARA + SwissAI HF telemetry audit (`feature/hf-cara-swissai-telemetry-audit`)
+
+Focused HF telemetry-candidate audit for `asdwb/cara_latency_prediction`
+and `eth-easl/swissai-serving-trace`. Discovery/data-engine PR only —
+no controllers modified, no production claims, no ML training.
+
+**What landed**
+
+- `aurelius/traces/hf_corpus/schema_profile.py` — schema profiler
+  (flat + 1-level nested + lists), per-subgroup latency summary with
+  INSUFFICIENT_SAMPLE_P95/P99 flagging, stratified sampling helper,
+  bucket-id hash/sample helpers.
+- Extended `aurelius/traces/hf_corpus/schemas.py`: `TelemetryRecord` now
+  carries CARA's vLLM scheduler-state fields (num_running, num_waiting,
+  kv_cache_utilization, ema_*, actual_e2e_latency_s, actual_ttft_s,
+  actual_tpot_s, ...). `CacheResidencyRecord` carries SwissAI bucket
+  fields. `RequestShapeRecord` carries SwissAI ISO timestamps + status +
+  model_parameters subset.
+- Extended `aurelius/traces/hf_corpus/ingestion.py` RAW_TO_NORMALIZED for
+  CARA + SwissAI; extended NORMALIZED_FIELD_TO_SIGNAL for the new
+  signals (kv_cache_utilization → cache_hit, num_waiting → queue_depth,
+  actual_e2e_latency_s → e2e_latency, etc.).
+- Extended `aurelius/traces/hf_corpus/promotion.py`: 4 new promotion
+  states (`promoted_for_schema_only`, `auth_blocked`,
+  `deferred_bounded_ingest`, ...), 9th gate
+  `analysis_sample_policy_recorded`, sample-strength → promotion-tag
+  filtering (`PROMOTION_TAG_MIN_SAMPLE_STRENGTH`), automatic
+  downgrade with `decision.reasons`.
+- `scripts/audit_cara_swissai_telemetry.py` — bounded HTTP-Range
+  download (gitignored raw), schema profile + mapping generation,
+  stratified sampling, statistical_sample_strength labelling, registry
+  writer.
+- `docs/HF_CARA_SWISSAI_TELEMETRY_AUDIT.md` — full PHASE 0-9 audit
+  with trust assessment, signal extraction, alpha opportunity
+  (9× p99 latency spread for Qwen2.5-3B across A30 vs P100 GPUs).
+- Updated `docs/HF_DATASET_REGISTRY.md` with the 5 new (dataset, config)
+  entries and CARA's first-Tier-2 status.
+
+**Audit outcomes (5/5 cleared all gates)**
+
+- CARA / test_flat → `telemetry_trace` · Tier 2 · `moderate` strength →
+  `promoted_for_constraint_aware_evaluation` + `promoted_for_backtest`
+  (dynamic_calibration downgraded; needs `strong` strength which
+  `train.jsonl` would unlock).
+- CARA / test_queue_details → same as above (full nested
+  `schedule_state.running_requests[]` arrays preserved at raw level).
+- SwissAI / trace → `request_shape_trace` · Tier 5 · `strong` →
+  `promoted_for_training_priors`.
+- SwissAI / qwen3_32b_buckets → `cache_residency_trace` · Tier 4 ·
+  `strong` → `promoted_for_cache_residency_evaluation`.
+- SwissAI / qwen3_32b_bucket_reuse → `cache_residency_trace` · Tier 4 ·
+  `strong` → `promoted_for_cache_residency_evaluation`.
+
+**Tests:** 38 new (all pass) + 71 existing HF tests + 192 + key
+regression tests all pass. No production scheduler, robust energy
+engine, controllers, or frontier modules touched.
+
+**Honesty invariants:**
+- Raw downloads + analysis_sample.jsonl both gitignored.
+- HF_TOKEN never logged / committed.
+- Statistical_sample_strength enforced on every promotion tag (e.g.
+  `dynamic_calibration` requires `strong` = ≥10k rows).
+- CARA labelled Tier 2 (public telemetry), NOT Tier 1 — CloudLab
+  research cluster is not a production pilot.
+- SwissAI license is "other" — only summary statistics + 5-row fixture
+  committed; raw rows kept gitignored.
+
+**Next:** re-run audit against CARA `train.jsonl` (392 MB, 359k rows)
+with a larger per-file budget to lift the analysis sample to `strong`
+strength and unlock `promoted_for_dynamic_calibration`.

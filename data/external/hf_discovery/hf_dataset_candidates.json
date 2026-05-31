@@ -1,5 +1,5 @@
 {
-  "candidate_count": 43,
+  "candidate_count": 45,
   "candidates": [
     {
       "aurelius_use_case": "Performance-surface priors; throughput/latency risk priors; batch-size + concurrency priors; model/GPU/engine comparison.",
@@ -310,6 +310,93 @@
       "schema_available": true,
       "schema_quality_score": 5,
       "trust_level": "tier_4_latency_benchmark_traces"
+    },
+    {
+      "audit_doc": "docs/HF_CARA_SWISSAI_TELEMETRY_AUDIT.md",
+      "audit_status": "audited_in_2026_05_31_focused_audit",
+      "aurelius_use_case": "Dynamic frontier calibration; shadow evaluation; constraint-aware scheduler validation; SLA / timeout / queue / replica / GPU-util risk calibration.",
+      "available_signals": [
+        "concurrency",
+        "gpu_type"
+      ],
+      "available_splits": [],
+      "candidate_trace_type": "telemetry_trace",
+      "classification_evidence": {
+        "telemetry_trace": [
+          "cara_manual_classification"
+        ]
+      },
+      "configs": [],
+      "dataset_id": "asdwb/cara_latency_prediction",
+      "dataset_url": "https://huggingface.co/datasets/asdwb/cara_latency_prediction",
+      "discovery_timestamp_s": 1780260320.0047688,
+      "downloads": 61,
+      "estimated_size": [
+        "100K<n<1M"
+      ],
+      "feature_names": [],
+      "frontier_value_score": 2,
+      "gated_status": "public",
+      "ingestion_feasibility_score": 5,
+      "last_modified": "2026-04-11T16:33:03.000Z",
+      "license": "apache-2.0",
+      "likes": 0,
+      "matched_keywords": [
+        "focused_audit::cara_swissai_telemetry"
+      ],
+      "missing_signals": [
+        "ttft",
+        "tpot",
+        "itl",
+        "e2e_latency",
+        "latency_p50",
+        "latency_p90",
+        "latency_p95",
+        "latency_p99",
+        "throughput",
+        "request_throughput",
+        "token_throughput",
+        "batch_size",
+        "sequence_length",
+        "prompt_tokens",
+        "output_tokens",
+        "gpu_utilization",
+        "gpu_memory",
+        "memory_pressure",
+        "queue_wait",
+        "queue_depth",
+        "timeout",
+        "sla",
+        "failure",
+        "cold_start",
+        "prefix_cache",
+        "cache_hit",
+        "model_residency",
+        "routing",
+        "vllm",
+        "sglang",
+        "triton",
+        "ray_serve",
+        "kubernetes",
+        "prometheus",
+        "dcgm",
+        "autoscaling",
+        "replica_count",
+        "pod_churn",
+        "kernel_duration",
+        "gemm",
+        "cuda",
+        "nsight"
+      ],
+      "not_recommended_uses": [
+        "Treating non-pilot telemetry as Tier 1 pilot calibration"
+      ],
+      "overall_priority_score": 3.15,
+      "production_similarity_score": 5,
+      "recommended_action": "inspect_manually",
+      "schema_available": true,
+      "schema_quality_score": 1,
+      "trust_level": "tier_2_public_telemetry_traces"
     },
     {
       "aurelius_use_case": "Workload replay shape; eval/batch frontier scenarios; request mix modelling; prompt/output distribution priors.",
@@ -3778,6 +3865,94 @@
       "trust_level": "tier_5_request_shape_traces"
     },
     {
+      "audit_doc": "docs/HF_CARA_SWISSAI_TELEMETRY_AUDIT.md",
+      "audit_status": "audited_in_2026_05_31_focused_audit",
+      "aurelius_use_case": "Workload replay shape; eval/batch frontier scenarios; request mix modelling; prompt/output distribution priors.",
+      "available_signals": [],
+      "available_splits": [],
+      "candidate_trace_type": "request_shape_trace",
+      "classification_evidence": {
+        "request_shape_trace": [
+          "swissai_manual_classification"
+        ]
+      },
+      "configs": [],
+      "dataset_id": "eth-easl/swissai-serving-trace",
+      "dataset_url": "https://huggingface.co/datasets/eth-easl/swissai-serving-trace",
+      "discovery_timestamp_s": 1780260320.6833065,
+      "downloads": 206,
+      "estimated_size": [
+        "10M<n<100M"
+      ],
+      "feature_names": [],
+      "frontier_value_score": 1,
+      "gated_status": "public",
+      "ingestion_feasibility_score": 3,
+      "last_modified": "2026-04-28T09:51:24.000Z",
+      "license": "other",
+      "likes": 2,
+      "matched_keywords": [
+        "focused_audit::cara_swissai_telemetry"
+      ],
+      "missing_signals": [
+        "ttft",
+        "tpot",
+        "itl",
+        "e2e_latency",
+        "latency_p50",
+        "latency_p90",
+        "latency_p95",
+        "latency_p99",
+        "throughput",
+        "request_throughput",
+        "token_throughput",
+        "concurrency",
+        "batch_size",
+        "sequence_length",
+        "prompt_tokens",
+        "output_tokens",
+        "gpu_type",
+        "gpu_utilization",
+        "gpu_memory",
+        "memory_pressure",
+        "queue_wait",
+        "queue_depth",
+        "timeout",
+        "sla",
+        "failure",
+        "cold_start",
+        "prefix_cache",
+        "cache_hit",
+        "model_residency",
+        "routing",
+        "vllm",
+        "sglang",
+        "triton",
+        "ray_serve",
+        "kubernetes",
+        "prometheus",
+        "dcgm",
+        "autoscaling",
+        "replica_count",
+        "pod_churn",
+        "kernel_duration",
+        "gemm",
+        "cuda",
+        "nsight"
+      ],
+      "not_recommended_uses": [
+        "Production latency calibration",
+        "TTFT / TPOT inference unless measured latency exists",
+        "Dynamic frontier calibration"
+      ],
+      "overall_priority_score": 1.7,
+      "production_similarity_score": 2,
+      "recommended_action": "reject_low_value",
+      "schema_available": true,
+      "schema_quality_score": 1,
+      "trust_level": "tier_5_request_shape_traces"
+    },
+    {
       "aurelius_use_case": "Workload replay shape; eval/batch frontier scenarios; request mix modelling; prompt/output distribution priors.",
       "available_signals": [],
       "available_splits": [],
@@ -4117,6 +4292,10 @@
   "client": "live_hf_api (HF_TOKEN_set)",
   "discovery_elapsed_s": 41.57,
   "doc_version": "hf_dataset_candidates_v1",
+  "focused_audit_2026_05_31": [
+    "asdwb/cara_latency_prediction",
+    "eth-easl/swissai-serving-trace"
+  ],
   "production_claim": false,
   "query_groups_used": [
     "latency_benchmark",

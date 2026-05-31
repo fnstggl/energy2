@@ -138,11 +138,19 @@ class CanonicalCorpusRecord:
 REQUEST_SHAPE_PAYLOAD_FIELDS = {
     "request_id",
     "timestamp_s",
+    "created_at_iso",
+    "finished_at_iso",
     "session_id",
     "turn_count",
     "prompt_tokens",
     "output_tokens",
     "model_id",
+    "status",
+    "model_parameters_json",
+    "temperature",
+    "max_tokens_param",
+    "top_p",
+    "seed",
 }
 
 
@@ -227,22 +235,81 @@ CACHE_RESIDENCY_PAYLOAD_FIELDS = {
     "prefix_id",
     "request_id",
     "timestamp_s",
+    "created_at_iso",
+    "finished_at_iso",
     "cache_hit",
     "cold_start",
     "residency_state",
+    "bucket_count",
+    "reused_bucket_count",
+    "reuse_percentage",
+    "token_count",
+    "bucket_ids_hash",
+    "bucket_ids_sample",
+    "status",
+    "prompt_tokens",
+    "output_tokens",
+    "model_parameters_json",
+    "temperature",
+    "max_tokens_param",
+    "top_p",
+    "seed",
 }
 
 
 TELEMETRY_PAYLOAD_FIELDS = {
     "timestamp_s",
+    "created_at_iso",
     "service_id",
+    "request_id",
+    "instance_id",
+    "instance_type",
+    "model_id",
+    "gpu",
+    "engine",
+    "engine_version",
+    # Queue + scheduler state.
     "queue_depth",
     "queue_wait_s",
+    "num_running",
+    "num_waiting",
+    "num_active_decode_seqs",
+    "num_preempted",
+    "running_requests_count",
+    "waiting_requests_count",
+    "pending_prefill_tokens",
+    "pending_decode_tokens",
+    "decode_ctx_p50",
+    "decode_ctx_p95",
+    "decode_ctx_max",
+    # KV cache + residency.
+    "kv_cache_utilization",
+    "kv_free_blocks",
+    "kv_evictions_per_s",
+    "token_budget_per_iter",
+    "prefill_chunk_size",
+    "max_num_seqs",
+    # Throughput EMAs.
+    "ema_decode_tok_per_s",
+    "ema_prefill_tok_per_s",
+    "ema_decode_iter_ms",
+    # Per-request measured latency.
     "latency_p50_ms",
     "latency_p95_ms",
     "latency_p99_ms",
     "ttft_p99_ms",
     "tpot_p99_ms",
+    "actual_e2e_latency_s",
+    "actual_ttft_s",
+    "actual_tpot_s",
+    "completion_timestamp_s",
+    "prediction_timestamp_s",
+    "prediction_latency_ms",
+    "probe_latency_ms",
+    "num_prompt_tokens",
+    "num_predicted_output_tokens",
+    "actual_output_tokens",
+    # Aggregate rates.
     "throughput_rps",
     "concurrency",
     "replica_count",
@@ -250,6 +317,8 @@ TELEMETRY_PAYLOAD_FIELDS = {
     "gpu_memory_pct",
     "timeout_rate_pct",
     "sla_violation_rate_pct",
+    "status",
+    "is_failed",
 }
 
 
@@ -257,11 +326,19 @@ TELEMETRY_PAYLOAD_FIELDS = {
 class RequestShapeRecord(CanonicalCorpusRecord):
     request_id: Optional[str] = None
     timestamp_s: Optional[float] = None
+    created_at_iso: Optional[str] = None
+    finished_at_iso: Optional[str] = None
     session_id: Optional[str] = None
     turn_count: Optional[int] = None
     prompt_tokens: Optional[float] = None
     output_tokens: Optional[float] = None
     model_id: Optional[str] = None
+    status: Optional[str] = None
+    model_parameters_json: Optional[str] = None
+    temperature: Optional[float] = None
+    max_tokens_param: Optional[float] = None
+    top_p: Optional[float] = None
+    seed: Optional[int] = None
 
     def __post_init__(self):
         self._validate_base(REQUEST_SHAPE_PAYLOAD_FIELDS)
@@ -378,9 +455,25 @@ class CacheResidencyRecord(CanonicalCorpusRecord):
     prefix_id: Optional[str] = None
     request_id: Optional[str] = None
     timestamp_s: Optional[float] = None
+    created_at_iso: Optional[str] = None
+    finished_at_iso: Optional[str] = None
     cache_hit: Optional[bool] = None
     cold_start: Optional[bool] = None
     residency_state: Optional[str] = None
+    bucket_count: Optional[int] = None
+    reused_bucket_count: Optional[int] = None
+    reuse_percentage: Optional[float] = None
+    token_count: Optional[int] = None
+    bucket_ids_hash: Optional[str] = None
+    bucket_ids_sample: Optional[str] = None
+    status: Optional[str] = None
+    prompt_tokens: Optional[float] = None
+    output_tokens: Optional[float] = None
+    model_parameters_json: Optional[str] = None
+    temperature: Optional[float] = None
+    max_tokens_param: Optional[float] = None
+    top_p: Optional[float] = None
+    seed: Optional[int] = None
 
     def __post_init__(self):
         self._validate_base(CACHE_RESIDENCY_PAYLOAD_FIELDS)
@@ -394,14 +487,52 @@ class CacheResidencyRecord(CanonicalCorpusRecord):
 @dataclass(frozen=True)
 class TelemetryRecord(CanonicalCorpusRecord):
     timestamp_s: Optional[float] = None
+    created_at_iso: Optional[str] = None
     service_id: Optional[str] = None
+    request_id: Optional[str] = None
+    instance_id: Optional[str] = None
+    instance_type: Optional[str] = None
+    model_id: Optional[str] = None
+    gpu: Optional[str] = None
+    engine: Optional[str] = None
+    engine_version: Optional[str] = None
     queue_depth: Optional[float] = None
     queue_wait_s: Optional[float] = None
+    num_running: Optional[int] = None
+    num_waiting: Optional[int] = None
+    num_active_decode_seqs: Optional[int] = None
+    num_preempted: Optional[int] = None
+    running_requests_count: Optional[int] = None
+    waiting_requests_count: Optional[int] = None
+    pending_prefill_tokens: Optional[int] = None
+    pending_decode_tokens: Optional[int] = None
+    decode_ctx_p50: Optional[float] = None
+    decode_ctx_p95: Optional[float] = None
+    decode_ctx_max: Optional[float] = None
+    kv_cache_utilization: Optional[float] = None
+    kv_free_blocks: Optional[int] = None
+    kv_evictions_per_s: Optional[float] = None
+    token_budget_per_iter: Optional[int] = None
+    prefill_chunk_size: Optional[int] = None
+    max_num_seqs: Optional[int] = None
+    ema_decode_tok_per_s: Optional[float] = None
+    ema_prefill_tok_per_s: Optional[float] = None
+    ema_decode_iter_ms: Optional[float] = None
     latency_p50_ms: Optional[float] = None
     latency_p95_ms: Optional[float] = None
     latency_p99_ms: Optional[float] = None
     ttft_p99_ms: Optional[float] = None
     tpot_p99_ms: Optional[float] = None
+    actual_e2e_latency_s: Optional[float] = None
+    actual_ttft_s: Optional[float] = None
+    actual_tpot_s: Optional[float] = None
+    completion_timestamp_s: Optional[float] = None
+    prediction_timestamp_s: Optional[float] = None
+    prediction_latency_ms: Optional[float] = None
+    probe_latency_ms: Optional[float] = None
+    num_prompt_tokens: Optional[int] = None
+    num_predicted_output_tokens: Optional[int] = None
+    actual_output_tokens: Optional[int] = None
     throughput_rps: Optional[float] = None
     concurrency: Optional[int] = None
     replica_count: Optional[int] = None
@@ -409,6 +540,8 @@ class TelemetryRecord(CanonicalCorpusRecord):
     gpu_memory_pct: Optional[float] = None
     timeout_rate_pct: Optional[float] = None
     sla_violation_rate_pct: Optional[float] = None
+    status: Optional[str] = None
+    is_failed: Optional[bool] = None
 
     def __post_init__(self):
         self._validate_base(TELEMETRY_PAYLOAD_FIELDS)

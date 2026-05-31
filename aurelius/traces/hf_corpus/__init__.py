@@ -23,7 +23,7 @@ here is a production telemetry source — see
 
 from __future__ import annotations
 
-from . import discovery, evaluation, ingestion, promotion, schemas
+from . import discovery, evaluation, ingestion, promotion, schema_profile, schemas
 
 __all__ = [
     "schemas",
@@ -31,4 +31,5 @@ __all__ = [
     "ingestion",
     "promotion",
     "evaluation",
+    "schema_profile",
 ]

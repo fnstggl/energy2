@@ -1,0 +1,93 @@
+{
+  "config_name": "trace",
+  "dataset_id": "eth-easl/swissai-serving-trace",
+  "dtypes": {
+    "created_at": "string",
+    "finished_at": "string",
+    "id": "string",
+    "model": "string",
+    "model_parameters": "string",
+    "model_parameters.frequency_penalty": "int64",
+    "model_parameters.max_tokens": "string",
+    "model_parameters.presence_penalty": "int64",
+    "model_parameters.seed": "int64",
+    "model_parameters.temperature": "float64",
+    "model_parameters.top_p": "int64",
+    "reported_token_input": "int64",
+    "reported_token_output": "int64",
+    "status": "string"
+  },
+  "example_values": {
+    "created_at": "2025-08-21T14:34:25.590Z",
+    "finished_at": "2025-08-21T14:34:26.945Z",
+    "id": "479450f74355ad63:1225ef893f2e39f47d776c678c4dc989:clypmz9si000g44hc5qr704rn",
+    "model": "Qwen/Qwen3-32Bb",
+    "model_parameters": "<dict>",
+    "model_parameters.frequency_penalty": 0,
+    "model_parameters.max_tokens": "null",
+    "model_parameters.presence_penalty": 0,
+    "model_parameters.seed": 42,
+    "model_parameters.temperature": 0.7,
+    "model_parameters.top_p": 1,
+    "reported_token_input": -1,
+    "reported_token_output": -1,
+    "status": "ERROR"
+  },
+  "file_size_bytes": 10485760,
+  "inspected_row_count": 25409,
+  "list_length_summaries": {},
+  "missing_rates": {
+    "created_at": 0.0,
+    "finished_at": 0.0,
+    "id": 0.0,
+    "model": 0.0,
+    "model_parameters": 0.0,
+    "model_parameters.frequency_penalty": 0.0,
+    "model_parameters.max_tokens": 0.917155,
+    "model_parameters.presence_penalty": 0.0,
+    "model_parameters.seed": 0.0,
+    "model_parameters.temperature": 0.0,
+    "model_parameters.top_p": 0.0,
+    "reported_token_input": 0.338069,
+    "reported_token_output": 0.338069,
+    "status": 0.0
+  },
+  "nested_keys": [
+    "model_parameters.frequency_penalty",
+    "model_parameters.max_tokens",
+    "model_parameters.presence_penalty",
+    "model_parameters.seed",
+    "model_parameters.temperature",
+    "model_parameters.top_p"
+  ],
+  "presence_rates": {
+    "created_at": 1.0,
+    "finished_at": 1.0,
+    "id": 1.0,
+    "model": 1.0,
+    "model_parameters": 1.0,
+    "model_parameters.frequency_penalty": 1.0,
+    "model_parameters.max_tokens": 1.0,
+    "model_parameters.presence_penalty": 1.0,
+    "model_parameters.seed": 1.0,
+    "model_parameters.temperature": 1.0,
+    "model_parameters.top_p": 1.0,
+    "reported_token_input": 1.0,
+    "reported_token_output": 1.0,
+    "status": 1.0
+  },
+  "raw_columns": [
+    "created_at",
+    "finished_at",
+    "id",
+    "model",
+    "model_parameters",
+    "reported_token_input",
+    "reported_token_output",
+    "status"
+  ],
+  "source_files_inspected": [
+    "trace.jsonl"
+  ],
+  "split": null
+}

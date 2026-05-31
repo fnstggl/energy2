@@ -89,3 +89,9 @@ data/external/lmsys_chatbot_arena/raw/*
 data/external/hf/*/raw/*
 data/external/hf/*/*/raw/*
 !data/external/hf/.gitkeep
+# Per-config analysis_sample.jsonl files (multi-MB stratified analysis samples
+# that back the summary statistics). Summary + schema profile + schema mapping
+# + fixture sample ARE committed; the larger analysis sample is regenerable
+# from the bounded raw download via scripts/audit_cara_swissai_telemetry.py.
+data/external/hf/*/*/processed/analysis_sample.jsonl
+data/external/hf/*/*/*/processed/analysis_sample.jsonl

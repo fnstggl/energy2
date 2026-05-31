@@ -56,9 +56,39 @@ PROMOTION_STATES = frozenset({
     "promoted_for_dynamic_calibration",
     "promoted_for_performance_priors",
     "promoted_for_cache_residency_evaluation",
+    "promoted_for_schema_only",
     "rejected",
     "gated_blocked",
+    "auth_blocked",
+    "deferred_bounded_ingest",
 })
+
+
+# Promotion-tag -> minimum statistical_sample_strength required. Fixture-only
+# samples may pass schema/promotion-for-schema-only gates but MUST NOT claim
+# performance / dynamic / backtest / cache-residency evidence value.
+PROMOTION_TAG_MIN_SAMPLE_STRENGTH = {
+    "promoted_for_schema_only": "fixture_only",
+    "promoted_for_training_priors": "weak",
+    "promoted_for_performance_priors": "moderate",
+    "promoted_for_cache_residency_evaluation": "moderate",
+    "promoted_for_constraint_aware_evaluation": "moderate",
+    "promoted_for_dynamic_calibration": "strong",
+    "promoted_for_backtest": "moderate",
+}
+
+_SAMPLE_STRENGTH_ORDER = {
+    "fixture_only": 0,
+    "weak": 1,
+    "moderate": 2,
+    "strong": 3,
+}
+
+
+def _sample_strength_satisfies(actual: str, required: str) -> bool:
+    a = _SAMPLE_STRENGTH_ORDER.get(actual, -1)
+    r = _SAMPLE_STRENGTH_ORDER.get(required, 99)
+    return a >= r
 
 
 # Which promotion states are valid for each canonical trace type. A
@@ -206,7 +236,43 @@ def gates(summary: dict) -> list[dict]:
         "detail": {"allowed_promotions": valid_promos},
     })
 
+    # Gate 9: analysis-sample policy recorded. Either an explicit
+    # statistical_sample_strength field is present, or the summary records
+    # both ``fixture_sample_rows`` and ``analysis_sample_rows`` (which
+    # ``scripts/ingest_cara_swissai.py`` always emits).
+    strength = summary.get("statistical_sample_strength")
+    has_split = (
+        "fixture_sample_rows" in summary and "analysis_sample_rows" in summary
+    )
+    sample_policy_ok = (
+        strength in {"fixture_only", "weak", "moderate", "strong"} or has_split
+    )
+    out.append({
+        "gate": "analysis_sample_policy_recorded",
+        "passed": sample_policy_ok,
+        "detail": {
+            "statistical_sample_strength": strength,
+            "fixture_sample_rows": summary.get("fixture_sample_rows"),
+            "analysis_sample_rows": summary.get("analysis_sample_rows"),
+        },
+    })
+
     return out
+
+
+def _filter_promotions_by_sample_strength(
+    allowed: list, strength: Optional[str],
+) -> list:
+    if not strength:
+        # Fail-closed: no strength label means we can only promote_for_schema_only.
+        return [t for t in allowed if t == "promoted_for_schema_only"]
+    return [
+        t for t in allowed
+        if _sample_strength_satisfies(
+            strength,
+            PROMOTION_TAG_MIN_SAMPLE_STRENGTH.get(t, "moderate"),
+        )
+    ]
 
 
 def evaluate_promotion(summary: dict) -> dict:
@@ -227,6 +293,16 @@ def evaluate_promotion(summary: dict) -> dict:
             "promotion_tags": [],
             "gate_log": [],
             "reasons": ["dataset is HF-gated; supply HF_TOKEN with access"],
+            "evaluated_at_s": time.time(),
+        }
+
+    # Auth failure short-circuit: caller explicitly recorded auth_blocked.
+    if summary.get("auth_status") == "auth_blocked":
+        return {
+            "state": "auth_blocked",
+            "promotion_tags": [],
+            "gate_log": [],
+            "reasons": ["HF auth failed despite token supplied; access denied"],
             "evaluated_at_s": time.time(),
         }
 
@@ -252,11 +328,34 @@ def evaluate_promotion(summary: dict) -> dict:
             "evaluated_at_s": time.time(),
         }
 
+    strength = summary.get("statistical_sample_strength")
+    qualifying = _filter_promotions_by_sample_strength(allowed, strength)
+
+    if not qualifying:
+        return {
+            "state": "promoted_for_schema_only",
+            "promotion_tags": ["promoted_for_schema_only"],
+            "gate_log": gate_log,
+            "reasons": [
+                f"statistical_sample_strength='{strength}' is insufficient for "
+                f"any of {allowed}; promoted_for_schema_only only"
+            ],
+            "evaluated_at_s": time.time(),
+        }
+
+    reasons = []
+    if len(qualifying) < len(allowed):
+        dropped = [t for t in allowed if t not in qualifying]
+        reasons.append(
+            f"statistical_sample_strength='{strength}' insufficient for "
+            f"{dropped}; downgraded to {qualifying}"
+        )
+
     return {
-        "state": allowed[0],
-        "promotion_tags": list(allowed),
+        "state": qualifying[0],
+        "promotion_tags": list(qualifying),
         "gate_log": gate_log,
-        "reasons": [],
+        "reasons": reasons,
         "evaluated_at_s": time.time(),
     }
 
@@ -273,6 +372,15 @@ def build_registry_entry(summary: dict, decision: dict) -> dict:
         "config_name": summary.get("config_name"),
         "source_url": summary.get("source_url"),
         "canonical_trace_type": summary.get("canonical_trace_type"),
+        "statistical_sample_strength": summary.get("statistical_sample_strength"),
+        "fixture_sample_rows": summary.get("fixture_sample_rows"),
+        "analysis_sample_rows": summary.get("analysis_sample_rows"),
+        "fixture_sample_bytes": summary.get("fixture_sample_bytes"),
+        "analysis_sample_bytes": summary.get("analysis_sample_bytes"),
+        "sampling_method": summary.get("sampling_method"),
+        "stratification_keys": summary.get("stratification_keys"),
+        "schema_profile_path": summary.get("schema_profile_path"),
+        "schema_mapping_path": summary.get("schema_mapping_path"),
         "trust_tier": CANONICAL_TRACE_TYPE_TO_TRUST_TIER.get(
             summary.get("canonical_trace_type") or "",
             "tier_6_synthetic_benchmark_data"),

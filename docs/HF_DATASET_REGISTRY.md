@@ -173,10 +173,20 @@ Rules (binding):
 
 ### 7.1 Datasets ingested + promoted
 
-| dataset_id | config | trace_type | trust tier | promotion state | sample rows | sample bytes | ingestion date |
-|---|---|---|---|---|---|---|---|
-| `agent-perf-bench/AgentPerfBench` | `trace_replay` | `latency_benchmark_trace` | Tier 4 | `promoted_for_performance_priors` (+ `promoted_for_constraint_aware_evaluation`, `promoted_for_training_priors`) | 100 | ~91 KB | 2026-05-31 |
-| `agent-perf-bench/AgentPerfBench` | `kernels_labeled` | `kernel_profile_trace` | Tier 4 | `promoted_for_performance_priors` (+ `promoted_for_training_priors`) | 100 | ~50 KB | 2026-05-31 |
+| dataset_id | config | trace_type | trust tier | promotion state | fixture rows | analysis rows | sample strength | ingestion date |
+|---|---|---|---|---|---|---|---|---|
+| `agent-perf-bench/AgentPerfBench` | `trace_replay` | `latency_benchmark_trace` | Tier 4 | `promoted_for_performance_priors` (+ `promoted_for_constraint_aware_evaluation`, `promoted_for_training_priors`) | 100 | n/a | n/a | 2026-05-31 |
+| `agent-perf-bench/AgentPerfBench` | `kernels_labeled` | `kernel_profile_trace` | Tier 4 | `promoted_for_performance_priors` (+ `promoted_for_training_priors`) | 100 | n/a | n/a | 2026-05-31 |
+| `asdwb/cara_latency_prediction` | `test_flat` | `telemetry_trace` | **Tier 2** | `promoted_for_constraint_aware_evaluation` (+ `promoted_for_backtest`; `dynamic_calibration` downgraded — needs `strong` strength) | 5 | 9,605 | moderate | 2026-05-31 |
+| `asdwb/cara_latency_prediction` | `test_queue_details` | `telemetry_trace` | **Tier 2** | `promoted_for_constraint_aware_evaluation` (+ `promoted_for_backtest`; `dynamic_calibration` downgraded) | 5 | 4,876 | moderate | 2026-05-31 |
+| `eth-easl/swissai-serving-trace` | `trace` | `request_shape_trace` | Tier 5 | `promoted_for_training_priors` | 5 | 25,409 | strong | 2026-05-31 |
+| `eth-easl/swissai-serving-trace` | `qwen3_32b_buckets` | `cache_residency_trace` | Tier 4 | `promoted_for_cache_residency_evaluation` (+ `promoted_for_training_priors`) | 5 | 19,130 | strong | 2026-05-31 |
+| `eth-easl/swissai-serving-trace` | `qwen3_32b_bucket_reuse` | `cache_residency_trace` | Tier 4 | `promoted_for_cache_residency_evaluation` (+ `promoted_for_training_priors`) | 5 | 16,593 | strong | 2026-05-31 |
+
+> **CARA** is the first Tier 2 (public telemetry trace) entry in the
+> federated corpus. See `docs/HF_CARA_SWISSAI_TELEMETRY_AUDIT.md` for the
+> full schema audit + alpha opportunity write-up (9× p99 latency spread
+> across GPU types for the same Qwen2.5-3B model).
 
 #### AgentPerfBench / trace_replay
 
@@ -278,10 +288,13 @@ Re-running `scripts/discover_hf_aurelius_datasets.py` rebuilds
 
 ## 10. Next actions (documented for the next run)
 
-- Add `cache_residency_trace` ingestion for
-  `jaytonde05/prefixbench` after extending
-  `RAW_TO_NORMALIZED["cache_residency_trace"]` to flatten the nested
-  `metadata.prefix_group` field.
+- Re-run `scripts/audit_cara_swissai_telemetry.py` against CARA
+  `train.jsonl` + `train_queue_details.jsonl` with a larger per-file
+  budget (50-100 MiB) so the analysis sample reaches `strong` strength
+  and CARA can be promoted to
+  `promoted_for_dynamic_calibration`.
+- Add a `cache_residency_trace` ingest path for
+  `jaytonde05/prefixbench` (flatten nested `metadata.prefix_group`).
 - Inspect (without ingesting) the SemiAnalysis WEKA traces under a
   manually approved bounded budget; the dataset's KV-block-hash
   structure could populate the first real Tier 3-4 cache-residency

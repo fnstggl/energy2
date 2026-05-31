@@ -39,6 +39,9 @@ def _good_summary(**overrides) -> dict:
         "ingestion_timestamp_s": 1_750_000_000.0,
         "git_sha": "deadbeef",
         "config_name": None,
+        "statistical_sample_strength": "strong",
+        "fixture_sample_rows": 5,
+        "analysis_sample_rows": 100,
     }
     base.update(overrides)
     return base
@@ -233,6 +236,8 @@ def test_promotion_states_enumerated():
         "promoted_for_dynamic_calibration",
         "promoted_for_performance_priors",
         "promoted_for_cache_residency_evaluation",
-        "rejected", "gated_blocked",
+        "promoted_for_schema_only",
+        "rejected", "gated_blocked", "auth_blocked",
+        "deferred_bounded_ingest",
     }
     assert expected == set(promotion.PROMOTION_STATES)
