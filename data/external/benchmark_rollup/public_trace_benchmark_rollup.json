@@ -1,0 +1,252 @@
+{
+  "_doc": "Aurelius public-trace benchmark rollup. Read docs/AURELIUS_PUBLIC_TRACE_BENCHMARK_ROLLUP.md and docs/RESULTS.md before using these numbers. Simulator / public-trace results only — directional only, NOT production savings (docs/RESULTS.md §8).",
+  "schema_version": 1,
+  "primary_kpi": "sla_safe_goodput_per_infrastructure_dollar",
+  "definition_of_safe": "for the SLA-safe-headline rollup, only benchmarks where constraint_aware is SAFE (timeout_pct <= 10%, queue_p99 within budget, no SLA-violation regression vs FIFO, no oracle inputs) are counted; UNSAFE baselines (e.g. utilization_aware on Azure 2024 with timeout >10%, robust_energy_standalone on the canonical energy backtest with 143 deadline misses) are NOT used as the headline comparator",
+  "oracle_baselines_excluded_from_headline": ["oracle_forecast_ANALYSIS_ONLY", "clairvoyant_lower_bound", "realized_optimal_frontier_oracle"],
+  "rollup_all_applicable_safe": {
+    "n_traces": 8,
+    "trace_ids": [
+      "burstgpt_v1",
+      "azure_llm_2023_conv",
+      "azure_llm_2024_week",
+      "alibaba_genai_2026",
+      "alibaba_gpu_v2023",
+      "philly_training",
+      "mit_supercloud_bounded",
+      "canonical_energy_backtest"
+    ],
+    "vs_strongest_realistic_baseline": {
+      "median_margin_pct": 8.54,
+      "mean_margin_pct": 19.24,
+      "weighted_mean_by_request_or_job_count_pct": 25.77,
+      "min_margin_pct": 0.0,
+      "max_margin_pct": 89.46,
+      "wins_count": 6,
+      "ties_count": 2,
+      "losses_count": 0,
+      "tie_band_pct": 1.0,
+      "no_regressions": true
+    },
+    "vs_naive_baseline": {
+      "median_margin_pct": 59.34,
+      "mean_margin_pct": 98.51,
+      "min_margin_pct": -7.52,
+      "max_margin_pct": 456.71,
+      "honest_note": "the single negative is azure_llm_2023_conv where static do-nothing FIFO at mean-sized capacity is cheaper than CA under mild burst load — reported honestly per docs/RESULTS.md §3"
+    },
+    "total_requests_or_jobs_covered": 44188462,
+    "total_days_covered_approx": 215.21
+  },
+  "rollup_llm_serving_only": {
+    "n_traces": 4,
+    "trace_ids": ["burstgpt_v1", "azure_llm_2023_conv", "azure_llm_2024_week", "alibaba_genai_2026"],
+    "vs_strongest_realistic_baseline": {
+      "median_margin_pct": 22.81,
+      "mean_margin_pct": 34.21,
+      "weighted_mean_by_request_count_pct": 25.78,
+      "min_margin_pct": 1.77,
+      "max_margin_pct": 89.46,
+      "wins_count": 4,
+      "ties_count": 0,
+      "losses_count": 0,
+      "no_unsafe_regressions": true
+    },
+    "best_trace": {"id": "alibaba_genai_2026", "margin_pct": 89.46, "attribution": "~62% from model-affinity/prewarm, ~38% from anticipatory sizing"},
+    "worst_trace": {"id": "burstgpt_v1", "margin_pct": 1.77, "rationale": "BurstGPT has only a model-level cache-affinity proxy and CA wins only marginally vs cache_affinity_baseline; +26% vs sla_aware is honestly noted but cache_affinity is the stronger comparator"},
+    "largest_trace": {"id": "azure_llm_2024_week", "n_requests": 44107694, "duration_days": 9.0, "margin_pct": 25.75, "gpu_hours_reduction_pct": 21.22},
+    "total_requests_covered": 44170448,
+    "safety_outcomes": "no unsafe regression on any LLM-serving public trace; safety evidence cited per trace in benchmark_inventory.json"
+  },
+  "rollup_training_gpu_scheduling_only": {
+    "n_traces": 3,
+    "trace_ids": ["alibaba_gpu_v2023", "philly_training", "mit_supercloud_bounded"],
+    "vs_strongest_realistic_baseline": {
+      "median_margin_pct": 0.0,
+      "mean_margin_pct": 2.00,
+      "weighted_mean_by_job_count_pct": 2.31,
+      "min_margin_pct": 0.0,
+      "max_margin_pct": 6.00,
+      "wins_count": 1,
+      "ties_count": 2,
+      "losses_count": 0
+    },
+    "vs_naive_fifo": {
+      "median_margin_pct": 56.43,
+      "max_margin_pct": 62.26,
+      "min_margin_pct": 16.35
+    },
+    "interpretation": "constraint_aware already sits on or near the safe utilization frontier for GPU packing / training scheduling — it WINS only on the price-aware-routing-applicable Alibaba GPU v2023 (+6%); on Philly and MIT Supercloud it TIES the strongest packing baseline (best_fit / FFD / topology_aware / utilization_aware all match within rounding) and WINS big vs naive FIFO (avoids head-of-line blocking).",
+    "total_jobs_covered": 16315
+  },
+  "rollup_energy_flexible_workload_only": {
+    "n_traces": 1,
+    "trace_ids": ["canonical_energy_backtest"],
+    "vs_strongest_realistic_baseline_current_price_only": {
+      "margin_pct": 11.07,
+      "delta_metric": 0.033623,
+      "n_jobs": 1000,
+      "safety_evidence": "constraint_aware deadline_misses=0; current_price_only deadline_misses=0 (parity); robust_energy_standalone 143 misses; greedy_energy 119 misses; sla_aware 143 misses"
+    },
+    "vs_naive_fifo_margin_pct": 103.46,
+    "vs_robust_energy_standalone_unsafe": {
+      "ca_safer": true,
+      "ca_eliminates_all_deadline_misses": true,
+      "ca_minus_standalone_energy_usd": 1924.2,
+      "honest_label": "SAFETY_WIN with ~+11% economic alpha; the standalone energy engine has lower raw energy cost but misses 143 deadlines — UNSAFE"
+    }
+  },
+  "rollup_frontier_specific": {
+    "static_frontier_controller_vs_constraint_aware": {
+      "azure_2024_week_margin_pct": 12.9782,
+      "azure_2024_week_gpu_hours_pct": -13.08,
+      "selected_rho": 0.75,
+      "constraint_aware_already_on_frontier_count": 3,
+      "frontier_win_count": 1,
+      "regression_count": 0,
+      "verdict": "Azure 2024 is the only applicable trace where the controller produces a measurable goodput/$ uplift over constraint_aware; the others are SAFE_TIEs because constraint_aware already sits at or near the safe-utilization frontier"
+    },
+    "dynamic_frontier_vs_static_frontier": {
+      "azure_2024_week_dynamic_vs_constraint_aware_static_pct": 3.83,
+      "azure_2024_week_dynamic_vs_static_frontier_controller_pct": 0.16,
+      "alpha_retained_vs_oracle_pct": 73.17,
+      "verdict": "DYNAMIC_BEATS_STATIC_CA"
+    },
+    "dynamic_calibration_oracle_alpha_capture_pct": {
+      "first_pass_pct": 91.07,
+      "last_pass_pct": 91.07,
+      "false_safe_rate_pct": 0.4510,
+      "false_unsafe_rate_pct": 14.1108,
+      "reached_aspirational_95pct_target": false,
+      "honest_note": "Closing the gap requires per-workload pilot calibration, not constant tuning."
+    },
+    "cross_trace_constraint_frontier_integration_safety": {
+      "applicable_traces": 3,
+      "skipped_traces": 3,
+      "any_regression": false,
+      "safe_or_win_pct": 100.0
+    }
+  },
+  "rollup_residency_cold_start": {
+    "n_traces_evaluated": 1,
+    "trace_ids": ["alibaba_genai_residency_decision"],
+    "small_sample_caveat": "n=60 per-request replay; goodput/$ is identical across policies because all share a fixed GPU pool. Diagnostic only.",
+    "economic_payoff_carried_by_alibaba_genai_ablation": {
+      "trace_id": "alibaba_genai_ablation",
+      "n_requests": 26392,
+      "constraint_aware_vs_sla_aware_pct": 89.46,
+      "shapley_attribution": {"affinity_share_pct": 62.1, "sizing_share_pct": 37.9}
+    }
+  },
+  "headline_recommendations": {
+    "conservative": {
+      "headline": "Across 8 public-trace and frozen-synthetic backtests, Aurelius improves SLA-safe goodput per infrastructure dollar by a median of ~9% (mean ~19%) vs the strongest realistic safe baselines, with 6 wins / 2 safe ties / 0 unsafe regressions.",
+      "must_include_caveats": [
+        "simulator / public-trace results only — directional only, NOT production savings",
+        "strongest realistic safe baseline differs by workload class (sla_aware reactive autoscaler for LLM serving; best_fit packing for GPU scheduling; current_price_only for energy)",
+        "ties on training/GPU scheduling are honestly reported — constraint_aware already sits on or near the safe utilization frontier on those workload classes"
+      ]
+    },
+    "strong_but_honest_with_up_to": {
+      "headline": "Aurelius shows up to +89% SLA-safe goodput/$ on real LLM-serving traces vs the strongest realistic reactive autoscaler (Alibaba GenAI 2026, primarily a model-affinity / prewarm effect), and +26% on Azure's 44.1M-request 9-day 2024 LLM-inference trace with 21% lower GPU-hours at parity SLA safety; LLM-serving median across 4 traces is +23%, with no unsafe regressions.",
+      "must_include_caveats": [
+        "simulator / public-trace results only — directional only, NOT production savings",
+        "\"up to\" headline must be paired with the median / win-rate so it cannot mislead",
+        "Alibaba GenAI gain is attribution-decomposed: ~62% model-affinity/prewarm, ~38% anticipatory sizing",
+        "Azure 2024 +26% is mostly utilization/target-rho cost efficiency — not forecasting accuracy"
+      ]
+    },
+    "technical_doc": {
+      "headline": "LLM-serving public traces (n=4, 44.1M requests, 9+ days): median +23% SLA-safe goodput/$ vs reactive SLA-aware baselines, with -21% GPU-hours on the largest trace (Azure LLM 2024 week-long) at parity SLA safety. GPU packing / training scheduling traces (n=3, 16.3k jobs, 205+ days): constraint_aware TIES the strongest safe packing baselines (best_fit / FFD / topology_aware) and WINS big (+16% — +62%) vs naive FIFO that suffers head-of-line blocking, suggesting those workloads were already near their safe frontier. Energy / flexible workload (canonical frozen 1000-job CAISO/PJM/ERCOT backtest): +11% SLA-safe goodput/$ vs current_price_only with 0 deadline misses (where robust_energy_standalone is +∼−11% cheaper on energy but misses 143 deadlines — UNSAFE). No unsafe regressions across all 8 traces.",
+      "must_include_caveats": [
+        "all results simulator / public-trace / frozen-synthetic — NOT customer telemetry",
+        "production-savings number requires the docs/RESULTS.md §8 production-claim gate to be satisfied",
+        "Philly canonical is fixture-scale (full 1 GB LFS not committed); MIT Supercloud is bounded-real (~3 MB sample of ~1-2 TB)",
+        "Oracle / clairvoyant baselines are analysis-only and excluded from the headline comparator"
+      ]
+    }
+  },
+  "outreach_use": {
+    "what_to_use": [
+      "the conservative headline above (median +9% across 8 public-trace and frozen-synthetic backtests, with 6/8 wins, 2/8 safe ties, 0 unsafe regressions)",
+      "the LLM-serving rollup: median +23% across 4 public LLM-inference traces, with no unsafe regressions",
+      "the Azure 2024 result: +26% goodput/$ at -21% GPU-hours, with attribution showing the win is a utilization-target / cost-efficiency effect (not a forecasting effect)",
+      "the canonical energy backtest result: +11% goodput/$ at 0 deadline misses vs current_price_only — a SAFETY_WIN with alpha",
+      "the cross-trace generalization audit: 100% safe-or-win rate, 0 regressions across the LLM-inference traces that integration was eligible for"
+    ],
+    "what_NOT_to_use": [
+      "the +89% Alibaba GenAI headline as a stand-alone claim — it is real but workload-specific (model-affinity-heavy stable-diffusion serving) and must be paired with the median",
+      "the +457% Alibaba GenAI vs FIFO number as a buyer-facing headline (FIFO is the sanity baseline, not the realistic deployable comparator)",
+      "the dynamic frontier estimator's 91% oracle-alpha capture as a production figure (95% target NOT reached; calibration is a pilot-telemetry task)",
+      "any number from the residency decision engine small-sample (n=60) per-request replay as economic alpha — it is a diagnostic, not a headline",
+      "the robust_energy_standalone's lower energy cost — it has 143 deadline misses (UNSAFE)",
+      "the utilization_aware policy on Azure 2024 — it has higher goodput/$ but >10% timeout rate (UNSAFE)",
+      "any production-savings phrasing until docs/RESULTS.md §8 gates are satisfied"
+    ]
+  },
+  "statistical_coverage": {
+    "n_traces_total_committed": 19,
+    "n_traces_in_safe_headline_rollup": 8,
+    "n_frontier_audits": 6,
+    "n_ablations_or_diagnostics": 4,
+    "n_excluded_with_reason": 2,
+    "total_real_requests_across_replays": 44178104,
+    "total_jobs_across_packing_training": 16315,
+    "approximate_days_covered_total": 270.21,
+    "public_trace_names": [
+      "BurstGPT (HPMLL)",
+      "Azure LLM Inference Trace 2023 (Azure / Microsoft)",
+      "Azure LLM Inference Dataset 2024 week-long (DynamoLLM HPCA 2025)",
+      "Alibaba GenAI 2026 (GenTD26 stable-diffusion serving)",
+      "Alibaba cluster-trace-gpu-v2023",
+      "Microsoft Philly traces",
+      "MIT Supercloud datacenter challenge",
+      "CAISO / PJM / ERCOT energy day-ahead and real-time prices"
+    ],
+    "raw_vs_fixture_status": {
+      "burstgpt_v1": "full raw trace replay (17,689 requests in canonical contiguous window)",
+      "azure_llm_2023_conv": "full raw conv trace replay",
+      "azure_llm_2024_week": "full raw week-long trace (44.1M rows, 9 days)",
+      "alibaba_genai_2026": "full raw trace replay (26,392 requests)",
+      "alibaba_gpu_v2023": "full raw pod list (6,282 jobs, 149 days)",
+      "philly_training": "FIXTURE-SCALE demonstration (33 jobs; full 1 GB LFS not committed)",
+      "mit_supercloud_bounded": "bounded REAL S3 sample (10,000 jobs, 55.9 days; ~3 MB downloaded of ~1-2 TB)",
+      "mit_supercloud_fixture": "FIXTURE (10 jobs); superseded by mit_supercloud_bounded",
+      "canonical_energy_backtest": "frozen synthetic 1000-job workload over real CAISO/PJM/ERCOT 2026-02 prices"
+    },
+    "production_ready": false,
+    "production_readiness_reason": "no result here is a production-savings claim. docs/RESULTS.md §8 production-claim gate (customer telemetry, calibrated priors, customer cost basis, shadow-pilot with no SLA regression) is NOT satisfied for any of these traces."
+  },
+  "safety_outcomes": {
+    "n_traces_safe": 8,
+    "n_traces_unsafe": 0,
+    "n_sla_regressions_vs_fifo": 0,
+    "n_with_lower_p99_than_baseline": 4,
+    "n_with_lower_gpu_hours_than_baseline": 4,
+    "unsafe_baselines_excluded_from_headline": [
+      "azure_llm_2024_week: utilization_aware (timeout_pct_mean 12.10% > 10% gate)",
+      "canonical_energy_backtest: robust_energy_standalone (143 deadline misses)",
+      "canonical_energy_backtest: greedy_energy (119 deadline misses)",
+      "canonical_energy_backtest: sla_aware (143 deadline misses on this trace's warmup-aware scoring)"
+    ]
+  },
+  "limitations": [
+    "Simulator / public-trace results only. NOT production savings (docs/RESULTS.md §8).",
+    "No customer telemetry calibration. No customer cost basis. No shadow-pilot validation.",
+    "BurstGPT has only model-level cache-affinity proxy (not real KV cache hit rate); Azure 2023/2024 have no cache/session/latency signal at all.",
+    "Philly canonical run is fixture-scale; full 1 GB LFS trace is not committed.",
+    "MIT Supercloud is a bounded real S3 sample (~3 MB of ~1-2 TB); per-node capacity not published.",
+    "Energy backtest uses a synthetic 1000-job workload mix (not customer-derived).",
+    "Dynamic frontier oracle-alpha capture aspirational 95% target was NOT reached (final 91.07%).",
+    "Residency decision engine (per-request) result is small-sample (n=60) and diagnostic only.",
+    "Oracle / clairvoyant baselines are present for analysis but are NEVER used as the headline comparator."
+  ],
+  "claim_rules_followed": {
+    "no_production_savings_claim": true,
+    "fifo_only_compared_as_sanity_baseline_when_labelled": true,
+    "oracle_baselines_excluded_from_headline": true,
+    "unsafe_baselines_excluded_from_safe_headline": true,
+    "median_and_win_rate_both_reported_alongside_up_to_number": true,
+    "fixture_only_results_flagged_explicitly": true
+  }
+}
