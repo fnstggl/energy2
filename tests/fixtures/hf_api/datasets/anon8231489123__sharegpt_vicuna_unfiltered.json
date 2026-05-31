@@ -1,0 +1,64 @@
+{
+  "cardData": {
+    "language": [
+      "en"
+    ],
+    "license": "apache-2.0"
+  },
+  "description": "Further cleaning done. Please look through the dataset and ensure that I didn't miss anything.\nUpdate: Confirmed working method for training the model: https://huggingface.co/AlekseyKorshuk/vicuna-7b/discussions/4#64346c08ef6d5abefe42c12c\nTwo choices:\n\nRemoves instances of \"I'm sorry, but\": https://huggingface.co/datasets/anon8231489123/ShareGPT_Vicuna_unfiltered/blob/main/ShareGPT_V3_unfiltered_cleaned_split_no_imsorry.json\nHas instances of \"I'm sorry, but\":\u2026 See the full description on the dataset page: https://huggingface.co/datasets/anon8231489123/ShareGPT_Vicuna_unfiltered.",
+  "downloads": 188063,
+  "gated": false,
+  "id": "anon8231489123/ShareGPT_Vicuna_unfiltered",
+  "lastModified": "2023-04-12T05:23:59.000Z",
+  "likes": 876,
+  "private": false,
+  "siblings": [
+    {
+      "rfilename": ".gitattributes"
+    },
+    {
+      "rfilename": "HTML_cleaned_raw_dataset/sg_90k_part1.json"
+    },
+    {
+      "rfilename": "HTML_cleaned_raw_dataset/sg_90k_part1_html_cleaned.json"
+    },
+    {
+      "rfilename": "HTML_cleaned_raw_dataset/sg_90k_part2.json"
+    },
+    {
+      "rfilename": "HTML_cleaned_raw_dataset/sg_90k_part2_html_cleaned.json"
+    },
+    {
+      "rfilename": "README.md"
+    },
+    {
+      "rfilename": "ShareGPT_V3_unfiltered_cleaned_split.json"
+    },
+    {
+      "rfilename": "ShareGPT_V3_unfiltered_cleaned_split_no_imsorry.json"
+    },
+    {
+      "rfilename": "Vicuna_unfiltered_train.ipynb"
+    },
+    {
+      "rfilename": "clean_sharegpt.py"
+    },
+    {
+      "rfilename": "flash_attn-0.2.8-cp39-cp39-linux_x86_64.whl"
+    },
+    {
+      "rfilename": "optional_clean.py"
+    },
+    {
+      "rfilename": "pretty_json.py"
+    },
+    {
+      "rfilename": "split_long_conversation.py"
+    }
+  ],
+  "tags": [
+    "language:en",
+    "license:apache-2.0",
+    "region:us"
+  ]
+}

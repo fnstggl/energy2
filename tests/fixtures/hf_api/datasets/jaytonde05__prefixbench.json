@@ -1,0 +1,115 @@
+{
+  "cardData": {
+    "configs": [
+      {
+        "config_name": "shared_schema_1k",
+        "data_files": [
+          {
+            "path": "shared_schema_1k.jsonl",
+            "split": "test"
+          }
+        ]
+      },
+      {
+        "config_name": "same_document_multi_query_8k",
+        "data_files": [
+          {
+            "path": "same_document_multi_query_8k.jsonl",
+            "split": "test"
+          }
+        ]
+      },
+      {
+        "config_name": "multiturn_agent_branching",
+        "data_files": [
+          {
+            "path": "multiturn_agent_branching.jsonl",
+            "split": "test"
+          }
+        ]
+      },
+      {
+        "config_name": "eviction_pressure_4k",
+        "data_files": [
+          {
+            "path": "eviction_pressure_4k.jsonl",
+            "split": "test"
+          }
+        ]
+      }
+    ],
+    "language": [
+      "en"
+    ],
+    "pretty_name": "PrefixBench",
+    "size_categories": [
+      "1K<n<10K"
+    ],
+    "tags": [
+      "text",
+      "synthetic",
+      "benchmark",
+      "llm-inference",
+      "prefix-caching",
+      "kv-cache",
+      "vllm",
+      "sglang",
+      "radix-attention"
+    ],
+    "task_categories": [
+      "text-generation"
+    ]
+  },
+  "description": "\n\t\n\t\t\n\t\n\t\n\t\tPrefixBench JSONL Datasets\n\t\n\nThese datasets generate deterministic prompts for testing KV prefix caching behavior in LLM inference servers such as vLLM and SGLang. The prompts use controlled shared prefixes plus small unique suffixes so benchmark clients can compare cache reuse, latency, and throughput across server configurations.\n\n\t\n\t\t\n\t\n\t\n\t\tFiles\n\t\n\n\nshared_schema_1k.jsonl: Simple shared-prefix benchmark. Every request reuses the same extraction instruction, JSON schema, and\u2026 See the full description on the dataset page: https://huggingface.co/datasets/jaytonde05/prefixbench.",
+  "downloads": 63,
+  "gated": false,
+  "id": "jaytonde05/prefixbench",
+  "lastModified": "2026-05-23T11:35:32.000Z",
+  "likes": 0,
+  "private": false,
+  "siblings": [
+    {
+      "rfilename": ".gitattributes"
+    },
+    {
+      "rfilename": "README.md"
+    },
+    {
+      "rfilename": "eviction_pressure_4k.jsonl"
+    },
+    {
+      "rfilename": "generate_prefixbench.py"
+    },
+    {
+      "rfilename": "multiturn_agent_branching.jsonl"
+    },
+    {
+      "rfilename": "same_document_multi_query_8k.jsonl"
+    },
+    {
+      "rfilename": "shared_schema_1k.jsonl"
+    }
+  ],
+  "tags": [
+    "task_categories:text-generation",
+    "language:en",
+    "size_categories:1K<n<10K",
+    "format:json",
+    "modality:tabular",
+    "modality:text",
+    "library:datasets",
+    "library:pandas",
+    "library:polars",
+    "library:mlcroissant",
+    "region:us",
+    "text",
+    "synthetic",
+    "benchmark",
+    "llm-inference",
+    "prefix-caching",
+    "kv-cache",
+    "vllm",
+    "sglang",
+    "radix-attention"
+  ]
+}

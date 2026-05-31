@@ -1,0 +1,75 @@
+{
+  "cardData": {
+    "configs": [
+      {
+        "config_name": "default",
+        "data_files": [
+          {
+            "path": "traces.jsonl",
+            "split": "train"
+          }
+        ]
+      }
+    ],
+    "license": "apache-2.0",
+    "pretty_name": "CC Traces \u2014 Weka, No-Subagents (May 12 2026)",
+    "size_categories": [
+      "n<1K"
+    ],
+    "tags": [
+      "llm",
+      "inference",
+      "benchmarking",
+      "kv-cache",
+      "agentic",
+      "multi-turn",
+      "claude"
+    ],
+    "task_categories": [
+      "text-generation"
+    ]
+  },
+  "description": "\n\t\n\t\t\n\t\n\t\n\t\tCC Traces \u2014 Weka, No-Subagents (May 12 2026)\n\t\n\nA collection of 949 multi-turn agentic traces (\u2248 136.1 k individual\nmodel requests) drawn from real production traffic against the Claude\nCode CLI \u2265 2.1.139. Each trace captures the full request/response\nsequence of a single agent session, including per-request KV block\nhashes, so the dataset can be replayed against an inference engine or\nused to simulate prefix-cache behavior offline.\nNo-subagents variant. This dataset is a\u2026 See the full description on the dataset page: https://huggingface.co/datasets/semianalysisai/cc-traces-weka-no",
+  "downloads": 1105,
+  "gated": false,
+  "id": "semianalysisai/cc-traces-weka-no-subagents-051226",
+  "lastModified": "2026-05-12T17:14:25.000Z",
+  "likes": 1,
+  "private": false,
+  "siblings": [
+    {
+      "rfilename": ".gitattributes"
+    },
+    {
+      "rfilename": "README.md"
+    },
+    {
+      "rfilename": "plots/distributions_linear.png"
+    },
+    {
+      "rfilename": "plots/distributions_log.png"
+    },
+    {
+      "rfilename": "traces.jsonl"
+    }
+  ],
+  "tags": [
+    "task_categories:text-generation",
+    "license:apache-2.0",
+    "size_categories:n<1K",
+    "format:json",
+    "modality:text",
+    "library:datasets",
+    "library:pandas",
+    "library:polars",
+    "library:mlcroissant",
+    "region:us",
+    "llm",
+    "inference",
+    "benchmarking",
+    "kv-cache",
+    "agentic",
+    "multi-turn",
+    "claude"
+  ]
+}

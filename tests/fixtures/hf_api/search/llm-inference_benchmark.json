@@ -1,0 +1,22 @@
+[
+  {
+    "description": "",
+    "downloads": 46,
+    "gated": false,
+    "id": "rbgo/llm-inference-benchmark",
+    "lastModified": "2024-11-12T05:02:21.000Z",
+    "likes": 1,
+    "private": false,
+    "tags": [
+      "size_categories:1K<n<10K",
+      "format:csv",
+      "modality:tabular",
+      "modality:text",
+      "library:datasets",
+      "library:pandas",
+      "library:mlcroissant",
+      "library:polars",
+      "region:us"
+    ]
+  }
+]

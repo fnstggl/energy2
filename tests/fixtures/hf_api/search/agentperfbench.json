@@ -1,0 +1,31 @@
+[
+  {
+    "description": "\n\t\n\t\t\n\t\tAgentPerfBench\n\t\n\nLLM inference benchmark: 3,197 main sweep rows and 37 per-layer kernel validation rows, plus 148,077 per-kernel NCU profiles, across 9 models, 14 GPU configurations, and 2 serving engines (vLLM 0.19.0, SGLang 0.5.9). All models served in BF16 except gpt-oss, which uses mxfp4 for projection weights.\n\n\t\n\t\t\n\t\tDataset configurations\n\t\n\n\n\t\n\t\t\n\t\ttrace_replay (2,932 rows)\n\t\n\nRep",
+    "downloads": 380,
+    "gated": false,
+    "id": "agent-perf-bench/AgentPerfBench",
+    "lastModified": "2026-05-07T08:31:04.000Z",
+    "likes": 0,
+    "private": false,
+    "tags": [
+      "task_categories:tabular-regression",
+      "language:en",
+      "license:apache-2.0",
+      "size_categories:100K<n<1M",
+      "format:parquet",
+      "modality:tabular",
+      "modality:text",
+      "library:datasets",
+      "library:pandas",
+      "library:polars",
+      "library:mlcroissant",
+      "region:us",
+      "llm-inference",
+      "benchmarking",
+      "gpu-profiling",
+      "vllm",
+      "sglang",
+      "agentic-workloads"
+    ]
+  }
+]

@@ -2719,3 +2719,56 @@ suppresses useless scale-up (`blocked_useless_scale_proxy_bottleneck`), and KEEP
   tested at the adapter (`reject_energy_move_cache_loss_exceeds_savings` /
   `accept_energy_move_cache_safe` / `accept_energy_move_low_cache_dependency` /
   `preserve_affinity_high_cache_hit_rate`) and `_gen_energy` levels.
+
+## 2026-05-31 — Federated HF benchmark corpus v1 (`feature/hf-dataset-discovery-corpus`)
+
+Autonomous Hugging Face discovery + bounded ingestion + federated benchmark
+corpus pipeline. **No production claims, no controllers modified, no
+robust energy engine touched.** This is a research / data-engine PR.
+
+**What landed**
+
+- `aurelius/traces/hf_corpus/` — federated corpus package: canonical
+  per-trace-type record schemas with `field_quality` provenance labels
+  (`schemas.py`), HF API discovery + scoring + classification (`discovery.py`),
+  bounded ingestion + summary writer (`ingestion.py`), promotion gates +
+  registry writer (`promotion.py`), compatibility-routed evaluation harness
+  (`evaluation.py`).
+- `scripts/discover_hf_aurelius_datasets.py` — metadata-only discovery against
+  the public HF API with `HF_TOKEN` honoured. Writes
+  `data/external/hf_discovery/hf_dataset_candidates.json`.
+- `scripts/ingest_hf_aurelius_dataset.py` — bounded ingestion with `--max-rows`,
+  `--max-bytes`, schema-first inspection, unknown-column rejection.
+- `scripts/run_hf_corpus_evaluations.py` — routes each promoted dataset to its
+  trace-type-specific smoke evaluator; skips incompatible datasets with explicit
+  reasons; never aggregates across trace types; never uses oracle as headline.
+- `docs/HF_DATASET_REGISTRY.md` — authoritative registry doc + trust hierarchy.
+- 4 new test files (71 new tests): `test_hf_dataset_discovery.py`,
+  `test_hf_bounded_ingestion.py`, `test_hf_corpus_promotion.py`,
+  `test_hf_corpus_evaluation_harness.py`.
+
+**Datasets in the corpus**
+
+- `agent-perf-bench/AgentPerfBench` / `trace_replay` (100-row bounded sample,
+  91 KB, `latency_benchmark_trace` → `promoted_for_performance_priors` +
+  `promoted_for_constraint_aware_evaluation` + `promoted_for_training_priors`).
+- `agent-perf-bench/AgentPerfBench` / `kernels_labeled` (100-row bounded sample,
+  50 KB, `kernel_profile_trace` → `promoted_for_performance_priors` +
+  `promoted_for_training_priors`).
+- `lmsys/chatbot_arena_conversations` evaluated → `gated_blocked` (gated:auto).
+- `jaytonde05/prefixbench` + `semianalysisai/cc-traces-weka-no-subagents-051226`
+  remain candidates pending a follow-up cache-residency ingest path.
+
+**Trust hierarchy (binding, from the spec)**: Tier 1 real pilot telemetry
+remains the only production calibration source; AgentPerfBench is Tier 4. The
+registry, every ingester, and every evaluator carry explicit
+`is_production_telemetry_substitute: false` /
+`comparison_against_oracle_is_headline: false` invariants.
+
+**Next**
+
+- Cache-residency ingest path for `jaytonde05/prefixbench` (flatten nested
+  `metadata.prefix_group`).
+- Bounded metadata-only audit of the WEKA CC traces with an explicit budget.
+- Synthetic telemetry-trace smoke fixture so `telemetry_calibration_smoke_v1`
+  has a positive test path before real telemetry lands.

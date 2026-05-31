@@ -1,0 +1,205 @@
+[
+  {
+    "description": "\n\t\n\t\t\n\t\tChatbot Arena Conversations Dataset\n\t\n\nThis dataset contains 33K cleaned conversations with pairwise human preferences.\nIt is collected from 13K unique IP addresses on the Chatbot Arena from April to June 2023.\nEach sample includes a question ID, two model names, their full conversation text in OpenAI API JSON format, the user vote, the anonymized user ID, the detected language tag, the Op",
+    "downloads": 90411,
+    "gated": "auto",
+    "id": "lmsys/chatbot_arena_conversations",
+    "lastModified": "2023-09-30T01:04:44.000Z",
+    "likes": 462,
+    "private": false,
+    "tags": [
+      "license:cc",
+      "size_categories:10K<n<100K",
+      "format:parquet",
+      "modality:tabular",
+      "modality:text",
+      "library:datasets",
+      "library:pandas",
+      "library:mlcroissant",
+      "library:polars",
+      "arxiv:2306.05685",
+      "region:us"
+    ]
+  },
+  {
+    "description": "\n\t\n\t\t\n\t\tDataset Card for \"lmsys-chatbot_arena_conversations\"\n\t\n\nMore Information needed\n",
+    "downloads": 417,
+    "gated": false,
+    "id": "agie-ai/lmsys-chatbot_arena_conversations",
+    "lastModified": "2023-07-22T04:52:36.000Z",
+    "likes": 0,
+    "private": false,
+    "tags": [
+      "size_categories:10K<n<100K",
+      "format:parquet",
+      "modality:tabular",
+      "modality:text",
+      "library:datasets",
+      "library:pandas",
+      "library:mlcroissant",
+      "library:polars",
+      "region:us"
+    ]
+  },
+  {
+    "description": "\n\t\n\t\t\n\t\tDataset Card for \"lmsys_chatbot_arena_conversations\"\n\t\n\nMore Information needed\n",
+    "downloads": 238,
+    "gated": false,
+    "id": "dim/lmsys_chatbot_arena_conversations",
+    "lastModified": "2023-11-08T02:26:43.000Z",
+    "likes": 0,
+    "private": false,
+    "tags": [
+      "size_categories:10K<n<100K",
+      "format:parquet",
+      "modality:tabular",
+      "modality:text",
+      "library:datasets",
+      "library:pandas",
+      "library:mlcroissant",
+      "library:polars",
+      "region:us"
+    ]
+  },
+  {
+    "description": "\n\t\n\t\t\n\t\tDataset Card for \"lmsys_chatbot_arena_conversations_gpt4_gpt-3.5-turbo_claudy\"\n\t\n\nMore Information needed\n",
+    "downloads": 33,
+    "gated": false,
+    "id": "dim/lmsys_chatbot_arena_conversations_gpt4_gpt35turbo_claudy",
+    "lastModified": "2023-11-08T02:40:02.000Z",
+    "likes": 0,
+    "private": false,
+    "tags": [
+      "size_categories:10K<n<100K",
+      "format:parquet",
+      "modality:text",
+      "library:datasets",
+      "library:pandas",
+      "library:mlcroissant",
+      "library:polars",
+      "region:us"
+    ]
+  },
+  {
+    "description": "The dataset is created by translating \"lmsys/chatbot_arena_conversations\" dataset.\nlink to original datset - https://huggingface.co/datasets/lmsys/chatbot_arena_conversations\nOriginal dataset contain two conversation from model_a and model_b and also given winner model between these two model conversation.\nI have selected winner conversation and converted that user query and assistant answer into ",
+    "downloads": 20,
+    "gated": false,
+    "id": "one-thing/chatbot_arena_conversations_hinglish",
+    "lastModified": "2024-01-14T05:22:20.000Z",
+    "likes": 5,
+    "private": false,
+    "tags": [
+      "license:apache-2.0",
+      "size_categories:10K<n<100K",
+      "format:csv",
+      "modality:text",
+      "library:datasets",
+      "library:pandas",
+      "library:mlcroissant",
+      "library:polars",
+      "region:us"
+    ]
+  },
+  {
+    "description": "datasource: https://colab.research.google.com/drive/1KdwokPjirkTmpO_P1WByFNFiqxWQquwH\n",
+    "downloads": 103,
+    "gated": false,
+    "id": "Jannchie/lmsys_chatbot_arena_conversations",
+    "lastModified": "2024-04-27T06:17:12.000Z",
+    "likes": 0,
+    "private": false,
+    "tags": [
+      "language:en",
+      "license:cc",
+      "size_categories:1M<n<10M",
+      "format:csv",
+      "modality:tabular",
+      "modality:text",
+      "library:datasets",
+      "library:pandas",
+      "library:mlcroissant",
+      "library:polars",
+      "region:us",
+      "LLM",
+      "Elo",
+      " lmsys"
+    ]
+  },
+  {
+    "description": "\n\t\n\t\t\n\t\tChatbot Arena Conversations Dataset\n\t\n\nThis dataset contains 33K cleaned conversations with pairwise human preferences.\nIt is collected from 13K unique IP addresses on the Chatbot Arena from April to June 2023.\nEach sample includes a question ID, two model names, their full conversation text in OpenAI API JSON format, the user vote, the anonymized user ID, the detected language tag, the Op",
+    "downloads": 18,
+    "gated": "manual",
+    "id": "d-llm/chatbot_arena_conversations",
+    "lastModified": "2024-06-02T17:45:28.000Z",
+    "likes": 0,
+    "private": false,
+    "tags": [
+      "size_categories:10K<n<100K",
+      "format:parquet",
+      "modality:tabular",
+      "modality:text",
+      "library:datasets",
+      "library:pandas",
+      "library:mlcroissant",
+      "library:polars",
+      "arxiv:2306.05685",
+      "region:us"
+    ]
+  },
+  {
+    "description": "\n\t\n\t\t\n\t\tDataset Card for \"lmsys_chatbot_arena_conversations_filtered\"\n\t\n\nMore Information needed\n",
+    "downloads": 78,
+    "gated": false,
+    "id": "vinhtran2611/lmsys_chatbot_arena_conversations_filtered",
+    "lastModified": "2024-06-14T07:04:17.000Z",
+    "likes": 0,
+    "private": false,
+    "tags": [
+      "size_categories:n<1K",
+      "format:parquet",
+      "modality:tabular",
+      "modality:text",
+      "library:datasets",
+      "library:pandas",
+      "library:mlcroissant",
+      "library:polars",
+      "region:us"
+    ]
+  },
+  {
+    "description": "\n\t\n\t\t\n\t\tDataset Card for \"lmsys_chatbot_arena_conversations_filtered_formated\"\n\t\n\nMore Information needed\n",
+    "downloads": 21,
+    "gated": false,
+    "id": "vinhtran2611/lmsys_chatbot_arena_conversations_filtered_formated",
+    "lastModified": "2024-06-14T07:04:21.000Z",
+    "likes": 0,
+    "private": false,
+    "tags": [
+      "size_categories:n<1K",
+      "format:parquet",
+      "modality:text",
+      "library:datasets",
+      "library:pandas",
+      "library:mlcroissant",
+      "library:polars",
+      "region:us"
+    ]
+  },
+  {
+    "description": "\n\t\n\t\t\n\t\tLLM-jp Chatbot Arena Conversations Dataset\n\t\n\nThis dataset contains approximately 1,000 conversations with pairwise human preferences, most of which are in Japanese.\nThe data was collected during the trial phase of the LLM-jp Chatbot Arena (January\u2013February 2025), where users compared responses from two different models in a head-to-head format.\nEach sample includes a question ID, the name",
+    "downloads": 77,
+    "gated": false,
+    "id": "llm-jp/llm-jp-chatbot-arena-conversations",
+    "lastModified": "2025-07-14T09:12:41.000Z",
+    "likes": 8,
+    "private": false,
+    "tags": [
+      "task_categories:question-answering",
+      "task_categories:text-generation",
+      "language:ja",
+      "license:cc",
+      "size_categories:n<1K",
+      "region:us"
+    ]
+  }
+]

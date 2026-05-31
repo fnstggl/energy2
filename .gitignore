@@ -82,3 +82,10 @@ data/external/sharegpt_aiperf/raw/*
 data/external/lmsys_chatbot_arena/raw/*
 !data/external/lmsys_chatbot_arena/raw/.gitkeep
 !data/external/lmsys_chatbot_arena/raw/bounded_download_manifest.json
+
+# Hugging Face dataset corpus — raw bounded downloads (gitignored). The small
+# processed sample.jsonl + summary.json IS committed. See
+# docs/HF_DATASET_REGISTRY.md for the federated corpus design.
+data/external/hf/*/raw/*
+data/external/hf/*/*/raw/*
+!data/external/hf/.gitkeep

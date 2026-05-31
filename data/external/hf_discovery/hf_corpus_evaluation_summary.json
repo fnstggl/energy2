@@ -1,0 +1,142 @@
+{
+  "aggregation_rule": "Results are NOT aggregated across trace_types. Aggregation is valid only within the same trace_type, evaluator, and KPI.",
+  "datasets_by_trace_type": {
+    "kernel_profile_trace": [
+      "agent-perf-bench/AgentPerfBench"
+    ],
+    "latency_benchmark_trace": [
+      "agent-perf-bench/AgentPerfBench"
+    ]
+  },
+  "doc_version": "hf_corpus_evaluation_summary_v1",
+  "evaluated_at_s": 1780256761.9593654,
+  "n_eligible": 2,
+  "n_evaluated": 2,
+  "n_skipped": 0,
+  "per_dataset_results": [
+    {
+      "canonical_trace_type": "latency_benchmark_trace",
+      "comparison_against_oracle_is_headline": false,
+      "dataset_id": "agent-perf-bench/AgentPerfBench",
+      "evaluated_at_s": 1780256761.9568074,
+      "evaluator_id": "latency_benchmark_prior_smoke_v1",
+      "informs": [
+        "performance_priors",
+        "constraint_aware_engine"
+      ],
+      "is_production_telemetry_substitute": false,
+      "kpi": "p99_ttft_ms_ratio_vs_baseline_prior",
+      "primary_baseline": "sla_aware_serving_frontier_static",
+      "promotion_state": "promoted_for_performance_priors",
+      "promotion_tags": [
+        "promoted_for_performance_priors",
+        "promoted_for_constraint_aware_evaluation",
+        "promoted_for_training_priors"
+      ],
+      "result": {
+        "mean_e2el_ms": {
+          "count": 100,
+          "max": 60754.61822071621,
+          "mean": 12859.246874162938,
+          "median": 10181.677878304885,
+          "min": 2541.522874609412,
+          "p90": 25842.541874933133,
+          "p95": 29901.225043240214,
+          "p99": 47781.80629297019
+        },
+        "mean_tpot_ms": {
+          "count": 100,
+          "max": 379.0037118210742,
+          "mean": 60.20029014013963,
+          "median": 42.57856328073926,
+          "min": 15.65699926048886,
+          "p90": 105.43430029485398,
+          "p95": 180.7709956280815,
+          "p99": 342.1960661306894
+        },
+        "mean_ttft_ms": {
+          "count": 100,
+          "max": 26681.881339985048,
+          "mean": 2552.550347708193,
+          "median": 513.5088855337958,
+          "min": 55.21337426810836,
+          "p90": 8134.546692017171,
+          "p95": 11222.750687327109,
+          "p99": 18730.203904967395
+        },
+        "p99_e2el_ms": {
+          "count": 100,
+          "max": 151893.56451849092,
+          "mean": 30145.061823490145,
+          "median": 21988.809196795017,
+          "min": 4576.147769824602,
+          "p90": 59127.25208384948,
+          "p95": 78330.94881618858,
+          "p99": 112379.08047120748
+        },
+        "p99_tpot_ms": {
+          "count": 100,
+          "max": 591.0499853576318,
+          "mean": 113.36687815717272,
+          "median": 56.03242200729987,
+          "min": 15.822380751802129,
+          "p90": 302.6530182361601,
+          "p95": 529.0988793505708,
+          "p99": 586.9585532906422
+        },
+        "p99_ttft_ms": {
+          "count": 100,
+          "max": 83628.97867295431,
+          "mean": 10023.891543066931,
+          "median": 2847.232855909971,
+          "min": 181.34361891658048,
+          "p90": 32517.129338400264,
+          "p95": 44235.626443635556,
+          "p99": 78913.50146704499
+        }
+      },
+      "result_quality": "prior_only",
+      "sample_rows_evaluated": 100,
+      "skip_reason": null,
+      "trust_tier": "tier_4_latency_benchmark_traces"
+    },
+    {
+      "canonical_trace_type": "kernel_profile_trace",
+      "comparison_against_oracle_is_headline": false,
+      "dataset_id": "agent-perf-bench/AgentPerfBench",
+      "evaluated_at_s": 1780256761.9586773,
+      "evaluator_id": "kernel_profile_prior_smoke_v1",
+      "informs": [
+        "performance_priors"
+      ],
+      "is_production_telemetry_substitute": false,
+      "kpi": "kernel_duration_ms_p50_distribution",
+      "primary_baseline": "static_kernel_cost_prior",
+      "promotion_state": "promoted_for_performance_priors",
+      "promotion_tags": [
+        "promoted_for_performance_priors",
+        "promoted_for_training_priors"
+      ],
+      "result": {
+        "duration_ms": {
+          "count": 100,
+          "max": 0.60003,
+          "mean": 0.2656908,
+          "median": 0.13952,
+          "min": 0.00458,
+          "p90": 0.59056,
+          "p95": 0.59392,
+          "p99": 0.59654
+        }
+      },
+      "result_quality": "prior_only",
+      "sample_rows_evaluated": 100,
+      "skip_reason": null,
+      "trust_tier": "tier_4_latency_benchmark_traces"
+    }
+  ],
+  "production_claim": false,
+  "stage": "federated_benchmark_corpus_evaluation_v1",
+  "treats_benchmark_as_production_telemetry": false,
+  "uses_oracle_as_headline": false
+}

@@ -1,0 +1,33 @@
+[
+  {
+    "description": "\n\t\n\t\t\n\t\tvLLM Iris Prefix Caching Benchmark Dataset\n\t\n\nThis dataset is specifically designed to test and benchmark the Automatic Prefix Caching feature in vLLM, using the technical announcement of vLLM Semantic Router v0.1 (Iris) as the shared context.\n\n\t\n\t\t\n\t\tDataset Structure\n\t\n\nThe dataset contains 20 prompts. Each prompt consists of:\n\nShared Prefix: The technical overview of the vLLM Semantic R",
+    "downloads": 32,
+    "gated": false,
+    "id": "jaytonde05/iris-prefix-cache-benchmark",
+    "lastModified": "2026-01-18T04:12:27.000Z",
+    "likes": 1,
+    "private": false,
+    "tags": [
+      "task_categories:text-generation",
+      "language:en",
+      "license:apache-2.0",
+      "size_categories:n<1K",
+      "format:parquet",
+      "format:optimized-parquet",
+      "modality:text",
+      "library:datasets",
+      "library:pandas",
+      "library:polars",
+      "library:mlcroissant",
+      "region:us",
+      "vllm",
+      "prefix-caching",
+      "benchmarking",
+      "inference-optimization",
+      "semantic-router",
+      "iris-release",
+      "llm-serving",
+      "kv-cache"
+    ]
+  }
+]

@@ -1,0 +1,256 @@
+{
+  "cardData": {
+    "dataset_info": {
+      "dataset_size": 81159839,
+      "download_size": 41572998,
+      "features": [
+        {
+          "dtype": "string",
+          "name": "question_id"
+        },
+        {
+          "dtype": "string",
+          "name": "model_a"
+        },
+        {
+          "dtype": "string",
+          "name": "model_b"
+        },
+        {
+          "dtype": "string",
+          "name": "winner"
+        },
+        {
+          "dtype": "string",
+          "name": "judge"
+        },
+        {
+          "list": [
+            {
+              "dtype": "string",
+              "name": "content"
+            },
+            {
+              "dtype": "string",
+              "name": "role"
+            }
+          ],
+          "name": "conversation_a"
+        },
+        {
+          "list": [
+            {
+              "dtype": "string",
+              "name": "content"
+            },
+            {
+              "dtype": "string",
+              "name": "role"
+            }
+          ],
+          "name": "conversation_b"
+        },
+        {
+          "dtype": "int64",
+          "name": "turn"
+        },
+        {
+          "dtype": "bool",
+          "name": "anony"
+        },
+        {
+          "dtype": "string",
+          "name": "language"
+        },
+        {
+          "dtype": "float64",
+          "name": "tstamp"
+        },
+        {
+          "name": "openai_moderation",
+          "struct": [
+            {
+              "name": "categories",
+              "struct": [
+                {
+                  "dtype": "bool",
+                  "name": "harassment"
+                },
+                {
+                  "dtype": "bool",
+                  "name": "harassment/threatening"
+                },
+                {
+                  "dtype": "bool",
+                  "name": "hate"
+                },
+                {
+                  "dtype": "bool",
+                  "name": "hate/threatening"
+                },
+                {
+                  "dtype": "bool",
+                  "name": "self-harm"
+                },
+                {
+                  "dtype": "bool",
+                  "name": "self-harm/instructions"
+                },
+                {
+                  "dtype": "bool",
+                  "name": "self-harm/intent"
+                },
+                {
+                  "dtype": "bool",
+                  "name": "sexual"
+                },
+                {
+                  "dtype": "bool",
+                  "name": "sexual/minors"
+                },
+                {
+                  "dtype": "bool",
+                  "name": "violence"
+                },
+                {
+                  "dtype": "bool",
+                  "name": "violence/graphic"
+                }
+              ]
+            },
+            {
+              "name": "category_scores",
+              "struct": [
+                {
+                  "dtype": "float64",
+                  "name": "harassment"
+                },
+                {
+                  "dtype": "float64",
+                  "name": "harassment/threatening"
+                },
+                {
+                  "dtype": "float64",
+                  "name": "hate"
+                },
+                {
+                  "dtype": "float64",
+                  "name": "hate/threatening"
+                },
+                {
+                  "dtype": "float64",
+                  "name": "self-harm"
+                },
+                {
+                  "dtype": "float64",
+                  "name": "self-harm/instructions"
+                },
+                {
+                  "dtype": "float64",
+                  "name": "self-harm/intent"
+                },
+                {
+                  "dtype": "float64",
+                  "name": "sexual"
+                },
+                {
+                  "dtype": "float64",
+                  "name": "sexual/minors"
+                },
+                {
+                  "dtype": "float64",
+                  "name": "violence"
+                },
+                {
+                  "dtype": "float64",
+                  "name": "violence/graphic"
+                }
+              ]
+            },
+            {
+              "dtype": "bool",
+              "name": "flagged"
+            }
+          ]
+        },
+        {
+          "name": "toxic_chat_tag",
+          "struct": [
+            {
+              "name": "roberta-large",
+              "struct": [
+                {
+                  "dtype": "bool",
+                  "name": "flagged"
+                },
+                {
+                  "dtype": "float64",
+                  "name": "probability"
+                }
+              ]
+            },
+            {
+              "name": "t5-large",
+              "struct": [
+                {
+                  "dtype": "bool",
+                  "name": "flagged"
+                },
+                {
+                  "dtype": "float64",
+                  "name": "score"
+                }
+              ]
+            }
+          ]
+        }
+      ],
+      "splits": [
+        {
+          "name": "train",
+          "num_bytes": 81159839,
+          "num_examples": 33000
+        }
+      ]
+    },
+    "extra_gated_prompt": "Disclaimers and Terms\n- This dataset contains conversations that may be considered unsafe, offensive, or upsetting. It is not intended for training dialogue agents without applying appropriate filtering measures. We are not responsible for any outputs of the models trained on this dataset.\n- Statements or opinions made in this dataset do not reflect the views of researchers or institutions involved in the data collection effort.\n- Users of this data are responsible for ensuring its appropriate use, which includes abiding by any applicable laws and regulations.\n- Users of this data should adhere to the terms of use for a specific model when using its direct outputs.\n- Users of this data agree to not attempt to determine the identity of individuals in this dataset.",
+    "license": "cc",
+    "size_categories": [
+      "10K<n<100K"
+    ],
+    "task_categories": [
+      "conversational"
+    ]
+  },
+  "description": "\n\t\n\t\t\n\t\n\t\n\t\tChatbot Arena Conversations Dataset\n\t\n\nThis dataset contains 33K cleaned conversations with pairwise human preferences.\nIt is collected from 13K unique IP addresses on the Chatbot Arena from April to June 2023.\nEach sample includes a question ID, two model names, their full conversation text in OpenAI API JSON format, the user vote, the anonymized user ID, the detected language tag, the OpenAI moderation API tag, the additional toxic tag, and the timestamp.\nTo ensure the safe\u2026 See the full description on the dataset page: https://huggingface.co/datasets/lmsys/chatbot_arena_conversa",
+  "downloads": 90411,
+  "gated": "auto",
+  "id": "lmsys/chatbot_arena_conversations",
+  "lastModified": "2023-09-30T01:04:44.000Z",
+  "likes": 462,
+  "private": false,
+  "siblings": [
+    {
+      "rfilename": ".gitattributes"
+    },
+    {
+      "rfilename": "README.md"
+    },
+    {
+      "rfilename": "data/train-00000-of-00001-cced8514c7ed782a.parquet"
+    }
+  ],
+  "tags": [
+    "license:cc",
+    "size_categories:10K<n<100K",
+    "format:parquet",
+    "modality:tabular",
+    "modality:text",
+    "library:datasets",
+    "library:pandas",
+    "library:mlcroissant",
+    "library:polars",
+    "arxiv:2306.05685",
+    "region:us"
+  ]
+}

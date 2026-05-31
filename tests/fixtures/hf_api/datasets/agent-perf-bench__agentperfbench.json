@@ -1,0 +1,678 @@
+{
+  "cardData": {
+    "configs": [
+      {
+        "config_name": "trace_replay",
+        "data_files": [
+          {
+            "path": "trace_replay/summary.parquet",
+            "split": "summary"
+          }
+        ]
+      },
+      {
+        "config_name": "synthetic_distributional",
+        "data_files": [
+          {
+            "path": "synthetic_distributional/summary.parquet",
+            "split": "summary"
+          }
+        ]
+      },
+      {
+        "config_name": "per_layer_kernel",
+        "data_files": [
+          {
+            "path": "per_layer_kernel/summary.parquet",
+            "split": "summary"
+          }
+        ]
+      },
+      {
+        "config_name": "kernels_labeled",
+        "data_files": [
+          {
+            "path": "kernel_profiles/kernels_labeled.parquet",
+            "split": "train"
+          }
+        ]
+      },
+      {
+        "config_name": "mse_validation",
+        "data_files": [
+          {
+            "path": "mse_validation/summary.parquet",
+            "split": "summary"
+          }
+        ]
+      }
+    ],
+    "dataset_info": [
+      {
+        "config_name": "trace_replay",
+        "features": [
+          {
+            "dtype": "string",
+            "name": "run_id"
+          },
+          {
+            "dtype": "string",
+            "name": "model"
+          },
+          {
+            "dtype": "string",
+            "name": "model_family"
+          },
+          {
+            "dtype": "string",
+            "name": "hardware"
+          },
+          {
+            "dtype": "string",
+            "name": "engine"
+          },
+          {
+            "dtype": "int64",
+            "name": "tensor_parallelism"
+          },
+          {
+            "dtype": "string",
+            "name": "profile"
+          },
+          {
+            "dtype": "int64",
+            "name": "concurrency"
+          },
+          {
+            "dtype": "int64",
+            "name": "num_requests"
+          },
+          {
+            "dtype": "float64",
+            "name": "duration_s"
+          },
+          {
+            "dtype": "float64",
+            "name": "request_throughput"
+          },
+          {
+            "dtype": "float64",
+            "name": "input_token_throughput"
+          },
+          {
+            "dtype": "float64",
+            "name": "output_token_throughput"
+          },
+          {
+            "dtype": "float64",
+            "name": "total_token_throughput"
+          },
+          {
+            "dtype": "float64",
+            "name": "mean_ttft_ms"
+          },
+          {
+            "dtype": "float64",
+            "name": "median_ttft_ms"
+          },
+          {
+            "dtype": "float64",
+            "name": "p90_ttft_ms"
+          },
+          {
+            "dtype": "float64",
+            "name": "p99_ttft_ms"
+          },
+          {
+            "dtype": "float64",
+            "name": "mean_tpot_ms"
+          },
+          {
+            "dtype": "float64",
+            "name": "median_tpot_ms"
+          },
+          {
+            "dtype": "float64",
+            "name": "p90_tpot_ms"
+          },
+          {
+            "dtype": "float64",
+            "name": "p99_tpot_ms"
+          },
+          {
+            "dtype": "float64",
+            "name": "mean_itl_ms"
+          },
+          {
+            "dtype": "float64",
+            "name": "median_itl_ms"
+          },
+          {
+            "dtype": "float64",
+            "name": "p90_itl_ms"
+          },
+          {
+            "dtype": "float64",
+            "name": "p99_itl_ms"
+          },
+          {
+            "dtype": "float64",
+            "name": "mean_e2el_ms"
+          },
+          {
+            "dtype": "float64",
+            "name": "median_e2el_ms"
+          },
+          {
+            "dtype": "float64",
+            "name": "p90_e2el_ms"
+          },
+          {
+            "dtype": "float64",
+            "name": "p99_e2el_ms"
+          }
+        ],
+        "splits": [
+          {
+            "name": "summary",
+            "num_bytes": 640182,
+            "num_examples": 2932
+          }
+        ]
+      },
+      {
+        "config_name": "synthetic_distributional",
+        "features": [
+          {
+            "dtype": "string",
+            "name": "run_id"
+          },
+          {
+            "dtype": "string",
+            "name": "model"
+          },
+          {
+            "dtype": "string",
+            "name": "model_family"
+          },
+          {
+            "dtype": "string",
+            "name": "hardware"
+          },
+          {
+            "dtype": "string",
+            "name": "engine"
+          },
+          {
+            "dtype": "int64",
+            "name": "tensor_parallelism"
+          },
+          {
+            "dtype": "string",
+            "name": "profile"
+          },
+          {
+            "dtype": "int64",
+            "name": "concurrency"
+          },
+          {
+            "dtype": "int64",
+            "name": "num_requests"
+          },
+          {
+            "dtype": "float64",
+            "name": "duration_s"
+          },
+          {
+            "dtype": "float64",
+            "name": "request_throughput"
+          },
+          {
+            "dtype": "float64",
+            "name": "input_token_throughput"
+          },
+          {
+            "dtype": "float64",
+            "name": "output_token_throughput"
+          },
+          {
+            "dtype": "float64",
+            "name": "total_token_throughput"
+          },
+          {
+            "dtype": "float64",
+            "name": "mean_ttft_ms"
+          },
+          {
+            "dtype": "float64",
+            "name": "median_ttft_ms"
+          },
+          {
+            "dtype": "float64",
+            "name": "p90_ttft_ms"
+          },
+          {
+            "dtype": "float64",
+            "name": "p99_ttft_ms"
+          },
+          {
+            "dtype": "float64",
+            "name": "mean_tpot_ms"
+          },
+          {
+            "dtype": "float64",
+            "name": "median_tpot_ms"
+          },
+          {
+            "dtype": "float64",
+            "name": "p90_tpot_ms"
+          },
+          {
+            "dtype": "float64",
+            "name": "p99_tpot_ms"
+          },
+          {
+            "dtype": "float64",
+            "name": "mean_itl_ms"
+          },
+          {
+            "dtype": "float64",
+            "name": "median_itl_ms"
+          },
+          {
+            "dtype": "float64",
+            "name": "p90_itl_ms"
+          },
+          {
+            "dtype": "float64",
+            "name": "p99_itl_ms"
+          },
+          {
+            "dtype": "float64",
+            "name": "mean_e2el_ms"
+          },
+          {
+            "dtype": "float64",
+            "name": "median_e2el_ms"
+          },
+          {
+            "dtype": "float64",
+            "name": "p90_e2el_ms"
+          },
+          {
+            "dtype": "float64",
+            "name": "p99_e2el_ms"
+          }
+        ],
+        "splits": [
+          {
+            "name": "summary",
+            "num_examples": 265
+          }
+        ]
+      },
+      {
+        "config_name": "per_layer_kernel",
+        "features": [
+          {
+            "dtype": "string",
+            "name": "record_type"
+          },
+          {
+            "dtype": "string",
+            "name": "model"
+          },
+          {
+            "dtype": "string",
+            "name": "hardware"
+          },
+          {
+            "dtype": "string",
+            "name": "phase"
+          },
+          {
+            "dtype": "int64",
+            "name": "batch_size"
+          },
+          {
+            "dtype": "int64",
+            "name": "sequence_length"
+          },
+          {
+            "dtype": "string",
+            "name": "component_name"
+          },
+          {
+            "dtype": "string",
+            "name": "bound"
+          },
+          {
+            "dtype": "float64",
+            "name": "flops"
+          },
+          {
+            "dtype": "float64",
+            "name": "bytes_accessed"
+          },
+          {
+            "dtype": "float64",
+            "name": "operational_intensity"
+          },
+          {
+            "dtype": "float64",
+            "name": "ridge_point"
+          },
+          {
+            "dtype": "int64",
+            "name": "kernel_id"
+          },
+          {
+            "dtype": "string",
+            "name": "kernel_name"
+          },
+          {
+            "dtype": "string",
+            "name": "block_size"
+          },
+          {
+            "dtype": "string",
+            "name": "grid_size"
+          },
+          {
+            "dtype": "float64",
+            "name": "duration_us"
+          },
+          {
+            "dtype": "float64",
+            "name": "compute_sm_throughput_pct"
+          },
+          {
+            "dtype": "float64",
+            "name": "dram_throughput_pct"
+          },
+          {
+            "dtype": "float64",
+            "name": "memory_throughput_pct"
+          },
+          {
+            "dtype": "float64",
+            "name": "l1_tex_cache_throughput_pct"
+          },
+          {
+            "dtype": "float64",
+            "name": "l2_cache_throughput_pct"
+          },
+          {
+            "dtype": "float64",
+            "name": "sm_frequency_ghz"
+          },
+          {
+            "dtype": "float64",
+            "name": "dram_frequency_ghz"
+          }
+        ],
+        "splits": [
+          {
+            "name": "summary",
+            "num_bytes": 12000,
+            "num_examples": 37
+          }
+        ]
+      },
+      {
+        "config_name": "kernels_labeled",
+        "features": [
+          {
+            "dtype": "string",
+            "name": "source"
+          },
+          {
+            "dtype": "string",
+            "name": "gpu"
+          },
+          {
+            "dtype": "string",
+            "name": "model"
+          },
+          {
+            "dtype": "string",
+            "name": "kernel_family"
+          },
+          {
+            "dtype": "string",
+            "name": "kernel_name"
+          },
+          {
+            "dtype": "string",
+            "name": "dtype"
+          },
+          {
+            "dtype": "bool",
+            "name": "held_out"
+          },
+          {
+            "dtype": "float64",
+            "name": "M"
+          },
+          {
+            "dtype": "float64",
+            "name": "N"
+          },
+          {
+            "dtype": "float64",
+            "name": "K"
+          },
+          {
+            "dtype": "float64",
+            "name": "bs"
+          },
+          {
+            "dtype": "float64",
+            "name": "seq"
+          },
+          {
+            "dtype": "float64",
+            "name": "n_heads"
+          },
+          {
+            "dtype": "float64",
+            "name": "head_dim"
+          },
+          {
+            "dtype": "float64",
+            "name": "kv_heads"
+          },
+          {
+            "dtype": "float64",
+            "name": "numel"
+          },
+          {
+            "dtype": "string",
+            "name": "op_type"
+          },
+          {
+            "dtype": "float64",
+            "name": "gpu_time_duration_ms"
+          },
+          {
+            "dtype": "float64",
+            "name": "launch_block_size"
+          },
+          {
+            "dtype": "float64",
+            "name": "launch_grid_size"
+          },
+          {
+            "dtype": "float64",
+            "name": "dram_bytes_sum"
+          },
+          {
+            "dtype": "float64",
+            "name": "launch_registers_per_thread"
+          }
+        ],
+        "splits": [
+          {
+            "name": "train",
+            "num_examples": 148077
+          }
+        ]
+      },
+      {
+        "config_name": "mse_validation",
+        "features": [
+          {
+            "dtype": "string",
+            "name": "run_id"
+          },
+          {
+            "dtype": "string",
+            "name": "model"
+          },
+          {
+            "dtype": "string",
+            "name": "hardware"
+          },
+          {
+            "dtype": "string",
+            "name": "engine"
+          },
+          {
+            "dtype": "string",
+            "name": "profile"
+          },
+          {
+            "dtype": "int64",
+            "name": "concurrency"
+          },
+          {
+            "dtype": "int64",
+            "name": "num_requests"
+          },
+          {
+            "dtype": "int64",
+            "name": "successful_requests"
+          },
+          {
+            "dtype": "int64",
+            "name": "failed_requests"
+          },
+          {
+            "dtype": "float64",
+            "name": "duration_s"
+          },
+          {
+            "dtype": "float64",
+            "name": "request_throughput"
+          },
+          {
+            "dtype": "float64",
+            "name": "mean_ttft_ms"
+          },
+          {
+            "dtype": "float64",
+            "name": "mean_tpot_ms"
+          },
+          {
+            "dtype": "float64",
+            "name": "mean_e2el_ms"
+          }
+        ],
+        "splits": [
+          {
+            "name": "summary",
+            "num_examples": 28
+          }
+        ]
+      }
+    ],
+    "language": [
+      "en"
+    ],
+    "license": "apache-2.0",
+    "pretty_name": "AgentPerfBench",
+    "size_categories": [
+      "100K<n<1M"
+    ],
+    "tags": [
+      "llm-inference",
+      "benchmarking",
+      "gpu-profiling",
+      "vllm",
+      "sglang",
+      "agentic-workloads"
+    ],
+    "task_categories": [
+      "tabular-regression"
+    ],
+    "version": "1.0"
+  },
+  "description": "\n\t\n\t\t\n\t\n\t\n\t\tAgentPerfBench\n\t\n\nLLM inference benchmark: 3,197 main sweep rows and 37 per-layer kernel validation rows, plus 148,077 per-kernel NCU profiles, across 9 models, 14 GPU configurations, and 2 serving engines (vLLM 0.19.0, SGLang 0.5.9). All models served in BF16 except gpt-oss, which uses mxfp4 for projection weights.\n\n\t\n\t\t\n\t\n\t\n\t\tDataset configurations\n\t\n\n\n\t\n\t\t\n\t\n\t\n\t\ttrace_replay (2,932 rows)\n\t\n\nReplays exact ISL/OSL sequences from recorded agent sessions (SWE-Bench, TerminalBench\u2026 See the full description on the dataset page: https://huggingface.co/datasets/agent-perf-bench/AgentPer",
+  "downloads": 380,
+  "gated": false,
+  "id": "agent-perf-bench/AgentPerfBench",
+  "lastModified": "2026-05-07T08:31:04.000Z",
+  "likes": 0,
+  "private": false,
+  "siblings": [
+    {
+      "rfilename": ".gitattributes"
+    },
+    {
+      "rfilename": "README.md"
+    },
+    {
+      "rfilename": "croissant.json"
+    },
+    {
+      "rfilename": "kernel_profiles/kernels_labeled.parquet"
+    },
+    {
+      "rfilename": "mse_validation/README.md"
+    },
+    {
+      "rfilename": "mse_validation/fidelity_deltas.csv"
+    },
+    {
+      "rfilename": "mse_validation/manifest.csv"
+    },
+    {
+      "rfilename": "mse_validation/notes/morphology-experiment-2026-05-05.md"
+    },
+    {
+      "rfilename": "mse_validation/notes/mse-validation-debug-process-2026-05-05.md"
+    },
+    {
+      "rfilename": "mse_validation/summary.parquet"
+    },
+    {
+      "rfilename": "per_layer_kernel/summary.parquet"
+    },
+    {
+      "rfilename": "synthetic_distributional/summary.parquet"
+    },
+    {
+      "rfilename": "trace_replay/summary.parquet"
+    }
+  ],
+  "tags": [
+    "task_categories:tabular-regression",
+    "language:en",
+    "license:apache-2.0",
+    "size_categories:100K<n<1M",
+    "format:parquet",
+    "modality:tabular",
+    "modality:text",
+    "library:datasets",
+    "library:pandas",
+    "library:polars",
+    "library:mlcroissant",
+    "region:us",
+    "llm-inference",
+    "benchmarking",
+    "gpu-profiling",
+    "vllm",
+    "sglang",
+    "agentic-workloads"
+  ]
+}

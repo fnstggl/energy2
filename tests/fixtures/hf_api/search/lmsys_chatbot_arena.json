@@ -1,0 +1,167 @@
+[
+  {
+    "description": "\n\t\n\t\t\n\t\tChatbot Arena Conversations Dataset\n\t\n\nThis dataset contains 33K cleaned conversations with pairwise human preferences.\nIt is collected from 13K unique IP addresses on the Chatbot Arena from April to June 2023.\nEach sample includes a question ID, two model names, their full conversation text in OpenAI API JSON format, the user vote, the anonymized user ID, the detected language tag, the Op",
+    "downloads": 90411,
+    "gated": "auto",
+    "id": "lmsys/chatbot_arena_conversations",
+    "lastModified": "2023-09-30T01:04:44.000Z",
+    "likes": 462,
+    "private": false,
+    "tags": [
+      "license:cc",
+      "size_categories:10K<n<100K",
+      "format:parquet",
+      "modality:tabular",
+      "modality:text",
+      "library:datasets",
+      "library:pandas",
+      "library:mlcroissant",
+      "library:polars",
+      "arxiv:2306.05685",
+      "region:us"
+    ]
+  },
+  {
+    "description": "\n\t\n\t\t\n\t\tDataset Card for \"lmsys-chatbot_arena_conversations\"\n\t\n\nMore Information needed\n",
+    "downloads": 417,
+    "gated": false,
+    "id": "agie-ai/lmsys-chatbot_arena_conversations",
+    "lastModified": "2023-07-22T04:52:36.000Z",
+    "likes": 0,
+    "private": false,
+    "tags": [
+      "size_categories:10K<n<100K",
+      "format:parquet",
+      "modality:tabular",
+      "modality:text",
+      "library:datasets",
+      "library:pandas",
+      "library:mlcroissant",
+      "library:polars",
+      "region:us"
+    ]
+  },
+  {
+    "description": "\n\t\n\t\t\n\t\tDataset Card for \"lmsys_chatbot_arena_conversations\"\n\t\n\nMore Information needed\n",
+    "downloads": 238,
+    "gated": false,
+    "id": "dim/lmsys_chatbot_arena_conversations",
+    "lastModified": "2023-11-08T02:26:43.000Z",
+    "likes": 0,
+    "private": false,
+    "tags": [
+      "size_categories:10K<n<100K",
+      "format:parquet",
+      "modality:tabular",
+      "modality:text",
+      "library:datasets",
+      "library:pandas",
+      "library:mlcroissant",
+      "library:polars",
+      "region:us"
+    ]
+  },
+  {
+    "description": "\n\t\n\t\t\n\t\tDataset Card for \"lmsys_chatbot_arena_conversations_gpt4_gpt-3.5-turbo_claudy\"\n\t\n\nMore Information needed\n",
+    "downloads": 33,
+    "gated": false,
+    "id": "dim/lmsys_chatbot_arena_conversations_gpt4_gpt35turbo_claudy",
+    "lastModified": "2023-11-08T02:40:02.000Z",
+    "likes": 0,
+    "private": false,
+    "tags": [
+      "size_categories:10K<n<100K",
+      "format:parquet",
+      "modality:text",
+      "library:datasets",
+      "library:pandas",
+      "library:mlcroissant",
+      "library:polars",
+      "region:us"
+    ]
+  },
+  {
+    "description": "datasource: https://colab.research.google.com/drive/1KdwokPjirkTmpO_P1WByFNFiqxWQquwH\n",
+    "downloads": 103,
+    "gated": false,
+    "id": "Jannchie/lmsys_chatbot_arena_conversations",
+    "lastModified": "2024-04-27T06:17:12.000Z",
+    "likes": 0,
+    "private": false,
+    "tags": [
+      "language:en",
+      "license:cc",
+      "size_categories:1M<n<10M",
+      "format:csv",
+      "modality:tabular",
+      "modality:text",
+      "library:datasets",
+      "library:pandas",
+      "library:mlcroissant",
+      "library:polars",
+      "region:us",
+      "LLM",
+      "Elo",
+      " lmsys"
+    ]
+  },
+  {
+    "description": "\n\t\n\t\t\n\t\tDataset Card for \"lmsys_chatbot_arena_conversations_filtered\"\n\t\n\nMore Information needed\n",
+    "downloads": 78,
+    "gated": false,
+    "id": "vinhtran2611/lmsys_chatbot_arena_conversations_filtered",
+    "lastModified": "2024-06-14T07:04:17.000Z",
+    "likes": 0,
+    "private": false,
+    "tags": [
+      "size_categories:n<1K",
+      "format:parquet",
+      "modality:tabular",
+      "modality:text",
+      "library:datasets",
+      "library:pandas",
+      "library:mlcroissant",
+      "library:polars",
+      "region:us"
+    ]
+  },
+  {
+    "description": "\n\t\n\t\t\n\t\tDataset Card for \"lmsys_chatbot_arena_conversations_filtered_formated\"\n\t\n\nMore Information needed\n",
+    "downloads": 21,
+    "gated": false,
+    "id": "vinhtran2611/lmsys_chatbot_arena_conversations_filtered_formated",
+    "lastModified": "2024-06-14T07:04:21.000Z",
+    "likes": 0,
+    "private": false,
+    "tags": [
+      "size_categories:n<1K",
+      "format:parquet",
+      "modality:text",
+      "library:datasets",
+      "library:pandas",
+      "library:mlcroissant",
+      "library:polars",
+      "region:us"
+    ]
+  },
+  {
+    "description": "Demo for Baskerville classification\nData originally from https://huggingface.co/datasets/lmsys/chatbot_arena_conversations\nTransformed so label = 0 for lose, 1 for win\n",
+    "downloads": 91,
+    "gated": false,
+    "id": "yanjo-gutenberg/lmsys-chatbot-arena-classification",
+    "lastModified": "2025-09-17T17:30:33.000Z",
+    "likes": 0,
+    "private": false,
+    "tags": [
+      "size_categories:10K<n<100K",
+      "format:parquet",
+      "modality:tabular",
+      "modality:text",
+      "library:datasets",
+      "library:pandas",
+      "library:mlcroissant",
+      "library:polars",
+      "region:us"
+    ]
+  }
+]

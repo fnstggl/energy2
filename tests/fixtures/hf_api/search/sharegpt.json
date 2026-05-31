@@ -1,0 +1,166 @@
+[
+  {
+    "description": "Further cleaning done. Please look through the dataset and ensure that I didn't miss anything.\nUpdate: Confirmed working method for training the model: https://huggingface.co/AlekseyKorshuk/vicuna-7b/discussions/4#64346c08ef6d5abefe42c12c\nTwo choices:\n\nRemoves instances of \"I'm sorry, but\": https://huggingface.co/datasets/anon8231489123/ShareGPT_Vicuna_unfiltered/blob/main/ShareGPT_V3_unfiltered_c",
+    "downloads": 188063,
+    "gated": false,
+    "id": "anon8231489123/ShareGPT_Vicuna_unfiltered",
+    "lastModified": "2023-04-12T05:23:59.000Z",
+    "likes": 876,
+    "private": false,
+    "tags": [
+      "language:en",
+      "license:apache-2.0",
+      "region:us"
+    ]
+  },
+  {
+    "description": "",
+    "downloads": 41,
+    "gated": false,
+    "id": "interstellarninja/tool-calls-sharegpt",
+    "lastModified": "2024-01-06T19:36:27.000Z",
+    "likes": 2,
+    "private": false,
+    "tags": [
+      "license:apache-2.0",
+      "size_categories:1K<n<10K",
+      "format:parquet",
+      "modality:text",
+      "library:datasets",
+      "library:pandas",
+      "library:mlcroissant",
+      "library:polars",
+      "region:us"
+    ]
+  },
+  {
+    "description": "\n\t\n\t\t\n\t\troleplay \u6570\u636e\u96c6\n\t\n\n\n\t\n\t\t\n\t\t\u6570\u636e\n\t\n\n\u6211\u4eec\u67094\u4e2a\u6570\u636e\u96c6\u6587\u4ef6:\n\n\"sharegpt_formatted_data-evol-gpt4.jsonl\" \u6765\u81ea bai-roleplay/evol-character-entire \u5c06\u5176\u8f6c\u6362\u4e3asharegpt\u683c\u5f0f\u3002\n\"sharegpt_formatted_data-evol-gpt35.jsonl\" \u6765\u81ea bai-roleplay/evol-character-entire \u5c06\u5176\u8f6c\u6362\u4e3asharegpt\u683c\u5f0f\u3002\n\"sharegpt_formatted_data-evol-male-gpt35.jsonl\" \u6765\u81ea bai-roleplay/evol-character-entire \u5c06\u5176\u8f6c\u6362\u4e3asharegpt\u683c\u5f0f\u3002\n\"sharegpt_formatted_data-roleplay-chat-1k.jsonl\" \u6765\u81ea",
+    "downloads": 228,
+    "gated": false,
+    "id": "shibing624/roleplay-zh-sharegpt-gpt4-data",
+    "lastModified": "2024-06-26T14:18:15.000Z",
+    "likes": 70,
+    "private": false,
+    "tags": [
+      "task_categories:text-generation",
+      "language:zh",
+      "license:apache-2.0",
+      "size_categories:1K<n<10K",
+      "format:json",
+      "modality:text",
+      "library:datasets",
+      "library:pandas",
+      "library:mlcroissant",
+      "library:polars",
+      "region:us"
+    ]
+  },
+  {
+    "description": "\n\t\n\t\t\n\t\tDataset Card for ShareGPT52K90K\n\t\n\n\n\t\n\t\t\n\t\tDataset Summary\n\t\n\nThis dataset is a collection of approximately 52,00090,000 conversations scraped via the ShareGPT API before it was shut down.\nThese conversations include both user prompts and responses from OpenAI's ChatGPT.\nThis repository now contains the new 90K conversations version. The previous 52K may\nbe found in the old/ directory.\n\n\t\n",
+    "downloads": 1542,
+    "gated": false,
+    "id": "RyokoAI/ShareGPT52K",
+    "lastModified": "2023-04-02T13:16:51.000Z",
+    "likes": 360,
+    "private": false,
+    "tags": [
+      "task_categories:text-generation",
+      "language:en",
+      "language:es",
+      "language:de",
+      "language:multilingual",
+      "license:cc0-1.0",
+      "size_categories:10K<n<100K",
+      "region:us",
+      "conversation",
+      "rlhf",
+      "chatgpt",
+      "gpt-3.5"
+    ]
+  },
+  {
+    "description": "\n\t\n\t\t\n\t\tPrepraration\n\t\n\npip3 install -r requirements.txt\n\n\n\t\n\t\t\n\t\tData Cleaning\n\t\n\n\nmerge two raw json files and json beautify the merged file\n\npython merge.py sharegpt_90k_raw_dataset/sg_90k_part1.json sharegpt_90k_raw_dataset/sg_90k_part2.json  sharegpt_20230401_html_unformatted.json\npython pretty_json.py --in sharegpt_20230401_html_unformatted.json --out sharegpt_20230401_html.json\n\n\n(Optional)",
+    "downloads": 201,
+    "gated": false,
+    "id": "philschmid/sharegpt-raw",
+    "lastModified": "2023-04-04T08:52:59.000Z",
+    "likes": 91,
+    "private": false,
+    "tags": [
+      "license:other",
+      "modality:text",
+      "region:us"
+    ]
+  },
+  {
+    "description": "",
+    "downloads": 569,
+    "gated": false,
+    "id": "IlyaGusev/ru_sharegpt_cleaned",
+    "lastModified": "2023-09-16T14:34:28.000Z",
+    "likes": 14,
+    "private": false,
+    "tags": [
+      "task_categories:text-generation",
+      "language:ru",
+      "size_categories:n<1K",
+      "region:us"
+    ]
+  },
+  {
+    "description": "\n\t\n\t\t\n\t\tshareGPT \ud55c\uad6d\uc5b4 \ubc88\uc5ed \ub370\uc774\ud130\uc14b\n\t\n\n\uc774 \ud504\ub85c\uc81d\ud2b8\ub294 shareGPT \ub370\uc774\ud130\uc14b 60\ub9cc \ub300\ud654\ubb38\uc744 DeepL \uc744 \ud1b5\ud574 \ud55c\uad6d\uc5b4\ub85c \ubc88\uc5ed\ud558\uace0 \uc788\uc2b5\ub2c8\ub2e4. \n\ud604\uc7ac \ubc88\uc5ed\uc774 \uc9c4\ud589 \uc911\uc774\uba70, \uc544\ub798\uc758 \uc9c4\ud589\uc0c1\ud669\uc744 \ucc38\uace0\ud574 \uc8fc\uc138\uc694.\n\n\t\n\t\t\n\t\t\uc9c4\ud589\uc0c1\ud669\n\t\n\n62\ub9cc \ub300\ud654\ubb38\uc911 62\ub9cc \ub300\ud654\ubb38\ubc88\uc5ed\uc644\ub8cc.\n\n\t\n\t\t\n\t\t\ud30c\uc77c\uad6c\uc870\n\t\n\n\noriginal_dataset.json : \uc6d0\ubcf8 shareGPT \ud30c\uc77c(62\ub9cc \uc601\ubb38\ub300\ud654\ubb38)\nko_dataset.json : \ubc88\uc5ed\ubcf8 shareGPT\ud30c\uc77c, \uad6c\uc870 \uc6d0\ubcf8\uacfc \ub3d9\uc77c\nko_dataset_2.json : ko_dataset.json \uc5d0\uc11c \ud30c\uc77c\uad6c\uc870\uac00 \ubd88\uc548\uc815\ud55c(\ub300\ud654\uac00 \uc5c6\uac70\ub098, \ub300\ud654\uc758 \uc2dc\uc791\uc774 gpt \uc778\ub370 \uadf8 \uc774\ud6c4 \ub300\ud654\uac00 \uc5c6\ub294\uac83\ub4e4) \ub300\ud654 \uc0ad\uc81c \ubc84\uc804\nko_alpaca_style_dataset.json",
+    "downloads": 146,
+    "gated": false,
+    "id": "junelee/sharegpt_deepl_ko",
+    "lastModified": "2023-04-27T01:43:36.000Z",
+    "likes": 64,
+    "private": false,
+    "tags": [
+      "region:us"
+    ]
+  },
+  {
+    "description": "\n\t\n\t\t\n\t\tShareGPT-Chinese-English-90k Bilingual Human-Machine QA Dataset\n\t\n\nA high-quality Chinese-English parallel bilingual human-machine QA dataset, covering user questions in real and complex scenarios. It is used for training high-quality dialogue models (more robust in instruction distribution than those datasets generated by repeatedly calling API interfaces to simulate machine-generated Q&A",
+    "downloads": 1512,
+    "gated": false,
+    "id": "shareAI/ShareGPT-Chinese-English-90k",
+    "lastModified": "2025-12-29T15:43:05.000Z",
+    "likes": 280,
+    "private": false,
+    "tags": [
+      "task_categories:question-answering",
+      "task_categories:text-generation",
+      "language:en",
+      "language:zh",
+      "license:apache-2.0",
+      "size_categories:10K<n<100K",
+      "region:us",
+      "code"
+    ]
+  },
+  {
+    "description": "\u539f\u59cb\u672a\u6e05\u6d17\u3001\u7ffb\u8bd1\u7684\u6570\u636e\uff0c\u7528\u4e8e\u5b58\u653e\u65b9\u4fbf\u6587\u4ef6\u4f20\u8f93\u3002\n",
+    "downloads": 8,
+    "gated": false,
+    "id": "shareAI/shareGPT_origin",
+    "lastModified": "2023-04-16T03:46:54.000Z",
+    "likes": 3,
+    "private": false,
+    "tags": [
+      "license:openrail",
+      "region:us"
+    ]
+  },
+  {
+    "description": "\n\t\n\t\t\n\t\tshareGPT dataset\n\t\n\nDataset contains 90k conversation collected in ShareGPT website. Used to finetune LLM to act like chatGPT\n",
+    "downloads": 104,
+    "gated": false,
+    "id": "icybee/share_gpt_90k_v1",
+    "lastModified": "2023-04-19T06:52:08.000Z",
+    "likes": 15,
+    "private": false,
+    "tags": [
+      "region:us"
+    ]
+  }
+]

@@ -1,0 +1,33 @@
+[
+  {
+    "description": "\n\t\n\t\t\n\t\tPrefixBench JSONL Datasets\n\t\n\nThese datasets generate deterministic prompts for testing KV prefix caching behavior in LLM inference servers such as vLLM and SGLang. The prompts use controlled shared prefixes plus small unique suffixes so benchmark clients can compare cache reuse, latency, and throughput across server configurations.\n\n\t\n\t\t\n\t\tFiles\n\t\n\n\nshared_schema_1k.jsonl: Simple shared-p",
+    "downloads": 63,
+    "gated": false,
+    "id": "jaytonde05/prefixbench",
+    "lastModified": "2026-05-23T11:35:32.000Z",
+    "likes": 0,
+    "private": false,
+    "tags": [
+      "task_categories:text-generation",
+      "language:en",
+      "size_categories:1K<n<10K",
+      "format:json",
+      "modality:tabular",
+      "modality:text",
+      "library:datasets",
+      "library:pandas",
+      "library:polars",
+      "library:mlcroissant",
+      "region:us",
+      "text",
+      "synthetic",
+      "benchmark",
+      "llm-inference",
+      "prefix-caching",
+      "kv-cache",
+      "vllm",
+      "sglang",
+      "radix-attention"
+    ]
+  }
+]
