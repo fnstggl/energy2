@@ -138,19 +138,19 @@
     },
     {
       "field": "timeout_pct",
-      "best_real_source": "error_rate_pct (best-effort) OR pilot-derived from latency_p99 vs latency_sla_p99",
-      "status": "partial",
+      "best_real_source": "resolve_timeout_pct() fallback chain: A=explicit timeout counter, B=deadline_exceeded counter, C=error_rate_pct, D=latency_p99 > SLA proxy",
+      "status": "wired_with_fallback_chain",
       "tested": true,
-      "confidence": "low",
-      "caveat": "no mainstream runtime emits a SLA-aware timeout counter directly"
+      "confidence": "medium",
+      "caveat": "Levels A/B are not exposed by mainstream serving runtimes today; the bridge auto-selects the best available level and records it on the FieldProvenance.fallback_level field"
     },
     {
       "field": "sla_violation_pct",
-      "best_real_source": "pilot-derived from latency_p99 vs latency_sla_p99",
-      "status": "missing",
-      "tested": false,
-      "confidence": "low",
-      "caveat": "requires pilot-side derivation against the workload's SLA policy"
+      "best_real_source": "derive_sla_violation_pct(latency_p99_ms, latency_sla_p99_ms) - per-tick binary, aggregated over a window for a meaningful share",
+      "status": "implemented_derived",
+      "tested": true,
+      "confidence": "medium",
+      "caveat": "DERIVED signal; binary per-tick (100.0 when latency_p99 > sla, else 0.0); only meaningful aggregated over a window"
     },
     {
       "field": "mean_utilization",
@@ -161,16 +161,16 @@
     },
     {
       "field": "scale_events_delta",
-      "best_real_source": "Kubernetes Deployment.metadata.generation delta over window OR HPA events",
-      "status": "partial",
+      "best_real_source": "compute_k8s_scale_delta(prev_snapshot, curr_snapshot, owner_name=...) - deterministic pod-set delta across two K8sPlacementSnapshots",
+      "status": "implemented_derived",
       "tested": true,
-      "confidence": "medium",
-      "caveat": "K8s connector emits placement snapshot, not generation delta; requires a small follow-up export"
+      "confidence": "high",
+      "caveat": "Requires two snapshots; uses (namespace, pod_name) as identity key so rolling restarts are visible as churn"
     },
     {
       "field": "churn_delta",
-      "best_real_source": "derived from migration history or replica slope",
-      "status": "partial",
+      "best_real_source": "compute_k8s_scale_delta(...).churn_count - distinct from replica_delta so rolling restarts (churn>0, replica_delta=0) are separable from scale-ups",
+      "status": "implemented_derived",
       "tested": true,
       "confidence": "medium"
     },
@@ -250,13 +250,19 @@
     "real_cluster_execution": "DISABLED BY DEFAULT (recommendation-only)"
   },
   "remaining_gaps_before_pilot_production_claim": [
-    "true per-tick timeout share (no mainstream serving runtime emits a SLA-aware timeout counter)",
-    "sla_violation_pct requires pilot-side derivation from latency_p99 vs latency_sla_p99_ms",
-    "scale_events_delta needs K8s deployment-generation delta export",
-    "SGLang Prometheus adapter (does not exist)",
+    "Levels A/B of timeout fallback (explicit per-second timeout / deadline_exceeded counters) are not exposed by mainstream serving runtimes today; bridge uses C_ERROR_RATE or D_SLA_RISK_PROXY",
+    "SGLang Prometheus adapter remains BLOCKED_SCHEMA_UNKNOWN - no fixture, no registry; skipped test documents the gap (see tests/test_pilot_telemetry_wiring.py::test_sglang_adapter_blocked_schema_unknown)",
     "TensorRT-LLM Prometheus adapter (does not exist)",
-    "per-request cold-start timestamps require pilot model-loader instrumentation"
+    "Per-request cold-start timestamps require pilot model-loader instrumentation (vLLM cannot self-report)",
+    "Real-cluster execution remains disabled by default - calibration produces shadow-mode recommendations only"
   ],
+  "wiring_improvements_2026_05_31": {
+    "telemetry_provenance_module": "aurelius/frontier/telemetry_provenance.py: FieldOrigin enum (REAL/DERIVED/PROXY/SIMULATED/MISSING), FieldProvenance, TickProvenance, TimeoutFallback enum (A->D), resolve_timeout_pct(), derive_sla_violation_pct()",
+    "bridge_with_provenance": "aurelius/frontier/dynamic_telemetry.py::telemetry_tick_with_provenance_from_inference_service_state - returns (tick, TickProvenance) so callers can audit per-field provenance",
+    "k8s_scale_delta": "aurelius/connectors/kubernetes.py::compute_k8s_scale_delta(prev, curr, owner_name, namespace) -> K8sReplicaDelta (replicas, scale_events, churn_count, added/removed pod names)",
+    "vllm_preemptions": "aurelius/connectors/vllm.py now scrapes vllm:num_preemptions_total into InferenceServiceState.preemptions_total; registered as inference.preemptions_per_second in vllm_registry()",
+    "calibration_summary_provenance_rollup": "compute_frontier_calibration_summary() now emits a telemetry_provenance block counting origins per field, plus timeout_fallback_counts, when records carry tick_provenance"
+  },
   "honesty_contract": {
     "no_new_dataset": true,
     "no_engine_change": true,

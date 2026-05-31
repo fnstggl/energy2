@@ -49,3 +49,7 @@ vllm:e2e_request_latency_seconds_bucket{model_name="llama3-70b",le="5.0"} 9987
 vllm:e2e_request_latency_seconds_bucket{model_name="llama3-70b",le="+Inf"} 10234
 vllm:e2e_request_latency_seconds_sum{model_name="llama3-70b"} 18234.5
 vllm:e2e_request_latency_seconds_count{model_name="llama3-70b"} 10234
+# HELP vllm:num_preemptions_total Cumulative number of request preemptions (KV cache pressure)
+# TYPE vllm:num_preemptions_total counter
+vllm:num_preemptions_total{model_name="llama3-70b"} 47
+vllm:num_preemptions_total{model_name="mistral-7b"} 3

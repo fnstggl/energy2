@@ -57,6 +57,11 @@ class DynamicFrontierPrediction:
     confidence: float = 0.5
     risk_reason_codes: tuple = ()
     source: str = "dynamic_frontier_estimator_v1"
+    # Optional per-field provenance for the telemetry the prediction was
+    # built from. JSON-serializable dict produced by
+    # ``TickProvenance.to_dict()`` — kept as a plain dict so the
+    # evaluation module does not depend on provenance internals.
+    tick_provenance: Optional[dict] = None
 
     def to_dict(self) -> dict:
         d = asdict(self)
@@ -66,9 +71,11 @@ class DynamicFrontierPrediction:
     @classmethod
     def from_dict(cls, d: dict) -> "DynamicFrontierPrediction":
         rrc = d.get("risk_reason_codes") or ()
+        tp = d.get("tick_provenance")
         payload = {k: d.get(k) for k in cls.__dataclass_fields__
-                   if k != "risk_reason_codes"}
-        return cls(**payload, risk_reason_codes=tuple(rrc))
+                   if k not in ("risk_reason_codes", "tick_provenance")}
+        return cls(**payload, risk_reason_codes=tuple(rrc),
+                   tick_provenance=tp)
 
 
 @dataclass(frozen=True)
@@ -545,6 +552,32 @@ def compute_frontier_calibration_summary(
                 if r.prediction.recommended_rho is not None]
     avg_rec_rho = (sum(rec_rhos) / len(rec_rhos)) if rec_rhos else None
 
+    # Telemetry-provenance roll-up — for honest shadow reports.
+    # Counts each (record, field) pair classified by origin so the
+    # report shows e.g. "90 % of queue_p99_ms inputs were PROXY".
+    origin_counts: dict[str, int] = {}
+    field_origin_counts: dict[str, dict[str, int]] = {}
+    timeout_fallback_counts: dict[str, int] = {}
+    records_with_provenance = 0
+    for r in records:
+        tp = getattr(r.prediction, "tick_provenance", None)
+        if not tp:
+            continue
+        records_with_provenance += 1
+        for entry in tp.get("entries", ()):
+            origin = entry.get("origin")
+            field_name = entry.get("field")
+            if not origin or not field_name:
+                continue
+            origin_counts[origin] = origin_counts.get(origin, 0) + 1
+            per_field = field_origin_counts.setdefault(field_name, {})
+            per_field[origin] = per_field.get(origin, 0) + 1
+            if field_name == "timeout_pct":
+                fb = entry.get("fallback_level")
+                if fb:
+                    timeout_fallback_counts[fb] = (
+                        timeout_fallback_counts.get(fb, 0) + 1)
+
     return {
         "n_records": n,
         "mae_goodput_per_dollar": mae_g,
@@ -572,6 +605,19 @@ def compute_frontier_calibration_summary(
         "action_distribution": dict(sorted(actions.items())),
         "average_recommended_rho": avg_rec_rho,
         "rho_distribution": dict(sorted(rho_counts.items())),
+        # Telemetry-provenance audit — None when no record carried a
+        # provenance payload (older callers or pure simulator runs).
+        "telemetry_provenance": (
+            None if records_with_provenance == 0 else {
+                "records_with_provenance": records_with_provenance,
+                "origin_counts": dict(sorted(origin_counts.items())),
+                "per_field_origin_counts": {
+                    k: dict(sorted(v.items()))
+                    for k, v in sorted(field_origin_counts.items())
+                },
+                "timeout_fallback_counts":
+                    dict(sorted(timeout_fallback_counts.items())),
+            }),
     }
 
 

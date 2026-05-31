@@ -47,6 +47,7 @@ _F_QUEUE_DEPTH = "inference.queue_depth"
 _F_ACTIVE_SEQ = "inference.active_sequences"
 _F_KV_CACHE = "inference.kv_cache_usage_pct"
 _F_PREFIX_HIT = "inference.prefix_cache_hit_rate_pct"
+_F_PREEMPTIONS = "inference.preemptions_per_second"
 
 
 def _get_scalar(snapshot: TelemetrySnapshot, field: str, **label_filters: str) -> Optional[float]:
@@ -153,6 +154,8 @@ class VLLMAdapter:
             p99_latency_ms=_clamp_non_negative(_get_scalar(snapshot, _F_E2E_P99, **lf)),
             kv_cache_usage=_clamp_fraction(kv_raw),
             prefix_cache_hit_rate=_clamp_fraction(prefix_raw),
+            preemptions_total=_clamp_non_negative(
+                _get_scalar(snapshot, _F_PREEMPTIONS, **lf)),
         )
 
     def normalize_all_services(

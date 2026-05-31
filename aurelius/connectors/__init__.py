@@ -23,9 +23,11 @@ from aurelius.connectors.base import (
 from aurelius.connectors.kubernetes import (
     FakeKubernetesConnector,
     K8sPlacementSnapshot,
+    K8sReplicaDelta,
     KubernetesConnector,
     KubernetesConnectorConfig,
     PodPlacement,
+    compute_k8s_scale_delta,
     normalize_node_dict,
     normalize_pod_dict,
 )
@@ -75,9 +77,11 @@ __all__ = [
     # Kubernetes (Phase 4)
     "FakeKubernetesConnector",
     "K8sPlacementSnapshot",
+    "K8sReplicaDelta",
     "KubernetesConnector",
     "KubernetesConnectorConfig",
     "PodPlacement",
+    "compute_k8s_scale_delta",
     "normalize_node_dict",
     "normalize_pod_dict",
     # Topology (Phase 5)

@@ -156,6 +156,155 @@ class K8sPlacementSnapshot:
 
 
 # ---------------------------------------------------------------------------
+# Replica delta / scale-event derivation across two snapshots.
+# ---------------------------------------------------------------------------
+
+
+@dataclass(frozen=True)
+class K8sReplicaDelta:
+    """Deterministic replica/scale/churn delta between two K8s snapshots.
+
+    Computed from the running-pod set keyed by (namespace, pod_name);
+    K8s rotates pod names when they are deleted + recreated, so the
+    set-symmetric-difference is a faithful churn signal even when the
+    total replica count is unchanged. Owner-filtered when ``owner_name``
+    is supplied so noisy daemonsets / system pods do not pollute the
+    signal for a specific Deployment.
+
+    Attributes:
+        prev_replicas: count of Running, owner-matching pods in ``prev``.
+        curr_replicas: count of Running, owner-matching pods in ``curr``.
+        replica_delta: ``curr_replicas - prev_replicas`` (signed).
+        scale_events: 1 if ``replica_delta != 0``, else 0 — a binary
+            "did the autoscaler move replicas this window?" signal.
+        added_pod_names: set of pod names in ``curr`` but not ``prev``.
+        removed_pod_names: set of pod names in ``prev`` but not ``curr``.
+        churn_count: ``len(added) + len(removed)``. Distinct from
+            replica_delta because rolling restarts have churn=2N but
+            replica_delta=0.
+        prev_fetched_at: timestamp of the ``prev`` snapshot.
+        curr_fetched_at: timestamp of the ``curr`` snapshot.
+        window_seconds: ``curr - prev`` in seconds (0.0 if invalid).
+        owner_name: filter applied to the comparison (None = all owners).
+        namespace: filter applied (None = all namespaces).
+    """
+
+    prev_replicas: int
+    curr_replicas: int
+    replica_delta: int
+    scale_events: int
+    added_pod_names: frozenset
+    removed_pod_names: frozenset
+    churn_count: int
+    prev_fetched_at: datetime
+    curr_fetched_at: datetime
+    window_seconds: float
+    owner_name: Optional[str] = None
+    namespace: Optional[str] = None
+
+    def to_dict(self) -> dict:
+        return {
+            "prev_replicas": self.prev_replicas,
+            "curr_replicas": self.curr_replicas,
+            "replica_delta": self.replica_delta,
+            "scale_events": self.scale_events,
+            "added_pod_names": sorted(self.added_pod_names),
+            "removed_pod_names": sorted(self.removed_pod_names),
+            "churn_count": self.churn_count,
+            "prev_fetched_at": self.prev_fetched_at.isoformat(),
+            "curr_fetched_at": self.curr_fetched_at.isoformat(),
+            "window_seconds": self.window_seconds,
+            "owner_name": self.owner_name,
+            "namespace": self.namespace,
+        }
+
+
+def _matches(pod: PodPlacement, *,
+             owner_name: Optional[str],
+             namespace: Optional[str]) -> bool:
+    if namespace is not None and pod.namespace != namespace:
+        return False
+    if owner_name is not None and pod.owner_name != owner_name:
+        return False
+    return True
+
+
+def compute_k8s_scale_delta(
+    prev: K8sPlacementSnapshot,
+    curr: K8sPlacementSnapshot,
+    *,
+    owner_name: Optional[str] = None,
+    namespace: Optional[str] = None,
+    running_only: bool = True,
+) -> K8sReplicaDelta:
+    """Derive replica / scale-event / churn deltas from two snapshots.
+
+    Identity key is ``(namespace, pod_name)``: K8s recreates pods with
+    fresh names on rolling restarts so the set-symmetric-difference
+    captures pod-level churn even when the gross count is unchanged.
+
+    The function is deterministic and adapter-safe — it requires no live
+    cluster access. Tests pass synthetic snapshots.
+
+    Args:
+        prev: earlier :class:`K8sPlacementSnapshot`.
+        curr: later snapshot.
+        owner_name: only consider pods whose first ownerReference name
+            matches (e.g. a single Deployment / StatefulSet). ``None``
+            means count every pod.
+        namespace: only consider pods in this namespace. ``None`` means
+            all namespaces.
+        running_only: when True (default), only Running pods count for
+            replica totals — Pending / Succeeded / Failed are excluded.
+            Set False to count any pod with the matching owner/namespace.
+    """
+    def _key(p):
+        return (p.namespace, p.pod_name)
+
+    def _select(snap):
+        result = []
+        for p in snap.pods:
+            if not _matches(p, owner_name=owner_name, namespace=namespace):
+                continue
+            if running_only and p.phase != "Running":
+                continue
+            result.append(p)
+        return result
+
+    prev_pods = _select(prev)
+    curr_pods = _select(curr)
+
+    prev_keys = {_key(p) for p in prev_pods}
+    curr_keys = {_key(p) for p in curr_pods}
+
+    added = curr_keys - prev_keys
+    removed = prev_keys - curr_keys
+
+    prev_replicas = len(prev_pods)
+    curr_replicas = len(curr_pods)
+    replica_delta = curr_replicas - prev_replicas
+    scale_events = 1 if replica_delta != 0 else 0
+
+    window_seconds = max(
+        0.0, (curr.fetched_at - prev.fetched_at).total_seconds())
+
+    return K8sReplicaDelta(
+        prev_replicas=prev_replicas,
+        curr_replicas=curr_replicas,
+        replica_delta=replica_delta,
+        scale_events=scale_events,
+        added_pod_names=frozenset(p[1] for p in added),
+        removed_pod_names=frozenset(p[1] for p in removed),
+        churn_count=len(added) + len(removed),
+        prev_fetched_at=prev.fetched_at,
+        curr_fetched_at=curr.fetched_at,
+        window_seconds=window_seconds,
+        owner_name=owner_name,
+        namespace=namespace,
+    )
+
+
+# ---------------------------------------------------------------------------
 # Normalization helpers
 # ---------------------------------------------------------------------------
 

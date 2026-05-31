@@ -365,6 +365,19 @@ _VLLM_BUILTIN: dict[str, Any] = {
         "unit": "pct",
         "labels": ["model_name"],
     },
+    # KV-pressure / preemption rate. vLLM emits this as a cumulative
+    # counter; the rate is the per-second preemption count. Used by the
+    # bridge as an input to risk diagnostics, NOT to ``timeout_pct`` —
+    # preemptions are restarts, not SLA timeouts.
+    "inference.preemptions_per_second": {
+        "query": "rate(vllm:num_preemptions_total[1m])",
+        "fallback_queries": ["rate(vllm_num_preemptions_total[1m])"],
+        "unit": "none",
+        "labels": ["model_name"],
+        "description": (
+            "vLLM preemption rate — KV-cache-pressure signal; NOT a "
+            "timeout counter."),
+    },
 }
 
 _TRITON_BUILTIN: dict[str, Any] = {
