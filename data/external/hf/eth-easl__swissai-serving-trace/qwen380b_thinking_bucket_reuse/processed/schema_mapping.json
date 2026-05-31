@@ -1,0 +1,94 @@
+{
+  "accepted_columns": [
+    "bucket_ids",
+    "created_at",
+    "id",
+    "reuse_percentage",
+    "reused_buckets",
+    "total_buckets"
+  ],
+  "columns": [
+    {
+      "aurelius_signal_category": "cache_residency",
+      "field_quality": "derived",
+      "missing_rate": 0.0,
+      "normalized_field": "bucket_ids_hash",
+      "notes": "List of bucket ids; hashed for committed sample.",
+      "presence_rate": 1.0,
+      "raw_column_name": "bucket_ids",
+      "units": "sha256_hex_16",
+      "usable_for": [
+        "cache_residency_evaluation"
+      ]
+    },
+    {
+      "aurelius_signal_category": "request_arrival",
+      "field_quality": "real",
+      "missing_rate": 0.0,
+      "normalized_field": "created_at_iso",
+      "notes": "Request creation timestamp.",
+      "presence_rate": 1.0,
+      "raw_column_name": "created_at",
+      "units": "iso8601_string",
+      "usable_for": [
+        "cache_residency_evaluation"
+      ]
+    },
+    {
+      "aurelius_signal_category": "metadata_only",
+      "field_quality": "real",
+      "missing_rate": 0.0,
+      "normalized_field": "request_id",
+      "notes": "Composite request id.",
+      "presence_rate": 1.0,
+      "raw_column_name": "id",
+      "units": null,
+      "usable_for": [
+        "cache_residency_evaluation"
+      ]
+    },
+    {
+      "aurelius_signal_category": "cache_residency",
+      "field_quality": "real",
+      "missing_rate": 0.0,
+      "normalized_field": "reuse_percentage",
+      "notes": "Pre-computed = reused/total.",
+      "presence_rate": 1.0,
+      "raw_column_name": "reuse_percentage",
+      "units": "fraction",
+      "usable_for": [
+        "cache_residency_evaluation"
+      ]
+    },
+    {
+      "aurelius_signal_category": "cache_residency",
+      "field_quality": "real",
+      "missing_rate": 0.0,
+      "normalized_field": "reused_bucket_count",
+      "notes": "Buckets reused from previous requests.",
+      "presence_rate": 1.0,
+      "raw_column_name": "reused_buckets",
+      "units": "buckets",
+      "usable_for": [
+        "cache_residency_evaluation"
+      ]
+    },
+    {
+      "aurelius_signal_category": "cache_residency",
+      "field_quality": "real",
+      "missing_rate": 0.0,
+      "normalized_field": "bucket_count",
+      "notes": "Total token buckets for this request.",
+      "presence_rate": 1.0,
+      "raw_column_name": "total_buckets",
+      "units": "buckets",
+      "usable_for": [
+        "cache_residency_evaluation"
+      ]
+    }
+  ],
+  "config_name": "qwen380b_thinking_bucket_reuse",
+  "dataset_id": "eth-easl/swissai-serving-trace",
+  "extra_mapped_not_observed": [],
+  "rejected_columns": []
+}

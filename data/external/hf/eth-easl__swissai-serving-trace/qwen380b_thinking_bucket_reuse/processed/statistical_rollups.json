@@ -1,0 +1,39 @@
+{
+  "bucket_count_distribution": {
+    "count": 7399,
+    "max": 14651.0,
+    "mean": 1420.6798215975132,
+    "median": 229.0,
+    "min": 1.0,
+    "missing": 0,
+    "p90": 4908.0,
+    "p95": 9559.0,
+    "p99": 13406.0
+  },
+  "config_name": "qwen380b_thinking_bucket_reuse",
+  "e2e_overall": null,
+  "insufficient_sample_groups": [],
+  "kv_util_vs_latency_correlation_proxy": null,
+  "output_tokens_distribution": null,
+  "per_instance_type_latency": {},
+  "per_kv_util_bin_latency": {},
+  "per_prompt_bin_latency": {},
+  "per_queue_depth_bin_latency": {},
+  "prompt_tokens_distribution": null,
+  "queue_vs_latency_correlation_proxy": null,
+  "reuse_percentage_distribution": {
+    "count": 7399,
+    "max": 100.0,
+    "mean": 83.63608460602785,
+    "median": 97.35,
+    "min": 0.0,
+    "missing": 0,
+    "p90": 100.0,
+    "p95": 100.0,
+    "p99": 100.0
+  },
+  "row_count": 7399,
+  "tpot_overall": null,
+  "trace_type": "cache_residency_trace",
+  "ttft_overall": null
+}

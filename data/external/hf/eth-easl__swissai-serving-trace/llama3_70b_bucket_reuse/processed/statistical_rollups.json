@@ -1,0 +1,39 @@
+{
+  "bucket_count_distribution": {
+    "count": 153275,
+    "max": 4148.0,
+    "mean": 31.02216930353939,
+    "median": 12.0,
+    "min": 0.0,
+    "missing": 0,
+    "p90": 117.0,
+    "p95": 118.0,
+    "p99": 121.0
+  },
+  "config_name": "llama3_70b_bucket_reuse",
+  "e2e_overall": null,
+  "insufficient_sample_groups": [],
+  "kv_util_vs_latency_correlation_proxy": null,
+  "output_tokens_distribution": null,
+  "per_instance_type_latency": {},
+  "per_kv_util_bin_latency": {},
+  "per_prompt_bin_latency": {},
+  "per_queue_depth_bin_latency": {},
+  "prompt_tokens_distribution": null,
+  "queue_vs_latency_correlation_proxy": null,
+  "reuse_percentage_distribution": {
+    "count": 153275,
+    "max": 100.0,
+    "mean": 79.40542091012885,
+    "median": 95.83,
+    "min": 0.0,
+    "missing": 0,
+    "p90": 100.0,
+    "p95": 100.0,
+    "p99": 100.0
+  },
+  "row_count": 153275,
+  "tpot_overall": null,
+  "trace_type": "cache_residency_trace",
+  "ttft_overall": null
+}

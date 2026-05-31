@@ -1,0 +1,114 @@
+{
+  "config_name": "qwen3_32b_buckets_analysis",
+  "dataset_id": "eth-easl/swissai-serving-trace",
+  "dtypes": {
+    "bucket_ids": "list",
+    "created_at": "string",
+    "finished_at": "string",
+    "id": "string",
+    "model": "string",
+    "model_parameters": "string",
+    "model_parameters.frequency_penalty": "int64",
+    "model_parameters.max_tokens": "string",
+    "model_parameters.presence_penalty": "int64",
+    "model_parameters.seed": "int64",
+    "model_parameters.temperature": "float64",
+    "model_parameters.top_p": "int64",
+    "reported_token_input": "int64",
+    "reported_token_output": "int64",
+    "status": "string",
+    "token_count": "int64"
+  },
+  "example_values": {
+    "bucket_ids": [
+      44122773,
+      36225474,
+      "...(+5 more)"
+    ],
+    "created_at": "2025-08-21T19:19:22.469Z",
+    "finished_at": "2025-08-21T19:19:27.249Z",
+    "id": "479869c90e8f0280:ff9095fbbcb6c1e38bc893148132e1e3:clypmz9si000g44hc5qr704rn",
+    "model": "Qwen/Qwen3-32B",
+    "model_parameters": "<dict>",
+    "model_parameters.frequency_penalty": 0,
+    "model_parameters.max_tokens": "null",
+    "model_parameters.presence_penalty": 0,
+    "model_parameters.seed": 42,
+    "model_parameters.temperature": 0.7,
+    "model_parameters.top_p": 1,
+    "reported_token_input": 111,
+    "reported_token_output": 184,
+    "status": "DEFAULT",
+    "token_count": 108
+  },
+  "file_size_bytes": 83886080,
+  "inspected_row_count": 103507,
+  "list_length_summaries": {
+    "bucket_ids": {
+      "max_len": 8184,
+      "mean_len": 37.349,
+      "min_len": 1,
+      "samples": 103507
+    }
+  },
+  "missing_rates": {
+    "bucket_ids": 0.0,
+    "created_at": 0.0,
+    "finished_at": 0.0,
+    "id": 0.0,
+    "model": 0.0,
+    "model_parameters": 0.0,
+    "model_parameters.frequency_penalty": 0.0,
+    "model_parameters.max_tokens": 0.732482,
+    "model_parameters.presence_penalty": 0.0,
+    "model_parameters.seed": 0.266282,
+    "model_parameters.temperature": 0.0,
+    "model_parameters.top_p": 0.0,
+    "reported_token_input": 0.000251,
+    "reported_token_output": 0.000251,
+    "status": 0.0,
+    "token_count": 0.0
+  },
+  "nested_keys": [
+    "model_parameters.frequency_penalty",
+    "model_parameters.max_tokens",
+    "model_parameters.presence_penalty",
+    "model_parameters.seed",
+    "model_parameters.temperature",
+    "model_parameters.top_p"
+  ],
+  "presence_rates": {
+    "bucket_ids": 1.0,
+    "created_at": 1.0,
+    "finished_at": 1.0,
+    "id": 1.0,
+    "model": 1.0,
+    "model_parameters": 1.0,
+    "model_parameters.frequency_penalty": 1.0,
+    "model_parameters.max_tokens": 1.0,
+    "model_parameters.presence_penalty": 1.0,
+    "model_parameters.seed": 0.733718,
+    "model_parameters.temperature": 1.0,
+    "model_parameters.top_p": 1.0,
+    "reported_token_input": 1.0,
+    "reported_token_output": 1.0,
+    "status": 1.0,
+    "token_count": 1.0
+  },
+  "raw_columns": [
+    "bucket_ids",
+    "created_at",
+    "finished_at",
+    "id",
+    "model",
+    "model_parameters",
+    "reported_token_input",
+    "reported_token_output",
+    "status",
+    "token_count"
+  ],
+  "source_files_inspected": [
+    "qwen3-32b-buckets.jsonl"
+  ],
+  "split": null
+}

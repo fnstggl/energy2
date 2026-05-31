@@ -1,0 +1,39 @@
+{
+  "bucket_count_distribution": {
+    "count": 49434,
+    "max": 1831.0,
+    "mean": 76.24343569203383,
+    "median": 26.0,
+    "min": 2.0,
+    "missing": 0,
+    "p90": 195.0,
+    "p95": 214.0,
+    "p99": 267.0
+  },
+  "config_name": "apertus_70b_bucket_reuse",
+  "e2e_overall": null,
+  "insufficient_sample_groups": [],
+  "kv_util_vs_latency_correlation_proxy": null,
+  "output_tokens_distribution": null,
+  "per_instance_type_latency": {},
+  "per_kv_util_bin_latency": {},
+  "per_prompt_bin_latency": {},
+  "per_queue_depth_bin_latency": {},
+  "prompt_tokens_distribution": null,
+  "queue_vs_latency_correlation_proxy": null,
+  "reuse_percentage_distribution": {
+    "count": 49434,
+    "max": 100.0,
+    "mean": 68.96866124529676,
+    "median": 80.21,
+    "min": 0.0,
+    "missing": 0,
+    "p90": 100.0,
+    "p95": 100.0,
+    "p99": 100.0
+  },
+  "row_count": 49434,
+  "tpot_overall": null,
+  "trace_type": "cache_residency_trace",
+  "ttft_overall": null
+}

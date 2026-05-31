@@ -2843,3 +2843,66 @@ engine, controllers, or frontier modules touched.
 **Next:** re-run audit against CARA `train.jsonl` (392 MB, 359k rows)
 with a larger per-file budget to lift the analysis sample to `strong`
 strength and unlock `promoted_for_dynamic_calibration`.
+
+## 2026-05-31 — CARA + SwissAI analysis-tier expansion (`feature/cara-swissai-analysis-tier-expansion`)
+
+Bounded 50-100 MiB analysis-tier ingestion for CARA + SwissAI so the
+Forecast Leverage Audit can run on `strong`-strength evidence. No
+forecasting models trained. No scheduler / robust energy engine /
+controllers modified. No production claim.
+
+**What landed**
+
+- Extended `scripts/audit_cara_swissai_telemetry.py` with
+  `ANALYSIS_TIER_TARGETS` (9 new configs: CARA `train_flat` +
+  `train_queue_details` at 80 MiB head, SwissAI `trace_analysis` /
+  `qwen3_32b_buckets_analysis` / `qwen3_32b_bucket_reuse_analysis` at
+  80 MiB head, plus 4 per-model bucket-reuse files for Apertus-70B,
+  Qwen3-80B-instruct/thinking, Llama3-70B). New `--target-set
+  {focused,analysis_tier,all}` flag; focused stays the default.
+- Added per-config `statistical_rollups.json` artefact (committed):
+  per-(instance_type) p50/p95/p99 for e2e + TTFT + TPOT,
+  per-(prompt_token_bin / queue_depth_bin / kv_util_bin) p99 latency,
+  reuse_percentage distribution, with `INSUFFICIENT_SAMPLE_P99` flagging
+  below 100 rows/subgroup.
+- New `scripts/build_cara_swissai_signal_coverage.py` aggregates per-
+  config summaries into the federated signal coverage + forecast
+  readiness + forecast leverage + missing-telemetry gap + strongest-
+  dataset matrix tables at
+  `data/external/hf_discovery/cara_swissai_signal_coverage.json`.
+
+**Audit outcomes (9/9 new configs cleared all gates)**
+
+- CARA train_flat: 76,825 rows · strong · `promoted_for_dynamic_calibration`
+- CARA train_queue_details: 38,509 rows · strong · `promoted_for_dynamic_calibration`
+- SwissAI trace_analysis: 202,215 rows · strong
+- SwissAI qwen3_32b_buckets_analysis: 103,507 rows · strong
+- SwissAI qwen3_32b_bucket_reuse_analysis: 147,440 rows · strong
+- SwissAI apertus_70b_bucket_reuse: 49,434 rows · strong (whole 40 MB file)
+- SwissAI qwen380b_instruct_bucket_reuse: 45,887 rows · strong
+- SwissAI qwen380b_thinking_bucket_reuse: 7,399 rows · **moderate** (large per-row payload)
+- SwissAI llama3_70b_bucket_reuse: 153,275 rows · strong
+
+**Forecast readiness (8/10 ready)**
+
+8 forecasts now READY_FOR_FORECAST_LEVERAGE_AUDIT (TTFT, queue_wait,
+TPOT, e2e_latency, cache_hit, GPU placement, model residency proxy,
+workload arrival). 2 forecasts remain blocked on pilot telemetry
+(timeout/SLA labels, autoscaling/replica labels). The same 9× p99
+spread for Qwen2.5-3B across A30 vs P100 GPUs surfaces at 76,825 rows.
+
+**Tests:** ~16 new in `tests/test_hf_cara_swissai_analysis_tier.py` +
+existing 109 HF tests + 211 regression tests still pass.
+
+**Honesty invariants:**
+- Raw HF data + analysis_sample.jsonl gitignored.
+- HF_TOKEN never logged / committed.
+- statistical_sample_strength still enforced per promotion tag.
+- CARA stays Tier 2 — `promoted_for_dynamic_calibration` is a research-
+  class promotion, NOT a Tier 1 production calibration source.
+- SwissAI license is `other` — only summary statistics + 5-row fixture
+  + statistical rollups committed; raw rows + analysis sample
+  gitignored.
+
+**Next:** Forecast Leverage Audit v2 (build the actual forecasters in
+the build_now ranking using the new strong-strength evidence).

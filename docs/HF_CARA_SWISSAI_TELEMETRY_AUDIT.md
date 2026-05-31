@@ -80,11 +80,147 @@ Per the audit charter PHASE 2, every unit has a `schema_profile.json` +
 | `eth-easl/swissai-serving-trace` / `qwen3_32b_buckets` | `qwen3-32b-buckets.jsonl` | 10 MiB head (19,130 rows) | `data/external/hf/eth-easl__swissai-serving-trace/qwen3_32b_buckets/processed/{schema_profile,schema_mapping}.json` |
 | `eth-easl/swissai-serving-trace` / `qwen3_32b_bucket_reuse` | `qwen3-32b-bucket-reuse.jsonl` | 10 MiB head (16,593 rows) | `data/external/hf/eth-easl__swissai-serving-trace/qwen3_32b_bucket_reuse/processed/{schema_profile,schema_mapping}.json` |
 
+### 2.1 Analysis-tier expansion (50-100 MiB samples)
+
+Run via `scripts/audit_cara_swissai_telemetry.py --target-set analysis_tier`.
+Train splits + extended SwissAI per-model bucket-reuse files are
+included so the corpus reaches `strong` strength for downstream
+forecasting work. Train + test schemas are **identical per the CARA
+README** (`train.jsonl` reuses `test.jsonl` columns, sweep 2); SwissAI
+per-model bucket-reuse files share the qwen3-32b row schema.
+
+| (dataset, config) | raw file | analysis chunk | rows | strength |
+|---|---|---|---|---|
+| `asdwb/cara_latency_prediction` / `train_flat` | `train.jsonl` | 80 MiB head | **76,825** | strong |
+| `asdwb/cara_latency_prediction` / `train_queue_details` | `train_queue_details.jsonl` | 80 MiB head | 38,509 | strong |
+| `eth-easl/swissai-serving-trace` / `trace_analysis` | `trace.jsonl` | 80 MiB head | 202,215 | strong |
+| `eth-easl/swissai-serving-trace` / `qwen3_32b_buckets_analysis` | `qwen3-32b-buckets.jsonl` | 80 MiB head | 103,507 | strong |
+| `eth-easl/swissai-serving-trace` / `qwen3_32b_bucket_reuse_analysis` | `qwen3-32b-bucket-reuse.jsonl` | 80 MiB head | 147,440 | strong |
+| `eth-easl/swissai-serving-trace` / `apertus_70b_bucket_reuse` | `apertus-70b-bucket-reuse.jsonl` | whole file (~40 MB) | 49,434 | strong |
+| `eth-easl/swissai-serving-trace` / `qwen380b_instruct_bucket_reuse` | `qwen380b_instruct_bucket-reuse.jsonl` | 80 MiB head | 45,887 | strong |
+| `eth-easl/swissai-serving-trace` / `qwen380b_thinking_bucket_reuse` | `qwen380b_thinking_bucket-reuse.jsonl` | 80 MiB head | **7,399** | moderate |
+| `eth-easl/swissai-serving-trace` / `llama3_70b_bucket_reuse` | `llama3-70b_bucket-reuse.jsonl` | 80 MiB head | 153,275 | strong |
+
+Per-config `statistical_rollups.json` artefacts (committed) capture the
+per-(instance_type, prompt_token_bin, queue_depth_bin, kv_util_bin) p50/
+p95/p99 distributions; subgroups below 100 rows are flagged
+`INSUFFICIENT_SAMPLE_P99`. CARA train shows the same **9× p99 latency
+spread** across GPU types for the same Qwen2.5-3B model (A30 p99 =
+9.9 s vs P100 p99 = 87.8 s) — now at 76,825 rows, well above the
+10,000-row `strong`-strength threshold.
+
 Every observed raw column / 1-level-nested key is classified as
 `accepted` (mapped to a normalised field with field_quality +
 aurelius_signal_category + usable_for) or `rejected` (no mapping →
-ingestion refuses normalisation). All five units pass with **zero
-rejected columns**.
+ingestion refuses normalisation). All 14 units (5 focused + 9 analysis)
+pass with **zero rejected columns**.
+
+### 2.2 Signal coverage table (analysis-tier, by signal × config)
+
+The machine-readable signal × (dataset, config) presence + sample-
+strength table is in
+`data/external/hf_discovery/cara_swissai_signal_coverage.json`. Below
+is the per-signal summary aggregated across analysis-tier configs (the
+"best" cell = highest-strength config carrying the signal).
+
+| Signal | Best (dataset, config) | rows_available | sample_strength | field_quality | Usable for |
+|---|---|---:|---|---|---|
+| TTFT | CARA train_flat | 76,825 | strong | real | latency_forecast, placement_forecast, dynamic_frontier_calibration |
+| TPOT | CARA train_flat | 76,825 | strong | real | latency_forecast, dynamic_frontier_calibration |
+| e2e_latency | CARA train_flat | 76,825 | strong | real | latency_forecast, placement_forecast, dynamic_frontier_calibration |
+| queue_depth | CARA train_queue_details | 38,509 | strong | real | queue_forecast, dynamic_frontier_calibration |
+| queue_wait | — | 0 | insufficient | **missing** | not_usable (gap → pilot telemetry only) |
+| scheduling_state | CARA train_queue_details | 38,509 | strong | real | queue_forecast, latency_forecast, dynamic_frontier_calibration |
+| cache_utilization | CARA train_flat | 76,825 | strong | real | cache_reuse_forecast, dynamic_frontier_calibration |
+| prefix_reuse | SwissAI llama3_70b_bucket_reuse | 153,275 | strong | real | cache_reuse_forecast |
+| reuse_percentage | SwissAI llama3_70b_bucket_reuse | 153,275 | strong | real | cache_reuse_forecast |
+| instance_type | CARA train_flat | 76,825 | strong | real | placement_forecast, latency_forecast |
+| request_arrival_timestamp | CARA train_flat / SwissAI trace_analysis | 76,825 / 202,215 | strong | real | queue_forecast, workload_shape |
+| request_completion_timestamp | CARA train_flat / SwissAI trace_analysis | 76,825 / 202,215 | strong | real | queue_forecast, latency_forecast, workload_shape |
+| status | SwissAI trace_analysis | 202,215 | strong | real | workload_shape |
+| prompt_tokens | CARA train_flat | 76,825 | strong | real | latency_forecast, workload_shape |
+| output_tokens | CARA train_flat | 76,825 | strong | real | latency_forecast, workload_shape |
+| model_id | SwissAI trace_analysis | 202,215 | strong | real | placement_forecast, workload_shape |
+| replica_count | — | 0 | insufficient | **missing** | not_usable (gap → pilot telemetry only) |
+| autoscaling_events | — | 0 | insufficient | **missing** | not_usable (gap → pilot telemetry only) |
+| GPU_utilization | — | 0 | insufficient | **missing** | not_usable (gap → DCGM export) |
+| GPU_memory | — | 0 | insufficient | **missing** | not_usable (gap → DCGM export) |
+| SLA_label | — | 0 | insufficient | **missing** | not_usable (gap → pilot telemetry only) |
+| timeout_label | — | 0 | insufficient | **missing** | not_usable (gap → pilot telemetry only) |
+
+### 2.3 Forecast readiness table (post analysis-tier ingest)
+
+| Forecast | Recommended readiness | Conf. (1-5) | Required signals present | Missing critical | Best dataset |
+|---|---|---:|---|---|---|
+| TTFT forecast | **ready_for_forecast_leverage_audit** | 5 | TTFT + instance_type + prompt_tokens + scheduling_state | — | CARA train_flat |
+| Queue wait / queue depth forecast | **ready_for_forecast_leverage_audit** | 5 | queue_depth + scheduling_state + arrival_ts + completion_ts | — (queue_wait is optional) | CARA train_queue_details |
+| TPOT forecast | **ready_for_forecast_leverage_audit** | 5 | TPOT + instance_type + scheduling_state | — | CARA train_flat |
+| E2E latency forecast | **ready_for_forecast_leverage_audit** | 5 | e2e_latency + instance_type + prompt_tokens | — | CARA train_flat |
+| Cache hit / prefix reuse forecast | **ready_for_forecast_leverage_audit** | 5 | prefix_reuse + reuse_percentage + model_id | — | SwissAI llama3_70b_bucket_reuse + qwen3_32b_bucket_reuse_analysis |
+| GPU placement / heterogeneous latency forecast | **ready_for_forecast_leverage_audit** | 5 | e2e_latency + TTFT + instance_type + prompt_tokens | — | CARA train_flat + AgentPerfBench (priors) |
+| Model residency / cold-start forecast | **ready_for_forecast_leverage_audit** | 5 | cache_utilization + model_id | (proxy via kv_evictions_per_s) | CARA train_queue_details |
+| Workload arrival forecast | **ready_for_forecast_leverage_audit** | 5 | request_arrival_timestamp + model_id | — | SwissAI trace_analysis + CARA train_flat |
+| Timeout / SLA violation forecast | **priors_only** | 3 | e2e_latency + scheduling_state | SLA_label, timeout_label | needs pilot telemetry |
+| Autoscaling / replica need forecast | **priors_only** | 3 | request_arrival_timestamp | replica_count, autoscaling_events | needs pilot telemetry |
+
+### 2.4 Forecast leverage quantification
+
+`leverage = expected_alpha × decision_frequency × (data_strength + 1)`.
+Build priority is `build_now` when readiness ==
+`ready_for_forecast_leverage_audit`, else `build_after_data_expansion`
+or `blocked`.
+
+| # | Forecast | Decision freq | Data strength | Expected alpha | Leverage | Build priority |
+|---|---|---|---|---|---:|---|
+| 1 | TTFT forecast | per-request | strong | high | 100 | build_now |
+| 2 | Queue wait forecast | per-request | strong | high | 100 | build_now |
+| 3 | E2E latency forecast | per-request | strong | high | 100 | build_now |
+| 4 | GPU placement / heterogeneous latency forecast | per-request | strong | high | 100 | build_now |
+| 5 | TPOT forecast | per-request | strong | medium-high | 80 | build_now |
+| 6 | Cache hit / prefix reuse forecast | per-request | strong | medium-high | 64 | build_now |
+| 7 | Model residency / cold-start forecast | 10s-1000s/h | strong | medium | 36 | build_now |
+| 8 | Workload arrival forecast | per-minute | strong | low-medium | 24 | build_now |
+| 9 | Timeout / SLA violation forecast | per-request | insufficient | medium | 15 | build_after_data_expansion |
+| 10 | Autoscaling / replica need forecast | per-minute | insufficient | medium | 9 | build_after_data_expansion |
+
+### 2.5 Missing telemetry gap analysis
+
+Every forecast NOT classified `ready_for_forecast_leverage_audit`,
+paired with the exact missing signals and the acquisition path. This
+prevents endless dataset hunting when the answer is "pilot telemetry".
+
+| Forecast | Missing signal | Acquisition path |
+|---|---|---|
+| Timeout / SLA violation forecast | `SLA_label` | **pilot_telemetry_only** |
+| Timeout / SLA violation forecast | `timeout_label` | **pilot_telemetry_only** |
+| Autoscaling / replica need forecast | `replica_count` | **pilot_telemetry_only** |
+| Autoscaling / replica need forecast | `autoscaling_events` | **pilot_telemetry_only** |
+
+Other systemic gaps that affect multiple forecasts (and would land
+through pilot telemetry, not a new HF audit):
+
+| Signal | Affected forecasts | Acquisition path |
+|---|---|---|
+| `queue_wait` (measured) | dynamic frontier calibration variants | pilot vLLM `/metrics` export |
+| `GPU_utilization` / `GPU_memory` | thermal pressure, autoscaling | DCGM export from pilot |
+| `SLA_label` / `timeout_label` | SLA gating, timeout gating | pilot SLA budget events |
+| `replica_count` / `autoscaling_events` | autoscaler ML | pilot autoscaler telemetry |
+| `model_load_events` / `cold_start_latency` | residency v2 | pilot prewarm/eviction events |
+
+### 2.6 Strongest forecasting dataset matrix
+
+| Forecast | Best dataset | Rows | Why |
+|---|---|---:|---|
+| TTFT forecast | CARA train_flat | 76,825 | Per-request `actual_ttft_s` + scheduler state at decision time. |
+| TPOT forecast | CARA train_flat | 76,825 | Per-request `actual_tpot_s` + EMA decode iter latency in same row. |
+| Queue wait / queue depth forecast | CARA train_queue_details | 38,509 | Nested `schedule_state.*` with `running_requests[]` + `waiting_requests[]` lists. |
+| E2E latency forecast | CARA train_flat | 76,825 | Per-request `actual_e2e_latency_s`; per-(instance_type) 9× p99 spread. |
+| Cache hit / prefix reuse forecast | SwissAI `llama3_70b_bucket_reuse` + `qwen3_32b_bucket_reuse_analysis` | 153,275 + 147,440 | Per-request `reuse_percentage` + `bucket_ids` hash. |
+| GPU placement / heterogeneous latency forecast | CARA train_flat + AgentPerfBench `trace_replay` | 76,825 + 2,932 | 5 instance_type subgroups in CARA + 14 GPU configurations in AgentPerfBench (priors). |
+| Autoscaling / replica need forecast | Azure LLM 2024 (arrivals) | (legacy trace) | Replica labels missing everywhere in HF corpus; pilot data required. |
+| Model residency / cold-start forecast | CARA train_queue_details | 38,509 | `kv_evictions_per_s` is the closest proxy; real cold-start labels require pilot data. |
+| Timeout / SLA violation forecast | CARA train_flat + SwissAI status=ERROR | 76,825 + 202,215 | Proxies only — no measured SLA budget labels. |
+| Workload arrival forecast | SwissAI trace_analysis + CARA train_flat | 202,215 + 76,825 | ISO timestamps from SwissAI + Unix timestamps from CARA. |
 
 ## 3. Trust assessment + per-dataset checklist
 

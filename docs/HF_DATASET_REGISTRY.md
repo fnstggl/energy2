@@ -179,14 +179,27 @@ Rules (binding):
 | `agent-perf-bench/AgentPerfBench` | `kernels_labeled` | `kernel_profile_trace` | Tier 4 | `promoted_for_performance_priors` (+ `promoted_for_training_priors`) | 100 | n/a | n/a | 2026-05-31 |
 | `asdwb/cara_latency_prediction` | `test_flat` | `telemetry_trace` | **Tier 2** | `promoted_for_constraint_aware_evaluation` (+ `promoted_for_backtest`; `dynamic_calibration` downgraded — needs `strong` strength) | 5 | 9,605 | moderate | 2026-05-31 |
 | `asdwb/cara_latency_prediction` | `test_queue_details` | `telemetry_trace` | **Tier 2** | `promoted_for_constraint_aware_evaluation` (+ `promoted_for_backtest`; `dynamic_calibration` downgraded) | 5 | 4,876 | moderate | 2026-05-31 |
+| `asdwb/cara_latency_prediction` | **`train_flat`** (analysis-tier) | `telemetry_trace` | **Tier 2** | **`promoted_for_dynamic_calibration`** (+ `constraint_aware_evaluation`, `backtest`) | 5 | **76,825** | strong | 2026-05-31 |
+| `asdwb/cara_latency_prediction` | **`train_queue_details`** (analysis-tier) | `telemetry_trace` | **Tier 2** | **`promoted_for_dynamic_calibration`** (+ `constraint_aware_evaluation`, `backtest`) | 5 | 38,509 | strong | 2026-05-31 |
 | `eth-easl/swissai-serving-trace` | `trace` | `request_shape_trace` | Tier 5 | `promoted_for_training_priors` | 5 | 25,409 | strong | 2026-05-31 |
+| `eth-easl/swissai-serving-trace` | **`trace_analysis`** | `request_shape_trace` | Tier 5 | `promoted_for_training_priors` | 5 | **202,215** | strong | 2026-05-31 |
 | `eth-easl/swissai-serving-trace` | `qwen3_32b_buckets` | `cache_residency_trace` | Tier 4 | `promoted_for_cache_residency_evaluation` (+ `promoted_for_training_priors`) | 5 | 19,130 | strong | 2026-05-31 |
+| `eth-easl/swissai-serving-trace` | **`qwen3_32b_buckets_analysis`** | `cache_residency_trace` | Tier 4 | `promoted_for_cache_residency_evaluation` (+ `training_priors`) | 5 | **103,507** | strong | 2026-05-31 |
 | `eth-easl/swissai-serving-trace` | `qwen3_32b_bucket_reuse` | `cache_residency_trace` | Tier 4 | `promoted_for_cache_residency_evaluation` (+ `promoted_for_training_priors`) | 5 | 16,593 | strong | 2026-05-31 |
+| `eth-easl/swissai-serving-trace` | **`qwen3_32b_bucket_reuse_analysis`** | `cache_residency_trace` | Tier 4 | `promoted_for_cache_residency_evaluation` (+ `training_priors`) | 5 | **147,440** | strong | 2026-05-31 |
+| `eth-easl/swissai-serving-trace` | **`apertus_70b_bucket_reuse`** | `cache_residency_trace` | Tier 4 | `promoted_for_cache_residency_evaluation` (+ `training_priors`) | 5 | 49,434 | strong | 2026-05-31 |
+| `eth-easl/swissai-serving-trace` | **`qwen380b_instruct_bucket_reuse`** | `cache_residency_trace` | Tier 4 | `promoted_for_cache_residency_evaluation` (+ `training_priors`) | 5 | 45,887 | strong | 2026-05-31 |
+| `eth-easl/swissai-serving-trace` | **`qwen380b_thinking_bucket_reuse`** | `cache_residency_trace` | Tier 4 | `promoted_for_cache_residency_evaluation` (+ `training_priors`) | 5 | 7,399 | moderate | 2026-05-31 |
+| `eth-easl/swissai-serving-trace` | **`llama3_70b_bucket_reuse`** | `cache_residency_trace` | Tier 4 | `promoted_for_cache_residency_evaluation` (+ `training_priors`) | 5 | **153,275** | strong | 2026-05-31 |
 
 > **CARA** is the first Tier 2 (public telemetry trace) entry in the
-> federated corpus. See `docs/HF_CARA_SWISSAI_TELEMETRY_AUDIT.md` for the
-> full schema audit + alpha opportunity write-up (9× p99 latency spread
-> across GPU types for the same Qwen2.5-3B model).
+> federated corpus. CARA **train_flat** + **train_queue_details** are
+> the first Tier 2 entries promoted to `promoted_for_dynamic_calibration`
+> after the analysis-tier expansion (76,825 + 38,509 strong-strength
+> rows). See `docs/HF_CARA_SWISSAI_TELEMETRY_AUDIT.md` §2.1-§2.6 for
+> the analysis-tier expansion, signal coverage table, forecast
+> readiness table, forecast leverage quantification, missing-telemetry
+> gap analysis, and strongest-forecasting-dataset matrix.
 
 #### AgentPerfBench / trace_replay
 

@@ -1,0 +1,63 @@
+{
+  "config_name": "qwen380b_instruct_bucket_reuse",
+  "dataset_id": "eth-easl/swissai-serving-trace",
+  "dtypes": {
+    "bucket_ids": "list",
+    "created_at": "string",
+    "id": "string",
+    "reuse_percentage": "float64",
+    "reused_buckets": "int64",
+    "total_buckets": "int64"
+  },
+  "example_values": {
+    "bucket_ids": [
+      15356900,
+      15982984,
+      "...(+34 more)"
+    ],
+    "created_at": "2025-10-10T16:17:11.338Z",
+    "id": "13b2192ff0c28952:5c602abd65696185a818f08ba53394d9:clypmz9si000g44hc5qr704rn",
+    "reuse_percentage": 0.0,
+    "reused_buckets": 0,
+    "total_buckets": 36
+  },
+  "file_size_bytes": 83886080,
+  "inspected_row_count": 45887,
+  "list_length_summaries": {
+    "bucket_ids": {
+      "max_len": 552,
+      "mean_len": 170.0484,
+      "min_len": 1,
+      "samples": 45887
+    }
+  },
+  "missing_rates": {
+    "bucket_ids": 0.0,
+    "created_at": 0.0,
+    "id": 0.0,
+    "reuse_percentage": 0.0,
+    "reused_buckets": 0.0,
+    "total_buckets": 0.0
+  },
+  "nested_keys": [],
+  "presence_rates": {
+    "bucket_ids": 1.0,
+    "created_at": 1.0,
+    "id": 1.0,
+    "reuse_percentage": 1.0,
+    "reused_buckets": 1.0,
+    "total_buckets": 1.0
+  },
+  "raw_columns": [
+    "bucket_ids",
+    "created_at",
+    "id",
+    "reuse_percentage",
+    "reused_buckets",
+    "total_buckets"
+  ],
+  "source_files_inspected": [
+    "qwen380b_instruct_bucket-reuse.jsonl"
+  ],
+  "split": null
+}

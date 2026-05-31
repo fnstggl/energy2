@@ -1,0 +1,29 @@
+{
+  "config_name": "qwen3_32b_buckets_analysis",
+  "e2e_overall": null,
+  "insufficient_sample_groups": [],
+  "kv_util_vs_latency_correlation_proxy": null,
+  "output_tokens_distribution": null,
+  "per_instance_type_latency": {},
+  "per_kv_util_bin_latency": {},
+  "per_prompt_bin_latency": {},
+  "per_queue_depth_bin_latency": {},
+  "prompt_tokens_distribution": null,
+  "queue_vs_latency_correlation_proxy": null,
+  "reuse_percentage_distribution": null,
+  "row_count": 103507,
+  "token_count_distribution": {
+    "count": 103507,
+    "max": 130938.0,
+    "mean": 589.5303312819423,
+    "median": 135.0,
+    "min": 6.0,
+    "missing": 0,
+    "p90": 1422.0,
+    "p95": 1614.0,
+    "p99": 3135.0
+  },
+  "tpot_overall": null,
+  "trace_type": "cache_residency_trace",
+  "ttft_overall": null
+}
