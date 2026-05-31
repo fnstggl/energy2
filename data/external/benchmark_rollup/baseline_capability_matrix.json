@@ -1,0 +1,875 @@
+{
+  "_doc": "Aurelius benchmark baseline capability matrix. Per-baseline feature audit for every benchmark in the rollup. Read docs/BENCHMARK_BASELINE_AUDIT.md and docs/AURELIUS_PUBLIC_TRACE_BENCHMARK_ROLLUP.md before using these numbers in outreach. Simulator / public-trace results only — directional only, NOT production savings (docs/RESULTS.md §8).",
+  "schema_version": 1,
+  "audit_methodology": {
+    "step_1": "trace baseline implementation code (NOT doc claims)",
+    "step_2": "list features actually present in the code path (Y/N/UNKNOWN with file:line citations)",
+    "step_3": "classify each baseline (naive / modern / advanced / oracle_only)",
+    "step_4": "judge fairness of selected strongest realistic baseline",
+    "step_5": "compute benchmark trust scores (1-10) for baseline strength / production similarity / headline credibility",
+    "step_6": "determine outreach claims the benchmark can honestly support"
+  },
+  "feature_definitions": {
+    "dynamic_batching": "policy/scheduler dynamically batches requests at admission",
+    "continuous_batching": "vLLM/TensorRT-LLM-style decode-side batching where new requests join the batch each iteration",
+    "autoscaling": "replica/capacity count varies over time in response to load",
+    "queue_aware": "decision uses queue depth / queue wait p95 as input",
+    "latency_aware": "decision uses latency / TTFT / SLA budget as input",
+    "timeout_aware": "decision uses timeout-rate signal as input",
+    "cache_aware": "decision uses KV/prefix cache reuse as input (or applies a prefill-savings model)",
+    "affinity_aware": "decision routes to a replica that already has the model/adapter resident",
+    "placement_aware": "decision picks WHICH node/GPU/topology to use, not just how many",
+    "migration_aware": "decision considers churn / migration cost / cold-cache penalty",
+    "energy_aware": "decision uses energy price signal as input",
+    "carbon_aware": "decision uses gCO2/kWh signal as input",
+    "deadline_aware": "decision uses job deadline / runtime feasibility window",
+    "utilization_aware": "decision targets a utilization (rho) point",
+    "frontier_based": "decision is a single static safe-utilization frontier operating point",
+    "dynamic_frontier_based": "decision uses a telemetry-driven adaptive frontier estimator"
+  },
+  "baseline_classes": {
+    "naive": "FIFO, static peak/mean overprovisioning, round-robin, no signal-driven adaptation",
+    "modern": "reactive autoscaling (HPA-style), queue-target or rho-target sizing, basic safety reverts. Comparable to what a competent operator using Kubernetes HPA / vLLM autoscaler would build",
+    "advanced": "anticipatory/EWMA sizing, multi-feature decisions (queue + cache + price + deadline + placement), price-aware heterogeneous routing, frontier-aware operating point selection",
+    "oracle_only": "future-leaking, clairvoyant, realized-optimal — analysis only, never deployable"
+  },
+  "benchmarks": [
+    {
+      "benchmark_id": "azure_llm_2024_week",
+      "workload_class": "llm_serving",
+      "trace_kind": "public_trace_replay_full_week",
+      "n_requests_full": 44107694,
+      "baselines": [
+        {
+          "name": "fifo",
+          "impl_file": "aurelius/traces/backtest.py",
+          "impl_function": "_run_policy",
+          "impl_lines": "316-319, 376-377",
+          "impl_summary": "policy=='fifo' sets fixed=True; uses _global_fixed_replicas(target_rho=0.70) → single replica count for the trace mean load",
+          "features": {
+            "dynamic_batching": "N — static replica count; serving physics has shared batching_efficiency but the POLICY does not size for it (aurelius/simulation/cluster/serving.py:114 batching_efficiency, applied identically to every policy)",
+            "continuous_batching": "N — same shared serving-physics model, not a policy lever",
+            "autoscaling": "N — fixed_replicas computed once (aurelius/traces/backtest.py:294 _global_fixed_replicas)",
+            "queue_aware": "N — no queue signal",
+            "latency_aware": "N — no SLA/latency signal in the sizing path",
+            "timeout_aware": "N",
+            "cache_aware": "N — cache_aware=False (aurelius/traces/backtest.py:315)",
+            "affinity_aware": "N",
+            "placement_aware": "N — no node/GPU selection (single homogeneous pool)",
+            "migration_aware": "N",
+            "energy_aware": "N",
+            "carbon_aware": "N",
+            "deadline_aware": "N",
+            "utilization_aware": "Y — sizes for target_rho=0.70 on the MEAN load (aurelius/traces/backtest.py:319). This is static mean-sizing, not dynamic rho-tracking",
+            "frontier_based": "N",
+            "dynamic_frontier_based": "N"
+          },
+          "class": "naive",
+          "rationale": "Static replica count sized once for trace mean. The only 'modern' aspect is that it shares the simulator's continuous-batching physics (which every policy gets for free)."
+        },
+        {
+          "name": "sla_aware",
+          "impl_file": "aurelius/traces/backtest.py",
+          "impl_function": "_run_policy",
+          "impl_lines": "378-386",
+          "impl_summary": "reactive autoscaler with one-tick lag at target_rho=0.50. Uses PREVIOUS tick's arrival_rate_rps to size replicas to keep utilization ≤ 0.50",
+          "features": {
+            "dynamic_batching": "N (policy does not size for batching)",
+            "continuous_batching": "N (shared serving physics only)",
+            "autoscaling": "Y — per-tick reactive sizing (aurelius/traces/backtest.py:378-386 src=prev_tick → _size_for_target(target_rho=0.50))",
+            "queue_aware": "N — does not consume queue_wait_p95_ms",
+            "latency_aware": "PARTIAL — rho=0.50 is a CONSERVATIVE target chosen for SLA safety, but the policy does not measure latency directly; it just over-provisions a 2x safety margin",
+            "timeout_aware": "N — does not consume timeout_rate_pct",
+            "cache_aware": "N — cache_aware=False",
+            "affinity_aware": "N",
+            "placement_aware": "N",
+            "migration_aware": "N — no churn damping (no hysteresis)",
+            "energy_aware": "N",
+            "carbon_aware": "N",
+            "deadline_aware": "N",
+            "utilization_aware": "Y — explicit target_rho=0.50",
+            "frontier_based": "N",
+            "dynamic_frontier_based": "N"
+          },
+          "class": "modern",
+          "rationale": "Reactive HPA-style autoscaler at a conservative utilization target. Comparable to a basic Kubernetes HPA on CPU/RPS. No queue/cache/affinity/prewarm. Has one-tick reaction lag."
+        },
+        {
+          "name": "queue_aware",
+          "impl_file": "aurelius/traces/backtest.py",
+          "impl_function": "_run_policy + _queue_aware_size",
+          "impl_lines": "387-392, 424-431",
+          "impl_summary": "scales replicas until predicted queue_wait_p95_ms ≤ 500ms (threshold). Uses PREVIOUS tick (one-tick lag).",
+          "features": {
+            "dynamic_batching": "N",
+            "continuous_batching": "N (shared serving physics only)",
+            "autoscaling": "Y — per-tick reactive sizing on queue signal",
+            "queue_aware": "Y — explicit queue_wait_p95_ms ≤ threshold target (aurelius/traces/backtest.py:429)",
+            "latency_aware": "PARTIAL — queue wait is a component of latency, but the policy does not target SLA latency directly",
+            "timeout_aware": "N",
+            "cache_aware": "N",
+            "affinity_aware": "N",
+            "placement_aware": "N",
+            "migration_aware": "N",
+            "energy_aware": "N",
+            "carbon_aware": "N",
+            "deadline_aware": "N",
+            "utilization_aware": "N — no explicit rho target",
+            "frontier_based": "N",
+            "dynamic_frontier_based": "N"
+          },
+          "class": "modern",
+          "rationale": "Queue-target autoscaler — similar to HPA with custom queue-depth metric. Reactive. No cache, no affinity, no SLA-aware tail padding."
+        },
+        {
+          "name": "utilization_aware",
+          "impl_file": "scripts/run_azure_llm_2024_backtest.py",
+          "impl_function": "run_base_backtest._util + _provision",
+          "impl_lines": "106-109, 80-90",
+          "impl_summary": "per-tick _size_for_target(current_tick.arrival_rate, target_rho=UTIL_TARGET_RHO=0.85) — uses current-tick rate (so it implicitly has perfect knowledge of THIS tick's arrival; bordering on oracle for sizing but uses no future ticks)",
+          "features": {
+            "dynamic_batching": "N",
+            "continuous_batching": "N (shared serving physics only)",
+            "autoscaling": "Y — per-tick sizing",
+            "queue_aware": "N",
+            "latency_aware": "N",
+            "timeout_aware": "N",
+            "cache_aware": "N",
+            "affinity_aware": "N",
+            "placement_aware": "N",
+            "migration_aware": "N",
+            "energy_aware": "N",
+            "carbon_aware": "N",
+            "deadline_aware": "N",
+            "utilization_aware": "Y — explicit target_rho=0.85 (hot)",
+            "frontier_based": "N",
+            "dynamic_frontier_based": "N"
+          },
+          "class": "modern",
+          "rationale": "Hot rho-target autoscaler. Higher goodput/$ on Azure 2024 but UNSAFE (timeout 12.10% > 10% gate). EXCLUDED from headline."
+        },
+        {
+          "name": "naive_overprovisioning",
+          "impl_file": "scripts/run_azure_llm_2024_backtest.py",
+          "impl_function": "_peak_replicas + _provision",
+          "impl_lines": "93-99, 111-113",
+          "impl_summary": "single static replica count sized for the trace's PEAK demand at SAFE_TARGET_RHO=0.50",
+          "features": {
+            "dynamic_batching": "N",
+            "continuous_batching": "N (shared serving physics only)",
+            "autoscaling": "N — static peak-sized",
+            "queue_aware": "N",
+            "latency_aware": "N",
+            "timeout_aware": "N",
+            "cache_aware": "N",
+            "affinity_aware": "N",
+            "placement_aware": "N",
+            "migration_aware": "N",
+            "energy_aware": "N",
+            "carbon_aware": "N",
+            "deadline_aware": "N",
+            "utilization_aware": "Y (static at rho=0.50 on PEAK)",
+            "frontier_based": "N",
+            "dynamic_frontier_based": "N"
+          },
+          "class": "naive",
+          "rationale": "Cost floor anti-pattern: cheap per GPU-hour idle, poor goodput/$. Anti-baseline only."
+        },
+        {
+          "name": "oracle_forecast_ANALYSIS_ONLY",
+          "impl_file": "scripts/run_azure_llm_2024_backtest.py",
+          "impl_function": "run_base_backtest._oracle + _provision",
+          "impl_lines": "115-119",
+          "impl_summary": "per-tick perfect knowledge of THIS tick (no future leakage beyond current tick); sizes for FORECAST_TARGET_RHO",
+          "features": {
+            "dynamic_batching": "N",
+            "continuous_batching": "N (shared serving physics only)",
+            "autoscaling": "Y (per-tick)",
+            "queue_aware": "N",
+            "latency_aware": "N",
+            "timeout_aware": "N",
+            "cache_aware": "N",
+            "affinity_aware": "N",
+            "placement_aware": "N",
+            "migration_aware": "N",
+            "energy_aware": "N",
+            "carbon_aware": "N",
+            "deadline_aware": "N",
+            "utilization_aware": "Y",
+            "frontier_based": "N",
+            "dynamic_frontier_based": "N"
+          },
+          "class": "oracle_only",
+          "rationale": "Analysis ceiling — never deployable. EXCLUDED from headline comparator per docs/RESULTS.md §3."
+        },
+        {
+          "name": "constraint_aware",
+          "impl_file": "aurelius/traces/backtest.py",
+          "impl_function": "_run_policy + _constraint_trim",
+          "impl_lines": "393-404, 434-452",
+          "impl_summary": "anticipatory EWMA sizing (max of current + smoothed peak) at target_rho=0.65, with cache prefill savings (cache_aware=True) and hysteresis trim that probes downward while SLA stays safe (timeout_rate_pct ≤ 0). Optional frontier-controller opt-in lifts rho when shadow safety gates pass.",
+          "features": {
+            "dynamic_batching": "N (policy does not size for batching directly; relies on shared serving physics)",
+            "continuous_batching": "N (shared serving physics only)",
+            "autoscaling": "Y — EWMA-anticipatory per-tick sizing",
+            "queue_aware": "PARTIAL — implicit via Erlang-C wait inside evaluate_tick that constraint_trim consumes",
+            "latency_aware": "Y — _constraint_trim uses timeout_rate_pct ≤ 0 (latency derived) (aurelius/traces/backtest.py:442)",
+            "timeout_aware": "Y (aurelius/traces/backtest.py:442)",
+            "cache_aware": "Y — applies MAX_PREFILL_SAVINGS * reuse_fraction (aurelius/traces/backtest.py:315, 371-373)",
+            "affinity_aware": "PARTIAL — BurstGPT has cache_affinity_key as a model-level proxy; not a real KV-aware affinity router",
+            "placement_aware": "N (LLM serving backtest has a single homogeneous pool)",
+            "migration_aware": "Y — hysteresis: avoids 1-replica churn when SLA-safe (aurelius/traces/backtest.py:447-451)",
+            "energy_aware": "N (not in this backtest path)",
+            "carbon_aware": "N",
+            "deadline_aware": "N (no deadlines in interactive serving)",
+            "utilization_aware": "Y — explicit target_rho=0.65; optionally lifted by frontier controller",
+            "frontier_based": "OPT-IN — disabled by default (FrontierIntegrationConfig.enabled=False per aurelius/constraints/frontier_integration.py)",
+            "dynamic_frontier_based": "OPT-IN — see aurelius/frontier/dynamic_controller.py"
+          },
+          "class": "advanced",
+          "rationale": "Multi-feature autoscaler with anticipatory sizing + cache + SLA-aware trim + churn damping; opt-in frontier-based operating point selection."
+        }
+      ],
+      "selected_strongest_realistic_baseline_in_rollup": "sla_aware",
+      "alternative_baseline_if_any": "queue_aware (also SAFE; numerically worse on this trace — 2.49M vs 2.03M goodput/$); utilization_aware (UNSAFE at 12.10% timeout — disqualified)",
+      "was_selection_fair": "PARTIAL_YES",
+      "selection_confidence": "MEDIUM",
+      "fairness_notes": [
+        "sla_aware IS the strongest SAFE non-oracle baseline implemented in the harness — fair against what is implemented",
+        "BUT a real Azure / OpenAI / Anthropic stack would use vLLM/TensorRT-LLM/dynamo with KV-aware admission control, prefix caching, speculative decoding, and possibly custom autoscalers — features NONE of these baselines model directly. The simulator's serving physics gives every policy continuous batching for free, but does not model KV-aware admission as a policy lever.",
+        "constraint_aware's +25.75% over sla_aware is therefore +25.75% vs 'a reactive HPA autoscaler' — NOT vs 'a hyperscaler production inference stack'. The attribution doc shows the win is utilization-target / cost-efficiency, NOT a forecasting or scheduling effect, which is consistent with this being autoscaler-vs-autoscaler not stack-vs-stack."
+      ]
+    },
+    {
+      "benchmark_id": "burstgpt_v1",
+      "workload_class": "llm_serving",
+      "trace_kind": "public_trace_replay",
+      "n_requests_full": 17689,
+      "baselines": [
+        {"name": "fifo", "class": "naive", "see_azure_2024_for_full_features": true, "notes": "same _run_policy path — static at target_rho=0.70"},
+        {"name": "sla_aware", "class": "modern", "see_azure_2024_for_full_features": true, "notes": "same _run_policy — reactive lag at target_rho=0.50; on BurstGPT exhibits worse p99/timeout, so cache_affinity_baseline is the chosen headline"},
+        {"name": "queue_aware", "class": "modern", "see_azure_2024_for_full_features": true},
+        {
+          "name": "cache_affinity_baseline",
+          "impl_file": "aurelius/traces/backtest.py",
+          "impl_function": "_run_policy",
+          "impl_lines": "315-319 (cache_aware=True, fixed=True)",
+          "impl_summary": "STATIC sizing at target_rho=0.70 (same as fifo) BUT with cache_aware=True so it gets MAX_PREFILL_SAVINGS * reuse_fraction prefill savings",
+          "features": {
+            "dynamic_batching": "N",
+            "continuous_batching": "N (shared serving physics only)",
+            "autoscaling": "N — static replicas",
+            "queue_aware": "N",
+            "latency_aware": "N",
+            "timeout_aware": "N",
+            "cache_aware": "Y — MAX_PREFILL_SAVINGS * reuse_fraction applied (aurelius/traces/backtest.py:315, 371-373)",
+            "affinity_aware": "PARTIAL — uses the BurstGPT cache_affinity_key (model-level proxy; not real KV affinity)",
+            "placement_aware": "N",
+            "migration_aware": "N",
+            "energy_aware": "N",
+            "carbon_aware": "N",
+            "deadline_aware": "N",
+            "utilization_aware": "Y (static at rho=0.70)",
+            "frontier_based": "N",
+            "dynamic_frontier_based": "N"
+          },
+          "class": "modern",
+          "rationale": "Static-sizing baseline WITH a cache-savings proxy. Stronger than fifo because it benefits from the trace's reuse_fraction. Realistic for a workload where prefix cache is the dominant lever."
+        },
+        {"name": "constraint_aware", "class": "advanced", "see_azure_2024_for_full_features": true, "notes": "same implementation; on BurstGPT margin vs cache_affinity_baseline is +1.77%, vs sla_aware is +26.35%"}
+      ],
+      "selected_strongest_realistic_baseline_in_rollup": "cache_affinity_baseline",
+      "alternative_baseline_if_any": "sla_aware (larger margin but is itself unsafe-tail on this trace per the safety_evidence)",
+      "was_selection_fair": "YES",
+      "selection_confidence": "MEDIUM",
+      "fairness_notes": [
+        "cache_affinity_baseline is the strongest SAFE non-CA option on BurstGPT given the trace's cache_affinity_key proxy — fair pick.",
+        "Margin shrinks from +26% (vs sla_aware) to +1.77% (vs cache_affinity_baseline) — honest. The Aurelius rollup reports both.",
+        "Real production stacks (vLLM with prefix caching) would have a stronger cache-aware lever than the trace's model-level proxy; the +1.77% is therefore an upper bound, not a guarantee, of what would survive against a real KV-cache-aware serving stack."
+      ]
+    },
+    {
+      "benchmark_id": "azure_llm_2023_conv",
+      "workload_class": "llm_serving",
+      "trace_kind": "public_trace_replay",
+      "n_requests_full": 19366,
+      "baselines": [
+        {"name": "fifo", "class": "naive", "see_azure_2024_for_full_features": true, "notes": "BEATS constraint_aware on this trace (mild burst, static cheapest)"},
+        {"name": "sla_aware", "class": "modern", "see_azure_2024_for_full_features": true, "notes": "reactive lag at rho=0.50; constraint_aware +19.86% vs this"},
+        {"name": "queue_aware", "class": "modern", "see_azure_2024_for_full_features": true},
+        {"name": "constraint_aware", "class": "advanced", "see_azure_2024_for_full_features": true}
+      ],
+      "selected_strongest_realistic_baseline_in_rollup": "sla_aware",
+      "alternative_baseline_if_any": "fifo (static do-nothing) BEATS constraint_aware on this trace at +7.5% — but fifo is the sanity baseline, not a realistic operator baseline; rollup labels this honestly as 'LOSS_vs_static_fifo'",
+      "was_selection_fair": "YES_WITH_HONEST_CAVEAT",
+      "selection_confidence": "MEDIUM",
+      "fairness_notes": [
+        "sla_aware is the strongest IMPLEMENTED non-static baseline on Azure 2023 — fair.",
+        "The trace has no cache/session/latency signal so cache_affinity_baseline is not applicable.",
+        "Azure 2023 conv is a mild-burst trace where STATIC sizing wins on goodput/$. The rollup is honest that fifo beats constraint_aware; the comparison vs sla_aware is the realistic-operator comparison."
+      ]
+    },
+    {
+      "benchmark_id": "alibaba_genai_2026",
+      "workload_class": "llm_serving",
+      "trace_kind": "public_trace_replay",
+      "n_requests_full": 26392,
+      "baselines": [
+        {
+          "name": "fifo",
+          "impl_file": "aurelius/traces/genai_backtest.py",
+          "impl_function": "_run_policy",
+          "impl_lines": "194-201, 222-223",
+          "impl_summary": "static sizing at PEAK demand for TARGET_RHO_SLA; affinity=False",
+          "features": {
+            "autoscaling": "N (static at peak)",
+            "queue_aware": "N",
+            "latency_aware": "N",
+            "timeout_aware": "N",
+            "cache_aware": "N",
+            "affinity_aware": "N — affinity is set to (policy=='constraint_aware') only (aurelius/traces/genai_backtest.py:194)",
+            "placement_aware": "N",
+            "migration_aware": "N",
+            "energy_aware": "N",
+            "carbon_aware": "N",
+            "deadline_aware": "N",
+            "utilization_aware": "Y (static at rho)",
+            "frontier_based": "N",
+            "dynamic_frontier_based": "N"
+          },
+          "class": "naive"
+        },
+        {
+          "name": "sla_aware",
+          "impl_file": "aurelius/traces/genai_backtest.py",
+          "impl_function": "_run_policy + _size_for_sla",
+          "impl_lines": "224-226, 185-190",
+          "impl_summary": "reactive lag (uses prev_tick) + _size_for_sla loop that increases replicas until timeout_rate ≤ 0; affinity=False",
+          "features": {
+            "autoscaling": "Y",
+            "queue_aware": "N",
+            "latency_aware": "Y (sizes until timeout ≤ 0 via Erlang-C/serving physics)",
+            "timeout_aware": "Y",
+            "cache_aware": "N",
+            "affinity_aware": "N — CRITICAL GAP for GenAI: no model-affinity routing while there are 87 distinct base models",
+            "placement_aware": "N",
+            "migration_aware": "N",
+            "energy_aware": "N",
+            "carbon_aware": "N",
+            "deadline_aware": "N",
+            "utilization_aware": "N",
+            "frontier_based": "N",
+            "dynamic_frontier_based": "N"
+          },
+          "class": "modern",
+          "rationale": "SLA-target reactive autoscaler — but on GenAI it lacks model-affinity, which the ablation shows is ~62% of the goodput/$ gain."
+        },
+        {"name": "queue_aware", "class": "modern", "notes": "reactive lag + _size_for_target at TARGET_RHO_SLA, affinity=False"},
+        {"name": "utilization_aware", "class": "modern", "notes": "per-tick at TARGET_RHO_UTIL=0.85, affinity=False — but goodput/$ 6.83 below CA 9.84"},
+        {
+          "name": "constraint_aware",
+          "impl_file": "aurelius/traces/genai_backtest.py",
+          "impl_function": "_run_policy",
+          "impl_lines": "232-237",
+          "impl_summary": "anticipatory (EWMA-peak) + _size_for_sla + AFFINITY=TRUE (cold-start amortised across requests for the same model)",
+          "features": {
+            "autoscaling": "Y",
+            "queue_aware": "N",
+            "latency_aware": "Y",
+            "timeout_aware": "Y",
+            "cache_aware": "N",
+            "affinity_aware": "Y — affinity=True bypasses cold-start for warm-resident model (aurelius/traces/genai_backtest.py:194, 232-237)",
+            "placement_aware": "N",
+            "migration_aware": "N",
+            "energy_aware": "N",
+            "carbon_aware": "N",
+            "deadline_aware": "N",
+            "utilization_aware": "Y",
+            "frontier_based": "N",
+            "dynamic_frontier_based": "N"
+          },
+          "class": "advanced"
+        }
+      ],
+      "selected_strongest_realistic_baseline_in_rollup": "sla_aware",
+      "alternative_baseline_if_any": "utilization_aware (gpd 6.83 vs CA 9.84 → +44% margin, more honest comparison since both lack affinity); or, more accurately, the missing baseline 'sla_aware + model-affinity' (NOT implemented in this harness)",
+      "was_selection_fair": "NO — UNDER_BASELINED",
+      "selection_confidence": "HIGH",
+      "fairness_notes": [
+        "CRITICAL FAIRNESS GAP: only constraint_aware has affinity=True in this harness. None of the baselines (fifo/sla_aware/queue_aware/utilization_aware) model model-affinity routing.",
+        "The ablation explicitly attributes ~62% of CA's +89.46% gain to affinity/prewarm (aurelius/traces/genai_ablation.py shapley_attribution: affinity_share_pct=62.1, sizing_share_pct=37.9).",
+        "A REAL stable-diffusion serving stack (Replicate, RunPod, AWS Inferentia, Hugging Face Inference Endpoints, in-house Anthropic/OpenAI image-gen stacks) ABSOLUTELY has model-affinity routing for cold-start mitigation — it is table-stakes when you have 87 distinct base models. The +89.46% headline is therefore +89.46% vs an UNDER-BASELINED comparator, not against a realistic operator.",
+        "If a 'sla_aware_with_affinity' baseline were implemented, the expected margin would collapse from +89% to approximately +34% (the sizing_share Shapley term, 37.9% of 89.46%).",
+        "Recommendation: outreach using GenAI numbers MUST disclose this gap, or restrict claims to the +44% utilization_aware comparison (also implemented; also lacks affinity, but at least it is a hot rho-target autoscaler), or build an explicit 'sla_aware_with_affinity' baseline before re-headlining."
+      ]
+    },
+    {
+      "benchmark_id": "alibaba_gpu_v2023",
+      "workload_class": "gpu_packing",
+      "trace_kind": "public_trace_replay",
+      "n_jobs_full": 6282,
+      "baselines": [
+        {
+          "name": "fifo",
+          "impl_file": "aurelius/traces/gpu_packing.py",
+          "impl_function": "_select_node",
+          "impl_lines": "206-212",
+          "impl_summary": "round-robin among fitting nodes (no consolidation)",
+          "class": "naive",
+          "features": {"placement_aware": "PARTIAL (round-robin)", "utilization_aware": "N", "all_others": "N"}
+        },
+        {
+          "name": "first_fit",
+          "impl_file": "aurelius/traces/gpu_packing.py",
+          "impl_function": "_select_node",
+          "impl_lines": "213-214",
+          "impl_summary": "lowest-index node that fits",
+          "class": "modern",
+          "features": {"placement_aware": "Y (first_fit)", "utilization_aware": "PARTIAL", "all_others": "N"}
+        },
+        {
+          "name": "best_fit",
+          "impl_file": "aurelius/traces/gpu_packing.py",
+          "impl_function": "_select_node",
+          "impl_lines": "215-224",
+          "impl_summary": "tightest remaining GPU capacity that fits, preferring active nodes (consolidation)",
+          "class": "modern",
+          "features": {"placement_aware": "Y (best_fit consolidation)", "utilization_aware": "Y (packs tighter)", "migration_aware": "N", "all_others": "N"}
+        },
+        {
+          "name": "first_fit_decreasing",
+          "impl_file": "aurelius/traces/gpu_packing.py",
+          "impl_function": "_job_order + _select_node",
+          "impl_lines": "191-194, 213-217",
+          "impl_summary": "decreasing GPU demand (big jobs first) then first_fit",
+          "class": "modern",
+          "features": {"placement_aware": "Y (FFD)", "utilization_aware": "Y", "all_others": "N"}
+        },
+        {
+          "name": "greedy_packing",
+          "impl_file": "aurelius/traces/gpu_packing.py",
+          "impl_function": "_job_order + _select_node",
+          "impl_lines": "191-194, 215-224",
+          "impl_summary": "FFD job order + best_fit node selection",
+          "class": "modern",
+          "features": {"placement_aware": "Y", "utilization_aware": "Y", "all_others": "N"}
+        },
+        {
+          "name": "constraint_aware",
+          "impl_file": "aurelius/traces/gpu_packing.py",
+          "impl_function": "_select_node",
+          "impl_lines": "225-243",
+          "impl_summary": "consolidate (prefer active) + cheapest adequate GPU TYPE (heterogeneous price-aware) + tightest fit + reserve big nodes for big jobs",
+          "class": "advanced",
+          "features": {
+            "placement_aware": "Y",
+            "utilization_aware": "Y",
+            "affinity_aware": "PARTIAL (gpu-type affinity)",
+            "all_others": "N"
+          }
+        }
+      ],
+      "selected_strongest_realistic_baseline_in_rollup": "best_fit",
+      "alternative_baseline_if_any": "greedy_packing (FFD + best_fit) — numerically identical to best_fit on this trace",
+      "was_selection_fair": "YES",
+      "selection_confidence": "HIGH",
+      "fairness_notes": [
+        "best_fit is the standard reference for GPU packing (Yarn/Kubernetes scheduler default in many configs).",
+        "constraint_aware adds heterogeneous price-aware GPU-type selection on top of best_fit consolidation, which IS what a sophisticated multi-cloud operator (CoreWeave, Lambda, RunPod) would do.",
+        "+6.0% margin is small but real and fair — packing baselines are already strong; the lever here is heterogeneous-fleet price awareness."
+      ]
+    },
+    {
+      "benchmark_id": "philly_training",
+      "workload_class": "training_gpu_scheduling",
+      "trace_kind": "fixture_demonstration",
+      "n_jobs_fixture": 33,
+      "baselines": [
+        {"name": "fifo", "impl_file": "aurelius/traces/gpu_scheduling.py", "impl_lines": "235-246", "impl_summary": "strict head-of-line; no backfill", "class": "naive"},
+        {"name": "first_fit / best_fit / FFD / greedy_packing / topology_aware / utilization_aware", "impl_file": "aurelius/traces/gpu_scheduling.py", "impl_lines": "248-262", "impl_summary": "backfill (scan ready in submit order, place any that fit) + node selection variant per policy", "class": "modern"},
+        {"name": "constraint_aware", "impl_summary": "matches best_fit/topology_aware/greedy_packing exactly on Philly (no GPU price signal; CA's heterogeneous-pricing lever is inactive)", "class": "advanced"}
+      ],
+      "selected_strongest_realistic_baseline_in_rollup": "best_fit",
+      "alternative_baseline_if_any": "topology_aware / greedy_packing (identical on Philly)",
+      "was_selection_fair": "YES",
+      "selection_confidence": "MEDIUM",
+      "fairness_notes": [
+        "best_fit + backfill is comparable to YARN / Slurm / Kubernetes default schedulers — fair comparator.",
+        "Result is a TIE at fixture-scale (n=33 jobs). The full ~1 GB Philly LFS tarball would give a stronger statistical signal but does not change the qualitative finding.",
+        "Honest interpretation: constraint_aware does NOT beat best_fit on Philly because Philly publishes no GPU price (CA's main lever is inactive). The TIE is genuinely a tie, not a loss."
+      ]
+    },
+    {
+      "benchmark_id": "mit_supercloud_bounded",
+      "workload_class": "training_gpu_scheduling",
+      "trace_kind": "bounded_real_s3_sample",
+      "n_jobs_full": 10000,
+      "baselines": [
+        {"name": "fifo", "class": "naive", "notes": "UNSAFE (queue p99 56h, starvation 47%)"},
+        {"name": "first_fit / best_fit / FFD / greedy_packing / topology_aware / utilization_aware", "class": "modern", "notes": "all numerically identical on this trace (no GPU price, no topology penalty)"},
+        {"name": "constraint_aware", "class": "advanced", "notes": "ties all of the above exactly"}
+      ],
+      "selected_strongest_realistic_baseline_in_rollup": "best_fit",
+      "alternative_baseline_if_any": "any of {first_fit_decreasing, topology_aware, greedy_packing, utilization_aware} — all identical",
+      "was_selection_fair": "YES",
+      "selection_confidence": "HIGH",
+      "fairness_notes": [
+        "Strong packing baselines compared honestly — TIE outcome (CA matches them exactly).",
+        "FIFO is UNSAFE here, so CA's +16% vs FIFO is also a SAFETY win; that is honestly framed in the rollup."
+      ]
+    },
+    {
+      "benchmark_id": "canonical_energy_backtest",
+      "workload_class": "energy_flexible_workload",
+      "trace_kind": "frozen_synthetic_on_real_prices",
+      "n_jobs": 1000,
+      "baselines": [
+        {
+          "name": "fifo",
+          "impl_file": "aurelius/backtesting/baselines.py",
+          "impl_function": "fifo_policy",
+          "impl_lines": "40-69",
+          "impl_summary": "ASAP at earliest_start in default region",
+          "class": "naive"
+        },
+        {
+          "name": "current_price_only",
+          "impl_file": "aurelius/backtesting/baselines.py",
+          "impl_function": "current_price_only_policy",
+          "impl_lines": "165-194",
+          "impl_summary": "cheapest region at earliest_start (no temporal shift, no forecasting)",
+          "features": {
+            "energy_aware": "Y (price lookup at earliest_start)",
+            "carbon_aware": "N (carbon_data passed but unused)",
+            "deadline_aware": "PARTIAL (uses earliest_start; no slack exploitation)",
+            "migration_aware": "N",
+            "placement_aware": "Y (chooses region)",
+            "queue_aware": "N",
+            "all_others": "N"
+          },
+          "class": "modern"
+        },
+        {
+          "name": "greedy_energy",
+          "impl_file": "aurelius/benchmarks/canonical_backtests.py",
+          "impl_function": "_greedy_energy_policy",
+          "impl_lines": "379-410",
+          "impl_summary": "cheapest (region, hour) in feasible window on DA price; ignores migration/basis/SLA",
+          "features": {
+            "energy_aware": "Y",
+            "carbon_aware": "N",
+            "deadline_aware": "PARTIAL (uses deadline-runtime as window upper bound)",
+            "migration_aware": "N (no warmup awareness — that is why it misses 119 deadlines)",
+            "placement_aware": "Y",
+            "queue_aware": "N",
+            "all_others": "N"
+          },
+          "class": "modern",
+          "notes": "UNSAFE — 119 deadline misses"
+        },
+        {
+          "name": "robust_energy_standalone",
+          "impl_file": "aurelius/optimization/scheduler.py",
+          "impl_function": "JobScheduler.solve(method='greedy')",
+          "impl_lines": "194-269, 271+",
+          "impl_summary": "The Aurelius energy engine itself: greedy search over (time × region × power) with carbon, risk, GPU-health, queue, and migration penalties",
+          "features": {
+            "energy_aware": "Y",
+            "carbon_aware": "Y",
+            "deadline_aware": "PARTIAL (deadline constraint, but warmup-blind)",
+            "migration_aware": "PARTIAL (migration network cost in objective; but does not budget the warmup-hours cost of cross-region moves for non-home destinations)",
+            "placement_aware": "Y",
+            "queue_aware": "Y (queue_data input when provided)",
+            "all_others": "N"
+          },
+          "class": "advanced",
+          "notes": "UNSAFE on this scoring (143 deadline misses) — the engine ignores warmup which the deadline scoring penalises"
+        },
+        {
+          "name": "sla_aware",
+          "impl_file": "aurelius/benchmarks/canonical_backtests.py",
+          "impl_function": "run_canonical_backtest (sla_schedule)",
+          "impl_lines": "560-590",
+          "impl_summary": "energy engine + reverts latency-pinned + deadline-unsafe moves to home (no destination/KPI gates)",
+          "class": "advanced",
+          "notes": "UNSAFE on this scoring (143 deadline misses)"
+        },
+        {
+          "name": "constraint_aware_with_energy_adapter",
+          "impl_file": "aurelius/constraints/energy_adapter.py + canonical_backtests.py wiring",
+          "impl_function": "EnergyArbitrageAdapter.evaluate_best",
+          "impl_lines": "528-558 in canonical_backtests.py",
+          "impl_summary": "energy engine ranked candidates → constraint-aware gates (eligibility / destination / SLA / KPI) → next-best safe fallback. Accepts the first SLA-safe AND KPI-positive candidate from {engine_optimized, current_price_only, home}",
+          "features": {
+            "energy_aware": "Y",
+            "carbon_aware": "Y",
+            "deadline_aware": "Y (full warmup-aware deadline scoring)",
+            "migration_aware": "Y",
+            "placement_aware": "Y",
+            "queue_aware": "Y",
+            "latency_aware": "Y",
+            "all_others": "N (not applicable to energy flex)"
+          },
+          "class": "advanced"
+        }
+      ],
+      "selected_strongest_realistic_baseline_in_rollup": "current_price_only",
+      "alternative_baseline_if_any": "robust_energy_standalone (UNSAFE — disqualified by 143 deadline misses); the energy engine itself is the closest comparable advanced baseline but the harness disqualifies it",
+      "was_selection_fair": "YES_GIVEN_SAFETY_GATE",
+      "selection_confidence": "HIGH",
+      "fairness_notes": [
+        "Among SAFE non-CA policies, current_price_only is the strongest realistic baseline — fair.",
+        "Note that robust_energy_standalone is Aurelius's OWN energy engine; the comparison vs current_price_only is therefore 'wrapped Aurelius vs price-lookup baseline', and the +11% headline is the value the wrapper adds over a naive price-lookup operator.",
+        "A real sophisticated operator using a commercial DR / arbitrage product (e.g., Grid+, Voltus, Enchanted Rock) would have something between current_price_only and robust_energy_standalone — closer to greedy_energy with safety reverts. The +11% is therefore a fair representation of incremental value the wrapper adds over a competent-but-not-sophisticated operator."
+      ]
+    },
+    {
+      "benchmark_id": "azure_2024_static_frontier_controller",
+      "workload_class": "frontier_static",
+      "baselines": [
+        {"name": "constraint_aware (rho=0.65 default)", "class": "advanced", "see_azure_2024_for_full_features": true},
+        {
+          "name": "frontier_controller_v1",
+          "impl_file": "aurelius/frontier/controller.py + estimator.py",
+          "impl_function": "choose_safe_utilization_target",
+          "impl_lines": "120+",
+          "impl_summary": "estimates the Pareto frontier of (rho, predicted goodput/$, safety) and selects the highest SLA-safe goodput/$ point with safety vetoes (timeout/queue/latency/telemetry gates)",
+          "features": {
+            "autoscaling": "Y",
+            "queue_aware": "Y",
+            "latency_aware": "Y",
+            "timeout_aware": "Y",
+            "utilization_aware": "Y",
+            "frontier_based": "Y — explicit rho-grid Pareto selection",
+            "dynamic_frontier_based": "N (static estimator)",
+            "all_others": "depends on inner policy"
+          },
+          "class": "advanced",
+          "rationale": "Self-comparison: CA-default vs CA+frontier-controller. Not an external baseline."
+        }
+      ],
+      "selected_strongest_realistic_baseline_in_rollup": "constraint_aware (self-baseline)",
+      "was_selection_fair": "YES_FOR_SELF_AUDIT",
+      "selection_confidence": "HIGH",
+      "fairness_notes": [
+        "This is a SELF-AUDIT comparing CA-default vs CA+frontier-controller — not an external benchmark. The +12.98% on Azure 2024 is CA-on-CA improvement, not CA-vs-baseline alpha.",
+        "When folded into outreach numbers, this should be reported as a SEPARATE 'controller adds X% on top of CA' figure, never combined with the headline CA-vs-sla_aware margin."
+      ]
+    },
+    {
+      "benchmark_id": "azure_2024_dynamic_frontier",
+      "workload_class": "frontier_dynamic",
+      "baselines": [
+        {"name": "constraint_aware_static (rho=0.65)", "class": "advanced", "notes": "default constraint_aware path in aurelius/traces/backtest.py:393-404 — full feature evidence in azure_llm_2024_week row above"},
+        {"name": "static_frontier_controller", "class": "advanced", "see_azure_2024_static_frontier": true},
+        {"name": "dynamic_frontier_estimator", "class": "advanced", "notes": "telemetry-replay window-based rho selection; retains 73% of oracle alpha"},
+        {"name": "oracle (realized optimal rho)", "class": "oracle_only", "notes": "EXCLUDED from headline"}
+      ],
+      "selected_strongest_realistic_baseline_in_rollup": "static_frontier_controller",
+      "was_selection_fair": "YES_FOR_SELF_AUDIT",
+      "selection_confidence": "HIGH"
+    },
+    {
+      "benchmark_id": "azure_2024_dynamic_frontier_calibration",
+      "workload_class": "frontier_dynamic_calibration",
+      "baselines": [{"name": "oracle (best safe rho)", "class": "oracle_only"}],
+      "selected_strongest_realistic_baseline_in_rollup": "oracle (target NOT reached)",
+      "was_selection_fair": "ORACLE_ONLY — DIAGNOSTIC",
+      "selection_confidence": "HIGH",
+      "fairness_notes": [
+        "Pure calibration audit; the 91.07% oracle-alpha-capture is a quality metric of the dynamic estimator, NOT a goodput/$ headline.",
+        "EXCLUDED from headline rollup."
+      ]
+    },
+    {
+      "benchmark_id": "eval_workload_frontier_v1",
+      "workload_class": "frontier_eval_workload",
+      "baselines": [{"name": "candidate grid sweep (target_rho, concurrency, slack)", "class": "advanced", "notes": "recommendation-only controller; no external baseline"}],
+      "selected_strongest_realistic_baseline_in_rollup": "best safe candidate in grid (rho=0.95, c=1, slack=0.5h)",
+      "was_selection_fair": "RECOMMENDATION_ONLY_NO_EXTERNAL_BASELINE",
+      "selection_confidence": "MEDIUM",
+      "fairness_notes": [
+        "This is a frontier recommendation, not a baseline comparison. No fifo/sla_aware/etc baseline is run.",
+        "EXCLUDED from headline rollup (the original rollup correctly does not include eval/batch frontiers in the 8 safe-eligible benchmarks)."
+      ]
+    },
+    {
+      "benchmark_id": "batch_inference_frontier_v1",
+      "workload_class": "frontier_batch_inference",
+      "baselines": [{"name": "candidate grid sweep (target_rho, slack)", "class": "advanced", "notes": "recommendation-only controller; no external baseline"}],
+      "selected_strongest_realistic_baseline_in_rollup": "best safe candidate in grid",
+      "was_selection_fair": "RECOMMENDATION_ONLY_NO_EXTERNAL_BASELINE",
+      "selection_confidence": "MEDIUM",
+      "fairness_notes": [
+        "Same as eval_workload_frontier — recommendation-only, not a baseline comparison.",
+        "Not in the headline rollup."
+      ]
+    }
+  ],
+  "benchmark_trust_scores": {
+    "_doc": "1-10 each. baseline_strength_score: how strong is the strongest realistic baseline relative to a real production stack. production_similarity_score: how close the simulated environment is to a real customer environment. headline_credibility_score: composite (baseline_strength × honest_caveat_disclosure × applicable_workload_breadth).",
+    "azure_llm_2024_week": {
+      "baseline_strength_score": 5,
+      "production_similarity_score": 4,
+      "headline_credibility_score": 6,
+      "notes": "sla_aware is modern-but-basic; real Azure/OpenAI stacks have KV-aware admission + prefix caching not modelled here. Trace is real and large (44.1M rows, 9 days)."
+    },
+    "burstgpt_v1": {
+      "baseline_strength_score": 6,
+      "production_similarity_score": 4,
+      "headline_credibility_score": 6,
+      "notes": "cache_affinity_baseline is the right comparator given the trace's signal. Trace has only model-level cache proxy (not real KV)."
+    },
+    "azure_llm_2023_conv": {
+      "baseline_strength_score": 5,
+      "production_similarity_score": 4,
+      "headline_credibility_score": 5,
+      "notes": "Static FIFO beats CA on this mild-burst trace — honest. Margin is real vs sla_aware."
+    },
+    "alibaba_genai_2026": {
+      "baseline_strength_score": 3,
+      "production_similarity_score": 4,
+      "headline_credibility_score": 4,
+      "notes": "CRITICAL: only constraint_aware has affinity=True. None of the baselines model model-affinity routing despite 87 distinct base models. The +89% headline is under-baselined; expected fair margin if a sla_aware+affinity baseline existed: ~+34% (sizing Shapley term only)."
+    },
+    "alibaba_gpu_v2023": {
+      "baseline_strength_score": 8,
+      "production_similarity_score": 6,
+      "headline_credibility_score": 7,
+      "notes": "best_fit / FFD / greedy_packing are standard production scheduler baselines (YARN/K8s). +6% margin is small but fair."
+    },
+    "philly_training": {
+      "baseline_strength_score": 7,
+      "production_similarity_score": 4,
+      "headline_credibility_score": 4,
+      "notes": "best_fit + backfill is comparable to Slurm. But fixture-scale (n=33) is a sample-size issue. TIE outcome is honest."
+    },
+    "mit_supercloud_bounded": {
+      "baseline_strength_score": 8,
+      "production_similarity_score": 6,
+      "headline_credibility_score": 7,
+      "notes": "Standard packing baselines all numerically identical; TIE is honest. Real 10,000-job Slurm sample."
+    },
+    "canonical_energy_backtest": {
+      "baseline_strength_score": 6,
+      "production_similarity_score": 4,
+      "headline_credibility_score": 6,
+      "notes": "current_price_only is a fair safe baseline. Synthetic workload mix limits production similarity."
+    }
+  },
+  "outreach_guidance": {
+    "azure_llm_2024_week": {
+      "can_support_vs_fifo_claims": "YES — explicit fifo baseline, +98% margin",
+      "can_support_vs_modern_scheduler_claims": "YES — vs sla_aware/queue_aware reactive HPA-style baselines, +26% / +3%",
+      "can_support_vs_hyperscaler_style_scheduler_claims": "NO — none of the baselines model KV-aware admission, prefix caching, custom autoscalers, or speculative decoding. Disclose this gap.",
+      "can_support_enterprise_outreach_claims": "YES WITH CAVEATS — pair with the attribution disclosure: 'win is utilization-target / cost-efficiency, not forecasting accuracy'. Frame as 'better than reactive autoscaling at parity SLA safety', not as 'better than a sophisticated inference stack'."
+    },
+    "burstgpt_v1": {
+      "can_support_vs_fifo_claims": "MARGINAL — fifo beats CA by 2% on goodput/$ in some configs; safety story holds",
+      "can_support_vs_modern_scheduler_claims": "YES — +1.77% vs cache_affinity_baseline, +26% vs sla_aware",
+      "can_support_vs_hyperscaler_style_scheduler_claims": "NO — real KV cache, real prefix caching, real session routing absent",
+      "can_support_enterprise_outreach_claims": "MARGINAL — the +1.77% vs cache_affinity is small; better to lead with the LLM-serving median, not BurstGPT alone"
+    },
+    "azure_llm_2023_conv": {
+      "can_support_vs_fifo_claims": "NO — fifo BEATS CA on this trace; disclose",
+      "can_support_vs_modern_scheduler_claims": "YES — +19.86% vs sla_aware",
+      "can_support_vs_hyperscaler_style_scheduler_claims": "NO",
+      "can_support_enterprise_outreach_claims": "WEAK — only viable as 'one of three LLM traces; the median is the headline'"
+    },
+    "alibaba_genai_2026": {
+      "can_support_vs_fifo_claims": "YES — +457% vs FIFO",
+      "can_support_vs_modern_scheduler_claims": "PARTIALLY — none of the baselines have affinity, which is the dominant lever; honest comparator is utilization_aware where CA still wins +44%",
+      "can_support_vs_hyperscaler_style_scheduler_claims": "NO — a real SD serving stack has model-affinity routing; this benchmark UNDER-BASELINES the comparison",
+      "can_support_enterprise_outreach_claims": "USE WITH STRONG DISCLOSURE: 'Aurelius adds model-affinity routing where the trace's stable-diffusion serving has 87 distinct base models — a feature any real production stack would also have.' Quote +44% vs utilization_aware (the fairest implemented comparator), not +89% vs sla_aware (under-baselined)."
+    },
+    "alibaba_gpu_v2023": {
+      "can_support_vs_fifo_claims": "YES — +56%",
+      "can_support_vs_modern_scheduler_claims": "YES — +6% vs best_fit (standard K8s/YARN scheduler)",
+      "can_support_vs_hyperscaler_style_scheduler_claims": "PARTIALLY — best_fit is what most real schedulers do; a hyperscaler with heterogeneous-fleet-aware bin-packing (e.g., Borg) would be closer to CA",
+      "can_support_enterprise_outreach_claims": "YES — +6% economic alpha + heterogeneous-fleet price awareness story"
+    },
+    "philly_training": {
+      "can_support_vs_fifo_claims": "YES — +62%",
+      "can_support_vs_modern_scheduler_claims": "NO — TIES best_fit + backfill",
+      "can_support_vs_hyperscaler_style_scheduler_claims": "NO",
+      "can_support_enterprise_outreach_claims": "Frame as 'matches strongest packing baseline — already on safe frontier for this workload class'. DO NOT make CA-vs-modern-scheduler claims here."
+    },
+    "mit_supercloud_bounded": {
+      "can_support_vs_fifo_claims": "YES + SAFETY (fifo is UNSAFE here)",
+      "can_support_vs_modern_scheduler_claims": "NO — TIES every safe packing baseline",
+      "can_support_vs_hyperscaler_style_scheduler_claims": "NO",
+      "can_support_enterprise_outreach_claims": "Frame as 'safe-frontier-tied + safety win vs naive FIFO'."
+    },
+    "canonical_energy_backtest": {
+      "can_support_vs_fifo_claims": "YES — +103%",
+      "can_support_vs_modern_scheduler_claims": "YES — +11% vs current_price_only at 0 deadline misses",
+      "can_support_vs_hyperscaler_style_scheduler_claims": "PARTIALLY — commercial DR/arbitrage products are between current_price_only and the energy engine; the +11% is incremental over a competent-but-not-sophisticated operator",
+      "can_support_enterprise_outreach_claims": "YES — SAFETY_WIN with alpha is a compelling enterprise story"
+    }
+  },
+  "final_question_answer": {
+    "question": "If a sophisticated Azure/OpenAI/Anthropic-style inference stack already uses dynamic batching, queue-aware scheduling, and autoscaling, how much of Aurelius' reported improvement remains after comparing against the strongest implemented realistic baseline?",
+    "short_answer": "Roughly half to two-thirds of the headline survives — but a hyperscaler-equivalent baseline is NOT implemented in any current Aurelius benchmark. The honest range is +10% to +25% on LLM-serving traces vs the strongest implemented modern baseline (sla_aware/queue_aware/cache_affinity_baseline), with NO benchmark that simulates a real KV-aware + prefix-caching + model-affinity production stack.",
+    "long_answer": {
+      "what_already_holds": [
+        "Continuous batching is in the shared serving physics (aurelius/simulation/cluster/serving.py:114), so every policy in the LLM-serving backtests gets it for free. The Aurelius vs sla_aware comparisons are NOT 'with continuous batching vs without' — they are autoscaler-vs-autoscaler.",
+        "Queue-aware scheduling exists as queue_aware baseline (aurelius/traces/backtest.py:387-392) and as an input to constraint_aware's _constraint_trim. Aurelius wins +3% vs queue_aware on Azure 2024 — that small margin survives against a queue-aware HPA-style baseline.",
+        "Autoscaling exists as sla_aware (rho=0.50), queue_aware (queue-target), utilization_aware (rho=0.85) — three implemented modern reactive baselines. Aurelius's +26% vs sla_aware on Azure 2024 is the relevant headline; +3% vs queue_aware is the conservative floor."
+      ],
+      "what_does_NOT_hold_against_a_real_hyperscaler_stack": [
+        "KV-aware admission control: no baseline implements per-request KV-cache-pressure-aware admission. Production stacks (vLLM PagedAttention, TensorRT-LLM, Anthropic / OpenAI / DeepMind inference) do.",
+        "Prefix caching as a scheduler input: cache_affinity_baseline uses a STATIC PRIOR (MAX_PREFILL_SAVINGS=0.25 × reuse_fraction), not a real per-request prefix-cache router. vLLM / SGLang / Mooncake have real prefix-cache-aware admission.",
+        "Model-affinity routing: ONLY constraint_aware on GenAI has affinity=True. Real multi-model serving (Replicate, RunPod, Hugging Face Endpoints, Anthropic batch model multiplexing) has model-affinity routing as a primary feature. On GenAI this is the +62% (~Shapley) portion of CA's gain.",
+        "Speculative decoding, prompt-aware batching, chunked prefill, disaggregated prefill/decode (DistServe, Sarathi-Serve, Mooncake): NOT modelled. Aurelius's serving physics is a single shared continuous-batching model.",
+        "Custom autoscalers calibrated to per-tenant SLOs: a hyperscaler operator would have profile-specific scaling policies; the implemented sla_aware/queue_aware are generic."
+      ],
+      "estimated_residual_alpha_against_a_real_hyperscaler_baseline_directional_only": {
+        "azure_llm_2024_week": {
+          "current_headline_vs_sla_aware_pct": 25.75,
+          "vs_queue_aware_pct": 2.6,
+          "estimated_vs_hyperscaler_baseline_pct_range": "5-15%",
+          "estimation_rationale": "+2.6% vs queue_aware sets a floor; +5-15% accounts for the static-frontier-controller's +12.98% being available to CA via opt-in (which a hyperscaler stack would also use)"
+        },
+        "burstgpt_v1": {
+          "current_headline_vs_cache_affinity_baseline_pct": 1.77,
+          "vs_sla_aware_pct": 26.35,
+          "estimated_vs_hyperscaler_baseline_pct_range": "0-3%",
+          "estimation_rationale": "cache_affinity_baseline already proxies prefix caching; a real vLLM prefix-cache-aware stack would erase most of the +1.77%"
+        },
+        "azure_llm_2023_conv": {
+          "current_headline_vs_sla_aware_pct": 19.86,
+          "estimated_vs_hyperscaler_baseline_pct_range": "0-10%",
+          "estimation_rationale": "Static fifo already beats CA on this trace; a sophisticated stack with adaptive static-vs-reactive switching would likely match or beat CA"
+        },
+        "alibaba_genai_2026": {
+          "current_headline_vs_sla_aware_pct": 89.46,
+          "vs_utilization_aware_pct": 44.1,
+          "estimated_vs_hyperscaler_baseline_pct_range": "20-40%",
+          "estimation_rationale": "Ablation Shapley: 62% from affinity (a hyperscaler stack would have this), 38% from sizing. +20-40% would be the sizing-only residual against a baseline that also had affinity routing"
+        },
+        "alibaba_gpu_v2023": {
+          "current_headline_vs_best_fit_pct": 6.0,
+          "estimated_vs_hyperscaler_baseline_pct_range": "0-6%",
+          "estimation_rationale": "best_fit already standard; Google Borg-style heterogeneous-fleet bin-packing would erase most of the +6%. CoreWeave/Lambda-style multi-cloud price arbitrage would NOT erase it (CA's price-aware lever survives)"
+        },
+        "philly_training_and_mit_supercloud": {
+          "current_headline_pct": 0,
+          "estimated_vs_hyperscaler_baseline_pct_range": "0% (TIE)",
+          "estimation_rationale": "Already TIES standard packing baselines. Slurm-equivalent scheduler would also tie."
+        },
+        "canonical_energy_backtest": {
+          "current_headline_vs_current_price_only_pct": 11.07,
+          "estimated_vs_hyperscaler_baseline_pct_range": "3-11%",
+          "estimation_rationale": "A sophisticated commercial DR/arbitrage product would have something closer to greedy_energy + safety reverts; +3-11% residual depending on how much warmup-awareness the commercial product has"
+        }
+      },
+      "honest_summary_for_outreach": "Of the headline median +9% across 8 benchmarks (rollup): vs a realistic hyperscaler-equivalent baseline (NOT IMPLEMENTED, estimated directionally), the conservative estimated residual is roughly +3-15% on LLM-serving traces, +0-6% on GPU packing, +0% (tie) on training, +3-11% on energy. The +89% GenAI headline is most affected (collapses to ~+20-40% if a baseline had model-affinity routing).",
+      "what_to_build_next_to_close_the_gap": [
+        "Implement a vLLM-style baseline with PagedAttention KV-aware admission + real prefix-cache routing (would tighten BurstGPT and Azure baselines).",
+        "Implement a model-affinity baseline for GenAI (would tighten the +89% headline to ~+34%).",
+        "Implement a Borg-style heterogeneous-fleet bin-packing baseline (would tighten the +6% Alibaba GPU headline).",
+        "Run on a customer-telemetry shadow-pilot (the docs/RESULTS.md §8 production-claim gate)."
+      ]
+    }
+  }
+}
