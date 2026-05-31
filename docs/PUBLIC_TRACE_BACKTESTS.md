@@ -324,6 +324,11 @@ demonstration** unless the tarball is downloaded.
   (week-long, multi-service + forecast robustness)** (LLM inference replay) +
   Alibaba GPU v2023 (GPU bin-packing/fragmentation) + Philly (temporal GPU
   training-job scheduling) + Alibaba GenAI 2026 (multi-layer GenAI serving).
+- **Training Safe Utilization Frontier v1** (sibling of the serving frontier
+  controller) reuses the Philly + Alibaba GPU v2023 committed backtest
+  summaries — see `docs/TRAINING_SAFE_UTILIZATION_FRONTIER.md` +
+  `docs/TRAINING_SAFE_UTILIZATION_FRONTIER_RESULTS.md`. No new datasets
+  ingested; MIT Supercloud is the next validation step.
 - No Azure **LMM/multimodal** or MIT ingestion yet (this PR did **not** ingest
   Azure LMM/multimodal).
 - No ML training, no neural forecasting.
