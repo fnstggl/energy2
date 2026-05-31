@@ -1,0 +1,107 @@
+{
+  "config": {
+    "end_time_max_s": null,
+    "gpu_jobs_only": true,
+    "include_utilization": true,
+    "labelled_only": false,
+    "max_jobs": 10000,
+    "max_util_files": 50,
+    "sample_size": null,
+    "start_time_min_s": null
+  },
+  "gpu_sample_coverage": {
+    "coverage_pct_of_gpu_jobs": 0.07,
+    "coverage_pct_of_jobs": 0.07,
+    "matched_gpu_job_ids": 7,
+    "matched_job_ids": 7,
+    "n_gpu_sample_files": 20,
+    "n_gpu_samples": 65966,
+    "sampled_job_ids": 20,
+    "utilization_pct_p50": 0.0,
+    "utilization_pct_p95": 94.0,
+    "utilization_pct_p99": 95.0
+  },
+  "join_quality": {
+    "joins": [
+      {
+        "confidence": "none",
+        "join_kind": "exact_job_id_join",
+        "join_name": "label_to_job",
+        "left_total": 3430,
+        "matched_left": 0,
+        "matched_right": 0,
+        "notes": "job_id appears in labelled_jobids.csv",
+        "right_total": 10000
+      },
+      {
+        "confidence": "high",
+        "join_kind": "exact_job_id_join",
+        "join_name": "gpu_util_to_job",
+        "left_total": 20,
+        "matched_left": 7,
+        "matched_right": 7,
+        "notes": "GPU sample file name == job_id (per the MIT intro notebook); join is exact",
+        "right_total": 10000
+      },
+      {
+        "confidence": "none",
+        "join_kind": "node_time_join",
+        "join_name": "node_util_to_job",
+        "left_total": 0,
+        "matched_left": 0,
+        "matched_right": 0,
+        "notes": "node snapshot \u2194 job by node-name intersection + [start,end] window overlap; medium confidence because snapshots are 5-min granular",
+        "right_total": 10000
+      }
+    ],
+    "n_jobs": 10000,
+    "n_jobs_with_gpu_util": 7,
+    "n_jobs_with_label": 0,
+    "n_jobs_with_node_util_match": 0
+  },
+  "source": {
+    "load_seconds": 3.28,
+    "raw_dir": "/home/user/energy2/data/external/mit_supercloud/raw"
+  },
+  "trace_summary": {
+    "duration_s_p50": 9013.0,
+    "duration_s_p95": 182921.0,
+    "duration_s_p99": 614130.0,
+    "gpu_count_distribution": {
+      "1": 8965,
+      "10": 1,
+      "16": 53,
+      "2": 796,
+      "3": 12,
+      "4": 132,
+      "6": 7,
+      "8": 34
+    },
+    "gpu_job_count": 10000,
+    "gpu_type_distribution": {
+      "gpu:volta": 10000
+    },
+    "job_count": 10000,
+    "labelled_job_count": 0,
+    "missing_fields": [
+      "per_job_gpu_utilization_unless_gpu_util_loaded",
+      "per_job_cpu_utilization_unless_cpu_util_loaded",
+      "node_utilization_unless_node_data_loaded",
+      "node_assignment_unless_present_in_scheduler_log"
+    ],
+    "queue_wait_s_p50": 167.0,
+    "queue_wait_s_p95": 234074.0,
+    "queue_wait_s_p99": 412686.0,
+    "status_distribution": {
+      "CANCELLED": 1535,
+      "COMPLETED": 6669,
+      "FAILED": 1144,
+      "NODE_FAIL": 15,
+      "OUT_OF_MEMORY": 298,
+      "TIMEOUT": 339
+    },
+    "time_end_s": 1617389164.0,
+    "time_start_s": 1612560915.0,
+    "workload_label_distribution": {}
+  }
+}

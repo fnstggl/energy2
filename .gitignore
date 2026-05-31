@@ -55,6 +55,10 @@ data/external/philly/raw/*
 # JSON + tiny synthetic fixtures ARE committed.
 data/external/mit_supercloud/raw/*
 !data/external/mit_supercloud/raw/.gitkeep
+# The small bounded-download manifest IS small enough to commit so
+# reviewers can audit which S3 files were fetched. The large raw
+# downloads remain excluded by the line above.
+!data/external/mit_supercloud/raw/bounded_download_manifest.json
 data/external/mit_supercloud/processed/mit_supercloud_normalized.json
 data/external/mit_supercloud/processed/scheduler-log.csv
 data/external/mit_supercloud/processed/labelled_jobids.csv
