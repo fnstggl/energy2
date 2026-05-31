@@ -1,0 +1,26 @@
+[
+  {
+    "id": "fixture-A",
+    "conversations": [
+      {"from": "human", "value": "Write a haiku about machine learning."},
+      {"from": "gpt", "value": "Gradient flowing\nWeights anneal in silent loops\nLoss curves down to zero"}
+    ]
+  },
+  {
+    "id": "fixture-B",
+    "conversations": [
+      {"from": "system", "value": "You are a coding assistant."},
+      {"from": "human", "value": "Explain Bayesian inference in two sentences."},
+      {"from": "gpt", "value": "Prior beliefs are updated via likelihoods using Bayes' rule. The posterior is proportional to prior times likelihood."},
+      {"from": "human", "value": "Give a numeric example."},
+      {"from": "gpt", "value": "If prior P(H)=0.5 and likelihood ratio P(D|H)/P(D|~H)=4, the posterior P(H|D)=0.8."}
+    ]
+  },
+  {
+    "id": "fixture-C",
+    "conversations": [
+      {"from": "human", "value": "Hi"},
+      {"from": "chatgpt", "value": "Hello! How can I help today?"}
+    ]
+  }
+]

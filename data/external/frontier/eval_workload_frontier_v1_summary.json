@@ -1,0 +1,4113 @@
+{
+  "doc_version": "eval_workload_frontier_v1_summary",
+  "production_claim": false,
+  "ml_training": false,
+  "modifies_serving_rho_controller": false,
+  "uses_oracle_as_headline": false,
+  "executable_in_real_cluster": false,
+  "source": {
+    "trace": "sharegpt_aiperf",
+    "trace_kind": "bounded",
+    "path": "/home/user/energy2/data/external/sharegpt_aiperf/raw/sg_52k_head.json",
+    "record_count": 500
+  },
+  "workload_profile": {
+    "workload_id": "sharegpt_eval_workload_v1",
+    "trace_source": "sharegpt_aiperf",
+    "synthetic_scenario_label": "sharegpt_eval_overnight_v1",
+    "dedicated_fleet": true,
+    "deadline_slack_hours_baseline": 4.0,
+    "deadline_miss_rate_sla_pct": 1.0,
+    "eval_suite_completion_deadline_hours": 24.0,
+    "interactive_baseline_p99_ms": null,
+    "interactive_baseline_timeout_pct": null,
+    "telemetry_confidence": "low",
+    "source": "bounded"
+  },
+  "candidate_grid": {
+    "rho": [
+      0.55,
+      0.65,
+      0.75,
+      0.85,
+      0.95
+    ],
+    "concurrency": [
+      1,
+      2,
+      4,
+      8
+    ],
+    "deadline_slack_hours": [
+      0.5,
+      1.0,
+      4.0,
+      24.0
+    ],
+    "total_candidates": 80
+  },
+  "safety_status_distribution": {
+    "SAFE": 80
+  },
+  "frontier_points": [
+    {
+      "candidate": {
+        "eval_batch_window_hours": null,
+        "concurrency": 1,
+        "target_rho": 0.55,
+        "deadline_slack_hours": 0.5,
+        "dedicated_fleet": true,
+        "source_policy": "rho0.55_c1_h0.5"
+      },
+      "predicted_goodput_per_dollar": 1546874.9999999998,
+      "predicted_sla_safe_goodput": 2187699.0,
+      "predicted_deadline_miss_rate_pct": 0.0,
+      "predicted_eval_suite_completion_hours": 0.6799375291375291,
+      "predicted_interactive_p99_delta_ms": 0.0,
+      "predicted_interactive_timeout_delta_pct": 0.0,
+      "predicted_queue_p99_ms": null,
+      "predicted_latency_p99_ms": null,
+      "predicted_gpu_hours": 0.6799375291375291,
+      "predicted_mean_utilization": 0.55,
+      "safety_status": "SAFE",
+      "safety_vetoes": [],
+      "notes": [
+        "structural_eval_model_v1"
+      ]
+    },
+    {
+      "candidate": {
+        "eval_batch_window_hours": null,
+        "concurrency": 1,
+        "target_rho": 0.55,
+        "deadline_slack_hours": 1.0,
+        "dedicated_fleet": true,
+        "source_policy": "rho0.55_c1_h1.0"
+      },
+      "predicted_goodput_per_dollar": 1546874.9999999998,
+      "predicted_sla_safe_goodput": 2187699.0,
+      "predicted_deadline_miss_rate_pct": 0.0,
+      "predicted_eval_suite_completion_hours": 0.6799375291375291,
+      "predicted_interactive_p99_delta_ms": 0.0,
+      "predicted_interactive_timeout_delta_pct": 0.0,
+      "predicted_queue_p99_ms": null,
+      "predicted_latency_p99_ms": null,
+      "predicted_gpu_hours": 0.6799375291375291,
+      "predicted_mean_utilization": 0.55,
+      "safety_status": "SAFE",
+      "safety_vetoes": [],
+      "notes": [
+        "structural_eval_model_v1"
+      ]
+    },
+    {
+      "candidate": {
+        "eval_batch_window_hours": null,
+        "concurrency": 1,
+        "target_rho": 0.55,
+        "deadline_slack_hours": 4.0,
+        "dedicated_fleet": true,
+        "source_policy": "rho0.55_c1_h4.0"
+      },
+      "predicted_goodput_per_dollar": 1546874.9999999998,
+      "predicted_sla_safe_goodput": 2187699.0,
+      "predicted_deadline_miss_rate_pct": 0.0,
+      "predicted_eval_suite_completion_hours": 0.6799375291375291,
+      "predicted_interactive_p99_delta_ms": 0.0,
+      "predicted_interactive_timeout_delta_pct": 0.0,
+      "predicted_queue_p99_ms": null,
+      "predicted_latency_p99_ms": null,
+      "predicted_gpu_hours": 0.6799375291375291,
+      "predicted_mean_utilization": 0.55,
+      "safety_status": "SAFE",
+      "safety_vetoes": [],
+      "notes": [
+        "structural_eval_model_v1"
+      ]
+    },
+    {
+      "candidate": {
+        "eval_batch_window_hours": null,
+        "concurrency": 1,
+        "target_rho": 0.55,
+        "deadline_slack_hours": 24.0,
+        "dedicated_fleet": true,
+        "source_policy": "rho0.55_c1_h24.0"
+      },
+      "predicted_goodput_per_dollar": 1546874.9999999998,
+      "predicted_sla_safe_goodput": 2187699.0,
+      "predicted_deadline_miss_rate_pct": 0.0,
+      "predicted_eval_suite_completion_hours": 0.6799375291375291,
+      "predicted_interactive_p99_delta_ms": 0.0,
+      "predicted_interactive_timeout_delta_pct": 0.0,
+      "predicted_queue_p99_ms": null,
+      "predicted_latency_p99_ms": null,
+      "predicted_gpu_hours": 0.6799375291375291,
+      "predicted_mean_utilization": 0.55,
+      "safety_status": "SAFE",
+      "safety_vetoes": [],
+      "notes": [
+        "structural_eval_model_v1"
+      ]
+    },
+    {
+      "candidate": {
+        "eval_batch_window_hours": null,
+        "concurrency": 2,
+        "target_rho": 0.55,
+        "deadline_slack_hours": 0.5,
+        "dedicated_fleet": true,
+        "source_policy": "rho0.55_c2_h0.5"
+      },
+      "predicted_goodput_per_dollar": 1546874.9999999998,
+      "predicted_sla_safe_goodput": 2187699.0,
+      "predicted_deadline_miss_rate_pct": 0.0,
+      "predicted_eval_suite_completion_hours": 0.33996876456876457,
+      "predicted_interactive_p99_delta_ms": 0.0,
+      "predicted_interactive_timeout_delta_pct": 0.0,
+      "predicted_queue_p99_ms": null,
+      "predicted_latency_p99_ms": null,
+      "predicted_gpu_hours": 0.6799375291375291,
+      "predicted_mean_utilization": 0.55,
+      "safety_status": "SAFE",
+      "safety_vetoes": [],
+      "notes": [
+        "structural_eval_model_v1"
+      ]
+    },
+    {
+      "candidate": {
+        "eval_batch_window_hours": null,
+        "concurrency": 2,
+        "target_rho": 0.55,
+        "deadline_slack_hours": 1.0,
+        "dedicated_fleet": true,
+        "source_policy": "rho0.55_c2_h1.0"
+      },
+      "predicted_goodput_per_dollar": 1546874.9999999998,
+      "predicted_sla_safe_goodput": 2187699.0,
+      "predicted_deadline_miss_rate_pct": 0.0,
+      "predicted_eval_suite_completion_hours": 0.33996876456876457,
+      "predicted_interactive_p99_delta_ms": 0.0,
+      "predicted_interactive_timeout_delta_pct": 0.0,
+      "predicted_queue_p99_ms": null,
+      "predicted_latency_p99_ms": null,
+      "predicted_gpu_hours": 0.6799375291375291,
+      "predicted_mean_utilization": 0.55,
+      "safety_status": "SAFE",
+      "safety_vetoes": [],
+      "notes": [
+        "structural_eval_model_v1"
+      ]
+    },
+    {
+      "candidate": {
+        "eval_batch_window_hours": null,
+        "concurrency": 2,
+        "target_rho": 0.55,
+        "deadline_slack_hours": 4.0,
+        "dedicated_fleet": true,
+        "source_policy": "rho0.55_c2_h4.0"
+      },
+      "predicted_goodput_per_dollar": 1546874.9999999998,
+      "predicted_sla_safe_goodput": 2187699.0,
+      "predicted_deadline_miss_rate_pct": 0.0,
+      "predicted_eval_suite_completion_hours": 0.33996876456876457,
+      "predicted_interactive_p99_delta_ms": 0.0,
+      "predicted_interactive_timeout_delta_pct": 0.0,
+      "predicted_queue_p99_ms": null,
+      "predicted_latency_p99_ms": null,
+      "predicted_gpu_hours": 0.6799375291375291,
+      "predicted_mean_utilization": 0.55,
+      "safety_status": "SAFE",
+      "safety_vetoes": [],
+      "notes": [
+        "structural_eval_model_v1"
+      ]
+    },
+    {
+      "candidate": {
+        "eval_batch_window_hours": null,
+        "concurrency": 2,
+        "target_rho": 0.55,
+        "deadline_slack_hours": 24.0,
+        "dedicated_fleet": true,
+        "source_policy": "rho0.55_c2_h24.0"
+      },
+      "predicted_goodput_per_dollar": 1546874.9999999998,
+      "predicted_sla_safe_goodput": 2187699.0,
+      "predicted_deadline_miss_rate_pct": 0.0,
+      "predicted_eval_suite_completion_hours": 0.33996876456876457,
+      "predicted_interactive_p99_delta_ms": 0.0,
+      "predicted_interactive_timeout_delta_pct": 0.0,
+      "predicted_queue_p99_ms": null,
+      "predicted_latency_p99_ms": null,
+      "predicted_gpu_hours": 0.6799375291375291,
+      "predicted_mean_utilization": 0.55,
+      "safety_status": "SAFE",
+      "safety_vetoes": [],
+      "notes": [
+        "structural_eval_model_v1"
+      ]
+    },
+    {
+      "candidate": {
+        "eval_batch_window_hours": null,
+        "concurrency": 4,
+        "target_rho": 0.55,
+        "deadline_slack_hours": 0.5,
+        "dedicated_fleet": true,
+        "source_policy": "rho0.55_c4_h0.5"
+      },
+      "predicted_goodput_per_dollar": 1546874.9999999998,
+      "predicted_sla_safe_goodput": 2187699.0,
+      "predicted_deadline_miss_rate_pct": 0.0,
+      "predicted_eval_suite_completion_hours": 0.16998438228438228,
+      "predicted_interactive_p99_delta_ms": 0.0,
+      "predicted_interactive_timeout_delta_pct": 0.0,
+      "predicted_queue_p99_ms": null,
+      "predicted_latency_p99_ms": null,
+      "predicted_gpu_hours": 0.6799375291375291,
+      "predicted_mean_utilization": 0.55,
+      "safety_status": "SAFE",
+      "safety_vetoes": [],
+      "notes": [
+        "structural_eval_model_v1"
+      ]
+    },
+    {
+      "candidate": {
+        "eval_batch_window_hours": null,
+        "concurrency": 4,
+        "target_rho": 0.55,
+        "deadline_slack_hours": 1.0,
+        "dedicated_fleet": true,
+        "source_policy": "rho0.55_c4_h1.0"
+      },
+      "predicted_goodput_per_dollar": 1546874.9999999998,
+      "predicted_sla_safe_goodput": 2187699.0,
+      "predicted_deadline_miss_rate_pct": 0.0,
+      "predicted_eval_suite_completion_hours": 0.16998438228438228,
+      "predicted_interactive_p99_delta_ms": 0.0,
+      "predicted_interactive_timeout_delta_pct": 0.0,
+      "predicted_queue_p99_ms": null,
+      "predicted_latency_p99_ms": null,
+      "predicted_gpu_hours": 0.6799375291375291,
+      "predicted_mean_utilization": 0.55,
+      "safety_status": "SAFE",
+      "safety_vetoes": [],
+      "notes": [
+        "structural_eval_model_v1"
+      ]
+    },
+    {
+      "candidate": {
+        "eval_batch_window_hours": null,
+        "concurrency": 4,
+        "target_rho": 0.55,
+        "deadline_slack_hours": 4.0,
+        "dedicated_fleet": true,
+        "source_policy": "rho0.55_c4_h4.0"
+      },
+      "predicted_goodput_per_dollar": 1546874.9999999998,
+      "predicted_sla_safe_goodput": 2187699.0,
+      "predicted_deadline_miss_rate_pct": 0.0,
+      "predicted_eval_suite_completion_hours": 0.16998438228438228,
+      "predicted_interactive_p99_delta_ms": 0.0,
+      "predicted_interactive_timeout_delta_pct": 0.0,
+      "predicted_queue_p99_ms": null,
+      "predicted_latency_p99_ms": null,
+      "predicted_gpu_hours": 0.6799375291375291,
+      "predicted_mean_utilization": 0.55,
+      "safety_status": "SAFE",
+      "safety_vetoes": [],
+      "notes": [
+        "structural_eval_model_v1"
+      ]
+    },
+    {
+      "candidate": {
+        "eval_batch_window_hours": null,
+        "concurrency": 4,
+        "target_rho": 0.55,
+        "deadline_slack_hours": 24.0,
+        "dedicated_fleet": true,
+        "source_policy": "rho0.55_c4_h24.0"
+      },
+      "predicted_goodput_per_dollar": 1546874.9999999998,
+      "predicted_sla_safe_goodput": 2187699.0,
+      "predicted_deadline_miss_rate_pct": 0.0,
+      "predicted_eval_suite_completion_hours": 0.16998438228438228,
+      "predicted_interactive_p99_delta_ms": 0.0,
+      "predicted_interactive_timeout_delta_pct": 0.0,
+      "predicted_queue_p99_ms": null,
+      "predicted_latency_p99_ms": null,
+      "predicted_gpu_hours": 0.6799375291375291,
+      "predicted_mean_utilization": 0.55,
+      "safety_status": "SAFE",
+      "safety_vetoes": [],
+      "notes": [
+        "structural_eval_model_v1"
+      ]
+    },
+    {
+      "candidate": {
+        "eval_batch_window_hours": null,
+        "concurrency": 8,
+        "target_rho": 0.55,
+        "deadline_slack_hours": 0.5,
+        "dedicated_fleet": true,
+        "source_policy": "rho0.55_c8_h0.5"
+      },
+      "predicted_goodput_per_dollar": 1546874.9999999998,
+      "predicted_sla_safe_goodput": 2187699.0,
+      "predicted_deadline_miss_rate_pct": 0.0,
+      "predicted_eval_suite_completion_hours": 0.08499219114219114,
+      "predicted_interactive_p99_delta_ms": 0.0,
+      "predicted_interactive_timeout_delta_pct": 0.0,
+      "predicted_queue_p99_ms": null,
+      "predicted_latency_p99_ms": null,
+      "predicted_gpu_hours": 0.6799375291375291,
+      "predicted_mean_utilization": 0.55,
+      "safety_status": "SAFE",
+      "safety_vetoes": [],
+      "notes": [
+        "structural_eval_model_v1"
+      ]
+    },
+    {
+      "candidate": {
+        "eval_batch_window_hours": null,
+        "concurrency": 8,
+        "target_rho": 0.55,
+        "deadline_slack_hours": 1.0,
+        "dedicated_fleet": true,
+        "source_policy": "rho0.55_c8_h1.0"
+      },
+      "predicted_goodput_per_dollar": 1546874.9999999998,
+      "predicted_sla_safe_goodput": 2187699.0,
+      "predicted_deadline_miss_rate_pct": 0.0,
+      "predicted_eval_suite_completion_hours": 0.08499219114219114,
+      "predicted_interactive_p99_delta_ms": 0.0,
+      "predicted_interactive_timeout_delta_pct": 0.0,
+      "predicted_queue_p99_ms": null,
+      "predicted_latency_p99_ms": null,
+      "predicted_gpu_hours": 0.6799375291375291,
+      "predicted_mean_utilization": 0.55,
+      "safety_status": "SAFE",
+      "safety_vetoes": [],
+      "notes": [
+        "structural_eval_model_v1"
+      ]
+    },
+    {
+      "candidate": {
+        "eval_batch_window_hours": null,
+        "concurrency": 8,
+        "target_rho": 0.55,
+        "deadline_slack_hours": 4.0,
+        "dedicated_fleet": true,
+        "source_policy": "rho0.55_c8_h4.0"
+      },
+      "predicted_goodput_per_dollar": 1546874.9999999998,
+      "predicted_sla_safe_goodput": 2187699.0,
+      "predicted_deadline_miss_rate_pct": 0.0,
+      "predicted_eval_suite_completion_hours": 0.08499219114219114,
+      "predicted_interactive_p99_delta_ms": 0.0,
+      "predicted_interactive_timeout_delta_pct": 0.0,
+      "predicted_queue_p99_ms": null,
+      "predicted_latency_p99_ms": null,
+      "predicted_gpu_hours": 0.6799375291375291,
+      "predicted_mean_utilization": 0.55,
+      "safety_status": "SAFE",
+      "safety_vetoes": [],
+      "notes": [
+        "structural_eval_model_v1"
+      ]
+    },
+    {
+      "candidate": {
+        "eval_batch_window_hours": null,
+        "concurrency": 8,
+        "target_rho": 0.55,
+        "deadline_slack_hours": 24.0,
+        "dedicated_fleet": true,
+        "source_policy": "rho0.55_c8_h24.0"
+      },
+      "predicted_goodput_per_dollar": 1546874.9999999998,
+      "predicted_sla_safe_goodput": 2187699.0,
+      "predicted_deadline_miss_rate_pct": 0.0,
+      "predicted_eval_suite_completion_hours": 0.08499219114219114,
+      "predicted_interactive_p99_delta_ms": 0.0,
+      "predicted_interactive_timeout_delta_pct": 0.0,
+      "predicted_queue_p99_ms": null,
+      "predicted_latency_p99_ms": null,
+      "predicted_gpu_hours": 0.6799375291375291,
+      "predicted_mean_utilization": 0.55,
+      "safety_status": "SAFE",
+      "safety_vetoes": [],
+      "notes": [
+        "structural_eval_model_v1"
+      ]
+    },
+    {
+      "candidate": {
+        "eval_batch_window_hours": null,
+        "concurrency": 1,
+        "target_rho": 0.65,
+        "deadline_slack_hours": 0.5,
+        "dedicated_fleet": true,
+        "source_policy": "rho0.65_c1_h0.5"
+      },
+      "predicted_goodput_per_dollar": 2109375.0,
+      "predicted_sla_safe_goodput": 2187699.0,
+      "predicted_deadline_miss_rate_pct": 0.0,
+      "predicted_eval_suite_completion_hours": 0.4986208547008547,
+      "predicted_interactive_p99_delta_ms": 0.0,
+      "predicted_interactive_timeout_delta_pct": 0.0,
+      "predicted_queue_p99_ms": null,
+      "predicted_latency_p99_ms": null,
+      "predicted_gpu_hours": 0.4986208547008547,
+      "predicted_mean_utilization": 0.65,
+      "safety_status": "SAFE",
+      "safety_vetoes": [],
+      "notes": [
+        "structural_eval_model_v1"
+      ]
+    },
+    {
+      "candidate": {
+        "eval_batch_window_hours": null,
+        "concurrency": 1,
+        "target_rho": 0.65,
+        "deadline_slack_hours": 1.0,
+        "dedicated_fleet": true,
+        "source_policy": "rho0.65_c1_h1.0"
+      },
+      "predicted_goodput_per_dollar": 2109375.0,
+      "predicted_sla_safe_goodput": 2187699.0,
+      "predicted_deadline_miss_rate_pct": 0.0,
+      "predicted_eval_suite_completion_hours": 0.4986208547008547,
+      "predicted_interactive_p99_delta_ms": 0.0,
+      "predicted_interactive_timeout_delta_pct": 0.0,
+      "predicted_queue_p99_ms": null,
+      "predicted_latency_p99_ms": null,
+      "predicted_gpu_hours": 0.4986208547008547,
+      "predicted_mean_utilization": 0.65,
+      "safety_status": "SAFE",
+      "safety_vetoes": [],
+      "notes": [
+        "structural_eval_model_v1"
+      ]
+    },
+    {
+      "candidate": {
+        "eval_batch_window_hours": null,
+        "concurrency": 1,
+        "target_rho": 0.65,
+        "deadline_slack_hours": 4.0,
+        "dedicated_fleet": true,
+        "source_policy": "rho0.65_c1_h4.0"
+      },
+      "predicted_goodput_per_dollar": 2109375.0,
+      "predicted_sla_safe_goodput": 2187699.0,
+      "predicted_deadline_miss_rate_pct": 0.0,
+      "predicted_eval_suite_completion_hours": 0.4986208547008547,
+      "predicted_interactive_p99_delta_ms": 0.0,
+      "predicted_interactive_timeout_delta_pct": 0.0,
+      "predicted_queue_p99_ms": null,
+      "predicted_latency_p99_ms": null,
+      "predicted_gpu_hours": 0.4986208547008547,
+      "predicted_mean_utilization": 0.65,
+      "safety_status": "SAFE",
+      "safety_vetoes": [],
+      "notes": [
+        "structural_eval_model_v1"
+      ]
+    },
+    {
+      "candidate": {
+        "eval_batch_window_hours": null,
+        "concurrency": 1,
+        "target_rho": 0.65,
+        "deadline_slack_hours": 24.0,
+        "dedicated_fleet": true,
+        "source_policy": "rho0.65_c1_h24.0"
+      },
+      "predicted_goodput_per_dollar": 2109375.0,
+      "predicted_sla_safe_goodput": 2187699.0,
+      "predicted_deadline_miss_rate_pct": 0.0,
+      "predicted_eval_suite_completion_hours": 0.4986208547008547,
+      "predicted_interactive_p99_delta_ms": 0.0,
+      "predicted_interactive_timeout_delta_pct": 0.0,
+      "predicted_queue_p99_ms": null,
+      "predicted_latency_p99_ms": null,
+      "predicted_gpu_hours": 0.4986208547008547,
+      "predicted_mean_utilization": 0.65,
+      "safety_status": "SAFE",
+      "safety_vetoes": [],
+      "notes": [
+        "structural_eval_model_v1"
+      ]
+    },
+    {
+      "candidate": {
+        "eval_batch_window_hours": null,
+        "concurrency": 2,
+        "target_rho": 0.65,
+        "deadline_slack_hours": 0.5,
+        "dedicated_fleet": true,
+        "source_policy": "rho0.65_c2_h0.5"
+      },
+      "predicted_goodput_per_dollar": 2109375.0,
+      "predicted_sla_safe_goodput": 2187699.0,
+      "predicted_deadline_miss_rate_pct": 0.0,
+      "predicted_eval_suite_completion_hours": 0.24931042735042735,
+      "predicted_interactive_p99_delta_ms": 0.0,
+      "predicted_interactive_timeout_delta_pct": 0.0,
+      "predicted_queue_p99_ms": null,
+      "predicted_latency_p99_ms": null,
+      "predicted_gpu_hours": 0.4986208547008547,
+      "predicted_mean_utilization": 0.65,
+      "safety_status": "SAFE",
+      "safety_vetoes": [],
+      "notes": [
+        "structural_eval_model_v1"
+      ]
+    },
+    {
+      "candidate": {
+        "eval_batch_window_hours": null,
+        "concurrency": 2,
+        "target_rho": 0.65,
+        "deadline_slack_hours": 1.0,
+        "dedicated_fleet": true,
+        "source_policy": "rho0.65_c2_h1.0"
+      },
+      "predicted_goodput_per_dollar": 2109375.0,
+      "predicted_sla_safe_goodput": 2187699.0,
+      "predicted_deadline_miss_rate_pct": 0.0,
+      "predicted_eval_suite_completion_hours": 0.24931042735042735,
+      "predicted_interactive_p99_delta_ms": 0.0,
+      "predicted_interactive_timeout_delta_pct": 0.0,
+      "predicted_queue_p99_ms": null,
+      "predicted_latency_p99_ms": null,
+      "predicted_gpu_hours": 0.4986208547008547,
+      "predicted_mean_utilization": 0.65,
+      "safety_status": "SAFE",
+      "safety_vetoes": [],
+      "notes": [
+        "structural_eval_model_v1"
+      ]
+    },
+    {
+      "candidate": {
+        "eval_batch_window_hours": null,
+        "concurrency": 2,
+        "target_rho": 0.65,
+        "deadline_slack_hours": 4.0,
+        "dedicated_fleet": true,
+        "source_policy": "rho0.65_c2_h4.0"
+      },
+      "predicted_goodput_per_dollar": 2109375.0,
+      "predicted_sla_safe_goodput": 2187699.0,
+      "predicted_deadline_miss_rate_pct": 0.0,
+      "predicted_eval_suite_completion_hours": 0.24931042735042735,
+      "predicted_interactive_p99_delta_ms": 0.0,
+      "predicted_interactive_timeout_delta_pct": 0.0,
+      "predicted_queue_p99_ms": null,
+      "predicted_latency_p99_ms": null,
+      "predicted_gpu_hours": 0.4986208547008547,
+      "predicted_mean_utilization": 0.65,
+      "safety_status": "SAFE",
+      "safety_vetoes": [],
+      "notes": [
+        "structural_eval_model_v1"
+      ]
+    },
+    {
+      "candidate": {
+        "eval_batch_window_hours": null,
+        "concurrency": 2,
+        "target_rho": 0.65,
+        "deadline_slack_hours": 24.0,
+        "dedicated_fleet": true,
+        "source_policy": "rho0.65_c2_h24.0"
+      },
+      "predicted_goodput_per_dollar": 2109375.0,
+      "predicted_sla_safe_goodput": 2187699.0,
+      "predicted_deadline_miss_rate_pct": 0.0,
+      "predicted_eval_suite_completion_hours": 0.24931042735042735,
+      "predicted_interactive_p99_delta_ms": 0.0,
+      "predicted_interactive_timeout_delta_pct": 0.0,
+      "predicted_queue_p99_ms": null,
+      "predicted_latency_p99_ms": null,
+      "predicted_gpu_hours": 0.4986208547008547,
+      "predicted_mean_utilization": 0.65,
+      "safety_status": "SAFE",
+      "safety_vetoes": [],
+      "notes": [
+        "structural_eval_model_v1"
+      ]
+    },
+    {
+      "candidate": {
+        "eval_batch_window_hours": null,
+        "concurrency": 4,
+        "target_rho": 0.65,
+        "deadline_slack_hours": 0.5,
+        "dedicated_fleet": true,
+        "source_policy": "rho0.65_c4_h0.5"
+      },
+      "predicted_goodput_per_dollar": 2109375.0,
+      "predicted_sla_safe_goodput": 2187699.0,
+      "predicted_deadline_miss_rate_pct": 0.0,
+      "predicted_eval_suite_completion_hours": 0.12465521367521368,
+      "predicted_interactive_p99_delta_ms": 0.0,
+      "predicted_interactive_timeout_delta_pct": 0.0,
+      "predicted_queue_p99_ms": null,
+      "predicted_latency_p99_ms": null,
+      "predicted_gpu_hours": 0.4986208547008547,
+      "predicted_mean_utilization": 0.65,
+      "safety_status": "SAFE",
+      "safety_vetoes": [],
+      "notes": [
+        "structural_eval_model_v1"
+      ]
+    },
+    {
+      "candidate": {
+        "eval_batch_window_hours": null,
+        "concurrency": 4,
+        "target_rho": 0.65,
+        "deadline_slack_hours": 1.0,
+        "dedicated_fleet": true,
+        "source_policy": "rho0.65_c4_h1.0"
+      },
+      "predicted_goodput_per_dollar": 2109375.0,
+      "predicted_sla_safe_goodput": 2187699.0,
+      "predicted_deadline_miss_rate_pct": 0.0,
+      "predicted_eval_suite_completion_hours": 0.12465521367521368,
+      "predicted_interactive_p99_delta_ms": 0.0,
+      "predicted_interactive_timeout_delta_pct": 0.0,
+      "predicted_queue_p99_ms": null,
+      "predicted_latency_p99_ms": null,
+      "predicted_gpu_hours": 0.4986208547008547,
+      "predicted_mean_utilization": 0.65,
+      "safety_status": "SAFE",
+      "safety_vetoes": [],
+      "notes": [
+        "structural_eval_model_v1"
+      ]
+    },
+    {
+      "candidate": {
+        "eval_batch_window_hours": null,
+        "concurrency": 4,
+        "target_rho": 0.65,
+        "deadline_slack_hours": 4.0,
+        "dedicated_fleet": true,
+        "source_policy": "rho0.65_c4_h4.0"
+      },
+      "predicted_goodput_per_dollar": 2109375.0,
+      "predicted_sla_safe_goodput": 2187699.0,
+      "predicted_deadline_miss_rate_pct": 0.0,
+      "predicted_eval_suite_completion_hours": 0.12465521367521368,
+      "predicted_interactive_p99_delta_ms": 0.0,
+      "predicted_interactive_timeout_delta_pct": 0.0,
+      "predicted_queue_p99_ms": null,
+      "predicted_latency_p99_ms": null,
+      "predicted_gpu_hours": 0.4986208547008547,
+      "predicted_mean_utilization": 0.65,
+      "safety_status": "SAFE",
+      "safety_vetoes": [],
+      "notes": [
+        "structural_eval_model_v1"
+      ]
+    },
+    {
+      "candidate": {
+        "eval_batch_window_hours": null,
+        "concurrency": 4,
+        "target_rho": 0.65,
+        "deadline_slack_hours": 24.0,
+        "dedicated_fleet": true,
+        "source_policy": "rho0.65_c4_h24.0"
+      },
+      "predicted_goodput_per_dollar": 2109375.0,
+      "predicted_sla_safe_goodput": 2187699.0,
+      "predicted_deadline_miss_rate_pct": 0.0,
+      "predicted_eval_suite_completion_hours": 0.12465521367521368,
+      "predicted_interactive_p99_delta_ms": 0.0,
+      "predicted_interactive_timeout_delta_pct": 0.0,
+      "predicted_queue_p99_ms": null,
+      "predicted_latency_p99_ms": null,
+      "predicted_gpu_hours": 0.4986208547008547,
+      "predicted_mean_utilization": 0.65,
+      "safety_status": "SAFE",
+      "safety_vetoes": [],
+      "notes": [
+        "structural_eval_model_v1"
+      ]
+    },
+    {
+      "candidate": {
+        "eval_batch_window_hours": null,
+        "concurrency": 8,
+        "target_rho": 0.65,
+        "deadline_slack_hours": 0.5,
+        "dedicated_fleet": true,
+        "source_policy": "rho0.65_c8_h0.5"
+      },
+      "predicted_goodput_per_dollar": 2109375.0,
+      "predicted_sla_safe_goodput": 2187699.0,
+      "predicted_deadline_miss_rate_pct": 0.0,
+      "predicted_eval_suite_completion_hours": 0.06232760683760684,
+      "predicted_interactive_p99_delta_ms": 0.0,
+      "predicted_interactive_timeout_delta_pct": 0.0,
+      "predicted_queue_p99_ms": null,
+      "predicted_latency_p99_ms": null,
+      "predicted_gpu_hours": 0.4986208547008547,
+      "predicted_mean_utilization": 0.65,
+      "safety_status": "SAFE",
+      "safety_vetoes": [],
+      "notes": [
+        "structural_eval_model_v1"
+      ]
+    },
+    {
+      "candidate": {
+        "eval_batch_window_hours": null,
+        "concurrency": 8,
+        "target_rho": 0.65,
+        "deadline_slack_hours": 1.0,
+        "dedicated_fleet": true,
+        "source_policy": "rho0.65_c8_h1.0"
+      },
+      "predicted_goodput_per_dollar": 2109375.0,
+      "predicted_sla_safe_goodput": 2187699.0,
+      "predicted_deadline_miss_rate_pct": 0.0,
+      "predicted_eval_suite_completion_hours": 0.06232760683760684,
+      "predicted_interactive_p99_delta_ms": 0.0,
+      "predicted_interactive_timeout_delta_pct": 0.0,
+      "predicted_queue_p99_ms": null,
+      "predicted_latency_p99_ms": null,
+      "predicted_gpu_hours": 0.4986208547008547,
+      "predicted_mean_utilization": 0.65,
+      "safety_status": "SAFE",
+      "safety_vetoes": [],
+      "notes": [
+        "structural_eval_model_v1"
+      ]
+    },
+    {
+      "candidate": {
+        "eval_batch_window_hours": null,
+        "concurrency": 8,
+        "target_rho": 0.65,
+        "deadline_slack_hours": 4.0,
+        "dedicated_fleet": true,
+        "source_policy": "rho0.65_c8_h4.0"
+      },
+      "predicted_goodput_per_dollar": 2109375.0,
+      "predicted_sla_safe_goodput": 2187699.0,
+      "predicted_deadline_miss_rate_pct": 0.0,
+      "predicted_eval_suite_completion_hours": 0.06232760683760684,
+      "predicted_interactive_p99_delta_ms": 0.0,
+      "predicted_interactive_timeout_delta_pct": 0.0,
+      "predicted_queue_p99_ms": null,
+      "predicted_latency_p99_ms": null,
+      "predicted_gpu_hours": 0.4986208547008547,
+      "predicted_mean_utilization": 0.65,
+      "safety_status": "SAFE",
+      "safety_vetoes": [],
+      "notes": [
+        "structural_eval_model_v1"
+      ]
+    },
+    {
+      "candidate": {
+        "eval_batch_window_hours": null,
+        "concurrency": 8,
+        "target_rho": 0.65,
+        "deadline_slack_hours": 24.0,
+        "dedicated_fleet": true,
+        "source_policy": "rho0.65_c8_h24.0"
+      },
+      "predicted_goodput_per_dollar": 2109375.0,
+      "predicted_sla_safe_goodput": 2187699.0,
+      "predicted_deadline_miss_rate_pct": 0.0,
+      "predicted_eval_suite_completion_hours": 0.06232760683760684,
+      "predicted_interactive_p99_delta_ms": 0.0,
+      "predicted_interactive_timeout_delta_pct": 0.0,
+      "predicted_queue_p99_ms": null,
+      "predicted_latency_p99_ms": null,
+      "predicted_gpu_hours": 0.4986208547008547,
+      "predicted_mean_utilization": 0.65,
+      "safety_status": "SAFE",
+      "safety_vetoes": [],
+      "notes": [
+        "structural_eval_model_v1"
+      ]
+    },
+    {
+      "candidate": {
+        "eval_batch_window_hours": null,
+        "concurrency": 1,
+        "target_rho": 0.75,
+        "deadline_slack_hours": 0.5,
+        "dedicated_fleet": true,
+        "source_policy": "rho0.75_c1_h0.5"
+      },
+      "predicted_goodput_per_dollar": 2758413.4615384615,
+      "predicted_sla_safe_goodput": 2187699.0,
+      "predicted_deadline_miss_rate_pct": 0.0,
+      "predicted_eval_suite_completion_hours": 0.3812983006535947,
+      "predicted_interactive_p99_delta_ms": 0.0,
+      "predicted_interactive_timeout_delta_pct": 0.0,
+      "predicted_queue_p99_ms": null,
+      "predicted_latency_p99_ms": null,
+      "predicted_gpu_hours": 0.3812983006535947,
+      "predicted_mean_utilization": 0.75,
+      "safety_status": "SAFE",
+      "safety_vetoes": [],
+      "notes": [
+        "structural_eval_model_v1"
+      ]
+    },
+    {
+      "candidate": {
+        "eval_batch_window_hours": null,
+        "concurrency": 1,
+        "target_rho": 0.75,
+        "deadline_slack_hours": 1.0,
+        "dedicated_fleet": true,
+        "source_policy": "rho0.75_c1_h1.0"
+      },
+      "predicted_goodput_per_dollar": 2758413.4615384615,
+      "predicted_sla_safe_goodput": 2187699.0,
+      "predicted_deadline_miss_rate_pct": 0.0,
+      "predicted_eval_suite_completion_hours": 0.3812983006535947,
+      "predicted_interactive_p99_delta_ms": 0.0,
+      "predicted_interactive_timeout_delta_pct": 0.0,
+      "predicted_queue_p99_ms": null,
+      "predicted_latency_p99_ms": null,
+      "predicted_gpu_hours": 0.3812983006535947,
+      "predicted_mean_utilization": 0.75,
+      "safety_status": "SAFE",
+      "safety_vetoes": [],
+      "notes": [
+        "structural_eval_model_v1"
+      ]
+    },
+    {
+      "candidate": {
+        "eval_batch_window_hours": null,
+        "concurrency": 1,
+        "target_rho": 0.75,
+        "deadline_slack_hours": 4.0,
+        "dedicated_fleet": true,
+        "source_policy": "rho0.75_c1_h4.0"
+      },
+      "predicted_goodput_per_dollar": 2758413.4615384615,
+      "predicted_sla_safe_goodput": 2187699.0,
+      "predicted_deadline_miss_rate_pct": 0.0,
+      "predicted_eval_suite_completion_hours": 0.3812983006535947,
+      "predicted_interactive_p99_delta_ms": 0.0,
+      "predicted_interactive_timeout_delta_pct": 0.0,
+      "predicted_queue_p99_ms": null,
+      "predicted_latency_p99_ms": null,
+      "predicted_gpu_hours": 0.3812983006535947,
+      "predicted_mean_utilization": 0.75,
+      "safety_status": "SAFE",
+      "safety_vetoes": [],
+      "notes": [
+        "structural_eval_model_v1"
+      ]
+    },
+    {
+      "candidate": {
+        "eval_batch_window_hours": null,
+        "concurrency": 1,
+        "target_rho": 0.75,
+        "deadline_slack_hours": 24.0,
+        "dedicated_fleet": true,
+        "source_policy": "rho0.75_c1_h24.0"
+      },
+      "predicted_goodput_per_dollar": 2758413.4615384615,
+      "predicted_sla_safe_goodput": 2187699.0,
+      "predicted_deadline_miss_rate_pct": 0.0,
+      "predicted_eval_suite_completion_hours": 0.3812983006535947,
+      "predicted_interactive_p99_delta_ms": 0.0,
+      "predicted_interactive_timeout_delta_pct": 0.0,
+      "predicted_queue_p99_ms": null,
+      "predicted_latency_p99_ms": null,
+      "predicted_gpu_hours": 0.3812983006535947,
+      "predicted_mean_utilization": 0.75,
+      "safety_status": "SAFE",
+      "safety_vetoes": [],
+      "notes": [
+        "structural_eval_model_v1"
+      ]
+    },
+    {
+      "candidate": {
+        "eval_batch_window_hours": null,
+        "concurrency": 2,
+        "target_rho": 0.75,
+        "deadline_slack_hours": 0.5,
+        "dedicated_fleet": true,
+        "source_policy": "rho0.75_c2_h0.5"
+      },
+      "predicted_goodput_per_dollar": 2758413.4615384615,
+      "predicted_sla_safe_goodput": 2187699.0,
+      "predicted_deadline_miss_rate_pct": 0.0,
+      "predicted_eval_suite_completion_hours": 0.19064915032679736,
+      "predicted_interactive_p99_delta_ms": 0.0,
+      "predicted_interactive_timeout_delta_pct": 0.0,
+      "predicted_queue_p99_ms": null,
+      "predicted_latency_p99_ms": null,
+      "predicted_gpu_hours": 0.3812983006535947,
+      "predicted_mean_utilization": 0.75,
+      "safety_status": "SAFE",
+      "safety_vetoes": [],
+      "notes": [
+        "structural_eval_model_v1"
+      ]
+    },
+    {
+      "candidate": {
+        "eval_batch_window_hours": null,
+        "concurrency": 2,
+        "target_rho": 0.75,
+        "deadline_slack_hours": 1.0,
+        "dedicated_fleet": true,
+        "source_policy": "rho0.75_c2_h1.0"
+      },
+      "predicted_goodput_per_dollar": 2758413.4615384615,
+      "predicted_sla_safe_goodput": 2187699.0,
+      "predicted_deadline_miss_rate_pct": 0.0,
+      "predicted_eval_suite_completion_hours": 0.19064915032679736,
+      "predicted_interactive_p99_delta_ms": 0.0,
+      "predicted_interactive_timeout_delta_pct": 0.0,
+      "predicted_queue_p99_ms": null,
+      "predicted_latency_p99_ms": null,
+      "predicted_gpu_hours": 0.3812983006535947,
+      "predicted_mean_utilization": 0.75,
+      "safety_status": "SAFE",
+      "safety_vetoes": [],
+      "notes": [
+        "structural_eval_model_v1"
+      ]
+    },
+    {
+      "candidate": {
+        "eval_batch_window_hours": null,
+        "concurrency": 2,
+        "target_rho": 0.75,
+        "deadline_slack_hours": 4.0,
+        "dedicated_fleet": true,
+        "source_policy": "rho0.75_c2_h4.0"
+      },
+      "predicted_goodput_per_dollar": 2758413.4615384615,
+      "predicted_sla_safe_goodput": 2187699.0,
+      "predicted_deadline_miss_rate_pct": 0.0,
+      "predicted_eval_suite_completion_hours": 0.19064915032679736,
+      "predicted_interactive_p99_delta_ms": 0.0,
+      "predicted_interactive_timeout_delta_pct": 0.0,
+      "predicted_queue_p99_ms": null,
+      "predicted_latency_p99_ms": null,
+      "predicted_gpu_hours": 0.3812983006535947,
+      "predicted_mean_utilization": 0.75,
+      "safety_status": "SAFE",
+      "safety_vetoes": [],
+      "notes": [
+        "structural_eval_model_v1"
+      ]
+    },
+    {
+      "candidate": {
+        "eval_batch_window_hours": null,
+        "concurrency": 2,
+        "target_rho": 0.75,
+        "deadline_slack_hours": 24.0,
+        "dedicated_fleet": true,
+        "source_policy": "rho0.75_c2_h24.0"
+      },
+      "predicted_goodput_per_dollar": 2758413.4615384615,
+      "predicted_sla_safe_goodput": 2187699.0,
+      "predicted_deadline_miss_rate_pct": 0.0,
+      "predicted_eval_suite_completion_hours": 0.19064915032679736,
+      "predicted_interactive_p99_delta_ms": 0.0,
+      "predicted_interactive_timeout_delta_pct": 0.0,
+      "predicted_queue_p99_ms": null,
+      "predicted_latency_p99_ms": null,
+      "predicted_gpu_hours": 0.3812983006535947,
+      "predicted_mean_utilization": 0.75,
+      "safety_status": "SAFE",
+      "safety_vetoes": [],
+      "notes": [
+        "structural_eval_model_v1"
+      ]
+    },
+    {
+      "candidate": {
+        "eval_batch_window_hours": null,
+        "concurrency": 4,
+        "target_rho": 0.75,
+        "deadline_slack_hours": 0.5,
+        "dedicated_fleet": true,
+        "source_policy": "rho0.75_c4_h0.5"
+      },
+      "predicted_goodput_per_dollar": 2758413.4615384615,
+      "predicted_sla_safe_goodput": 2187699.0,
+      "predicted_deadline_miss_rate_pct": 0.0,
+      "predicted_eval_suite_completion_hours": 0.09532457516339868,
+      "predicted_interactive_p99_delta_ms": 0.0,
+      "predicted_interactive_timeout_delta_pct": 0.0,
+      "predicted_queue_p99_ms": null,
+      "predicted_latency_p99_ms": null,
+      "predicted_gpu_hours": 0.3812983006535947,
+      "predicted_mean_utilization": 0.75,
+      "safety_status": "SAFE",
+      "safety_vetoes": [],
+      "notes": [
+        "structural_eval_model_v1"
+      ]
+    },
+    {
+      "candidate": {
+        "eval_batch_window_hours": null,
+        "concurrency": 4,
+        "target_rho": 0.75,
+        "deadline_slack_hours": 1.0,
+        "dedicated_fleet": true,
+        "source_policy": "rho0.75_c4_h1.0"
+      },
+      "predicted_goodput_per_dollar": 2758413.4615384615,
+      "predicted_sla_safe_goodput": 2187699.0,
+      "predicted_deadline_miss_rate_pct": 0.0,
+      "predicted_eval_suite_completion_hours": 0.09532457516339868,
+      "predicted_interactive_p99_delta_ms": 0.0,
+      "predicted_interactive_timeout_delta_pct": 0.0,
+      "predicted_queue_p99_ms": null,
+      "predicted_latency_p99_ms": null,
+      "predicted_gpu_hours": 0.3812983006535947,
+      "predicted_mean_utilization": 0.75,
+      "safety_status": "SAFE",
+      "safety_vetoes": [],
+      "notes": [
+        "structural_eval_model_v1"
+      ]
+    },
+    {
+      "candidate": {
+        "eval_batch_window_hours": null,
+        "concurrency": 4,
+        "target_rho": 0.75,
+        "deadline_slack_hours": 4.0,
+        "dedicated_fleet": true,
+        "source_policy": "rho0.75_c4_h4.0"
+      },
+      "predicted_goodput_per_dollar": 2758413.4615384615,
+      "predicted_sla_safe_goodput": 2187699.0,
+      "predicted_deadline_miss_rate_pct": 0.0,
+      "predicted_eval_suite_completion_hours": 0.09532457516339868,
+      "predicted_interactive_p99_delta_ms": 0.0,
+      "predicted_interactive_timeout_delta_pct": 0.0,
+      "predicted_queue_p99_ms": null,
+      "predicted_latency_p99_ms": null,
+      "predicted_gpu_hours": 0.3812983006535947,
+      "predicted_mean_utilization": 0.75,
+      "safety_status": "SAFE",
+      "safety_vetoes": [],
+      "notes": [
+        "structural_eval_model_v1"
+      ]
+    },
+    {
+      "candidate": {
+        "eval_batch_window_hours": null,
+        "concurrency": 4,
+        "target_rho": 0.75,
+        "deadline_slack_hours": 24.0,
+        "dedicated_fleet": true,
+        "source_policy": "rho0.75_c4_h24.0"
+      },
+      "predicted_goodput_per_dollar": 2758413.4615384615,
+      "predicted_sla_safe_goodput": 2187699.0,
+      "predicted_deadline_miss_rate_pct": 0.0,
+      "predicted_eval_suite_completion_hours": 0.09532457516339868,
+      "predicted_interactive_p99_delta_ms": 0.0,
+      "predicted_interactive_timeout_delta_pct": 0.0,
+      "predicted_queue_p99_ms": null,
+      "predicted_latency_p99_ms": null,
+      "predicted_gpu_hours": 0.3812983006535947,
+      "predicted_mean_utilization": 0.75,
+      "safety_status": "SAFE",
+      "safety_vetoes": [],
+      "notes": [
+        "structural_eval_model_v1"
+      ]
+    },
+    {
+      "candidate": {
+        "eval_batch_window_hours": null,
+        "concurrency": 8,
+        "target_rho": 0.75,
+        "deadline_slack_hours": 0.5,
+        "dedicated_fleet": true,
+        "source_policy": "rho0.75_c8_h0.5"
+      },
+      "predicted_goodput_per_dollar": 2758413.4615384615,
+      "predicted_sla_safe_goodput": 2187699.0,
+      "predicted_deadline_miss_rate_pct": 0.0,
+      "predicted_eval_suite_completion_hours": 0.04766228758169934,
+      "predicted_interactive_p99_delta_ms": 0.0,
+      "predicted_interactive_timeout_delta_pct": 0.0,
+      "predicted_queue_p99_ms": null,
+      "predicted_latency_p99_ms": null,
+      "predicted_gpu_hours": 0.3812983006535947,
+      "predicted_mean_utilization": 0.75,
+      "safety_status": "SAFE",
+      "safety_vetoes": [],
+      "notes": [
+        "structural_eval_model_v1"
+      ]
+    },
+    {
+      "candidate": {
+        "eval_batch_window_hours": null,
+        "concurrency": 8,
+        "target_rho": 0.75,
+        "deadline_slack_hours": 1.0,
+        "dedicated_fleet": true,
+        "source_policy": "rho0.75_c8_h1.0"
+      },
+      "predicted_goodput_per_dollar": 2758413.4615384615,
+      "predicted_sla_safe_goodput": 2187699.0,
+      "predicted_deadline_miss_rate_pct": 0.0,
+      "predicted_eval_suite_completion_hours": 0.04766228758169934,
+      "predicted_interactive_p99_delta_ms": 0.0,
+      "predicted_interactive_timeout_delta_pct": 0.0,
+      "predicted_queue_p99_ms": null,
+      "predicted_latency_p99_ms": null,
+      "predicted_gpu_hours": 0.3812983006535947,
+      "predicted_mean_utilization": 0.75,
+      "safety_status": "SAFE",
+      "safety_vetoes": [],
+      "notes": [
+        "structural_eval_model_v1"
+      ]
+    },
+    {
+      "candidate": {
+        "eval_batch_window_hours": null,
+        "concurrency": 8,
+        "target_rho": 0.75,
+        "deadline_slack_hours": 4.0,
+        "dedicated_fleet": true,
+        "source_policy": "rho0.75_c8_h4.0"
+      },
+      "predicted_goodput_per_dollar": 2758413.4615384615,
+      "predicted_sla_safe_goodput": 2187699.0,
+      "predicted_deadline_miss_rate_pct": 0.0,
+      "predicted_eval_suite_completion_hours": 0.04766228758169934,
+      "predicted_interactive_p99_delta_ms": 0.0,
+      "predicted_interactive_timeout_delta_pct": 0.0,
+      "predicted_queue_p99_ms": null,
+      "predicted_latency_p99_ms": null,
+      "predicted_gpu_hours": 0.3812983006535947,
+      "predicted_mean_utilization": 0.75,
+      "safety_status": "SAFE",
+      "safety_vetoes": [],
+      "notes": [
+        "structural_eval_model_v1"
+      ]
+    },
+    {
+      "candidate": {
+        "eval_batch_window_hours": null,
+        "concurrency": 8,
+        "target_rho": 0.75,
+        "deadline_slack_hours": 24.0,
+        "dedicated_fleet": true,
+        "source_policy": "rho0.75_c8_h24.0"
+      },
+      "predicted_goodput_per_dollar": 2758413.4615384615,
+      "predicted_sla_safe_goodput": 2187699.0,
+      "predicted_deadline_miss_rate_pct": 0.0,
+      "predicted_eval_suite_completion_hours": 0.04766228758169934,
+      "predicted_interactive_p99_delta_ms": 0.0,
+      "predicted_interactive_timeout_delta_pct": 0.0,
+      "predicted_queue_p99_ms": null,
+      "predicted_latency_p99_ms": null,
+      "predicted_gpu_hours": 0.3812983006535947,
+      "predicted_mean_utilization": 0.75,
+      "safety_status": "SAFE",
+      "safety_vetoes": [],
+      "notes": [
+        "structural_eval_model_v1"
+      ]
+    },
+    {
+      "candidate": {
+        "eval_batch_window_hours": null,
+        "concurrency": 1,
+        "target_rho": 0.85,
+        "deadline_slack_hours": 0.5,
+        "dedicated_fleet": true,
+        "source_policy": "rho0.85_c1_h0.5"
+      },
+      "predicted_goodput_per_dollar": 3493990.3846153845,
+      "predicted_sla_safe_goodput": 2187699.0,
+      "predicted_deadline_miss_rate_pct": 0.0,
+      "predicted_eval_suite_completion_hours": 0.3010249742002064,
+      "predicted_interactive_p99_delta_ms": 0.0,
+      "predicted_interactive_timeout_delta_pct": 0.0,
+      "predicted_queue_p99_ms": null,
+      "predicted_latency_p99_ms": null,
+      "predicted_gpu_hours": 0.3010249742002064,
+      "predicted_mean_utilization": 0.85,
+      "safety_status": "SAFE",
+      "safety_vetoes": [],
+      "notes": [
+        "structural_eval_model_v1"
+      ]
+    },
+    {
+      "candidate": {
+        "eval_batch_window_hours": null,
+        "concurrency": 1,
+        "target_rho": 0.85,
+        "deadline_slack_hours": 1.0,
+        "dedicated_fleet": true,
+        "source_policy": "rho0.85_c1_h1.0"
+      },
+      "predicted_goodput_per_dollar": 3493990.3846153845,
+      "predicted_sla_safe_goodput": 2187699.0,
+      "predicted_deadline_miss_rate_pct": 0.0,
+      "predicted_eval_suite_completion_hours": 0.3010249742002064,
+      "predicted_interactive_p99_delta_ms": 0.0,
+      "predicted_interactive_timeout_delta_pct": 0.0,
+      "predicted_queue_p99_ms": null,
+      "predicted_latency_p99_ms": null,
+      "predicted_gpu_hours": 0.3010249742002064,
+      "predicted_mean_utilization": 0.85,
+      "safety_status": "SAFE",
+      "safety_vetoes": [],
+      "notes": [
+        "structural_eval_model_v1"
+      ]
+    },
+    {
+      "candidate": {
+        "eval_batch_window_hours": null,
+        "concurrency": 1,
+        "target_rho": 0.85,
+        "deadline_slack_hours": 4.0,
+        "dedicated_fleet": true,
+        "source_policy": "rho0.85_c1_h4.0"
+      },
+      "predicted_goodput_per_dollar": 3493990.3846153845,
+      "predicted_sla_safe_goodput": 2187699.0,
+      "predicted_deadline_miss_rate_pct": 0.0,
+      "predicted_eval_suite_completion_hours": 0.3010249742002064,
+      "predicted_interactive_p99_delta_ms": 0.0,
+      "predicted_interactive_timeout_delta_pct": 0.0,
+      "predicted_queue_p99_ms": null,
+      "predicted_latency_p99_ms": null,
+      "predicted_gpu_hours": 0.3010249742002064,
+      "predicted_mean_utilization": 0.85,
+      "safety_status": "SAFE",
+      "safety_vetoes": [],
+      "notes": [
+        "structural_eval_model_v1"
+      ]
+    },
+    {
+      "candidate": {
+        "eval_batch_window_hours": null,
+        "concurrency": 1,
+        "target_rho": 0.85,
+        "deadline_slack_hours": 24.0,
+        "dedicated_fleet": true,
+        "source_policy": "rho0.85_c1_h24.0"
+      },
+      "predicted_goodput_per_dollar": 3493990.3846153845,
+      "predicted_sla_safe_goodput": 2187699.0,
+      "predicted_deadline_miss_rate_pct": 0.0,
+      "predicted_eval_suite_completion_hours": 0.3010249742002064,
+      "predicted_interactive_p99_delta_ms": 0.0,
+      "predicted_interactive_timeout_delta_pct": 0.0,
+      "predicted_queue_p99_ms": null,
+      "predicted_latency_p99_ms": null,
+      "predicted_gpu_hours": 0.3010249742002064,
+      "predicted_mean_utilization": 0.85,
+      "safety_status": "SAFE",
+      "safety_vetoes": [],
+      "notes": [
+        "structural_eval_model_v1"
+      ]
+    },
+    {
+      "candidate": {
+        "eval_batch_window_hours": null,
+        "concurrency": 2,
+        "target_rho": 0.85,
+        "deadline_slack_hours": 0.5,
+        "dedicated_fleet": true,
+        "source_policy": "rho0.85_c2_h0.5"
+      },
+      "predicted_goodput_per_dollar": 3493990.3846153845,
+      "predicted_sla_safe_goodput": 2187699.0,
+      "predicted_deadline_miss_rate_pct": 0.0,
+      "predicted_eval_suite_completion_hours": 0.1505124871001032,
+      "predicted_interactive_p99_delta_ms": 0.0,
+      "predicted_interactive_timeout_delta_pct": 0.0,
+      "predicted_queue_p99_ms": null,
+      "predicted_latency_p99_ms": null,
+      "predicted_gpu_hours": 0.3010249742002064,
+      "predicted_mean_utilization": 0.85,
+      "safety_status": "SAFE",
+      "safety_vetoes": [],
+      "notes": [
+        "structural_eval_model_v1"
+      ]
+    },
+    {
+      "candidate": {
+        "eval_batch_window_hours": null,
+        "concurrency": 2,
+        "target_rho": 0.85,
+        "deadline_slack_hours": 1.0,
+        "dedicated_fleet": true,
+        "source_policy": "rho0.85_c2_h1.0"
+      },
+      "predicted_goodput_per_dollar": 3493990.3846153845,
+      "predicted_sla_safe_goodput": 2187699.0,
+      "predicted_deadline_miss_rate_pct": 0.0,
+      "predicted_eval_suite_completion_hours": 0.1505124871001032,
+      "predicted_interactive_p99_delta_ms": 0.0,
+      "predicted_interactive_timeout_delta_pct": 0.0,
+      "predicted_queue_p99_ms": null,
+      "predicted_latency_p99_ms": null,
+      "predicted_gpu_hours": 0.3010249742002064,
+      "predicted_mean_utilization": 0.85,
+      "safety_status": "SAFE",
+      "safety_vetoes": [],
+      "notes": [
+        "structural_eval_model_v1"
+      ]
+    },
+    {
+      "candidate": {
+        "eval_batch_window_hours": null,
+        "concurrency": 2,
+        "target_rho": 0.85,
+        "deadline_slack_hours": 4.0,
+        "dedicated_fleet": true,
+        "source_policy": "rho0.85_c2_h4.0"
+      },
+      "predicted_goodput_per_dollar": 3493990.3846153845,
+      "predicted_sla_safe_goodput": 2187699.0,
+      "predicted_deadline_miss_rate_pct": 0.0,
+      "predicted_eval_suite_completion_hours": 0.1505124871001032,
+      "predicted_interactive_p99_delta_ms": 0.0,
+      "predicted_interactive_timeout_delta_pct": 0.0,
+      "predicted_queue_p99_ms": null,
+      "predicted_latency_p99_ms": null,
+      "predicted_gpu_hours": 0.3010249742002064,
+      "predicted_mean_utilization": 0.85,
+      "safety_status": "SAFE",
+      "safety_vetoes": [],
+      "notes": [
+        "structural_eval_model_v1"
+      ]
+    },
+    {
+      "candidate": {
+        "eval_batch_window_hours": null,
+        "concurrency": 2,
+        "target_rho": 0.85,
+        "deadline_slack_hours": 24.0,
+        "dedicated_fleet": true,
+        "source_policy": "rho0.85_c2_h24.0"
+      },
+      "predicted_goodput_per_dollar": 3493990.3846153845,
+      "predicted_sla_safe_goodput": 2187699.0,
+      "predicted_deadline_miss_rate_pct": 0.0,
+      "predicted_eval_suite_completion_hours": 0.1505124871001032,
+      "predicted_interactive_p99_delta_ms": 0.0,
+      "predicted_interactive_timeout_delta_pct": 0.0,
+      "predicted_queue_p99_ms": null,
+      "predicted_latency_p99_ms": null,
+      "predicted_gpu_hours": 0.3010249742002064,
+      "predicted_mean_utilization": 0.85,
+      "safety_status": "SAFE",
+      "safety_vetoes": [],
+      "notes": [
+        "structural_eval_model_v1"
+      ]
+    },
+    {
+      "candidate": {
+        "eval_batch_window_hours": null,
+        "concurrency": 4,
+        "target_rho": 0.85,
+        "deadline_slack_hours": 0.5,
+        "dedicated_fleet": true,
+        "source_policy": "rho0.85_c4_h0.5"
+      },
+      "predicted_goodput_per_dollar": 3493990.3846153845,
+      "predicted_sla_safe_goodput": 2187699.0,
+      "predicted_deadline_miss_rate_pct": 0.0,
+      "predicted_eval_suite_completion_hours": 0.0752562435500516,
+      "predicted_interactive_p99_delta_ms": 0.0,
+      "predicted_interactive_timeout_delta_pct": 0.0,
+      "predicted_queue_p99_ms": null,
+      "predicted_latency_p99_ms": null,
+      "predicted_gpu_hours": 0.3010249742002064,
+      "predicted_mean_utilization": 0.85,
+      "safety_status": "SAFE",
+      "safety_vetoes": [],
+      "notes": [
+        "structural_eval_model_v1"
+      ]
+    },
+    {
+      "candidate": {
+        "eval_batch_window_hours": null,
+        "concurrency": 4,
+        "target_rho": 0.85,
+        "deadline_slack_hours": 1.0,
+        "dedicated_fleet": true,
+        "source_policy": "rho0.85_c4_h1.0"
+      },
+      "predicted_goodput_per_dollar": 3493990.3846153845,
+      "predicted_sla_safe_goodput": 2187699.0,
+      "predicted_deadline_miss_rate_pct": 0.0,
+      "predicted_eval_suite_completion_hours": 0.0752562435500516,
+      "predicted_interactive_p99_delta_ms": 0.0,
+      "predicted_interactive_timeout_delta_pct": 0.0,
+      "predicted_queue_p99_ms": null,
+      "predicted_latency_p99_ms": null,
+      "predicted_gpu_hours": 0.3010249742002064,
+      "predicted_mean_utilization": 0.85,
+      "safety_status": "SAFE",
+      "safety_vetoes": [],
+      "notes": [
+        "structural_eval_model_v1"
+      ]
+    },
+    {
+      "candidate": {
+        "eval_batch_window_hours": null,
+        "concurrency": 4,
+        "target_rho": 0.85,
+        "deadline_slack_hours": 4.0,
+        "dedicated_fleet": true,
+        "source_policy": "rho0.85_c4_h4.0"
+      },
+      "predicted_goodput_per_dollar": 3493990.3846153845,
+      "predicted_sla_safe_goodput": 2187699.0,
+      "predicted_deadline_miss_rate_pct": 0.0,
+      "predicted_eval_suite_completion_hours": 0.0752562435500516,
+      "predicted_interactive_p99_delta_ms": 0.0,
+      "predicted_interactive_timeout_delta_pct": 0.0,
+      "predicted_queue_p99_ms": null,
+      "predicted_latency_p99_ms": null,
+      "predicted_gpu_hours": 0.3010249742002064,
+      "predicted_mean_utilization": 0.85,
+      "safety_status": "SAFE",
+      "safety_vetoes": [],
+      "notes": [
+        "structural_eval_model_v1"
+      ]
+    },
+    {
+      "candidate": {
+        "eval_batch_window_hours": null,
+        "concurrency": 4,
+        "target_rho": 0.85,
+        "deadline_slack_hours": 24.0,
+        "dedicated_fleet": true,
+        "source_policy": "rho0.85_c4_h24.0"
+      },
+      "predicted_goodput_per_dollar": 3493990.3846153845,
+      "predicted_sla_safe_goodput": 2187699.0,
+      "predicted_deadline_miss_rate_pct": 0.0,
+      "predicted_eval_suite_completion_hours": 0.0752562435500516,
+      "predicted_interactive_p99_delta_ms": 0.0,
+      "predicted_interactive_timeout_delta_pct": 0.0,
+      "predicted_queue_p99_ms": null,
+      "predicted_latency_p99_ms": null,
+      "predicted_gpu_hours": 0.3010249742002064,
+      "predicted_mean_utilization": 0.85,
+      "safety_status": "SAFE",
+      "safety_vetoes": [],
+      "notes": [
+        "structural_eval_model_v1"
+      ]
+    },
+    {
+      "candidate": {
+        "eval_batch_window_hours": null,
+        "concurrency": 8,
+        "target_rho": 0.85,
+        "deadline_slack_hours": 0.5,
+        "dedicated_fleet": true,
+        "source_policy": "rho0.85_c8_h0.5"
+      },
+      "predicted_goodput_per_dollar": 3493990.3846153845,
+      "predicted_sla_safe_goodput": 2187699.0,
+      "predicted_deadline_miss_rate_pct": 0.0,
+      "predicted_eval_suite_completion_hours": 0.0376281217750258,
+      "predicted_interactive_p99_delta_ms": 0.0,
+      "predicted_interactive_timeout_delta_pct": 0.0,
+      "predicted_queue_p99_ms": null,
+      "predicted_latency_p99_ms": null,
+      "predicted_gpu_hours": 0.3010249742002064,
+      "predicted_mean_utilization": 0.85,
+      "safety_status": "SAFE",
+      "safety_vetoes": [],
+      "notes": [
+        "structural_eval_model_v1"
+      ]
+    },
+    {
+      "candidate": {
+        "eval_batch_window_hours": null,
+        "concurrency": 8,
+        "target_rho": 0.85,
+        "deadline_slack_hours": 1.0,
+        "dedicated_fleet": true,
+        "source_policy": "rho0.85_c8_h1.0"
+      },
+      "predicted_goodput_per_dollar": 3493990.3846153845,
+      "predicted_sla_safe_goodput": 2187699.0,
+      "predicted_deadline_miss_rate_pct": 0.0,
+      "predicted_eval_suite_completion_hours": 0.0376281217750258,
+      "predicted_interactive_p99_delta_ms": 0.0,
+      "predicted_interactive_timeout_delta_pct": 0.0,
+      "predicted_queue_p99_ms": null,
+      "predicted_latency_p99_ms": null,
+      "predicted_gpu_hours": 0.3010249742002064,
+      "predicted_mean_utilization": 0.85,
+      "safety_status": "SAFE",
+      "safety_vetoes": [],
+      "notes": [
+        "structural_eval_model_v1"
+      ]
+    },
+    {
+      "candidate": {
+        "eval_batch_window_hours": null,
+        "concurrency": 8,
+        "target_rho": 0.85,
+        "deadline_slack_hours": 4.0,
+        "dedicated_fleet": true,
+        "source_policy": "rho0.85_c8_h4.0"
+      },
+      "predicted_goodput_per_dollar": 3493990.3846153845,
+      "predicted_sla_safe_goodput": 2187699.0,
+      "predicted_deadline_miss_rate_pct": 0.0,
+      "predicted_eval_suite_completion_hours": 0.0376281217750258,
+      "predicted_interactive_p99_delta_ms": 0.0,
+      "predicted_interactive_timeout_delta_pct": 0.0,
+      "predicted_queue_p99_ms": null,
+      "predicted_latency_p99_ms": null,
+      "predicted_gpu_hours": 0.3010249742002064,
+      "predicted_mean_utilization": 0.85,
+      "safety_status": "SAFE",
+      "safety_vetoes": [],
+      "notes": [
+        "structural_eval_model_v1"
+      ]
+    },
+    {
+      "candidate": {
+        "eval_batch_window_hours": null,
+        "concurrency": 8,
+        "target_rho": 0.85,
+        "deadline_slack_hours": 24.0,
+        "dedicated_fleet": true,
+        "source_policy": "rho0.85_c8_h24.0"
+      },
+      "predicted_goodput_per_dollar": 3493990.3846153845,
+      "predicted_sla_safe_goodput": 2187699.0,
+      "predicted_deadline_miss_rate_pct": 0.0,
+      "predicted_eval_suite_completion_hours": 0.0376281217750258,
+      "predicted_interactive_p99_delta_ms": 0.0,
+      "predicted_interactive_timeout_delta_pct": 0.0,
+      "predicted_queue_p99_ms": null,
+      "predicted_latency_p99_ms": null,
+      "predicted_gpu_hours": 0.3010249742002064,
+      "predicted_mean_utilization": 0.85,
+      "safety_status": "SAFE",
+      "safety_vetoes": [],
+      "notes": [
+        "structural_eval_model_v1"
+      ]
+    },
+    {
+      "candidate": {
+        "eval_batch_window_hours": null,
+        "concurrency": 1,
+        "target_rho": 0.95,
+        "deadline_slack_hours": 0.5,
+        "dedicated_fleet": true,
+        "source_policy": "rho0.95_c1_h0.5"
+      },
+      "predicted_goodput_per_dollar": 4110576.923076923,
+      "predicted_sla_safe_goodput": 2187699.0,
+      "predicted_deadline_miss_rate_pct": 0.0,
+      "predicted_eval_suite_completion_hours": 0.2558712280701754,
+      "predicted_interactive_p99_delta_ms": 0.0,
+      "predicted_interactive_timeout_delta_pct": 0.0,
+      "predicted_queue_p99_ms": null,
+      "predicted_latency_p99_ms": null,
+      "predicted_gpu_hours": 0.2558712280701754,
+      "predicted_mean_utilization": 0.95,
+      "safety_status": "SAFE",
+      "safety_vetoes": [],
+      "notes": [
+        "structural_eval_model_v1"
+      ]
+    },
+    {
+      "candidate": {
+        "eval_batch_window_hours": null,
+        "concurrency": 1,
+        "target_rho": 0.95,
+        "deadline_slack_hours": 1.0,
+        "dedicated_fleet": true,
+        "source_policy": "rho0.95_c1_h1.0"
+      },
+      "predicted_goodput_per_dollar": 4110576.923076923,
+      "predicted_sla_safe_goodput": 2187699.0,
+      "predicted_deadline_miss_rate_pct": 0.0,
+      "predicted_eval_suite_completion_hours": 0.2558712280701754,
+      "predicted_interactive_p99_delta_ms": 0.0,
+      "predicted_interactive_timeout_delta_pct": 0.0,
+      "predicted_queue_p99_ms": null,
+      "predicted_latency_p99_ms": null,
+      "predicted_gpu_hours": 0.2558712280701754,
+      "predicted_mean_utilization": 0.95,
+      "safety_status": "SAFE",
+      "safety_vetoes": [],
+      "notes": [
+        "structural_eval_model_v1"
+      ]
+    },
+    {
+      "candidate": {
+        "eval_batch_window_hours": null,
+        "concurrency": 1,
+        "target_rho": 0.95,
+        "deadline_slack_hours": 4.0,
+        "dedicated_fleet": true,
+        "source_policy": "rho0.95_c1_h4.0"
+      },
+      "predicted_goodput_per_dollar": 4110576.923076923,
+      "predicted_sla_safe_goodput": 2187699.0,
+      "predicted_deadline_miss_rate_pct": 0.0,
+      "predicted_eval_suite_completion_hours": 0.2558712280701754,
+      "predicted_interactive_p99_delta_ms": 0.0,
+      "predicted_interactive_timeout_delta_pct": 0.0,
+      "predicted_queue_p99_ms": null,
+      "predicted_latency_p99_ms": null,
+      "predicted_gpu_hours": 0.2558712280701754,
+      "predicted_mean_utilization": 0.95,
+      "safety_status": "SAFE",
+      "safety_vetoes": [],
+      "notes": [
+        "structural_eval_model_v1"
+      ]
+    },
+    {
+      "candidate": {
+        "eval_batch_window_hours": null,
+        "concurrency": 1,
+        "target_rho": 0.95,
+        "deadline_slack_hours": 24.0,
+        "dedicated_fleet": true,
+        "source_policy": "rho0.95_c1_h24.0"
+      },
+      "predicted_goodput_per_dollar": 4110576.923076923,
+      "predicted_sla_safe_goodput": 2187699.0,
+      "predicted_deadline_miss_rate_pct": 0.0,
+      "predicted_eval_suite_completion_hours": 0.2558712280701754,
+      "predicted_interactive_p99_delta_ms": 0.0,
+      "predicted_interactive_timeout_delta_pct": 0.0,
+      "predicted_queue_p99_ms": null,
+      "predicted_latency_p99_ms": null,
+      "predicted_gpu_hours": 0.2558712280701754,
+      "predicted_mean_utilization": 0.95,
+      "safety_status": "SAFE",
+      "safety_vetoes": [],
+      "notes": [
+        "structural_eval_model_v1"
+      ]
+    },
+    {
+      "candidate": {
+        "eval_batch_window_hours": null,
+        "concurrency": 2,
+        "target_rho": 0.95,
+        "deadline_slack_hours": 0.5,
+        "dedicated_fleet": true,
+        "source_policy": "rho0.95_c2_h0.5"
+      },
+      "predicted_goodput_per_dollar": 4110576.923076923,
+      "predicted_sla_safe_goodput": 2187699.0,
+      "predicted_deadline_miss_rate_pct": 0.0,
+      "predicted_eval_suite_completion_hours": 0.1279356140350877,
+      "predicted_interactive_p99_delta_ms": 0.0,
+      "predicted_interactive_timeout_delta_pct": 0.0,
+      "predicted_queue_p99_ms": null,
+      "predicted_latency_p99_ms": null,
+      "predicted_gpu_hours": 0.2558712280701754,
+      "predicted_mean_utilization": 0.95,
+      "safety_status": "SAFE",
+      "safety_vetoes": [],
+      "notes": [
+        "structural_eval_model_v1"
+      ]
+    },
+    {
+      "candidate": {
+        "eval_batch_window_hours": null,
+        "concurrency": 2,
+        "target_rho": 0.95,
+        "deadline_slack_hours": 1.0,
+        "dedicated_fleet": true,
+        "source_policy": "rho0.95_c2_h1.0"
+      },
+      "predicted_goodput_per_dollar": 4110576.923076923,
+      "predicted_sla_safe_goodput": 2187699.0,
+      "predicted_deadline_miss_rate_pct": 0.0,
+      "predicted_eval_suite_completion_hours": 0.1279356140350877,
+      "predicted_interactive_p99_delta_ms": 0.0,
+      "predicted_interactive_timeout_delta_pct": 0.0,
+      "predicted_queue_p99_ms": null,
+      "predicted_latency_p99_ms": null,
+      "predicted_gpu_hours": 0.2558712280701754,
+      "predicted_mean_utilization": 0.95,
+      "safety_status": "SAFE",
+      "safety_vetoes": [],
+      "notes": [
+        "structural_eval_model_v1"
+      ]
+    },
+    {
+      "candidate": {
+        "eval_batch_window_hours": null,
+        "concurrency": 2,
+        "target_rho": 0.95,
+        "deadline_slack_hours": 4.0,
+        "dedicated_fleet": true,
+        "source_policy": "rho0.95_c2_h4.0"
+      },
+      "predicted_goodput_per_dollar": 4110576.923076923,
+      "predicted_sla_safe_goodput": 2187699.0,
+      "predicted_deadline_miss_rate_pct": 0.0,
+      "predicted_eval_suite_completion_hours": 0.1279356140350877,
+      "predicted_interactive_p99_delta_ms": 0.0,
+      "predicted_interactive_timeout_delta_pct": 0.0,
+      "predicted_queue_p99_ms": null,
+      "predicted_latency_p99_ms": null,
+      "predicted_gpu_hours": 0.2558712280701754,
+      "predicted_mean_utilization": 0.95,
+      "safety_status": "SAFE",
+      "safety_vetoes": [],
+      "notes": [
+        "structural_eval_model_v1"
+      ]
+    },
+    {
+      "candidate": {
+        "eval_batch_window_hours": null,
+        "concurrency": 2,
+        "target_rho": 0.95,
+        "deadline_slack_hours": 24.0,
+        "dedicated_fleet": true,
+        "source_policy": "rho0.95_c2_h24.0"
+      },
+      "predicted_goodput_per_dollar": 4110576.923076923,
+      "predicted_sla_safe_goodput": 2187699.0,
+      "predicted_deadline_miss_rate_pct": 0.0,
+      "predicted_eval_suite_completion_hours": 0.1279356140350877,
+      "predicted_interactive_p99_delta_ms": 0.0,
+      "predicted_interactive_timeout_delta_pct": 0.0,
+      "predicted_queue_p99_ms": null,
+      "predicted_latency_p99_ms": null,
+      "predicted_gpu_hours": 0.2558712280701754,
+      "predicted_mean_utilization": 0.95,
+      "safety_status": "SAFE",
+      "safety_vetoes": [],
+      "notes": [
+        "structural_eval_model_v1"
+      ]
+    },
+    {
+      "candidate": {
+        "eval_batch_window_hours": null,
+        "concurrency": 4,
+        "target_rho": 0.95,
+        "deadline_slack_hours": 0.5,
+        "dedicated_fleet": true,
+        "source_policy": "rho0.95_c4_h0.5"
+      },
+      "predicted_goodput_per_dollar": 4110576.923076923,
+      "predicted_sla_safe_goodput": 2187699.0,
+      "predicted_deadline_miss_rate_pct": 0.0,
+      "predicted_eval_suite_completion_hours": 0.06396780701754386,
+      "predicted_interactive_p99_delta_ms": 0.0,
+      "predicted_interactive_timeout_delta_pct": 0.0,
+      "predicted_queue_p99_ms": null,
+      "predicted_latency_p99_ms": null,
+      "predicted_gpu_hours": 0.2558712280701754,
+      "predicted_mean_utilization": 0.95,
+      "safety_status": "SAFE",
+      "safety_vetoes": [],
+      "notes": [
+        "structural_eval_model_v1"
+      ]
+    },
+    {
+      "candidate": {
+        "eval_batch_window_hours": null,
+        "concurrency": 4,
+        "target_rho": 0.95,
+        "deadline_slack_hours": 1.0,
+        "dedicated_fleet": true,
+        "source_policy": "rho0.95_c4_h1.0"
+      },
+      "predicted_goodput_per_dollar": 4110576.923076923,
+      "predicted_sla_safe_goodput": 2187699.0,
+      "predicted_deadline_miss_rate_pct": 0.0,
+      "predicted_eval_suite_completion_hours": 0.06396780701754386,
+      "predicted_interactive_p99_delta_ms": 0.0,
+      "predicted_interactive_timeout_delta_pct": 0.0,
+      "predicted_queue_p99_ms": null,
+      "predicted_latency_p99_ms": null,
+      "predicted_gpu_hours": 0.2558712280701754,
+      "predicted_mean_utilization": 0.95,
+      "safety_status": "SAFE",
+      "safety_vetoes": [],
+      "notes": [
+        "structural_eval_model_v1"
+      ]
+    },
+    {
+      "candidate": {
+        "eval_batch_window_hours": null,
+        "concurrency": 4,
+        "target_rho": 0.95,
+        "deadline_slack_hours": 4.0,
+        "dedicated_fleet": true,
+        "source_policy": "rho0.95_c4_h4.0"
+      },
+      "predicted_goodput_per_dollar": 4110576.923076923,
+      "predicted_sla_safe_goodput": 2187699.0,
+      "predicted_deadline_miss_rate_pct": 0.0,
+      "predicted_eval_suite_completion_hours": 0.06396780701754386,
+      "predicted_interactive_p99_delta_ms": 0.0,
+      "predicted_interactive_timeout_delta_pct": 0.0,
+      "predicted_queue_p99_ms": null,
+      "predicted_latency_p99_ms": null,
+      "predicted_gpu_hours": 0.2558712280701754,
+      "predicted_mean_utilization": 0.95,
+      "safety_status": "SAFE",
+      "safety_vetoes": [],
+      "notes": [
+        "structural_eval_model_v1"
+      ]
+    },
+    {
+      "candidate": {
+        "eval_batch_window_hours": null,
+        "concurrency": 4,
+        "target_rho": 0.95,
+        "deadline_slack_hours": 24.0,
+        "dedicated_fleet": true,
+        "source_policy": "rho0.95_c4_h24.0"
+      },
+      "predicted_goodput_per_dollar": 4110576.923076923,
+      "predicted_sla_safe_goodput": 2187699.0,
+      "predicted_deadline_miss_rate_pct": 0.0,
+      "predicted_eval_suite_completion_hours": 0.06396780701754386,
+      "predicted_interactive_p99_delta_ms": 0.0,
+      "predicted_interactive_timeout_delta_pct": 0.0,
+      "predicted_queue_p99_ms": null,
+      "predicted_latency_p99_ms": null,
+      "predicted_gpu_hours": 0.2558712280701754,
+      "predicted_mean_utilization": 0.95,
+      "safety_status": "SAFE",
+      "safety_vetoes": [],
+      "notes": [
+        "structural_eval_model_v1"
+      ]
+    },
+    {
+      "candidate": {
+        "eval_batch_window_hours": null,
+        "concurrency": 8,
+        "target_rho": 0.95,
+        "deadline_slack_hours": 0.5,
+        "dedicated_fleet": true,
+        "source_policy": "rho0.95_c8_h0.5"
+      },
+      "predicted_goodput_per_dollar": 4110576.923076923,
+      "predicted_sla_safe_goodput": 2187699.0,
+      "predicted_deadline_miss_rate_pct": 0.0,
+      "predicted_eval_suite_completion_hours": 0.03198390350877193,
+      "predicted_interactive_p99_delta_ms": 0.0,
+      "predicted_interactive_timeout_delta_pct": 0.0,
+      "predicted_queue_p99_ms": null,
+      "predicted_latency_p99_ms": null,
+      "predicted_gpu_hours": 0.2558712280701754,
+      "predicted_mean_utilization": 0.95,
+      "safety_status": "SAFE",
+      "safety_vetoes": [],
+      "notes": [
+        "structural_eval_model_v1"
+      ]
+    },
+    {
+      "candidate": {
+        "eval_batch_window_hours": null,
+        "concurrency": 8,
+        "target_rho": 0.95,
+        "deadline_slack_hours": 1.0,
+        "dedicated_fleet": true,
+        "source_policy": "rho0.95_c8_h1.0"
+      },
+      "predicted_goodput_per_dollar": 4110576.923076923,
+      "predicted_sla_safe_goodput": 2187699.0,
+      "predicted_deadline_miss_rate_pct": 0.0,
+      "predicted_eval_suite_completion_hours": 0.03198390350877193,
+      "predicted_interactive_p99_delta_ms": 0.0,
+      "predicted_interactive_timeout_delta_pct": 0.0,
+      "predicted_queue_p99_ms": null,
+      "predicted_latency_p99_ms": null,
+      "predicted_gpu_hours": 0.2558712280701754,
+      "predicted_mean_utilization": 0.95,
+      "safety_status": "SAFE",
+      "safety_vetoes": [],
+      "notes": [
+        "structural_eval_model_v1"
+      ]
+    },
+    {
+      "candidate": {
+        "eval_batch_window_hours": null,
+        "concurrency": 8,
+        "target_rho": 0.95,
+        "deadline_slack_hours": 4.0,
+        "dedicated_fleet": true,
+        "source_policy": "rho0.95_c8_h4.0"
+      },
+      "predicted_goodput_per_dollar": 4110576.923076923,
+      "predicted_sla_safe_goodput": 2187699.0,
+      "predicted_deadline_miss_rate_pct": 0.0,
+      "predicted_eval_suite_completion_hours": 0.03198390350877193,
+      "predicted_interactive_p99_delta_ms": 0.0,
+      "predicted_interactive_timeout_delta_pct": 0.0,
+      "predicted_queue_p99_ms": null,
+      "predicted_latency_p99_ms": null,
+      "predicted_gpu_hours": 0.2558712280701754,
+      "predicted_mean_utilization": 0.95,
+      "safety_status": "SAFE",
+      "safety_vetoes": [],
+      "notes": [
+        "structural_eval_model_v1"
+      ]
+    },
+    {
+      "candidate": {
+        "eval_batch_window_hours": null,
+        "concurrency": 8,
+        "target_rho": 0.95,
+        "deadline_slack_hours": 24.0,
+        "dedicated_fleet": true,
+        "source_policy": "rho0.95_c8_h24.0"
+      },
+      "predicted_goodput_per_dollar": 4110576.923076923,
+      "predicted_sla_safe_goodput": 2187699.0,
+      "predicted_deadline_miss_rate_pct": 0.0,
+      "predicted_eval_suite_completion_hours": 0.03198390350877193,
+      "predicted_interactive_p99_delta_ms": 0.0,
+      "predicted_interactive_timeout_delta_pct": 0.0,
+      "predicted_queue_p99_ms": null,
+      "predicted_latency_p99_ms": null,
+      "predicted_gpu_hours": 0.2558712280701754,
+      "predicted_mean_utilization": 0.95,
+      "safety_status": "SAFE",
+      "safety_vetoes": [],
+      "notes": [
+        "structural_eval_model_v1"
+      ]
+    }
+  ],
+  "recommendation": {
+    "workload_id": "sharegpt_eval_workload_v1",
+    "selected_candidate": {
+      "eval_batch_window_hours": null,
+      "concurrency": 1,
+      "target_rho": 0.95,
+      "deadline_slack_hours": 0.5,
+      "dedicated_fleet": true,
+      "source_policy": "rho0.95_c1_h0.5"
+    },
+    "current_candidate": null,
+    "selected_point": {
+      "candidate": {
+        "eval_batch_window_hours": null,
+        "concurrency": 1,
+        "target_rho": 0.95,
+        "deadline_slack_hours": 0.5,
+        "dedicated_fleet": true,
+        "source_policy": "rho0.95_c1_h0.5"
+      },
+      "predicted_goodput_per_dollar": 4110576.923076923,
+      "predicted_sla_safe_goodput": 2187699.0,
+      "predicted_deadline_miss_rate_pct": 0.0,
+      "predicted_eval_suite_completion_hours": 0.2558712280701754,
+      "predicted_interactive_p99_delta_ms": 0.0,
+      "predicted_interactive_timeout_delta_pct": 0.0,
+      "predicted_queue_p99_ms": null,
+      "predicted_latency_p99_ms": null,
+      "predicted_gpu_hours": 0.2558712280701754,
+      "predicted_mean_utilization": 0.95,
+      "safety_status": "SAFE",
+      "safety_vetoes": [],
+      "notes": [
+        "structural_eval_model_v1"
+      ]
+    },
+    "frontier_points": [
+      {
+        "candidate": {
+          "eval_batch_window_hours": null,
+          "concurrency": 1,
+          "target_rho": 0.55,
+          "deadline_slack_hours": 0.5,
+          "dedicated_fleet": true,
+          "source_policy": "rho0.55_c1_h0.5"
+        },
+        "predicted_goodput_per_dollar": 1546874.9999999998,
+        "predicted_sla_safe_goodput": 2187699.0,
+        "predicted_deadline_miss_rate_pct": 0.0,
+        "predicted_eval_suite_completion_hours": 0.6799375291375291,
+        "predicted_interactive_p99_delta_ms": 0.0,
+        "predicted_interactive_timeout_delta_pct": 0.0,
+        "predicted_queue_p99_ms": null,
+        "predicted_latency_p99_ms": null,
+        "predicted_gpu_hours": 0.6799375291375291,
+        "predicted_mean_utilization": 0.55,
+        "safety_status": "SAFE",
+        "safety_vetoes": [],
+        "notes": [
+          "structural_eval_model_v1"
+        ]
+      },
+      {
+        "candidate": {
+          "eval_batch_window_hours": null,
+          "concurrency": 1,
+          "target_rho": 0.55,
+          "deadline_slack_hours": 1.0,
+          "dedicated_fleet": true,
+          "source_policy": "rho0.55_c1_h1.0"
+        },
+        "predicted_goodput_per_dollar": 1546874.9999999998,
+        "predicted_sla_safe_goodput": 2187699.0,
+        "predicted_deadline_miss_rate_pct": 0.0,
+        "predicted_eval_suite_completion_hours": 0.6799375291375291,
+        "predicted_interactive_p99_delta_ms": 0.0,
+        "predicted_interactive_timeout_delta_pct": 0.0,
+        "predicted_queue_p99_ms": null,
+        "predicted_latency_p99_ms": null,
+        "predicted_gpu_hours": 0.6799375291375291,
+        "predicted_mean_utilization": 0.55,
+        "safety_status": "SAFE",
+        "safety_vetoes": [],
+        "notes": [
+          "structural_eval_model_v1"
+        ]
+      },
+      {
+        "candidate": {
+          "eval_batch_window_hours": null,
+          "concurrency": 1,
+          "target_rho": 0.55,
+          "deadline_slack_hours": 4.0,
+          "dedicated_fleet": true,
+          "source_policy": "rho0.55_c1_h4.0"
+        },
+        "predicted_goodput_per_dollar": 1546874.9999999998,
+        "predicted_sla_safe_goodput": 2187699.0,
+        "predicted_deadline_miss_rate_pct": 0.0,
+        "predicted_eval_suite_completion_hours": 0.6799375291375291,
+        "predicted_interactive_p99_delta_ms": 0.0,
+        "predicted_interactive_timeout_delta_pct": 0.0,
+        "predicted_queue_p99_ms": null,
+        "predicted_latency_p99_ms": null,
+        "predicted_gpu_hours": 0.6799375291375291,
+        "predicted_mean_utilization": 0.55,
+        "safety_status": "SAFE",
+        "safety_vetoes": [],
+        "notes": [
+          "structural_eval_model_v1"
+        ]
+      },
+      {
+        "candidate": {
+          "eval_batch_window_hours": null,
+          "concurrency": 1,
+          "target_rho": 0.55,
+          "deadline_slack_hours": 24.0,
+          "dedicated_fleet": true,
+          "source_policy": "rho0.55_c1_h24.0"
+        },
+        "predicted_goodput_per_dollar": 1546874.9999999998,
+        "predicted_sla_safe_goodput": 2187699.0,
+        "predicted_deadline_miss_rate_pct": 0.0,
+        "predicted_eval_suite_completion_hours": 0.6799375291375291,
+        "predicted_interactive_p99_delta_ms": 0.0,
+        "predicted_interactive_timeout_delta_pct": 0.0,
+        "predicted_queue_p99_ms": null,
+        "predicted_latency_p99_ms": null,
+        "predicted_gpu_hours": 0.6799375291375291,
+        "predicted_mean_utilization": 0.55,
+        "safety_status": "SAFE",
+        "safety_vetoes": [],
+        "notes": [
+          "structural_eval_model_v1"
+        ]
+      },
+      {
+        "candidate": {
+          "eval_batch_window_hours": null,
+          "concurrency": 2,
+          "target_rho": 0.55,
+          "deadline_slack_hours": 0.5,
+          "dedicated_fleet": true,
+          "source_policy": "rho0.55_c2_h0.5"
+        },
+        "predicted_goodput_per_dollar": 1546874.9999999998,
+        "predicted_sla_safe_goodput": 2187699.0,
+        "predicted_deadline_miss_rate_pct": 0.0,
+        "predicted_eval_suite_completion_hours": 0.33996876456876457,
+        "predicted_interactive_p99_delta_ms": 0.0,
+        "predicted_interactive_timeout_delta_pct": 0.0,
+        "predicted_queue_p99_ms": null,
+        "predicted_latency_p99_ms": null,
+        "predicted_gpu_hours": 0.6799375291375291,
+        "predicted_mean_utilization": 0.55,
+        "safety_status": "SAFE",
+        "safety_vetoes": [],
+        "notes": [
+          "structural_eval_model_v1"
+        ]
+      },
+      {
+        "candidate": {
+          "eval_batch_window_hours": null,
+          "concurrency": 2,
+          "target_rho": 0.55,
+          "deadline_slack_hours": 1.0,
+          "dedicated_fleet": true,
+          "source_policy": "rho0.55_c2_h1.0"
+        },
+        "predicted_goodput_per_dollar": 1546874.9999999998,
+        "predicted_sla_safe_goodput": 2187699.0,
+        "predicted_deadline_miss_rate_pct": 0.0,
+        "predicted_eval_suite_completion_hours": 0.33996876456876457,
+        "predicted_interactive_p99_delta_ms": 0.0,
+        "predicted_interactive_timeout_delta_pct": 0.0,
+        "predicted_queue_p99_ms": null,
+        "predicted_latency_p99_ms": null,
+        "predicted_gpu_hours": 0.6799375291375291,
+        "predicted_mean_utilization": 0.55,
+        "safety_status": "SAFE",
+        "safety_vetoes": [],
+        "notes": [
+          "structural_eval_model_v1"
+        ]
+      },
+      {
+        "candidate": {
+          "eval_batch_window_hours": null,
+          "concurrency": 2,
+          "target_rho": 0.55,
+          "deadline_slack_hours": 4.0,
+          "dedicated_fleet": true,
+          "source_policy": "rho0.55_c2_h4.0"
+        },
+        "predicted_goodput_per_dollar": 1546874.9999999998,
+        "predicted_sla_safe_goodput": 2187699.0,
+        "predicted_deadline_miss_rate_pct": 0.0,
+        "predicted_eval_suite_completion_hours": 0.33996876456876457,
+        "predicted_interactive_p99_delta_ms": 0.0,
+        "predicted_interactive_timeout_delta_pct": 0.0,
+        "predicted_queue_p99_ms": null,
+        "predicted_latency_p99_ms": null,
+        "predicted_gpu_hours": 0.6799375291375291,
+        "predicted_mean_utilization": 0.55,
+        "safety_status": "SAFE",
+        "safety_vetoes": [],
+        "notes": [
+          "structural_eval_model_v1"
+        ]
+      },
+      {
+        "candidate": {
+          "eval_batch_window_hours": null,
+          "concurrency": 2,
+          "target_rho": 0.55,
+          "deadline_slack_hours": 24.0,
+          "dedicated_fleet": true,
+          "source_policy": "rho0.55_c2_h24.0"
+        },
+        "predicted_goodput_per_dollar": 1546874.9999999998,
+        "predicted_sla_safe_goodput": 2187699.0,
+        "predicted_deadline_miss_rate_pct": 0.0,
+        "predicted_eval_suite_completion_hours": 0.33996876456876457,
+        "predicted_interactive_p99_delta_ms": 0.0,
+        "predicted_interactive_timeout_delta_pct": 0.0,
+        "predicted_queue_p99_ms": null,
+        "predicted_latency_p99_ms": null,
+        "predicted_gpu_hours": 0.6799375291375291,
+        "predicted_mean_utilization": 0.55,
+        "safety_status": "SAFE",
+        "safety_vetoes": [],
+        "notes": [
+          "structural_eval_model_v1"
+        ]
+      },
+      {
+        "candidate": {
+          "eval_batch_window_hours": null,
+          "concurrency": 4,
+          "target_rho": 0.55,
+          "deadline_slack_hours": 0.5,
+          "dedicated_fleet": true,
+          "source_policy": "rho0.55_c4_h0.5"
+        },
+        "predicted_goodput_per_dollar": 1546874.9999999998,
+        "predicted_sla_safe_goodput": 2187699.0,
+        "predicted_deadline_miss_rate_pct": 0.0,
+        "predicted_eval_suite_completion_hours": 0.16998438228438228,
+        "predicted_interactive_p99_delta_ms": 0.0,
+        "predicted_interactive_timeout_delta_pct": 0.0,
+        "predicted_queue_p99_ms": null,
+        "predicted_latency_p99_ms": null,
+        "predicted_gpu_hours": 0.6799375291375291,
+        "predicted_mean_utilization": 0.55,
+        "safety_status": "SAFE",
+        "safety_vetoes": [],
+        "notes": [
+          "structural_eval_model_v1"
+        ]
+      },
+      {
+        "candidate": {
+          "eval_batch_window_hours": null,
+          "concurrency": 4,
+          "target_rho": 0.55,
+          "deadline_slack_hours": 1.0,
+          "dedicated_fleet": true,
+          "source_policy": "rho0.55_c4_h1.0"
+        },
+        "predicted_goodput_per_dollar": 1546874.9999999998,
+        "predicted_sla_safe_goodput": 2187699.0,
+        "predicted_deadline_miss_rate_pct": 0.0,
+        "predicted_eval_suite_completion_hours": 0.16998438228438228,
+        "predicted_interactive_p99_delta_ms": 0.0,
+        "predicted_interactive_timeout_delta_pct": 0.0,
+        "predicted_queue_p99_ms": null,
+        "predicted_latency_p99_ms": null,
+        "predicted_gpu_hours": 0.6799375291375291,
+        "predicted_mean_utilization": 0.55,
+        "safety_status": "SAFE",
+        "safety_vetoes": [],
+        "notes": [
+          "structural_eval_model_v1"
+        ]
+      },
+      {
+        "candidate": {
+          "eval_batch_window_hours": null,
+          "concurrency": 4,
+          "target_rho": 0.55,
+          "deadline_slack_hours": 4.0,
+          "dedicated_fleet": true,
+          "source_policy": "rho0.55_c4_h4.0"
+        },
+        "predicted_goodput_per_dollar": 1546874.9999999998,
+        "predicted_sla_safe_goodput": 2187699.0,
+        "predicted_deadline_miss_rate_pct": 0.0,
+        "predicted_eval_suite_completion_hours": 0.16998438228438228,
+        "predicted_interactive_p99_delta_ms": 0.0,
+        "predicted_interactive_timeout_delta_pct": 0.0,
+        "predicted_queue_p99_ms": null,
+        "predicted_latency_p99_ms": null,
+        "predicted_gpu_hours": 0.6799375291375291,
+        "predicted_mean_utilization": 0.55,
+        "safety_status": "SAFE",
+        "safety_vetoes": [],
+        "notes": [
+          "structural_eval_model_v1"
+        ]
+      },
+      {
+        "candidate": {
+          "eval_batch_window_hours": null,
+          "concurrency": 4,
+          "target_rho": 0.55,
+          "deadline_slack_hours": 24.0,
+          "dedicated_fleet": true,
+          "source_policy": "rho0.55_c4_h24.0"
+        },
+        "predicted_goodput_per_dollar": 1546874.9999999998,
+        "predicted_sla_safe_goodput": 2187699.0,
+        "predicted_deadline_miss_rate_pct": 0.0,
+        "predicted_eval_suite_completion_hours": 0.16998438228438228,
+        "predicted_interactive_p99_delta_ms": 0.0,
+        "predicted_interactive_timeout_delta_pct": 0.0,
+        "predicted_queue_p99_ms": null,
+        "predicted_latency_p99_ms": null,
+        "predicted_gpu_hours": 0.6799375291375291,
+        "predicted_mean_utilization": 0.55,
+        "safety_status": "SAFE",
+        "safety_vetoes": [],
+        "notes": [
+          "structural_eval_model_v1"
+        ]
+      },
+      {
+        "candidate": {
+          "eval_batch_window_hours": null,
+          "concurrency": 8,
+          "target_rho": 0.55,
+          "deadline_slack_hours": 0.5,
+          "dedicated_fleet": true,
+          "source_policy": "rho0.55_c8_h0.5"
+        },
+        "predicted_goodput_per_dollar": 1546874.9999999998,
+        "predicted_sla_safe_goodput": 2187699.0,
+        "predicted_deadline_miss_rate_pct": 0.0,
+        "predicted_eval_suite_completion_hours": 0.08499219114219114,
+        "predicted_interactive_p99_delta_ms": 0.0,
+        "predicted_interactive_timeout_delta_pct": 0.0,
+        "predicted_queue_p99_ms": null,
+        "predicted_latency_p99_ms": null,
+        "predicted_gpu_hours": 0.6799375291375291,
+        "predicted_mean_utilization": 0.55,
+        "safety_status": "SAFE",
+        "safety_vetoes": [],
+        "notes": [
+          "structural_eval_model_v1"
+        ]
+      },
+      {
+        "candidate": {
+          "eval_batch_window_hours": null,
+          "concurrency": 8,
+          "target_rho": 0.55,
+          "deadline_slack_hours": 1.0,
+          "dedicated_fleet": true,
+          "source_policy": "rho0.55_c8_h1.0"
+        },
+        "predicted_goodput_per_dollar": 1546874.9999999998,
+        "predicted_sla_safe_goodput": 2187699.0,
+        "predicted_deadline_miss_rate_pct": 0.0,
+        "predicted_eval_suite_completion_hours": 0.08499219114219114,
+        "predicted_interactive_p99_delta_ms": 0.0,
+        "predicted_interactive_timeout_delta_pct": 0.0,
+        "predicted_queue_p99_ms": null,
+        "predicted_latency_p99_ms": null,
+        "predicted_gpu_hours": 0.6799375291375291,
+        "predicted_mean_utilization": 0.55,
+        "safety_status": "SAFE",
+        "safety_vetoes": [],
+        "notes": [
+          "structural_eval_model_v1"
+        ]
+      },
+      {
+        "candidate": {
+          "eval_batch_window_hours": null,
+          "concurrency": 8,
+          "target_rho": 0.55,
+          "deadline_slack_hours": 4.0,
+          "dedicated_fleet": true,
+          "source_policy": "rho0.55_c8_h4.0"
+        },
+        "predicted_goodput_per_dollar": 1546874.9999999998,
+        "predicted_sla_safe_goodput": 2187699.0,
+        "predicted_deadline_miss_rate_pct": 0.0,
+        "predicted_eval_suite_completion_hours": 0.08499219114219114,
+        "predicted_interactive_p99_delta_ms": 0.0,
+        "predicted_interactive_timeout_delta_pct": 0.0,
+        "predicted_queue_p99_ms": null,
+        "predicted_latency_p99_ms": null,
+        "predicted_gpu_hours": 0.6799375291375291,
+        "predicted_mean_utilization": 0.55,
+        "safety_status": "SAFE",
+        "safety_vetoes": [],
+        "notes": [
+          "structural_eval_model_v1"
+        ]
+      },
+      {
+        "candidate": {
+          "eval_batch_window_hours": null,
+          "concurrency": 8,
+          "target_rho": 0.55,
+          "deadline_slack_hours": 24.0,
+          "dedicated_fleet": true,
+          "source_policy": "rho0.55_c8_h24.0"
+        },
+        "predicted_goodput_per_dollar": 1546874.9999999998,
+        "predicted_sla_safe_goodput": 2187699.0,
+        "predicted_deadline_miss_rate_pct": 0.0,
+        "predicted_eval_suite_completion_hours": 0.08499219114219114,
+        "predicted_interactive_p99_delta_ms": 0.0,
+        "predicted_interactive_timeout_delta_pct": 0.0,
+        "predicted_queue_p99_ms": null,
+        "predicted_latency_p99_ms": null,
+        "predicted_gpu_hours": 0.6799375291375291,
+        "predicted_mean_utilization": 0.55,
+        "safety_status": "SAFE",
+        "safety_vetoes": [],
+        "notes": [
+          "structural_eval_model_v1"
+        ]
+      },
+      {
+        "candidate": {
+          "eval_batch_window_hours": null,
+          "concurrency": 1,
+          "target_rho": 0.65,
+          "deadline_slack_hours": 0.5,
+          "dedicated_fleet": true,
+          "source_policy": "rho0.65_c1_h0.5"
+        },
+        "predicted_goodput_per_dollar": 2109375.0,
+        "predicted_sla_safe_goodput": 2187699.0,
+        "predicted_deadline_miss_rate_pct": 0.0,
+        "predicted_eval_suite_completion_hours": 0.4986208547008547,
+        "predicted_interactive_p99_delta_ms": 0.0,
+        "predicted_interactive_timeout_delta_pct": 0.0,
+        "predicted_queue_p99_ms": null,
+        "predicted_latency_p99_ms": null,
+        "predicted_gpu_hours": 0.4986208547008547,
+        "predicted_mean_utilization": 0.65,
+        "safety_status": "SAFE",
+        "safety_vetoes": [],
+        "notes": [
+          "structural_eval_model_v1"
+        ]
+      },
+      {
+        "candidate": {
+          "eval_batch_window_hours": null,
+          "concurrency": 1,
+          "target_rho": 0.65,
+          "deadline_slack_hours": 1.0,
+          "dedicated_fleet": true,
+          "source_policy": "rho0.65_c1_h1.0"
+        },
+        "predicted_goodput_per_dollar": 2109375.0,
+        "predicted_sla_safe_goodput": 2187699.0,
+        "predicted_deadline_miss_rate_pct": 0.0,
+        "predicted_eval_suite_completion_hours": 0.4986208547008547,
+        "predicted_interactive_p99_delta_ms": 0.0,
+        "predicted_interactive_timeout_delta_pct": 0.0,
+        "predicted_queue_p99_ms": null,
+        "predicted_latency_p99_ms": null,
+        "predicted_gpu_hours": 0.4986208547008547,
+        "predicted_mean_utilization": 0.65,
+        "safety_status": "SAFE",
+        "safety_vetoes": [],
+        "notes": [
+          "structural_eval_model_v1"
+        ]
+      },
+      {
+        "candidate": {
+          "eval_batch_window_hours": null,
+          "concurrency": 1,
+          "target_rho": 0.65,
+          "deadline_slack_hours": 4.0,
+          "dedicated_fleet": true,
+          "source_policy": "rho0.65_c1_h4.0"
+        },
+        "predicted_goodput_per_dollar": 2109375.0,
+        "predicted_sla_safe_goodput": 2187699.0,
+        "predicted_deadline_miss_rate_pct": 0.0,
+        "predicted_eval_suite_completion_hours": 0.4986208547008547,
+        "predicted_interactive_p99_delta_ms": 0.0,
+        "predicted_interactive_timeout_delta_pct": 0.0,
+        "predicted_queue_p99_ms": null,
+        "predicted_latency_p99_ms": null,
+        "predicted_gpu_hours": 0.4986208547008547,
+        "predicted_mean_utilization": 0.65,
+        "safety_status": "SAFE",
+        "safety_vetoes": [],
+        "notes": [
+          "structural_eval_model_v1"
+        ]
+      },
+      {
+        "candidate": {
+          "eval_batch_window_hours": null,
+          "concurrency": 1,
+          "target_rho": 0.65,
+          "deadline_slack_hours": 24.0,
+          "dedicated_fleet": true,
+          "source_policy": "rho0.65_c1_h24.0"
+        },
+        "predicted_goodput_per_dollar": 2109375.0,
+        "predicted_sla_safe_goodput": 2187699.0,
+        "predicted_deadline_miss_rate_pct": 0.0,
+        "predicted_eval_suite_completion_hours": 0.4986208547008547,
+        "predicted_interactive_p99_delta_ms": 0.0,
+        "predicted_interactive_timeout_delta_pct": 0.0,
+        "predicted_queue_p99_ms": null,
+        "predicted_latency_p99_ms": null,
+        "predicted_gpu_hours": 0.4986208547008547,
+        "predicted_mean_utilization": 0.65,
+        "safety_status": "SAFE",
+        "safety_vetoes": [],
+        "notes": [
+          "structural_eval_model_v1"
+        ]
+      },
+      {
+        "candidate": {
+          "eval_batch_window_hours": null,
+          "concurrency": 2,
+          "target_rho": 0.65,
+          "deadline_slack_hours": 0.5,
+          "dedicated_fleet": true,
+          "source_policy": "rho0.65_c2_h0.5"
+        },
+        "predicted_goodput_per_dollar": 2109375.0,
+        "predicted_sla_safe_goodput": 2187699.0,
+        "predicted_deadline_miss_rate_pct": 0.0,
+        "predicted_eval_suite_completion_hours": 0.24931042735042735,
+        "predicted_interactive_p99_delta_ms": 0.0,
+        "predicted_interactive_timeout_delta_pct": 0.0,
+        "predicted_queue_p99_ms": null,
+        "predicted_latency_p99_ms": null,
+        "predicted_gpu_hours": 0.4986208547008547,
+        "predicted_mean_utilization": 0.65,
+        "safety_status": "SAFE",
+        "safety_vetoes": [],
+        "notes": [
+          "structural_eval_model_v1"
+        ]
+      },
+      {
+        "candidate": {
+          "eval_batch_window_hours": null,
+          "concurrency": 2,
+          "target_rho": 0.65,
+          "deadline_slack_hours": 1.0,
+          "dedicated_fleet": true,
+          "source_policy": "rho0.65_c2_h1.0"
+        },
+        "predicted_goodput_per_dollar": 2109375.0,
+        "predicted_sla_safe_goodput": 2187699.0,
+        "predicted_deadline_miss_rate_pct": 0.0,
+        "predicted_eval_suite_completion_hours": 0.24931042735042735,
+        "predicted_interactive_p99_delta_ms": 0.0,
+        "predicted_interactive_timeout_delta_pct": 0.0,
+        "predicted_queue_p99_ms": null,
+        "predicted_latency_p99_ms": null,
+        "predicted_gpu_hours": 0.4986208547008547,
+        "predicted_mean_utilization": 0.65,
+        "safety_status": "SAFE",
+        "safety_vetoes": [],
+        "notes": [
+          "structural_eval_model_v1"
+        ]
+      },
+      {
+        "candidate": {
+          "eval_batch_window_hours": null,
+          "concurrency": 2,
+          "target_rho": 0.65,
+          "deadline_slack_hours": 4.0,
+          "dedicated_fleet": true,
+          "source_policy": "rho0.65_c2_h4.0"
+        },
+        "predicted_goodput_per_dollar": 2109375.0,
+        "predicted_sla_safe_goodput": 2187699.0,
+        "predicted_deadline_miss_rate_pct": 0.0,
+        "predicted_eval_suite_completion_hours": 0.24931042735042735,
+        "predicted_interactive_p99_delta_ms": 0.0,
+        "predicted_interactive_timeout_delta_pct": 0.0,
+        "predicted_queue_p99_ms": null,
+        "predicted_latency_p99_ms": null,
+        "predicted_gpu_hours": 0.4986208547008547,
+        "predicted_mean_utilization": 0.65,
+        "safety_status": "SAFE",
+        "safety_vetoes": [],
+        "notes": [
+          "structural_eval_model_v1"
+        ]
+      },
+      {
+        "candidate": {
+          "eval_batch_window_hours": null,
+          "concurrency": 2,
+          "target_rho": 0.65,
+          "deadline_slack_hours": 24.0,
+          "dedicated_fleet": true,
+          "source_policy": "rho0.65_c2_h24.0"
+        },
+        "predicted_goodput_per_dollar": 2109375.0,
+        "predicted_sla_safe_goodput": 2187699.0,
+        "predicted_deadline_miss_rate_pct": 0.0,
+        "predicted_eval_suite_completion_hours": 0.24931042735042735,
+        "predicted_interactive_p99_delta_ms": 0.0,
+        "predicted_interactive_timeout_delta_pct": 0.0,
+        "predicted_queue_p99_ms": null,
+        "predicted_latency_p99_ms": null,
+        "predicted_gpu_hours": 0.4986208547008547,
+        "predicted_mean_utilization": 0.65,
+        "safety_status": "SAFE",
+        "safety_vetoes": [],
+        "notes": [
+          "structural_eval_model_v1"
+        ]
+      },
+      {
+        "candidate": {
+          "eval_batch_window_hours": null,
+          "concurrency": 4,
+          "target_rho": 0.65,
+          "deadline_slack_hours": 0.5,
+          "dedicated_fleet": true,
+          "source_policy": "rho0.65_c4_h0.5"
+        },
+        "predicted_goodput_per_dollar": 2109375.0,
+        "predicted_sla_safe_goodput": 2187699.0,
+        "predicted_deadline_miss_rate_pct": 0.0,
+        "predicted_eval_suite_completion_hours": 0.12465521367521368,
+        "predicted_interactive_p99_delta_ms": 0.0,
+        "predicted_interactive_timeout_delta_pct": 0.0,
+        "predicted_queue_p99_ms": null,
+        "predicted_latency_p99_ms": null,
+        "predicted_gpu_hours": 0.4986208547008547,
+        "predicted_mean_utilization": 0.65,
+        "safety_status": "SAFE",
+        "safety_vetoes": [],
+        "notes": [
+          "structural_eval_model_v1"
+        ]
+      },
+      {
+        "candidate": {
+          "eval_batch_window_hours": null,
+          "concurrency": 4,
+          "target_rho": 0.65,
+          "deadline_slack_hours": 1.0,
+          "dedicated_fleet": true,
+          "source_policy": "rho0.65_c4_h1.0"
+        },
+        "predicted_goodput_per_dollar": 2109375.0,
+        "predicted_sla_safe_goodput": 2187699.0,
+        "predicted_deadline_miss_rate_pct": 0.0,
+        "predicted_eval_suite_completion_hours": 0.12465521367521368,
+        "predicted_interactive_p99_delta_ms": 0.0,
+        "predicted_interactive_timeout_delta_pct": 0.0,
+        "predicted_queue_p99_ms": null,
+        "predicted_latency_p99_ms": null,
+        "predicted_gpu_hours": 0.4986208547008547,
+        "predicted_mean_utilization": 0.65,
+        "safety_status": "SAFE",
+        "safety_vetoes": [],
+        "notes": [
+          "structural_eval_model_v1"
+        ]
+      },
+      {
+        "candidate": {
+          "eval_batch_window_hours": null,
+          "concurrency": 4,
+          "target_rho": 0.65,
+          "deadline_slack_hours": 4.0,
+          "dedicated_fleet": true,
+          "source_policy": "rho0.65_c4_h4.0"
+        },
+        "predicted_goodput_per_dollar": 2109375.0,
+        "predicted_sla_safe_goodput": 2187699.0,
+        "predicted_deadline_miss_rate_pct": 0.0,
+        "predicted_eval_suite_completion_hours": 0.12465521367521368,
+        "predicted_interactive_p99_delta_ms": 0.0,
+        "predicted_interactive_timeout_delta_pct": 0.0,
+        "predicted_queue_p99_ms": null,
+        "predicted_latency_p99_ms": null,
+        "predicted_gpu_hours": 0.4986208547008547,
+        "predicted_mean_utilization": 0.65,
+        "safety_status": "SAFE",
+        "safety_vetoes": [],
+        "notes": [
+          "structural_eval_model_v1"
+        ]
+      },
+      {
+        "candidate": {
+          "eval_batch_window_hours": null,
+          "concurrency": 4,
+          "target_rho": 0.65,
+          "deadline_slack_hours": 24.0,
+          "dedicated_fleet": true,
+          "source_policy": "rho0.65_c4_h24.0"
+        },
+        "predicted_goodput_per_dollar": 2109375.0,
+        "predicted_sla_safe_goodput": 2187699.0,
+        "predicted_deadline_miss_rate_pct": 0.0,
+        "predicted_eval_suite_completion_hours": 0.12465521367521368,
+        "predicted_interactive_p99_delta_ms": 0.0,
+        "predicted_interactive_timeout_delta_pct": 0.0,
+        "predicted_queue_p99_ms": null,
+        "predicted_latency_p99_ms": null,
+        "predicted_gpu_hours": 0.4986208547008547,
+        "predicted_mean_utilization": 0.65,
+        "safety_status": "SAFE",
+        "safety_vetoes": [],
+        "notes": [
+          "structural_eval_model_v1"
+        ]
+      },
+      {
+        "candidate": {
+          "eval_batch_window_hours": null,
+          "concurrency": 8,
+          "target_rho": 0.65,
+          "deadline_slack_hours": 0.5,
+          "dedicated_fleet": true,
+          "source_policy": "rho0.65_c8_h0.5"
+        },
+        "predicted_goodput_per_dollar": 2109375.0,
+        "predicted_sla_safe_goodput": 2187699.0,
+        "predicted_deadline_miss_rate_pct": 0.0,
+        "predicted_eval_suite_completion_hours": 0.06232760683760684,
+        "predicted_interactive_p99_delta_ms": 0.0,
+        "predicted_interactive_timeout_delta_pct": 0.0,
+        "predicted_queue_p99_ms": null,
+        "predicted_latency_p99_ms": null,
+        "predicted_gpu_hours": 0.4986208547008547,
+        "predicted_mean_utilization": 0.65,
+        "safety_status": "SAFE",
+        "safety_vetoes": [],
+        "notes": [
+          "structural_eval_model_v1"
+        ]
+      },
+      {
+        "candidate": {
+          "eval_batch_window_hours": null,
+          "concurrency": 8,
+          "target_rho": 0.65,
+          "deadline_slack_hours": 1.0,
+          "dedicated_fleet": true,
+          "source_policy": "rho0.65_c8_h1.0"
+        },
+        "predicted_goodput_per_dollar": 2109375.0,
+        "predicted_sla_safe_goodput": 2187699.0,
+        "predicted_deadline_miss_rate_pct": 0.0,
+        "predicted_eval_suite_completion_hours": 0.06232760683760684,
+        "predicted_interactive_p99_delta_ms": 0.0,
+        "predicted_interactive_timeout_delta_pct": 0.0,
+        "predicted_queue_p99_ms": null,
+        "predicted_latency_p99_ms": null,
+        "predicted_gpu_hours": 0.4986208547008547,
+        "predicted_mean_utilization": 0.65,
+        "safety_status": "SAFE",
+        "safety_vetoes": [],
+        "notes": [
+          "structural_eval_model_v1"
+        ]
+      },
+      {
+        "candidate": {
+          "eval_batch_window_hours": null,
+          "concurrency": 8,
+          "target_rho": 0.65,
+          "deadline_slack_hours": 4.0,
+          "dedicated_fleet": true,
+          "source_policy": "rho0.65_c8_h4.0"
+        },
+        "predicted_goodput_per_dollar": 2109375.0,
+        "predicted_sla_safe_goodput": 2187699.0,
+        "predicted_deadline_miss_rate_pct": 0.0,
+        "predicted_eval_suite_completion_hours": 0.06232760683760684,
+        "predicted_interactive_p99_delta_ms": 0.0,
+        "predicted_interactive_timeout_delta_pct": 0.0,
+        "predicted_queue_p99_ms": null,
+        "predicted_latency_p99_ms": null,
+        "predicted_gpu_hours": 0.4986208547008547,
+        "predicted_mean_utilization": 0.65,
+        "safety_status": "SAFE",
+        "safety_vetoes": [],
+        "notes": [
+          "structural_eval_model_v1"
+        ]
+      },
+      {
+        "candidate": {
+          "eval_batch_window_hours": null,
+          "concurrency": 8,
+          "target_rho": 0.65,
+          "deadline_slack_hours": 24.0,
+          "dedicated_fleet": true,
+          "source_policy": "rho0.65_c8_h24.0"
+        },
+        "predicted_goodput_per_dollar": 2109375.0,
+        "predicted_sla_safe_goodput": 2187699.0,
+        "predicted_deadline_miss_rate_pct": 0.0,
+        "predicted_eval_suite_completion_hours": 0.06232760683760684,
+        "predicted_interactive_p99_delta_ms": 0.0,
+        "predicted_interactive_timeout_delta_pct": 0.0,
+        "predicted_queue_p99_ms": null,
+        "predicted_latency_p99_ms": null,
+        "predicted_gpu_hours": 0.4986208547008547,
+        "predicted_mean_utilization": 0.65,
+        "safety_status": "SAFE",
+        "safety_vetoes": [],
+        "notes": [
+          "structural_eval_model_v1"
+        ]
+      },
+      {
+        "candidate": {
+          "eval_batch_window_hours": null,
+          "concurrency": 1,
+          "target_rho": 0.75,
+          "deadline_slack_hours": 0.5,
+          "dedicated_fleet": true,
+          "source_policy": "rho0.75_c1_h0.5"
+        },
+        "predicted_goodput_per_dollar": 2758413.4615384615,
+        "predicted_sla_safe_goodput": 2187699.0,
+        "predicted_deadline_miss_rate_pct": 0.0,
+        "predicted_eval_suite_completion_hours": 0.3812983006535947,
+        "predicted_interactive_p99_delta_ms": 0.0,
+        "predicted_interactive_timeout_delta_pct": 0.0,
+        "predicted_queue_p99_ms": null,
+        "predicted_latency_p99_ms": null,
+        "predicted_gpu_hours": 0.3812983006535947,
+        "predicted_mean_utilization": 0.75,
+        "safety_status": "SAFE",
+        "safety_vetoes": [],
+        "notes": [
+          "structural_eval_model_v1"
+        ]
+      },
+      {
+        "candidate": {
+          "eval_batch_window_hours": null,
+          "concurrency": 1,
+          "target_rho": 0.75,
+          "deadline_slack_hours": 1.0,
+          "dedicated_fleet": true,
+          "source_policy": "rho0.75_c1_h1.0"
+        },
+        "predicted_goodput_per_dollar": 2758413.4615384615,
+        "predicted_sla_safe_goodput": 2187699.0,
+        "predicted_deadline_miss_rate_pct": 0.0,
+        "predicted_eval_suite_completion_hours": 0.3812983006535947,
+        "predicted_interactive_p99_delta_ms": 0.0,
+        "predicted_interactive_timeout_delta_pct": 0.0,
+        "predicted_queue_p99_ms": null,
+        "predicted_latency_p99_ms": null,
+        "predicted_gpu_hours": 0.3812983006535947,
+        "predicted_mean_utilization": 0.75,
+        "safety_status": "SAFE",
+        "safety_vetoes": [],
+        "notes": [
+          "structural_eval_model_v1"
+        ]
+      },
+      {
+        "candidate": {
+          "eval_batch_window_hours": null,
+          "concurrency": 1,
+          "target_rho": 0.75,
+          "deadline_slack_hours": 4.0,
+          "dedicated_fleet": true,
+          "source_policy": "rho0.75_c1_h4.0"
+        },
+        "predicted_goodput_per_dollar": 2758413.4615384615,
+        "predicted_sla_safe_goodput": 2187699.0,
+        "predicted_deadline_miss_rate_pct": 0.0,
+        "predicted_eval_suite_completion_hours": 0.3812983006535947,
+        "predicted_interactive_p99_delta_ms": 0.0,
+        "predicted_interactive_timeout_delta_pct": 0.0,
+        "predicted_queue_p99_ms": null,
+        "predicted_latency_p99_ms": null,
+        "predicted_gpu_hours": 0.3812983006535947,
+        "predicted_mean_utilization": 0.75,
+        "safety_status": "SAFE",
+        "safety_vetoes": [],
+        "notes": [
+          "structural_eval_model_v1"
+        ]
+      },
+      {
+        "candidate": {
+          "eval_batch_window_hours": null,
+          "concurrency": 1,
+          "target_rho": 0.75,
+          "deadline_slack_hours": 24.0,
+          "dedicated_fleet": true,
+          "source_policy": "rho0.75_c1_h24.0"
+        },
+        "predicted_goodput_per_dollar": 2758413.4615384615,
+        "predicted_sla_safe_goodput": 2187699.0,
+        "predicted_deadline_miss_rate_pct": 0.0,
+        "predicted_eval_suite_completion_hours": 0.3812983006535947,
+        "predicted_interactive_p99_delta_ms": 0.0,
+        "predicted_interactive_timeout_delta_pct": 0.0,
+        "predicted_queue_p99_ms": null,
+        "predicted_latency_p99_ms": null,
+        "predicted_gpu_hours": 0.3812983006535947,
+        "predicted_mean_utilization": 0.75,
+        "safety_status": "SAFE",
+        "safety_vetoes": [],
+        "notes": [
+          "structural_eval_model_v1"
+        ]
+      },
+      {
+        "candidate": {
+          "eval_batch_window_hours": null,
+          "concurrency": 2,
+          "target_rho": 0.75,
+          "deadline_slack_hours": 0.5,
+          "dedicated_fleet": true,
+          "source_policy": "rho0.75_c2_h0.5"
+        },
+        "predicted_goodput_per_dollar": 2758413.4615384615,
+        "predicted_sla_safe_goodput": 2187699.0,
+        "predicted_deadline_miss_rate_pct": 0.0,
+        "predicted_eval_suite_completion_hours": 0.19064915032679736,
+        "predicted_interactive_p99_delta_ms": 0.0,
+        "predicted_interactive_timeout_delta_pct": 0.0,
+        "predicted_queue_p99_ms": null,
+        "predicted_latency_p99_ms": null,
+        "predicted_gpu_hours": 0.3812983006535947,
+        "predicted_mean_utilization": 0.75,
+        "safety_status": "SAFE",
+        "safety_vetoes": [],
+        "notes": [
+          "structural_eval_model_v1"
+        ]
+      },
+      {
+        "candidate": {
+          "eval_batch_window_hours": null,
+          "concurrency": 2,
+          "target_rho": 0.75,
+          "deadline_slack_hours": 1.0,
+          "dedicated_fleet": true,
+          "source_policy": "rho0.75_c2_h1.0"
+        },
+        "predicted_goodput_per_dollar": 2758413.4615384615,
+        "predicted_sla_safe_goodput": 2187699.0,
+        "predicted_deadline_miss_rate_pct": 0.0,
+        "predicted_eval_suite_completion_hours": 0.19064915032679736,
+        "predicted_interactive_p99_delta_ms": 0.0,
+        "predicted_interactive_timeout_delta_pct": 0.0,
+        "predicted_queue_p99_ms": null,
+        "predicted_latency_p99_ms": null,
+        "predicted_gpu_hours": 0.3812983006535947,
+        "predicted_mean_utilization": 0.75,
+        "safety_status": "SAFE",
+        "safety_vetoes": [],
+        "notes": [
+          "structural_eval_model_v1"
+        ]
+      },
+      {
+        "candidate": {
+          "eval_batch_window_hours": null,
+          "concurrency": 2,
+          "target_rho": 0.75,
+          "deadline_slack_hours": 4.0,
+          "dedicated_fleet": true,
+          "source_policy": "rho0.75_c2_h4.0"
+        },
+        "predicted_goodput_per_dollar": 2758413.4615384615,
+        "predicted_sla_safe_goodput": 2187699.0,
+        "predicted_deadline_miss_rate_pct": 0.0,
+        "predicted_eval_suite_completion_hours": 0.19064915032679736,
+        "predicted_interactive_p99_delta_ms": 0.0,
+        "predicted_interactive_timeout_delta_pct": 0.0,
+        "predicted_queue_p99_ms": null,
+        "predicted_latency_p99_ms": null,
+        "predicted_gpu_hours": 0.3812983006535947,
+        "predicted_mean_utilization": 0.75,
+        "safety_status": "SAFE",
+        "safety_vetoes": [],
+        "notes": [
+          "structural_eval_model_v1"
+        ]
+      },
+      {
+        "candidate": {
+          "eval_batch_window_hours": null,
+          "concurrency": 2,
+          "target_rho": 0.75,
+          "deadline_slack_hours": 24.0,
+          "dedicated_fleet": true,
+          "source_policy": "rho0.75_c2_h24.0"
+        },
+        "predicted_goodput_per_dollar": 2758413.4615384615,
+        "predicted_sla_safe_goodput": 2187699.0,
+        "predicted_deadline_miss_rate_pct": 0.0,
+        "predicted_eval_suite_completion_hours": 0.19064915032679736,
+        "predicted_interactive_p99_delta_ms": 0.0,
+        "predicted_interactive_timeout_delta_pct": 0.0,
+        "predicted_queue_p99_ms": null,
+        "predicted_latency_p99_ms": null,
+        "predicted_gpu_hours": 0.3812983006535947,
+        "predicted_mean_utilization": 0.75,
+        "safety_status": "SAFE",
+        "safety_vetoes": [],
+        "notes": [
+          "structural_eval_model_v1"
+        ]
+      },
+      {
+        "candidate": {
+          "eval_batch_window_hours": null,
+          "concurrency": 4,
+          "target_rho": 0.75,
+          "deadline_slack_hours": 0.5,
+          "dedicated_fleet": true,
+          "source_policy": "rho0.75_c4_h0.5"
+        },
+        "predicted_goodput_per_dollar": 2758413.4615384615,
+        "predicted_sla_safe_goodput": 2187699.0,
+        "predicted_deadline_miss_rate_pct": 0.0,
+        "predicted_eval_suite_completion_hours": 0.09532457516339868,
+        "predicted_interactive_p99_delta_ms": 0.0,
+        "predicted_interactive_timeout_delta_pct": 0.0,
+        "predicted_queue_p99_ms": null,
+        "predicted_latency_p99_ms": null,
+        "predicted_gpu_hours": 0.3812983006535947,
+        "predicted_mean_utilization": 0.75,
+        "safety_status": "SAFE",
+        "safety_vetoes": [],
+        "notes": [
+          "structural_eval_model_v1"
+        ]
+      },
+      {
+        "candidate": {
+          "eval_batch_window_hours": null,
+          "concurrency": 4,
+          "target_rho": 0.75,
+          "deadline_slack_hours": 1.0,
+          "dedicated_fleet": true,
+          "source_policy": "rho0.75_c4_h1.0"
+        },
+        "predicted_goodput_per_dollar": 2758413.4615384615,
+        "predicted_sla_safe_goodput": 2187699.0,
+        "predicted_deadline_miss_rate_pct": 0.0,
+        "predicted_eval_suite_completion_hours": 0.09532457516339868,
+        "predicted_interactive_p99_delta_ms": 0.0,
+        "predicted_interactive_timeout_delta_pct": 0.0,
+        "predicted_queue_p99_ms": null,
+        "predicted_latency_p99_ms": null,
+        "predicted_gpu_hours": 0.3812983006535947,
+        "predicted_mean_utilization": 0.75,
+        "safety_status": "SAFE",
+        "safety_vetoes": [],
+        "notes": [
+          "structural_eval_model_v1"
+        ]
+      },
+      {
+        "candidate": {
+          "eval_batch_window_hours": null,
+          "concurrency": 4,
+          "target_rho": 0.75,
+          "deadline_slack_hours": 4.0,
+          "dedicated_fleet": true,
+          "source_policy": "rho0.75_c4_h4.0"
+        },
+        "predicted_goodput_per_dollar": 2758413.4615384615,
+        "predicted_sla_safe_goodput": 2187699.0,
+        "predicted_deadline_miss_rate_pct": 0.0,
+        "predicted_eval_suite_completion_hours": 0.09532457516339868,
+        "predicted_interactive_p99_delta_ms": 0.0,
+        "predicted_interactive_timeout_delta_pct": 0.0,
+        "predicted_queue_p99_ms": null,
+        "predicted_latency_p99_ms": null,
+        "predicted_gpu_hours": 0.3812983006535947,
+        "predicted_mean_utilization": 0.75,
+        "safety_status": "SAFE",
+        "safety_vetoes": [],
+        "notes": [
+          "structural_eval_model_v1"
+        ]
+      },
+      {
+        "candidate": {
+          "eval_batch_window_hours": null,
+          "concurrency": 4,
+          "target_rho": 0.75,
+          "deadline_slack_hours": 24.0,
+          "dedicated_fleet": true,
+          "source_policy": "rho0.75_c4_h24.0"
+        },
+        "predicted_goodput_per_dollar": 2758413.4615384615,
+        "predicted_sla_safe_goodput": 2187699.0,
+        "predicted_deadline_miss_rate_pct": 0.0,
+        "predicted_eval_suite_completion_hours": 0.09532457516339868,
+        "predicted_interactive_p99_delta_ms": 0.0,
+        "predicted_interactive_timeout_delta_pct": 0.0,
+        "predicted_queue_p99_ms": null,
+        "predicted_latency_p99_ms": null,
+        "predicted_gpu_hours": 0.3812983006535947,
+        "predicted_mean_utilization": 0.75,
+        "safety_status": "SAFE",
+        "safety_vetoes": [],
+        "notes": [
+          "structural_eval_model_v1"
+        ]
+      },
+      {
+        "candidate": {
+          "eval_batch_window_hours": null,
+          "concurrency": 8,
+          "target_rho": 0.75,
+          "deadline_slack_hours": 0.5,
+          "dedicated_fleet": true,
+          "source_policy": "rho0.75_c8_h0.5"
+        },
+        "predicted_goodput_per_dollar": 2758413.4615384615,
+        "predicted_sla_safe_goodput": 2187699.0,
+        "predicted_deadline_miss_rate_pct": 0.0,
+        "predicted_eval_suite_completion_hours": 0.04766228758169934,
+        "predicted_interactive_p99_delta_ms": 0.0,
+        "predicted_interactive_timeout_delta_pct": 0.0,
+        "predicted_queue_p99_ms": null,
+        "predicted_latency_p99_ms": null,
+        "predicted_gpu_hours": 0.3812983006535947,
+        "predicted_mean_utilization": 0.75,
+        "safety_status": "SAFE",
+        "safety_vetoes": [],
+        "notes": [
+          "structural_eval_model_v1"
+        ]
+      },
+      {
+        "candidate": {
+          "eval_batch_window_hours": null,
+          "concurrency": 8,
+          "target_rho": 0.75,
+          "deadline_slack_hours": 1.0,
+          "dedicated_fleet": true,
+          "source_policy": "rho0.75_c8_h1.0"
+        },
+        "predicted_goodput_per_dollar": 2758413.4615384615,
+        "predicted_sla_safe_goodput": 2187699.0,
+        "predicted_deadline_miss_rate_pct": 0.0,
+        "predicted_eval_suite_completion_hours": 0.04766228758169934,
+        "predicted_interactive_p99_delta_ms": 0.0,
+        "predicted_interactive_timeout_delta_pct": 0.0,
+        "predicted_queue_p99_ms": null,
+        "predicted_latency_p99_ms": null,
+        "predicted_gpu_hours": 0.3812983006535947,
+        "predicted_mean_utilization": 0.75,
+        "safety_status": "SAFE",
+        "safety_vetoes": [],
+        "notes": [
+          "structural_eval_model_v1"
+        ]
+      },
+      {
+        "candidate": {
+          "eval_batch_window_hours": null,
+          "concurrency": 8,
+          "target_rho": 0.75,
+          "deadline_slack_hours": 4.0,
+          "dedicated_fleet": true,
+          "source_policy": "rho0.75_c8_h4.0"
+        },
+        "predicted_goodput_per_dollar": 2758413.4615384615,
+        "predicted_sla_safe_goodput": 2187699.0,
+        "predicted_deadline_miss_rate_pct": 0.0,
+        "predicted_eval_suite_completion_hours": 0.04766228758169934,
+        "predicted_interactive_p99_delta_ms": 0.0,
+        "predicted_interactive_timeout_delta_pct": 0.0,
+        "predicted_queue_p99_ms": null,
+        "predicted_latency_p99_ms": null,
+        "predicted_gpu_hours": 0.3812983006535947,
+        "predicted_mean_utilization": 0.75,
+        "safety_status": "SAFE",
+        "safety_vetoes": [],
+        "notes": [
+          "structural_eval_model_v1"
+        ]
+      },
+      {
+        "candidate": {
+          "eval_batch_window_hours": null,
+          "concurrency": 8,
+          "target_rho": 0.75,
+          "deadline_slack_hours": 24.0,
+          "dedicated_fleet": true,
+          "source_policy": "rho0.75_c8_h24.0"
+        },
+        "predicted_goodput_per_dollar": 2758413.4615384615,
+        "predicted_sla_safe_goodput": 2187699.0,
+        "predicted_deadline_miss_rate_pct": 0.0,
+        "predicted_eval_suite_completion_hours": 0.04766228758169934,
+        "predicted_interactive_p99_delta_ms": 0.0,
+        "predicted_interactive_timeout_delta_pct": 0.0,
+        "predicted_queue_p99_ms": null,
+        "predicted_latency_p99_ms": null,
+        "predicted_gpu_hours": 0.3812983006535947,
+        "predicted_mean_utilization": 0.75,
+        "safety_status": "SAFE",
+        "safety_vetoes": [],
+        "notes": [
+          "structural_eval_model_v1"
+        ]
+      },
+      {
+        "candidate": {
+          "eval_batch_window_hours": null,
+          "concurrency": 1,
+          "target_rho": 0.85,
+          "deadline_slack_hours": 0.5,
+          "dedicated_fleet": true,
+          "source_policy": "rho0.85_c1_h0.5"
+        },
+        "predicted_goodput_per_dollar": 3493990.3846153845,
+        "predicted_sla_safe_goodput": 2187699.0,
+        "predicted_deadline_miss_rate_pct": 0.0,
+        "predicted_eval_suite_completion_hours": 0.3010249742002064,
+        "predicted_interactive_p99_delta_ms": 0.0,
+        "predicted_interactive_timeout_delta_pct": 0.0,
+        "predicted_queue_p99_ms": null,
+        "predicted_latency_p99_ms": null,
+        "predicted_gpu_hours": 0.3010249742002064,
+        "predicted_mean_utilization": 0.85,
+        "safety_status": "SAFE",
+        "safety_vetoes": [],
+        "notes": [
+          "structural_eval_model_v1"
+        ]
+      },
+      {
+        "candidate": {
+          "eval_batch_window_hours": null,
+          "concurrency": 1,
+          "target_rho": 0.85,
+          "deadline_slack_hours": 1.0,
+          "dedicated_fleet": true,
+          "source_policy": "rho0.85_c1_h1.0"
+        },
+        "predicted_goodput_per_dollar": 3493990.3846153845,
+        "predicted_sla_safe_goodput": 2187699.0,
+        "predicted_deadline_miss_rate_pct": 0.0,
+        "predicted_eval_suite_completion_hours": 0.3010249742002064,
+        "predicted_interactive_p99_delta_ms": 0.0,
+        "predicted_interactive_timeout_delta_pct": 0.0,
+        "predicted_queue_p99_ms": null,
+        "predicted_latency_p99_ms": null,
+        "predicted_gpu_hours": 0.3010249742002064,
+        "predicted_mean_utilization": 0.85,
+        "safety_status": "SAFE",
+        "safety_vetoes": [],
+        "notes": [
+          "structural_eval_model_v1"
+        ]
+      },
+      {
+        "candidate": {
+          "eval_batch_window_hours": null,
+          "concurrency": 1,
+          "target_rho": 0.85,
+          "deadline_slack_hours": 4.0,
+          "dedicated_fleet": true,
+          "source_policy": "rho0.85_c1_h4.0"
+        },
+        "predicted_goodput_per_dollar": 3493990.3846153845,
+        "predicted_sla_safe_goodput": 2187699.0,
+        "predicted_deadline_miss_rate_pct": 0.0,
+        "predicted_eval_suite_completion_hours": 0.3010249742002064,
+        "predicted_interactive_p99_delta_ms": 0.0,
+        "predicted_interactive_timeout_delta_pct": 0.0,
+        "predicted_queue_p99_ms": null,
+        "predicted_latency_p99_ms": null,
+        "predicted_gpu_hours": 0.3010249742002064,
+        "predicted_mean_utilization": 0.85,
+        "safety_status": "SAFE",
+        "safety_vetoes": [],
+        "notes": [
+          "structural_eval_model_v1"
+        ]
+      },
+      {
+        "candidate": {
+          "eval_batch_window_hours": null,
+          "concurrency": 1,
+          "target_rho": 0.85,
+          "deadline_slack_hours": 24.0,
+          "dedicated_fleet": true,
+          "source_policy": "rho0.85_c1_h24.0"
+        },
+        "predicted_goodput_per_dollar": 3493990.3846153845,
+        "predicted_sla_safe_goodput": 2187699.0,
+        "predicted_deadline_miss_rate_pct": 0.0,
+        "predicted_eval_suite_completion_hours": 0.3010249742002064,
+        "predicted_interactive_p99_delta_ms": 0.0,
+        "predicted_interactive_timeout_delta_pct": 0.0,
+        "predicted_queue_p99_ms": null,
+        "predicted_latency_p99_ms": null,
+        "predicted_gpu_hours": 0.3010249742002064,
+        "predicted_mean_utilization": 0.85,
+        "safety_status": "SAFE",
+        "safety_vetoes": [],
+        "notes": [
+          "structural_eval_model_v1"
+        ]
+      },
+      {
+        "candidate": {
+          "eval_batch_window_hours": null,
+          "concurrency": 2,
+          "target_rho": 0.85,
+          "deadline_slack_hours": 0.5,
+          "dedicated_fleet": true,
+          "source_policy": "rho0.85_c2_h0.5"
+        },
+        "predicted_goodput_per_dollar": 3493990.3846153845,
+        "predicted_sla_safe_goodput": 2187699.0,
+        "predicted_deadline_miss_rate_pct": 0.0,
+        "predicted_eval_suite_completion_hours": 0.1505124871001032,
+        "predicted_interactive_p99_delta_ms": 0.0,
+        "predicted_interactive_timeout_delta_pct": 0.0,
+        "predicted_queue_p99_ms": null,
+        "predicted_latency_p99_ms": null,
+        "predicted_gpu_hours": 0.3010249742002064,
+        "predicted_mean_utilization": 0.85,
+        "safety_status": "SAFE",
+        "safety_vetoes": [],
+        "notes": [
+          "structural_eval_model_v1"
+        ]
+      },
+      {
+        "candidate": {
+          "eval_batch_window_hours": null,
+          "concurrency": 2,
+          "target_rho": 0.85,
+          "deadline_slack_hours": 1.0,
+          "dedicated_fleet": true,
+          "source_policy": "rho0.85_c2_h1.0"
+        },
+        "predicted_goodput_per_dollar": 3493990.3846153845,
+        "predicted_sla_safe_goodput": 2187699.0,
+        "predicted_deadline_miss_rate_pct": 0.0,
+        "predicted_eval_suite_completion_hours": 0.1505124871001032,
+        "predicted_interactive_p99_delta_ms": 0.0,
+        "predicted_interactive_timeout_delta_pct": 0.0,
+        "predicted_queue_p99_ms": null,
+        "predicted_latency_p99_ms": null,
+        "predicted_gpu_hours": 0.3010249742002064,
+        "predicted_mean_utilization": 0.85,
+        "safety_status": "SAFE",
+        "safety_vetoes": [],
+        "notes": [
+          "structural_eval_model_v1"
+        ]
+      },
+      {
+        "candidate": {
+          "eval_batch_window_hours": null,
+          "concurrency": 2,
+          "target_rho": 0.85,
+          "deadline_slack_hours": 4.0,
+          "dedicated_fleet": true,
+          "source_policy": "rho0.85_c2_h4.0"
+        },
+        "predicted_goodput_per_dollar": 3493990.3846153845,
+        "predicted_sla_safe_goodput": 2187699.0,
+        "predicted_deadline_miss_rate_pct": 0.0,
+        "predicted_eval_suite_completion_hours": 0.1505124871001032,
+        "predicted_interactive_p99_delta_ms": 0.0,
+        "predicted_interactive_timeout_delta_pct": 0.0,
+        "predicted_queue_p99_ms": null,
+        "predicted_latency_p99_ms": null,
+        "predicted_gpu_hours": 0.3010249742002064,
+        "predicted_mean_utilization": 0.85,
+        "safety_status": "SAFE",
+        "safety_vetoes": [],
+        "notes": [
+          "structural_eval_model_v1"
+        ]
+      },
+      {
+        "candidate": {
+          "eval_batch_window_hours": null,
+          "concurrency": 2,
+          "target_rho": 0.85,
+          "deadline_slack_hours": 24.0,
+          "dedicated_fleet": true,
+          "source_policy": "rho0.85_c2_h24.0"
+        },
+        "predicted_goodput_per_dollar": 3493990.3846153845,
+        "predicted_sla_safe_goodput": 2187699.0,
+        "predicted_deadline_miss_rate_pct": 0.0,
+        "predicted_eval_suite_completion_hours": 0.1505124871001032,
+        "predicted_interactive_p99_delta_ms": 0.0,
+        "predicted_interactive_timeout_delta_pct": 0.0,
+        "predicted_queue_p99_ms": null,
+        "predicted_latency_p99_ms": null,
+        "predicted_gpu_hours": 0.3010249742002064,
+        "predicted_mean_utilization": 0.85,
+        "safety_status": "SAFE",
+        "safety_vetoes": [],
+        "notes": [
+          "structural_eval_model_v1"
+        ]
+      },
+      {
+        "candidate": {
+          "eval_batch_window_hours": null,
+          "concurrency": 4,
+          "target_rho": 0.85,
+          "deadline_slack_hours": 0.5,
+          "dedicated_fleet": true,
+          "source_policy": "rho0.85_c4_h0.5"
+        },
+        "predicted_goodput_per_dollar": 3493990.3846153845,
+        "predicted_sla_safe_goodput": 2187699.0,
+        "predicted_deadline_miss_rate_pct": 0.0,
+        "predicted_eval_suite_completion_hours": 0.0752562435500516,
+        "predicted_interactive_p99_delta_ms": 0.0,
+        "predicted_interactive_timeout_delta_pct": 0.0,
+        "predicted_queue_p99_ms": null,
+        "predicted_latency_p99_ms": null,
+        "predicted_gpu_hours": 0.3010249742002064,
+        "predicted_mean_utilization": 0.85,
+        "safety_status": "SAFE",
+        "safety_vetoes": [],
+        "notes": [
+          "structural_eval_model_v1"
+        ]
+      },
+      {
+        "candidate": {
+          "eval_batch_window_hours": null,
+          "concurrency": 4,
+          "target_rho": 0.85,
+          "deadline_slack_hours": 1.0,
+          "dedicated_fleet": true,
+          "source_policy": "rho0.85_c4_h1.0"
+        },
+        "predicted_goodput_per_dollar": 3493990.3846153845,
+        "predicted_sla_safe_goodput": 2187699.0,
+        "predicted_deadline_miss_rate_pct": 0.0,
+        "predicted_eval_suite_completion_hours": 0.0752562435500516,
+        "predicted_interactive_p99_delta_ms": 0.0,
+        "predicted_interactive_timeout_delta_pct": 0.0,
+        "predicted_queue_p99_ms": null,
+        "predicted_latency_p99_ms": null,
+        "predicted_gpu_hours": 0.3010249742002064,
+        "predicted_mean_utilization": 0.85,
+        "safety_status": "SAFE",
+        "safety_vetoes": [],
+        "notes": [
+          "structural_eval_model_v1"
+        ]
+      },
+      {
+        "candidate": {
+          "eval_batch_window_hours": null,
+          "concurrency": 4,
+          "target_rho": 0.85,
+          "deadline_slack_hours": 4.0,
+          "dedicated_fleet": true,
+          "source_policy": "rho0.85_c4_h4.0"
+        },
+        "predicted_goodput_per_dollar": 3493990.3846153845,
+        "predicted_sla_safe_goodput": 2187699.0,
+        "predicted_deadline_miss_rate_pct": 0.0,
+        "predicted_eval_suite_completion_hours": 0.0752562435500516,
+        "predicted_interactive_p99_delta_ms": 0.0,
+        "predicted_interactive_timeout_delta_pct": 0.0,
+        "predicted_queue_p99_ms": null,
+        "predicted_latency_p99_ms": null,
+        "predicted_gpu_hours": 0.3010249742002064,
+        "predicted_mean_utilization": 0.85,
+        "safety_status": "SAFE",
+        "safety_vetoes": [],
+        "notes": [
+          "structural_eval_model_v1"
+        ]
+      },
+      {
+        "candidate": {
+          "eval_batch_window_hours": null,
+          "concurrency": 4,
+          "target_rho": 0.85,
+          "deadline_slack_hours": 24.0,
+          "dedicated_fleet": true,
+          "source_policy": "rho0.85_c4_h24.0"
+        },
+        "predicted_goodput_per_dollar": 3493990.3846153845,
+        "predicted_sla_safe_goodput": 2187699.0,
+        "predicted_deadline_miss_rate_pct": 0.0,
+        "predicted_eval_suite_completion_hours": 0.0752562435500516,
+        "predicted_interactive_p99_delta_ms": 0.0,
+        "predicted_interactive_timeout_delta_pct": 0.0,
+        "predicted_queue_p99_ms": null,
+        "predicted_latency_p99_ms": null,
+        "predicted_gpu_hours": 0.3010249742002064,
+        "predicted_mean_utilization": 0.85,
+        "safety_status": "SAFE",
+        "safety_vetoes": [],
+        "notes": [
+          "structural_eval_model_v1"
+        ]
+      },
+      {
+        "candidate": {
+          "eval_batch_window_hours": null,
+          "concurrency": 8,
+          "target_rho": 0.85,
+          "deadline_slack_hours": 0.5,
+          "dedicated_fleet": true,
+          "source_policy": "rho0.85_c8_h0.5"
+        },
+        "predicted_goodput_per_dollar": 3493990.3846153845,
+        "predicted_sla_safe_goodput": 2187699.0,
+        "predicted_deadline_miss_rate_pct": 0.0,
+        "predicted_eval_suite_completion_hours": 0.0376281217750258,
+        "predicted_interactive_p99_delta_ms": 0.0,
+        "predicted_interactive_timeout_delta_pct": 0.0,
+        "predicted_queue_p99_ms": null,
+        "predicted_latency_p99_ms": null,
+        "predicted_gpu_hours": 0.3010249742002064,
+        "predicted_mean_utilization": 0.85,
+        "safety_status": "SAFE",
+        "safety_vetoes": [],
+        "notes": [
+          "structural_eval_model_v1"
+        ]
+      },
+      {
+        "candidate": {
+          "eval_batch_window_hours": null,
+          "concurrency": 8,
+          "target_rho": 0.85,
+          "deadline_slack_hours": 1.0,
+          "dedicated_fleet": true,
+          "source_policy": "rho0.85_c8_h1.0"
+        },
+        "predicted_goodput_per_dollar": 3493990.3846153845,
+        "predicted_sla_safe_goodput": 2187699.0,
+        "predicted_deadline_miss_rate_pct": 0.0,
+        "predicted_eval_suite_completion_hours": 0.0376281217750258,
+        "predicted_interactive_p99_delta_ms": 0.0,
+        "predicted_interactive_timeout_delta_pct": 0.0,
+        "predicted_queue_p99_ms": null,
+        "predicted_latency_p99_ms": null,
+        "predicted_gpu_hours": 0.3010249742002064,
+        "predicted_mean_utilization": 0.85,
+        "safety_status": "SAFE",
+        "safety_vetoes": [],
+        "notes": [
+          "structural_eval_model_v1"
+        ]
+      },
+      {
+        "candidate": {
+          "eval_batch_window_hours": null,
+          "concurrency": 8,
+          "target_rho": 0.85,
+          "deadline_slack_hours": 4.0,
+          "dedicated_fleet": true,
+          "source_policy": "rho0.85_c8_h4.0"
+        },
+        "predicted_goodput_per_dollar": 3493990.3846153845,
+        "predicted_sla_safe_goodput": 2187699.0,
+        "predicted_deadline_miss_rate_pct": 0.0,
+        "predicted_eval_suite_completion_hours": 0.0376281217750258,
+        "predicted_interactive_p99_delta_ms": 0.0,
+        "predicted_interactive_timeout_delta_pct": 0.0,
+        "predicted_queue_p99_ms": null,
+        "predicted_latency_p99_ms": null,
+        "predicted_gpu_hours": 0.3010249742002064,
+        "predicted_mean_utilization": 0.85,
+        "safety_status": "SAFE",
+        "safety_vetoes": [],
+        "notes": [
+          "structural_eval_model_v1"
+        ]
+      },
+      {
+        "candidate": {
+          "eval_batch_window_hours": null,
+          "concurrency": 8,
+          "target_rho": 0.85,
+          "deadline_slack_hours": 24.0,
+          "dedicated_fleet": true,
+          "source_policy": "rho0.85_c8_h24.0"
+        },
+        "predicted_goodput_per_dollar": 3493990.3846153845,
+        "predicted_sla_safe_goodput": 2187699.0,
+        "predicted_deadline_miss_rate_pct": 0.0,
+        "predicted_eval_suite_completion_hours": 0.0376281217750258,
+        "predicted_interactive_p99_delta_ms": 0.0,
+        "predicted_interactive_timeout_delta_pct": 0.0,
+        "predicted_queue_p99_ms": null,
+        "predicted_latency_p99_ms": null,
+        "predicted_gpu_hours": 0.3010249742002064,
+        "predicted_mean_utilization": 0.85,
+        "safety_status": "SAFE",
+        "safety_vetoes": [],
+        "notes": [
+          "structural_eval_model_v1"
+        ]
+      },
+      {
+        "candidate": {
+          "eval_batch_window_hours": null,
+          "concurrency": 1,
+          "target_rho": 0.95,
+          "deadline_slack_hours": 0.5,
+          "dedicated_fleet": true,
+          "source_policy": "rho0.95_c1_h0.5"
+        },
+        "predicted_goodput_per_dollar": 4110576.923076923,
+        "predicted_sla_safe_goodput": 2187699.0,
+        "predicted_deadline_miss_rate_pct": 0.0,
+        "predicted_eval_suite_completion_hours": 0.2558712280701754,
+        "predicted_interactive_p99_delta_ms": 0.0,
+        "predicted_interactive_timeout_delta_pct": 0.0,
+        "predicted_queue_p99_ms": null,
+        "predicted_latency_p99_ms": null,
+        "predicted_gpu_hours": 0.2558712280701754,
+        "predicted_mean_utilization": 0.95,
+        "safety_status": "SAFE",
+        "safety_vetoes": [],
+        "notes": [
+          "structural_eval_model_v1"
+        ]
+      },
+      {
+        "candidate": {
+          "eval_batch_window_hours": null,
+          "concurrency": 1,
+          "target_rho": 0.95,
+          "deadline_slack_hours": 1.0,
+          "dedicated_fleet": true,
+          "source_policy": "rho0.95_c1_h1.0"
+        },
+        "predicted_goodput_per_dollar": 4110576.923076923,
+        "predicted_sla_safe_goodput": 2187699.0,
+        "predicted_deadline_miss_rate_pct": 0.0,
+        "predicted_eval_suite_completion_hours": 0.2558712280701754,
+        "predicted_interactive_p99_delta_ms": 0.0,
+        "predicted_interactive_timeout_delta_pct": 0.0,
+        "predicted_queue_p99_ms": null,
+        "predicted_latency_p99_ms": null,
+        "predicted_gpu_hours": 0.2558712280701754,
+        "predicted_mean_utilization": 0.95,
+        "safety_status": "SAFE",
+        "safety_vetoes": [],
+        "notes": [
+          "structural_eval_model_v1"
+        ]
+      },
+      {
+        "candidate": {
+          "eval_batch_window_hours": null,
+          "concurrency": 1,
+          "target_rho": 0.95,
+          "deadline_slack_hours": 4.0,
+          "dedicated_fleet": true,
+          "source_policy": "rho0.95_c1_h4.0"
+        },
+        "predicted_goodput_per_dollar": 4110576.923076923,
+        "predicted_sla_safe_goodput": 2187699.0,
+        "predicted_deadline_miss_rate_pct": 0.0,
+        "predicted_eval_suite_completion_hours": 0.2558712280701754,
+        "predicted_interactive_p99_delta_ms": 0.0,
+        "predicted_interactive_timeout_delta_pct": 0.0,
+        "predicted_queue_p99_ms": null,
+        "predicted_latency_p99_ms": null,
+        "predicted_gpu_hours": 0.2558712280701754,
+        "predicted_mean_utilization": 0.95,
+        "safety_status": "SAFE",
+        "safety_vetoes": [],
+        "notes": [
+          "structural_eval_model_v1"
+        ]
+      },
+      {
+        "candidate": {
+          "eval_batch_window_hours": null,
+          "concurrency": 1,
+          "target_rho": 0.95,
+          "deadline_slack_hours": 24.0,
+          "dedicated_fleet": true,
+          "source_policy": "rho0.95_c1_h24.0"
+        },
+        "predicted_goodput_per_dollar": 4110576.923076923,
+        "predicted_sla_safe_goodput": 2187699.0,
+        "predicted_deadline_miss_rate_pct": 0.0,
+        "predicted_eval_suite_completion_hours": 0.2558712280701754,
+        "predicted_interactive_p99_delta_ms": 0.0,
+        "predicted_interactive_timeout_delta_pct": 0.0,
+        "predicted_queue_p99_ms": null,
+        "predicted_latency_p99_ms": null,
+        "predicted_gpu_hours": 0.2558712280701754,
+        "predicted_mean_utilization": 0.95,
+        "safety_status": "SAFE",
+        "safety_vetoes": [],
+        "notes": [
+          "structural_eval_model_v1"
+        ]
+      },
+      {
+        "candidate": {
+          "eval_batch_window_hours": null,
+          "concurrency": 2,
+          "target_rho": 0.95,
+          "deadline_slack_hours": 0.5,
+          "dedicated_fleet": true,
+          "source_policy": "rho0.95_c2_h0.5"
+        },
+        "predicted_goodput_per_dollar": 4110576.923076923,
+        "predicted_sla_safe_goodput": 2187699.0,
+        "predicted_deadline_miss_rate_pct": 0.0,
+        "predicted_eval_suite_completion_hours": 0.1279356140350877,
+        "predicted_interactive_p99_delta_ms": 0.0,
+        "predicted_interactive_timeout_delta_pct": 0.0,
+        "predicted_queue_p99_ms": null,
+        "predicted_latency_p99_ms": null,
+        "predicted_gpu_hours": 0.2558712280701754,
+        "predicted_mean_utilization": 0.95,
+        "safety_status": "SAFE",
+        "safety_vetoes": [],
+        "notes": [
+          "structural_eval_model_v1"
+        ]
+      },
+      {
+        "candidate": {
+          "eval_batch_window_hours": null,
+          "concurrency": 2,
+          "target_rho": 0.95,
+          "deadline_slack_hours": 1.0,
+          "dedicated_fleet": true,
+          "source_policy": "rho0.95_c2_h1.0"
+        },
+        "predicted_goodput_per_dollar": 4110576.923076923,
+        "predicted_sla_safe_goodput": 2187699.0,
+        "predicted_deadline_miss_rate_pct": 0.0,
+        "predicted_eval_suite_completion_hours": 0.1279356140350877,
+        "predicted_interactive_p99_delta_ms": 0.0,
+        "predicted_interactive_timeout_delta_pct": 0.0,
+        "predicted_queue_p99_ms": null,
+        "predicted_latency_p99_ms": null,
+        "predicted_gpu_hours": 0.2558712280701754,
+        "predicted_mean_utilization": 0.95,
+        "safety_status": "SAFE",
+        "safety_vetoes": [],
+        "notes": [
+          "structural_eval_model_v1"
+        ]
+      },
+      {
+        "candidate": {
+          "eval_batch_window_hours": null,
+          "concurrency": 2,
+          "target_rho": 0.95,
+          "deadline_slack_hours": 4.0,
+          "dedicated_fleet": true,
+          "source_policy": "rho0.95_c2_h4.0"
+        },
+        "predicted_goodput_per_dollar": 4110576.923076923,
+        "predicted_sla_safe_goodput": 2187699.0,
+        "predicted_deadline_miss_rate_pct": 0.0,
+        "predicted_eval_suite_completion_hours": 0.1279356140350877,
+        "predicted_interactive_p99_delta_ms": 0.0,
+        "predicted_interactive_timeout_delta_pct": 0.0,
+        "predicted_queue_p99_ms": null,
+        "predicted_latency_p99_ms": null,
+        "predicted_gpu_hours": 0.2558712280701754,
+        "predicted_mean_utilization": 0.95,
+        "safety_status": "SAFE",
+        "safety_vetoes": [],
+        "notes": [
+          "structural_eval_model_v1"
+        ]
+      },
+      {
+        "candidate": {
+          "eval_batch_window_hours": null,
+          "concurrency": 2,
+          "target_rho": 0.95,
+          "deadline_slack_hours": 24.0,
+          "dedicated_fleet": true,
+          "source_policy": "rho0.95_c2_h24.0"
+        },
+        "predicted_goodput_per_dollar": 4110576.923076923,
+        "predicted_sla_safe_goodput": 2187699.0,
+        "predicted_deadline_miss_rate_pct": 0.0,
+        "predicted_eval_suite_completion_hours": 0.1279356140350877,
+        "predicted_interactive_p99_delta_ms": 0.0,
+        "predicted_interactive_timeout_delta_pct": 0.0,
+        "predicted_queue_p99_ms": null,
+        "predicted_latency_p99_ms": null,
+        "predicted_gpu_hours": 0.2558712280701754,
+        "predicted_mean_utilization": 0.95,
+        "safety_status": "SAFE",
+        "safety_vetoes": [],
+        "notes": [
+          "structural_eval_model_v1"
+        ]
+      },
+      {
+        "candidate": {
+          "eval_batch_window_hours": null,
+          "concurrency": 4,
+          "target_rho": 0.95,
+          "deadline_slack_hours": 0.5,
+          "dedicated_fleet": true,
+          "source_policy": "rho0.95_c4_h0.5"
+        },
+        "predicted_goodput_per_dollar": 4110576.923076923,
+        "predicted_sla_safe_goodput": 2187699.0,
+        "predicted_deadline_miss_rate_pct": 0.0,
+        "predicted_eval_suite_completion_hours": 0.06396780701754386,
+        "predicted_interactive_p99_delta_ms": 0.0,
+        "predicted_interactive_timeout_delta_pct": 0.0,
+        "predicted_queue_p99_ms": null,
+        "predicted_latency_p99_ms": null,
+        "predicted_gpu_hours": 0.2558712280701754,
+        "predicted_mean_utilization": 0.95,
+        "safety_status": "SAFE",
+        "safety_vetoes": [],
+        "notes": [
+          "structural_eval_model_v1"
+        ]
+      },
+      {
+        "candidate": {
+          "eval_batch_window_hours": null,
+          "concurrency": 4,
+          "target_rho": 0.95,
+          "deadline_slack_hours": 1.0,
+          "dedicated_fleet": true,
+          "source_policy": "rho0.95_c4_h1.0"
+        },
+        "predicted_goodput_per_dollar": 4110576.923076923,
+        "predicted_sla_safe_goodput": 2187699.0,
+        "predicted_deadline_miss_rate_pct": 0.0,
+        "predicted_eval_suite_completion_hours": 0.06396780701754386,
+        "predicted_interactive_p99_delta_ms": 0.0,
+        "predicted_interactive_timeout_delta_pct": 0.0,
+        "predicted_queue_p99_ms": null,
+        "predicted_latency_p99_ms": null,
+        "predicted_gpu_hours": 0.2558712280701754,
+        "predicted_mean_utilization": 0.95,
+        "safety_status": "SAFE",
+        "safety_vetoes": [],
+        "notes": [
+          "structural_eval_model_v1"
+        ]
+      },
+      {
+        "candidate": {
+          "eval_batch_window_hours": null,
+          "concurrency": 4,
+          "target_rho": 0.95,
+          "deadline_slack_hours": 4.0,
+          "dedicated_fleet": true,
+          "source_policy": "rho0.95_c4_h4.0"
+        },
+        "predicted_goodput_per_dollar": 4110576.923076923,
+        "predicted_sla_safe_goodput": 2187699.0,
+        "predicted_deadline_miss_rate_pct": 0.0,
+        "predicted_eval_suite_completion_hours": 0.06396780701754386,
+        "predicted_interactive_p99_delta_ms": 0.0,
+        "predicted_interactive_timeout_delta_pct": 0.0,
+        "predicted_queue_p99_ms": null,
+        "predicted_latency_p99_ms": null,
+        "predicted_gpu_hours": 0.2558712280701754,
+        "predicted_mean_utilization": 0.95,
+        "safety_status": "SAFE",
+        "safety_vetoes": [],
+        "notes": [
+          "structural_eval_model_v1"
+        ]
+      },
+      {
+        "candidate": {
+          "eval_batch_window_hours": null,
+          "concurrency": 4,
+          "target_rho": 0.95,
+          "deadline_slack_hours": 24.0,
+          "dedicated_fleet": true,
+          "source_policy": "rho0.95_c4_h24.0"
+        },
+        "predicted_goodput_per_dollar": 4110576.923076923,
+        "predicted_sla_safe_goodput": 2187699.0,
+        "predicted_deadline_miss_rate_pct": 0.0,
+        "predicted_eval_suite_completion_hours": 0.06396780701754386,
+        "predicted_interactive_p99_delta_ms": 0.0,
+        "predicted_interactive_timeout_delta_pct": 0.0,
+        "predicted_queue_p99_ms": null,
+        "predicted_latency_p99_ms": null,
+        "predicted_gpu_hours": 0.2558712280701754,
+        "predicted_mean_utilization": 0.95,
+        "safety_status": "SAFE",
+        "safety_vetoes": [],
+        "notes": [
+          "structural_eval_model_v1"
+        ]
+      },
+      {
+        "candidate": {
+          "eval_batch_window_hours": null,
+          "concurrency": 8,
+          "target_rho": 0.95,
+          "deadline_slack_hours": 0.5,
+          "dedicated_fleet": true,
+          "source_policy": "rho0.95_c8_h0.5"
+        },
+        "predicted_goodput_per_dollar": 4110576.923076923,
+        "predicted_sla_safe_goodput": 2187699.0,
+        "predicted_deadline_miss_rate_pct": 0.0,
+        "predicted_eval_suite_completion_hours": 0.03198390350877193,
+        "predicted_interactive_p99_delta_ms": 0.0,
+        "predicted_interactive_timeout_delta_pct": 0.0,
+        "predicted_queue_p99_ms": null,
+        "predicted_latency_p99_ms": null,
+        "predicted_gpu_hours": 0.2558712280701754,
+        "predicted_mean_utilization": 0.95,
+        "safety_status": "SAFE",
+        "safety_vetoes": [],
+        "notes": [
+          "structural_eval_model_v1"
+        ]
+      },
+      {
+        "candidate": {
+          "eval_batch_window_hours": null,
+          "concurrency": 8,
+          "target_rho": 0.95,
+          "deadline_slack_hours": 1.0,
+          "dedicated_fleet": true,
+          "source_policy": "rho0.95_c8_h1.0"
+        },
+        "predicted_goodput_per_dollar": 4110576.923076923,
+        "predicted_sla_safe_goodput": 2187699.0,
+        "predicted_deadline_miss_rate_pct": 0.0,
+        "predicted_eval_suite_completion_hours": 0.03198390350877193,
+        "predicted_interactive_p99_delta_ms": 0.0,
+        "predicted_interactive_timeout_delta_pct": 0.0,
+        "predicted_queue_p99_ms": null,
+        "predicted_latency_p99_ms": null,
+        "predicted_gpu_hours": 0.2558712280701754,
+        "predicted_mean_utilization": 0.95,
+        "safety_status": "SAFE",
+        "safety_vetoes": [],
+        "notes": [
+          "structural_eval_model_v1"
+        ]
+      },
+      {
+        "candidate": {
+          "eval_batch_window_hours": null,
+          "concurrency": 8,
+          "target_rho": 0.95,
+          "deadline_slack_hours": 4.0,
+          "dedicated_fleet": true,
+          "source_policy": "rho0.95_c8_h4.0"
+        },
+        "predicted_goodput_per_dollar": 4110576.923076923,
+        "predicted_sla_safe_goodput": 2187699.0,
+        "predicted_deadline_miss_rate_pct": 0.0,
+        "predicted_eval_suite_completion_hours": 0.03198390350877193,
+        "predicted_interactive_p99_delta_ms": 0.0,
+        "predicted_interactive_timeout_delta_pct": 0.0,
+        "predicted_queue_p99_ms": null,
+        "predicted_latency_p99_ms": null,
+        "predicted_gpu_hours": 0.2558712280701754,
+        "predicted_mean_utilization": 0.95,
+        "safety_status": "SAFE",
+        "safety_vetoes": [],
+        "notes": [
+          "structural_eval_model_v1"
+        ]
+      },
+      {
+        "candidate": {
+          "eval_batch_window_hours": null,
+          "concurrency": 8,
+          "target_rho": 0.95,
+          "deadline_slack_hours": 24.0,
+          "dedicated_fleet": true,
+          "source_policy": "rho0.95_c8_h24.0"
+        },
+        "predicted_goodput_per_dollar": 4110576.923076923,
+        "predicted_sla_safe_goodput": 2187699.0,
+        "predicted_deadline_miss_rate_pct": 0.0,
+        "predicted_eval_suite_completion_hours": 0.03198390350877193,
+        "predicted_interactive_p99_delta_ms": 0.0,
+        "predicted_interactive_timeout_delta_pct": 0.0,
+        "predicted_queue_p99_ms": null,
+        "predicted_latency_p99_ms": null,
+        "predicted_gpu_hours": 0.2558712280701754,
+        "predicted_mean_utilization": 0.95,
+        "safety_status": "SAFE",
+        "safety_vetoes": [],
+        "notes": [
+          "structural_eval_model_v1"
+        ]
+      }
+    ],
+    "action": "RECOMMEND_EVAL_FRONTIER",
+    "reason": "highest_safe_goodput_per_dollar_point",
+    "expected_goodput_per_dollar_delta": null,
+    "expected_deadline_miss_delta_pct": null,
+    "expected_gpu_hour_delta": null,
+    "confidence": "low",
+    "execution_mode": "shadow",
+    "executable_in_simulator": true,
+    "executable_in_real_cluster": false,
+    "safety_vetoes": [],
+    "source": "eval_workload_frontier_v1",
+    "notes": []
+  },
+  "honesty_notes": [
+    "simulator / public-trace evidence only \u2014 NOT production savings",
+    "synthetic deadline-slack scenario; ShareGPT carries no real deadlines",
+    "token counts are char/4 PROXY, not real tokenizer output",
+    "no oracle / clairvoyant baseline used as headline",
+    "no serving rho controller default changed",
+    "executable_in_real_cluster is False at construction"
+  ]
+}
