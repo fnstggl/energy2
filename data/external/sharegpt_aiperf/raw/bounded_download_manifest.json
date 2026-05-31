@@ -1,0 +1,7 @@
+{
+  "url": "https://huggingface.co/datasets/RyokoAI/ShareGPT52K/resolve/main/old/sg_52k.json",
+  "requested_bytes": 20971520,
+  "downloaded_bytes": 20971520,
+  "http_status": 206,
+  "dest_path": "/home/user/energy2/data/external/sharegpt_aiperf/raw/sg_52k_head.json"
+}

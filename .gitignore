@@ -70,3 +70,15 @@ data/external/philly/processed/philly_normalized.json
 data/external/alibaba_genai/raw/*
 !data/external/alibaba_genai/raw/.gitkeep
 data/external/alibaba_genai/processed/alibaba_genai_normalized.json
+# ShareGPT eval-conversation-shape head sample (bounded HTTP-Range download;
+# raw JSON head is downloaded, NOT committed). The bounded-download manifest
+# and the small processed summary ARE committed.
+data/external/sharegpt_aiperf/raw/*
+!data/external/sharegpt_aiperf/raw/.gitkeep
+!data/external/sharegpt_aiperf/raw/bounded_download_manifest.json
+# LMSYS Chatbot Arena (gated). Raw parquet + manifest are downloaded only
+# when HF_TOKEN is supplied; not committed. The processed summary IS committed
+# (records the schema fields + gating status, never the raw parquet).
+data/external/lmsys_chatbot_arena/raw/*
+!data/external/lmsys_chatbot_arena/raw/.gitkeep
+!data/external/lmsys_chatbot_arena/raw/bounded_download_manifest.json

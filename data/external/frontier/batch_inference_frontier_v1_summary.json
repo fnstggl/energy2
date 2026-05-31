@@ -1,0 +1,1969 @@
+{
+  "doc_version": "batch_inference_frontier_v1_summary",
+  "production_claim": false,
+  "ml_training": false,
+  "modifies_serving_rho_controller": false,
+  "uses_oracle_as_headline": false,
+  "executable_in_real_cluster": false,
+  "source": {
+    "trace": "azure_llm_2024",
+    "path": "/home/user/energy2/tests/fixtures/azure_llm_2024_sample.csv",
+    "scale_rps": 100.0,
+    "tick_seconds": 60.0,
+    "request_count": 5880,
+    "tick_count": 16,
+    "active_tick_count": 16
+  },
+  "workload_profile": {
+    "workload_id": "azure_2024_batch_inference_workload_v1",
+    "trace_source": "azure_llm_2024",
+    "synthetic_scenario_label": "azure_llm_2024_batch_flex_scenario_v1",
+    "deadline_slack_seconds_baseline": 600.0,
+    "deadline_miss_rate_sla_pct": 2.0,
+    "queue_wait_sla_p99_ms": 2000.0,
+    "interactive_baseline_p99_ms": null,
+    "interactive_baseline_timeout_pct": null,
+    "telemetry_confidence": "medium",
+    "source": "/home/user/energy2/tests/fixtures/azure_llm_2024_sample.csv"
+  },
+  "candidate_grid": {
+    "rho": [
+      0.45,
+      0.55,
+      0.65,
+      0.75,
+      0.85,
+      0.95
+    ],
+    "deadline_slack_seconds": [
+      0.0,
+      30.0,
+      60.0,
+      300.0,
+      900.0,
+      3600.0
+    ],
+    "total_candidates": 36
+  },
+  "safety_status_distribution": {
+    "UNSAFE": 6,
+    "SAFE": 30
+  },
+  "max_safe_goodput_per_slack": {
+    "30.0": {
+      "goodput_per_dollar": 1199167.2794117646,
+      "rho_target": 0.55
+    },
+    "60.0": {
+      "goodput_per_dollar": 1199167.2794117646,
+      "rho_target": 0.55
+    },
+    "300.0": {
+      "goodput_per_dollar": 1199167.2794117646,
+      "rho_target": 0.55
+    },
+    "900.0": {
+      "goodput_per_dollar": 1199167.2794117646,
+      "rho_target": 0.55
+    },
+    "3600.0": {
+      "goodput_per_dollar": 1199167.2794117646,
+      "rho_target": 0.55
+    }
+  },
+  "frontier_points": [
+    {
+      "candidate": {
+        "batch_window_seconds": null,
+        "batch_concurrency": null,
+        "target_rho": 0.45,
+        "deadline_slack_seconds": 0.0,
+        "source_policy": "rho0.45_slack0.0s"
+      },
+      "predicted_goodput_per_dollar": 919514.0056022409,
+      "predicted_sla_safe_goodput": 656533.0,
+      "predicted_deadline_miss_rate_pct": 100.0,
+      "predicted_timeout_rate_pct": 3.497368033954382,
+      "predicted_queue_p95_ms": 127.77890889319546,
+      "predicted_queue_p99_ms": 206.66389759924306,
+      "predicted_latency_p95_ms": 5252.1274918943955,
+      "predicted_latency_p99_ms": 10511.226606369233,
+      "predicted_gpu_hours": 0.35,
+      "predicted_mean_utilization": 0.48064034982755477,
+      "predicted_cost_per_sla_compliant_token": 1.0875310151964942e-06,
+      "safety_status": "UNSAFE",
+      "safety_vetoes": [
+        "deadline_miss_exceeds_threshold",
+        "deadline_miss_exceeds_profile_sla"
+      ],
+      "notes": [
+        "anticipatory"
+      ]
+    },
+    {
+      "candidate": {
+        "batch_window_seconds": null,
+        "batch_concurrency": null,
+        "target_rho": 0.45,
+        "deadline_slack_seconds": 30.0,
+        "source_policy": "rho0.45_slack30.0s"
+      },
+      "predicted_goodput_per_dollar": 919514.0056022409,
+      "predicted_sla_safe_goodput": 656533.0,
+      "predicted_deadline_miss_rate_pct": 0.0,
+      "predicted_timeout_rate_pct": 3.497368033954382,
+      "predicted_queue_p95_ms": 127.77890889319546,
+      "predicted_queue_p99_ms": 206.66389759924306,
+      "predicted_latency_p95_ms": 5252.1274918943955,
+      "predicted_latency_p99_ms": 10511.226606369233,
+      "predicted_gpu_hours": 0.35,
+      "predicted_mean_utilization": 0.48064034982755477,
+      "predicted_cost_per_sla_compliant_token": 1.0875310151964942e-06,
+      "safety_status": "SAFE",
+      "safety_vetoes": [],
+      "notes": [
+        "anticipatory"
+      ]
+    },
+    {
+      "candidate": {
+        "batch_window_seconds": null,
+        "batch_concurrency": null,
+        "target_rho": 0.45,
+        "deadline_slack_seconds": 60.0,
+        "source_policy": "rho0.45_slack60.0s"
+      },
+      "predicted_goodput_per_dollar": 919514.0056022409,
+      "predicted_sla_safe_goodput": 656533.0,
+      "predicted_deadline_miss_rate_pct": 0.0,
+      "predicted_timeout_rate_pct": 3.497368033954382,
+      "predicted_queue_p95_ms": 127.77890889319546,
+      "predicted_queue_p99_ms": 206.66389759924306,
+      "predicted_latency_p95_ms": 5252.1274918943955,
+      "predicted_latency_p99_ms": 10511.226606369233,
+      "predicted_gpu_hours": 0.35,
+      "predicted_mean_utilization": 0.48064034982755477,
+      "predicted_cost_per_sla_compliant_token": 1.0875310151964942e-06,
+      "safety_status": "SAFE",
+      "safety_vetoes": [],
+      "notes": [
+        "anticipatory"
+      ]
+    },
+    {
+      "candidate": {
+        "batch_window_seconds": null,
+        "batch_concurrency": null,
+        "target_rho": 0.45,
+        "deadline_slack_seconds": 300.0,
+        "source_policy": "rho0.45_slack300.0s"
+      },
+      "predicted_goodput_per_dollar": 919514.0056022409,
+      "predicted_sla_safe_goodput": 656533.0,
+      "predicted_deadline_miss_rate_pct": 0.0,
+      "predicted_timeout_rate_pct": 3.497368033954382,
+      "predicted_queue_p95_ms": 127.77890889319546,
+      "predicted_queue_p99_ms": 206.66389759924306,
+      "predicted_latency_p95_ms": 5252.1274918943955,
+      "predicted_latency_p99_ms": 10511.226606369233,
+      "predicted_gpu_hours": 0.35,
+      "predicted_mean_utilization": 0.48064034982755477,
+      "predicted_cost_per_sla_compliant_token": 1.0875310151964942e-06,
+      "safety_status": "SAFE",
+      "safety_vetoes": [],
+      "notes": [
+        "anticipatory"
+      ]
+    },
+    {
+      "candidate": {
+        "batch_window_seconds": null,
+        "batch_concurrency": null,
+        "target_rho": 0.45,
+        "deadline_slack_seconds": 900.0,
+        "source_policy": "rho0.45_slack900.0s"
+      },
+      "predicted_goodput_per_dollar": 919514.0056022409,
+      "predicted_sla_safe_goodput": 656533.0,
+      "predicted_deadline_miss_rate_pct": 0.0,
+      "predicted_timeout_rate_pct": 3.497368033954382,
+      "predicted_queue_p95_ms": 127.77890889319546,
+      "predicted_queue_p99_ms": 206.66389759924306,
+      "predicted_latency_p95_ms": 5252.1274918943955,
+      "predicted_latency_p99_ms": 10511.226606369233,
+      "predicted_gpu_hours": 0.35,
+      "predicted_mean_utilization": 0.48064034982755477,
+      "predicted_cost_per_sla_compliant_token": 1.0875310151964942e-06,
+      "safety_status": "SAFE",
+      "safety_vetoes": [],
+      "notes": [
+        "anticipatory"
+      ]
+    },
+    {
+      "candidate": {
+        "batch_window_seconds": null,
+        "batch_concurrency": null,
+        "target_rho": 0.45,
+        "deadline_slack_seconds": 3600.0,
+        "source_policy": "rho0.45_slack3600.0s"
+      },
+      "predicted_goodput_per_dollar": 919514.0056022409,
+      "predicted_sla_safe_goodput": 656533.0,
+      "predicted_deadline_miss_rate_pct": 0.0,
+      "predicted_timeout_rate_pct": 3.497368033954382,
+      "predicted_queue_p95_ms": 127.77890889319546,
+      "predicted_queue_p99_ms": 206.66389759924306,
+      "predicted_latency_p95_ms": 5252.1274918943955,
+      "predicted_latency_p99_ms": 10511.226606369233,
+      "predicted_gpu_hours": 0.35,
+      "predicted_mean_utilization": 0.48064034982755477,
+      "predicted_cost_per_sla_compliant_token": 1.0875310151964942e-06,
+      "safety_status": "SAFE",
+      "safety_vetoes": [],
+      "notes": [
+        "anticipatory"
+      ]
+    },
+    {
+      "candidate": {
+        "batch_window_seconds": null,
+        "batch_concurrency": null,
+        "target_rho": 0.55,
+        "deadline_slack_seconds": 0.0,
+        "source_policy": "rho0.55_slack0.0s"
+      },
+      "predicted_goodput_per_dollar": 1199167.2794117646,
+      "predicted_sla_safe_goodput": 652347.0,
+      "predicted_deadline_miss_rate_pct": 100.0,
+      "predicted_timeout_rate_pct": 4.119816893600281,
+      "predicted_queue_p95_ms": 205.54347846722112,
+      "predicted_queue_p99_ms": 343.4123407224078,
+      "predicted_latency_p95_ms": 5461.184344355198,
+      "predicted_latency_p99_ms": 10991.66036007984,
+      "predicted_gpu_hours": 0.26666666666666666,
+      "predicted_mean_utilization": 0.5357947026886494,
+      "predicted_cost_per_sla_compliant_token": 8.339120130850607e-07,
+      "safety_status": "UNSAFE",
+      "safety_vetoes": [
+        "deadline_miss_exceeds_threshold",
+        "deadline_miss_exceeds_profile_sla"
+      ],
+      "notes": [
+        "anticipatory"
+      ]
+    },
+    {
+      "candidate": {
+        "batch_window_seconds": null,
+        "batch_concurrency": null,
+        "target_rho": 0.55,
+        "deadline_slack_seconds": 30.0,
+        "source_policy": "rho0.55_slack30.0s"
+      },
+      "predicted_goodput_per_dollar": 1199167.2794117646,
+      "predicted_sla_safe_goodput": 652347.0,
+      "predicted_deadline_miss_rate_pct": 0.0,
+      "predicted_timeout_rate_pct": 4.119816893600281,
+      "predicted_queue_p95_ms": 205.54347846722112,
+      "predicted_queue_p99_ms": 343.4123407224078,
+      "predicted_latency_p95_ms": 5461.184344355198,
+      "predicted_latency_p99_ms": 10991.66036007984,
+      "predicted_gpu_hours": 0.26666666666666666,
+      "predicted_mean_utilization": 0.5357947026886494,
+      "predicted_cost_per_sla_compliant_token": 8.339120130850607e-07,
+      "safety_status": "SAFE",
+      "safety_vetoes": [],
+      "notes": [
+        "anticipatory"
+      ]
+    },
+    {
+      "candidate": {
+        "batch_window_seconds": null,
+        "batch_concurrency": null,
+        "target_rho": 0.55,
+        "deadline_slack_seconds": 60.0,
+        "source_policy": "rho0.55_slack60.0s"
+      },
+      "predicted_goodput_per_dollar": 1199167.2794117646,
+      "predicted_sla_safe_goodput": 652347.0,
+      "predicted_deadline_miss_rate_pct": 0.0,
+      "predicted_timeout_rate_pct": 4.119816893600281,
+      "predicted_queue_p95_ms": 205.54347846722112,
+      "predicted_queue_p99_ms": 343.4123407224078,
+      "predicted_latency_p95_ms": 5461.184344355198,
+      "predicted_latency_p99_ms": 10991.66036007984,
+      "predicted_gpu_hours": 0.26666666666666666,
+      "predicted_mean_utilization": 0.5357947026886494,
+      "predicted_cost_per_sla_compliant_token": 8.339120130850607e-07,
+      "safety_status": "SAFE",
+      "safety_vetoes": [],
+      "notes": [
+        "anticipatory"
+      ]
+    },
+    {
+      "candidate": {
+        "batch_window_seconds": null,
+        "batch_concurrency": null,
+        "target_rho": 0.55,
+        "deadline_slack_seconds": 300.0,
+        "source_policy": "rho0.55_slack300.0s"
+      },
+      "predicted_goodput_per_dollar": 1199167.2794117646,
+      "predicted_sla_safe_goodput": 652347.0,
+      "predicted_deadline_miss_rate_pct": 0.0,
+      "predicted_timeout_rate_pct": 4.119816893600281,
+      "predicted_queue_p95_ms": 205.54347846722112,
+      "predicted_queue_p99_ms": 343.4123407224078,
+      "predicted_latency_p95_ms": 5461.184344355198,
+      "predicted_latency_p99_ms": 10991.66036007984,
+      "predicted_gpu_hours": 0.26666666666666666,
+      "predicted_mean_utilization": 0.5357947026886494,
+      "predicted_cost_per_sla_compliant_token": 8.339120130850607e-07,
+      "safety_status": "SAFE",
+      "safety_vetoes": [],
+      "notes": [
+        "anticipatory"
+      ]
+    },
+    {
+      "candidate": {
+        "batch_window_seconds": null,
+        "batch_concurrency": null,
+        "target_rho": 0.55,
+        "deadline_slack_seconds": 900.0,
+        "source_policy": "rho0.55_slack900.0s"
+      },
+      "predicted_goodput_per_dollar": 1199167.2794117646,
+      "predicted_sla_safe_goodput": 652347.0,
+      "predicted_deadline_miss_rate_pct": 0.0,
+      "predicted_timeout_rate_pct": 4.119816893600281,
+      "predicted_queue_p95_ms": 205.54347846722112,
+      "predicted_queue_p99_ms": 343.4123407224078,
+      "predicted_latency_p95_ms": 5461.184344355198,
+      "predicted_latency_p99_ms": 10991.66036007984,
+      "predicted_gpu_hours": 0.26666666666666666,
+      "predicted_mean_utilization": 0.5357947026886494,
+      "predicted_cost_per_sla_compliant_token": 8.339120130850607e-07,
+      "safety_status": "SAFE",
+      "safety_vetoes": [],
+      "notes": [
+        "anticipatory"
+      ]
+    },
+    {
+      "candidate": {
+        "batch_window_seconds": null,
+        "batch_concurrency": null,
+        "target_rho": 0.55,
+        "deadline_slack_seconds": 3600.0,
+        "source_policy": "rho0.55_slack3600.0s"
+      },
+      "predicted_goodput_per_dollar": 1199167.2794117646,
+      "predicted_sla_safe_goodput": 652347.0,
+      "predicted_deadline_miss_rate_pct": 0.0,
+      "predicted_timeout_rate_pct": 4.119816893600281,
+      "predicted_queue_p95_ms": 205.54347846722112,
+      "predicted_queue_p99_ms": 343.4123407224078,
+      "predicted_latency_p95_ms": 5461.184344355198,
+      "predicted_latency_p99_ms": 10991.66036007984,
+      "predicted_gpu_hours": 0.26666666666666666,
+      "predicted_mean_utilization": 0.5357947026886494,
+      "predicted_cost_per_sla_compliant_token": 8.339120130850607e-07,
+      "safety_status": "SAFE",
+      "safety_vetoes": [],
+      "notes": [
+        "anticipatory"
+      ]
+    },
+    {
+      "candidate": {
+        "batch_window_seconds": null,
+        "batch_concurrency": null,
+        "target_rho": 0.65,
+        "deadline_slack_seconds": 0.0,
+        "source_policy": "rho0.65_slack0.0s"
+      },
+      "predicted_goodput_per_dollar": 1199167.2794117646,
+      "predicted_sla_safe_goodput": 652347.0,
+      "predicted_deadline_miss_rate_pct": 100.0,
+      "predicted_timeout_rate_pct": 4.119816893600281,
+      "predicted_queue_p95_ms": 205.54347846722112,
+      "predicted_queue_p99_ms": 343.4123407224078,
+      "predicted_latency_p95_ms": 5461.184344355198,
+      "predicted_latency_p99_ms": 10991.66036007984,
+      "predicted_gpu_hours": 0.26666666666666666,
+      "predicted_mean_utilization": 0.5357947026886494,
+      "predicted_cost_per_sla_compliant_token": 8.339120130850607e-07,
+      "safety_status": "UNSAFE",
+      "safety_vetoes": [
+        "deadline_miss_exceeds_threshold",
+        "deadline_miss_exceeds_profile_sla"
+      ],
+      "notes": [
+        "anticipatory"
+      ]
+    },
+    {
+      "candidate": {
+        "batch_window_seconds": null,
+        "batch_concurrency": null,
+        "target_rho": 0.65,
+        "deadline_slack_seconds": 30.0,
+        "source_policy": "rho0.65_slack30.0s"
+      },
+      "predicted_goodput_per_dollar": 1199167.2794117646,
+      "predicted_sla_safe_goodput": 652347.0,
+      "predicted_deadline_miss_rate_pct": 0.0,
+      "predicted_timeout_rate_pct": 4.119816893600281,
+      "predicted_queue_p95_ms": 205.54347846722112,
+      "predicted_queue_p99_ms": 343.4123407224078,
+      "predicted_latency_p95_ms": 5461.184344355198,
+      "predicted_latency_p99_ms": 10991.66036007984,
+      "predicted_gpu_hours": 0.26666666666666666,
+      "predicted_mean_utilization": 0.5357947026886494,
+      "predicted_cost_per_sla_compliant_token": 8.339120130850607e-07,
+      "safety_status": "SAFE",
+      "safety_vetoes": [],
+      "notes": [
+        "anticipatory"
+      ]
+    },
+    {
+      "candidate": {
+        "batch_window_seconds": null,
+        "batch_concurrency": null,
+        "target_rho": 0.65,
+        "deadline_slack_seconds": 60.0,
+        "source_policy": "rho0.65_slack60.0s"
+      },
+      "predicted_goodput_per_dollar": 1199167.2794117646,
+      "predicted_sla_safe_goodput": 652347.0,
+      "predicted_deadline_miss_rate_pct": 0.0,
+      "predicted_timeout_rate_pct": 4.119816893600281,
+      "predicted_queue_p95_ms": 205.54347846722112,
+      "predicted_queue_p99_ms": 343.4123407224078,
+      "predicted_latency_p95_ms": 5461.184344355198,
+      "predicted_latency_p99_ms": 10991.66036007984,
+      "predicted_gpu_hours": 0.26666666666666666,
+      "predicted_mean_utilization": 0.5357947026886494,
+      "predicted_cost_per_sla_compliant_token": 8.339120130850607e-07,
+      "safety_status": "SAFE",
+      "safety_vetoes": [],
+      "notes": [
+        "anticipatory"
+      ]
+    },
+    {
+      "candidate": {
+        "batch_window_seconds": null,
+        "batch_concurrency": null,
+        "target_rho": 0.65,
+        "deadline_slack_seconds": 300.0,
+        "source_policy": "rho0.65_slack300.0s"
+      },
+      "predicted_goodput_per_dollar": 1199167.2794117646,
+      "predicted_sla_safe_goodput": 652347.0,
+      "predicted_deadline_miss_rate_pct": 0.0,
+      "predicted_timeout_rate_pct": 4.119816893600281,
+      "predicted_queue_p95_ms": 205.54347846722112,
+      "predicted_queue_p99_ms": 343.4123407224078,
+      "predicted_latency_p95_ms": 5461.184344355198,
+      "predicted_latency_p99_ms": 10991.66036007984,
+      "predicted_gpu_hours": 0.26666666666666666,
+      "predicted_mean_utilization": 0.5357947026886494,
+      "predicted_cost_per_sla_compliant_token": 8.339120130850607e-07,
+      "safety_status": "SAFE",
+      "safety_vetoes": [],
+      "notes": [
+        "anticipatory"
+      ]
+    },
+    {
+      "candidate": {
+        "batch_window_seconds": null,
+        "batch_concurrency": null,
+        "target_rho": 0.65,
+        "deadline_slack_seconds": 900.0,
+        "source_policy": "rho0.65_slack900.0s"
+      },
+      "predicted_goodput_per_dollar": 1199167.2794117646,
+      "predicted_sla_safe_goodput": 652347.0,
+      "predicted_deadline_miss_rate_pct": 0.0,
+      "predicted_timeout_rate_pct": 4.119816893600281,
+      "predicted_queue_p95_ms": 205.54347846722112,
+      "predicted_queue_p99_ms": 343.4123407224078,
+      "predicted_latency_p95_ms": 5461.184344355198,
+      "predicted_latency_p99_ms": 10991.66036007984,
+      "predicted_gpu_hours": 0.26666666666666666,
+      "predicted_mean_utilization": 0.5357947026886494,
+      "predicted_cost_per_sla_compliant_token": 8.339120130850607e-07,
+      "safety_status": "SAFE",
+      "safety_vetoes": [],
+      "notes": [
+        "anticipatory"
+      ]
+    },
+    {
+      "candidate": {
+        "batch_window_seconds": null,
+        "batch_concurrency": null,
+        "target_rho": 0.65,
+        "deadline_slack_seconds": 3600.0,
+        "source_policy": "rho0.65_slack3600.0s"
+      },
+      "predicted_goodput_per_dollar": 1199167.2794117646,
+      "predicted_sla_safe_goodput": 652347.0,
+      "predicted_deadline_miss_rate_pct": 0.0,
+      "predicted_timeout_rate_pct": 4.119816893600281,
+      "predicted_queue_p95_ms": 205.54347846722112,
+      "predicted_queue_p99_ms": 343.4123407224078,
+      "predicted_latency_p95_ms": 5461.184344355198,
+      "predicted_latency_p99_ms": 10991.66036007984,
+      "predicted_gpu_hours": 0.26666666666666666,
+      "predicted_mean_utilization": 0.5357947026886494,
+      "predicted_cost_per_sla_compliant_token": 8.339120130850607e-07,
+      "safety_status": "SAFE",
+      "safety_vetoes": [],
+      "notes": [
+        "anticipatory"
+      ]
+    },
+    {
+      "candidate": {
+        "batch_window_seconds": null,
+        "batch_concurrency": null,
+        "target_rho": 0.75,
+        "deadline_slack_seconds": 0.0,
+        "source_policy": "rho0.75_slack0.0s"
+      },
+      "predicted_goodput_per_dollar": 1199167.2794117646,
+      "predicted_sla_safe_goodput": 652347.0,
+      "predicted_deadline_miss_rate_pct": 100.0,
+      "predicted_timeout_rate_pct": 4.119816893600281,
+      "predicted_queue_p95_ms": 205.54347846722112,
+      "predicted_queue_p99_ms": 343.4123407224078,
+      "predicted_latency_p95_ms": 5461.184344355198,
+      "predicted_latency_p99_ms": 10991.66036007984,
+      "predicted_gpu_hours": 0.26666666666666666,
+      "predicted_mean_utilization": 0.5357947026886494,
+      "predicted_cost_per_sla_compliant_token": 8.339120130850607e-07,
+      "safety_status": "UNSAFE",
+      "safety_vetoes": [
+        "deadline_miss_exceeds_threshold",
+        "deadline_miss_exceeds_profile_sla"
+      ],
+      "notes": [
+        "anticipatory"
+      ]
+    },
+    {
+      "candidate": {
+        "batch_window_seconds": null,
+        "batch_concurrency": null,
+        "target_rho": 0.75,
+        "deadline_slack_seconds": 30.0,
+        "source_policy": "rho0.75_slack30.0s"
+      },
+      "predicted_goodput_per_dollar": 1199167.2794117646,
+      "predicted_sla_safe_goodput": 652347.0,
+      "predicted_deadline_miss_rate_pct": 0.0,
+      "predicted_timeout_rate_pct": 4.119816893600281,
+      "predicted_queue_p95_ms": 205.54347846722112,
+      "predicted_queue_p99_ms": 343.4123407224078,
+      "predicted_latency_p95_ms": 5461.184344355198,
+      "predicted_latency_p99_ms": 10991.66036007984,
+      "predicted_gpu_hours": 0.26666666666666666,
+      "predicted_mean_utilization": 0.5357947026886494,
+      "predicted_cost_per_sla_compliant_token": 8.339120130850607e-07,
+      "safety_status": "SAFE",
+      "safety_vetoes": [],
+      "notes": [
+        "anticipatory"
+      ]
+    },
+    {
+      "candidate": {
+        "batch_window_seconds": null,
+        "batch_concurrency": null,
+        "target_rho": 0.75,
+        "deadline_slack_seconds": 60.0,
+        "source_policy": "rho0.75_slack60.0s"
+      },
+      "predicted_goodput_per_dollar": 1199167.2794117646,
+      "predicted_sla_safe_goodput": 652347.0,
+      "predicted_deadline_miss_rate_pct": 0.0,
+      "predicted_timeout_rate_pct": 4.119816893600281,
+      "predicted_queue_p95_ms": 205.54347846722112,
+      "predicted_queue_p99_ms": 343.4123407224078,
+      "predicted_latency_p95_ms": 5461.184344355198,
+      "predicted_latency_p99_ms": 10991.66036007984,
+      "predicted_gpu_hours": 0.26666666666666666,
+      "predicted_mean_utilization": 0.5357947026886494,
+      "predicted_cost_per_sla_compliant_token": 8.339120130850607e-07,
+      "safety_status": "SAFE",
+      "safety_vetoes": [],
+      "notes": [
+        "anticipatory"
+      ]
+    },
+    {
+      "candidate": {
+        "batch_window_seconds": null,
+        "batch_concurrency": null,
+        "target_rho": 0.75,
+        "deadline_slack_seconds": 300.0,
+        "source_policy": "rho0.75_slack300.0s"
+      },
+      "predicted_goodput_per_dollar": 1199167.2794117646,
+      "predicted_sla_safe_goodput": 652347.0,
+      "predicted_deadline_miss_rate_pct": 0.0,
+      "predicted_timeout_rate_pct": 4.119816893600281,
+      "predicted_queue_p95_ms": 205.54347846722112,
+      "predicted_queue_p99_ms": 343.4123407224078,
+      "predicted_latency_p95_ms": 5461.184344355198,
+      "predicted_latency_p99_ms": 10991.66036007984,
+      "predicted_gpu_hours": 0.26666666666666666,
+      "predicted_mean_utilization": 0.5357947026886494,
+      "predicted_cost_per_sla_compliant_token": 8.339120130850607e-07,
+      "safety_status": "SAFE",
+      "safety_vetoes": [],
+      "notes": [
+        "anticipatory"
+      ]
+    },
+    {
+      "candidate": {
+        "batch_window_seconds": null,
+        "batch_concurrency": null,
+        "target_rho": 0.75,
+        "deadline_slack_seconds": 900.0,
+        "source_policy": "rho0.75_slack900.0s"
+      },
+      "predicted_goodput_per_dollar": 1199167.2794117646,
+      "predicted_sla_safe_goodput": 652347.0,
+      "predicted_deadline_miss_rate_pct": 0.0,
+      "predicted_timeout_rate_pct": 4.119816893600281,
+      "predicted_queue_p95_ms": 205.54347846722112,
+      "predicted_queue_p99_ms": 343.4123407224078,
+      "predicted_latency_p95_ms": 5461.184344355198,
+      "predicted_latency_p99_ms": 10991.66036007984,
+      "predicted_gpu_hours": 0.26666666666666666,
+      "predicted_mean_utilization": 0.5357947026886494,
+      "predicted_cost_per_sla_compliant_token": 8.339120130850607e-07,
+      "safety_status": "SAFE",
+      "safety_vetoes": [],
+      "notes": [
+        "anticipatory"
+      ]
+    },
+    {
+      "candidate": {
+        "batch_window_seconds": null,
+        "batch_concurrency": null,
+        "target_rho": 0.75,
+        "deadline_slack_seconds": 3600.0,
+        "source_policy": "rho0.75_slack3600.0s"
+      },
+      "predicted_goodput_per_dollar": 1199167.2794117646,
+      "predicted_sla_safe_goodput": 652347.0,
+      "predicted_deadline_miss_rate_pct": 0.0,
+      "predicted_timeout_rate_pct": 4.119816893600281,
+      "predicted_queue_p95_ms": 205.54347846722112,
+      "predicted_queue_p99_ms": 343.4123407224078,
+      "predicted_latency_p95_ms": 5461.184344355198,
+      "predicted_latency_p99_ms": 10991.66036007984,
+      "predicted_gpu_hours": 0.26666666666666666,
+      "predicted_mean_utilization": 0.5357947026886494,
+      "predicted_cost_per_sla_compliant_token": 8.339120130850607e-07,
+      "safety_status": "SAFE",
+      "safety_vetoes": [],
+      "notes": [
+        "anticipatory"
+      ]
+    },
+    {
+      "candidate": {
+        "batch_window_seconds": null,
+        "batch_concurrency": null,
+        "target_rho": 0.85,
+        "deadline_slack_seconds": 0.0,
+        "source_policy": "rho0.85_slack0.0s"
+      },
+      "predicted_goodput_per_dollar": 1199167.2794117646,
+      "predicted_sla_safe_goodput": 652347.0,
+      "predicted_deadline_miss_rate_pct": 100.0,
+      "predicted_timeout_rate_pct": 4.119816893600281,
+      "predicted_queue_p95_ms": 205.54347846722112,
+      "predicted_queue_p99_ms": 343.4123407224078,
+      "predicted_latency_p95_ms": 5461.184344355198,
+      "predicted_latency_p99_ms": 10991.66036007984,
+      "predicted_gpu_hours": 0.26666666666666666,
+      "predicted_mean_utilization": 0.5357947026886494,
+      "predicted_cost_per_sla_compliant_token": 8.339120130850607e-07,
+      "safety_status": "UNSAFE",
+      "safety_vetoes": [
+        "deadline_miss_exceeds_threshold",
+        "deadline_miss_exceeds_profile_sla"
+      ],
+      "notes": [
+        "anticipatory"
+      ]
+    },
+    {
+      "candidate": {
+        "batch_window_seconds": null,
+        "batch_concurrency": null,
+        "target_rho": 0.85,
+        "deadline_slack_seconds": 30.0,
+        "source_policy": "rho0.85_slack30.0s"
+      },
+      "predicted_goodput_per_dollar": 1199167.2794117646,
+      "predicted_sla_safe_goodput": 652347.0,
+      "predicted_deadline_miss_rate_pct": 0.0,
+      "predicted_timeout_rate_pct": 4.119816893600281,
+      "predicted_queue_p95_ms": 205.54347846722112,
+      "predicted_queue_p99_ms": 343.4123407224078,
+      "predicted_latency_p95_ms": 5461.184344355198,
+      "predicted_latency_p99_ms": 10991.66036007984,
+      "predicted_gpu_hours": 0.26666666666666666,
+      "predicted_mean_utilization": 0.5357947026886494,
+      "predicted_cost_per_sla_compliant_token": 8.339120130850607e-07,
+      "safety_status": "SAFE",
+      "safety_vetoes": [],
+      "notes": [
+        "anticipatory"
+      ]
+    },
+    {
+      "candidate": {
+        "batch_window_seconds": null,
+        "batch_concurrency": null,
+        "target_rho": 0.85,
+        "deadline_slack_seconds": 60.0,
+        "source_policy": "rho0.85_slack60.0s"
+      },
+      "predicted_goodput_per_dollar": 1199167.2794117646,
+      "predicted_sla_safe_goodput": 652347.0,
+      "predicted_deadline_miss_rate_pct": 0.0,
+      "predicted_timeout_rate_pct": 4.119816893600281,
+      "predicted_queue_p95_ms": 205.54347846722112,
+      "predicted_queue_p99_ms": 343.4123407224078,
+      "predicted_latency_p95_ms": 5461.184344355198,
+      "predicted_latency_p99_ms": 10991.66036007984,
+      "predicted_gpu_hours": 0.26666666666666666,
+      "predicted_mean_utilization": 0.5357947026886494,
+      "predicted_cost_per_sla_compliant_token": 8.339120130850607e-07,
+      "safety_status": "SAFE",
+      "safety_vetoes": [],
+      "notes": [
+        "anticipatory"
+      ]
+    },
+    {
+      "candidate": {
+        "batch_window_seconds": null,
+        "batch_concurrency": null,
+        "target_rho": 0.85,
+        "deadline_slack_seconds": 300.0,
+        "source_policy": "rho0.85_slack300.0s"
+      },
+      "predicted_goodput_per_dollar": 1199167.2794117646,
+      "predicted_sla_safe_goodput": 652347.0,
+      "predicted_deadline_miss_rate_pct": 0.0,
+      "predicted_timeout_rate_pct": 4.119816893600281,
+      "predicted_queue_p95_ms": 205.54347846722112,
+      "predicted_queue_p99_ms": 343.4123407224078,
+      "predicted_latency_p95_ms": 5461.184344355198,
+      "predicted_latency_p99_ms": 10991.66036007984,
+      "predicted_gpu_hours": 0.26666666666666666,
+      "predicted_mean_utilization": 0.5357947026886494,
+      "predicted_cost_per_sla_compliant_token": 8.339120130850607e-07,
+      "safety_status": "SAFE",
+      "safety_vetoes": [],
+      "notes": [
+        "anticipatory"
+      ]
+    },
+    {
+      "candidate": {
+        "batch_window_seconds": null,
+        "batch_concurrency": null,
+        "target_rho": 0.85,
+        "deadline_slack_seconds": 900.0,
+        "source_policy": "rho0.85_slack900.0s"
+      },
+      "predicted_goodput_per_dollar": 1199167.2794117646,
+      "predicted_sla_safe_goodput": 652347.0,
+      "predicted_deadline_miss_rate_pct": 0.0,
+      "predicted_timeout_rate_pct": 4.119816893600281,
+      "predicted_queue_p95_ms": 205.54347846722112,
+      "predicted_queue_p99_ms": 343.4123407224078,
+      "predicted_latency_p95_ms": 5461.184344355198,
+      "predicted_latency_p99_ms": 10991.66036007984,
+      "predicted_gpu_hours": 0.26666666666666666,
+      "predicted_mean_utilization": 0.5357947026886494,
+      "predicted_cost_per_sla_compliant_token": 8.339120130850607e-07,
+      "safety_status": "SAFE",
+      "safety_vetoes": [],
+      "notes": [
+        "anticipatory"
+      ]
+    },
+    {
+      "candidate": {
+        "batch_window_seconds": null,
+        "batch_concurrency": null,
+        "target_rho": 0.85,
+        "deadline_slack_seconds": 3600.0,
+        "source_policy": "rho0.85_slack3600.0s"
+      },
+      "predicted_goodput_per_dollar": 1199167.2794117646,
+      "predicted_sla_safe_goodput": 652347.0,
+      "predicted_deadline_miss_rate_pct": 0.0,
+      "predicted_timeout_rate_pct": 4.119816893600281,
+      "predicted_queue_p95_ms": 205.54347846722112,
+      "predicted_queue_p99_ms": 343.4123407224078,
+      "predicted_latency_p95_ms": 5461.184344355198,
+      "predicted_latency_p99_ms": 10991.66036007984,
+      "predicted_gpu_hours": 0.26666666666666666,
+      "predicted_mean_utilization": 0.5357947026886494,
+      "predicted_cost_per_sla_compliant_token": 8.339120130850607e-07,
+      "safety_status": "SAFE",
+      "safety_vetoes": [],
+      "notes": [
+        "anticipatory"
+      ]
+    },
+    {
+      "candidate": {
+        "batch_window_seconds": null,
+        "batch_concurrency": null,
+        "target_rho": 0.95,
+        "deadline_slack_seconds": 0.0,
+        "source_policy": "rho0.95_slack0.0s"
+      },
+      "predicted_goodput_per_dollar": 1199167.2794117646,
+      "predicted_sla_safe_goodput": 652347.0,
+      "predicted_deadline_miss_rate_pct": 100.0,
+      "predicted_timeout_rate_pct": 4.119816893600281,
+      "predicted_queue_p95_ms": 205.54347846722112,
+      "predicted_queue_p99_ms": 343.4123407224078,
+      "predicted_latency_p95_ms": 5461.184344355198,
+      "predicted_latency_p99_ms": 10991.66036007984,
+      "predicted_gpu_hours": 0.26666666666666666,
+      "predicted_mean_utilization": 0.5357947026886494,
+      "predicted_cost_per_sla_compliant_token": 8.339120130850607e-07,
+      "safety_status": "UNSAFE",
+      "safety_vetoes": [
+        "deadline_miss_exceeds_threshold",
+        "deadline_miss_exceeds_profile_sla"
+      ],
+      "notes": [
+        "anticipatory"
+      ]
+    },
+    {
+      "candidate": {
+        "batch_window_seconds": null,
+        "batch_concurrency": null,
+        "target_rho": 0.95,
+        "deadline_slack_seconds": 30.0,
+        "source_policy": "rho0.95_slack30.0s"
+      },
+      "predicted_goodput_per_dollar": 1199167.2794117646,
+      "predicted_sla_safe_goodput": 652347.0,
+      "predicted_deadline_miss_rate_pct": 0.0,
+      "predicted_timeout_rate_pct": 4.119816893600281,
+      "predicted_queue_p95_ms": 205.54347846722112,
+      "predicted_queue_p99_ms": 343.4123407224078,
+      "predicted_latency_p95_ms": 5461.184344355198,
+      "predicted_latency_p99_ms": 10991.66036007984,
+      "predicted_gpu_hours": 0.26666666666666666,
+      "predicted_mean_utilization": 0.5357947026886494,
+      "predicted_cost_per_sla_compliant_token": 8.339120130850607e-07,
+      "safety_status": "SAFE",
+      "safety_vetoes": [],
+      "notes": [
+        "anticipatory"
+      ]
+    },
+    {
+      "candidate": {
+        "batch_window_seconds": null,
+        "batch_concurrency": null,
+        "target_rho": 0.95,
+        "deadline_slack_seconds": 60.0,
+        "source_policy": "rho0.95_slack60.0s"
+      },
+      "predicted_goodput_per_dollar": 1199167.2794117646,
+      "predicted_sla_safe_goodput": 652347.0,
+      "predicted_deadline_miss_rate_pct": 0.0,
+      "predicted_timeout_rate_pct": 4.119816893600281,
+      "predicted_queue_p95_ms": 205.54347846722112,
+      "predicted_queue_p99_ms": 343.4123407224078,
+      "predicted_latency_p95_ms": 5461.184344355198,
+      "predicted_latency_p99_ms": 10991.66036007984,
+      "predicted_gpu_hours": 0.26666666666666666,
+      "predicted_mean_utilization": 0.5357947026886494,
+      "predicted_cost_per_sla_compliant_token": 8.339120130850607e-07,
+      "safety_status": "SAFE",
+      "safety_vetoes": [],
+      "notes": [
+        "anticipatory"
+      ]
+    },
+    {
+      "candidate": {
+        "batch_window_seconds": null,
+        "batch_concurrency": null,
+        "target_rho": 0.95,
+        "deadline_slack_seconds": 300.0,
+        "source_policy": "rho0.95_slack300.0s"
+      },
+      "predicted_goodput_per_dollar": 1199167.2794117646,
+      "predicted_sla_safe_goodput": 652347.0,
+      "predicted_deadline_miss_rate_pct": 0.0,
+      "predicted_timeout_rate_pct": 4.119816893600281,
+      "predicted_queue_p95_ms": 205.54347846722112,
+      "predicted_queue_p99_ms": 343.4123407224078,
+      "predicted_latency_p95_ms": 5461.184344355198,
+      "predicted_latency_p99_ms": 10991.66036007984,
+      "predicted_gpu_hours": 0.26666666666666666,
+      "predicted_mean_utilization": 0.5357947026886494,
+      "predicted_cost_per_sla_compliant_token": 8.339120130850607e-07,
+      "safety_status": "SAFE",
+      "safety_vetoes": [],
+      "notes": [
+        "anticipatory"
+      ]
+    },
+    {
+      "candidate": {
+        "batch_window_seconds": null,
+        "batch_concurrency": null,
+        "target_rho": 0.95,
+        "deadline_slack_seconds": 900.0,
+        "source_policy": "rho0.95_slack900.0s"
+      },
+      "predicted_goodput_per_dollar": 1199167.2794117646,
+      "predicted_sla_safe_goodput": 652347.0,
+      "predicted_deadline_miss_rate_pct": 0.0,
+      "predicted_timeout_rate_pct": 4.119816893600281,
+      "predicted_queue_p95_ms": 205.54347846722112,
+      "predicted_queue_p99_ms": 343.4123407224078,
+      "predicted_latency_p95_ms": 5461.184344355198,
+      "predicted_latency_p99_ms": 10991.66036007984,
+      "predicted_gpu_hours": 0.26666666666666666,
+      "predicted_mean_utilization": 0.5357947026886494,
+      "predicted_cost_per_sla_compliant_token": 8.339120130850607e-07,
+      "safety_status": "SAFE",
+      "safety_vetoes": [],
+      "notes": [
+        "anticipatory"
+      ]
+    },
+    {
+      "candidate": {
+        "batch_window_seconds": null,
+        "batch_concurrency": null,
+        "target_rho": 0.95,
+        "deadline_slack_seconds": 3600.0,
+        "source_policy": "rho0.95_slack3600.0s"
+      },
+      "predicted_goodput_per_dollar": 1199167.2794117646,
+      "predicted_sla_safe_goodput": 652347.0,
+      "predicted_deadline_miss_rate_pct": 0.0,
+      "predicted_timeout_rate_pct": 4.119816893600281,
+      "predicted_queue_p95_ms": 205.54347846722112,
+      "predicted_queue_p99_ms": 343.4123407224078,
+      "predicted_latency_p95_ms": 5461.184344355198,
+      "predicted_latency_p99_ms": 10991.66036007984,
+      "predicted_gpu_hours": 0.26666666666666666,
+      "predicted_mean_utilization": 0.5357947026886494,
+      "predicted_cost_per_sla_compliant_token": 8.339120130850607e-07,
+      "safety_status": "SAFE",
+      "safety_vetoes": [],
+      "notes": [
+        "anticipatory"
+      ]
+    }
+  ],
+  "recommendation": {
+    "workload_id": "azure_2024_batch_inference_workload_v1",
+    "selected_candidate": {
+      "batch_window_seconds": null,
+      "batch_concurrency": null,
+      "target_rho": 0.55,
+      "deadline_slack_seconds": 30.0,
+      "source_policy": "rho0.55_slack30.0s"
+    },
+    "current_candidate": null,
+    "selected_point": {
+      "candidate": {
+        "batch_window_seconds": null,
+        "batch_concurrency": null,
+        "target_rho": 0.55,
+        "deadline_slack_seconds": 30.0,
+        "source_policy": "rho0.55_slack30.0s"
+      },
+      "predicted_goodput_per_dollar": 1199167.2794117646,
+      "predicted_sla_safe_goodput": 652347.0,
+      "predicted_deadline_miss_rate_pct": 0.0,
+      "predicted_timeout_rate_pct": 4.119816893600281,
+      "predicted_queue_p95_ms": 205.54347846722112,
+      "predicted_queue_p99_ms": 343.4123407224078,
+      "predicted_latency_p95_ms": 5461.184344355198,
+      "predicted_latency_p99_ms": 10991.66036007984,
+      "predicted_gpu_hours": 0.26666666666666666,
+      "predicted_mean_utilization": 0.5357947026886494,
+      "predicted_cost_per_sla_compliant_token": 8.339120130850607e-07,
+      "safety_status": "SAFE",
+      "safety_vetoes": [],
+      "notes": [
+        "anticipatory"
+      ]
+    },
+    "frontier_points": [
+      {
+        "candidate": {
+          "batch_window_seconds": null,
+          "batch_concurrency": null,
+          "target_rho": 0.45,
+          "deadline_slack_seconds": 0.0,
+          "source_policy": "rho0.45_slack0.0s"
+        },
+        "predicted_goodput_per_dollar": 919514.0056022409,
+        "predicted_sla_safe_goodput": 656533.0,
+        "predicted_deadline_miss_rate_pct": 100.0,
+        "predicted_timeout_rate_pct": 3.497368033954382,
+        "predicted_queue_p95_ms": 127.77890889319546,
+        "predicted_queue_p99_ms": 206.66389759924306,
+        "predicted_latency_p95_ms": 5252.1274918943955,
+        "predicted_latency_p99_ms": 10511.226606369233,
+        "predicted_gpu_hours": 0.35,
+        "predicted_mean_utilization": 0.48064034982755477,
+        "predicted_cost_per_sla_compliant_token": 1.0875310151964942e-06,
+        "safety_status": "UNSAFE",
+        "safety_vetoes": [
+          "deadline_miss_exceeds_threshold",
+          "deadline_miss_exceeds_profile_sla"
+        ],
+        "notes": [
+          "anticipatory"
+        ]
+      },
+      {
+        "candidate": {
+          "batch_window_seconds": null,
+          "batch_concurrency": null,
+          "target_rho": 0.45,
+          "deadline_slack_seconds": 30.0,
+          "source_policy": "rho0.45_slack30.0s"
+        },
+        "predicted_goodput_per_dollar": 919514.0056022409,
+        "predicted_sla_safe_goodput": 656533.0,
+        "predicted_deadline_miss_rate_pct": 0.0,
+        "predicted_timeout_rate_pct": 3.497368033954382,
+        "predicted_queue_p95_ms": 127.77890889319546,
+        "predicted_queue_p99_ms": 206.66389759924306,
+        "predicted_latency_p95_ms": 5252.1274918943955,
+        "predicted_latency_p99_ms": 10511.226606369233,
+        "predicted_gpu_hours": 0.35,
+        "predicted_mean_utilization": 0.48064034982755477,
+        "predicted_cost_per_sla_compliant_token": 1.0875310151964942e-06,
+        "safety_status": "SAFE",
+        "safety_vetoes": [],
+        "notes": [
+          "anticipatory"
+        ]
+      },
+      {
+        "candidate": {
+          "batch_window_seconds": null,
+          "batch_concurrency": null,
+          "target_rho": 0.45,
+          "deadline_slack_seconds": 60.0,
+          "source_policy": "rho0.45_slack60.0s"
+        },
+        "predicted_goodput_per_dollar": 919514.0056022409,
+        "predicted_sla_safe_goodput": 656533.0,
+        "predicted_deadline_miss_rate_pct": 0.0,
+        "predicted_timeout_rate_pct": 3.497368033954382,
+        "predicted_queue_p95_ms": 127.77890889319546,
+        "predicted_queue_p99_ms": 206.66389759924306,
+        "predicted_latency_p95_ms": 5252.1274918943955,
+        "predicted_latency_p99_ms": 10511.226606369233,
+        "predicted_gpu_hours": 0.35,
+        "predicted_mean_utilization": 0.48064034982755477,
+        "predicted_cost_per_sla_compliant_token": 1.0875310151964942e-06,
+        "safety_status": "SAFE",
+        "safety_vetoes": [],
+        "notes": [
+          "anticipatory"
+        ]
+      },
+      {
+        "candidate": {
+          "batch_window_seconds": null,
+          "batch_concurrency": null,
+          "target_rho": 0.45,
+          "deadline_slack_seconds": 300.0,
+          "source_policy": "rho0.45_slack300.0s"
+        },
+        "predicted_goodput_per_dollar": 919514.0056022409,
+        "predicted_sla_safe_goodput": 656533.0,
+        "predicted_deadline_miss_rate_pct": 0.0,
+        "predicted_timeout_rate_pct": 3.497368033954382,
+        "predicted_queue_p95_ms": 127.77890889319546,
+        "predicted_queue_p99_ms": 206.66389759924306,
+        "predicted_latency_p95_ms": 5252.1274918943955,
+        "predicted_latency_p99_ms": 10511.226606369233,
+        "predicted_gpu_hours": 0.35,
+        "predicted_mean_utilization": 0.48064034982755477,
+        "predicted_cost_per_sla_compliant_token": 1.0875310151964942e-06,
+        "safety_status": "SAFE",
+        "safety_vetoes": [],
+        "notes": [
+          "anticipatory"
+        ]
+      },
+      {
+        "candidate": {
+          "batch_window_seconds": null,
+          "batch_concurrency": null,
+          "target_rho": 0.45,
+          "deadline_slack_seconds": 900.0,
+          "source_policy": "rho0.45_slack900.0s"
+        },
+        "predicted_goodput_per_dollar": 919514.0056022409,
+        "predicted_sla_safe_goodput": 656533.0,
+        "predicted_deadline_miss_rate_pct": 0.0,
+        "predicted_timeout_rate_pct": 3.497368033954382,
+        "predicted_queue_p95_ms": 127.77890889319546,
+        "predicted_queue_p99_ms": 206.66389759924306,
+        "predicted_latency_p95_ms": 5252.1274918943955,
+        "predicted_latency_p99_ms": 10511.226606369233,
+        "predicted_gpu_hours": 0.35,
+        "predicted_mean_utilization": 0.48064034982755477,
+        "predicted_cost_per_sla_compliant_token": 1.0875310151964942e-06,
+        "safety_status": "SAFE",
+        "safety_vetoes": [],
+        "notes": [
+          "anticipatory"
+        ]
+      },
+      {
+        "candidate": {
+          "batch_window_seconds": null,
+          "batch_concurrency": null,
+          "target_rho": 0.45,
+          "deadline_slack_seconds": 3600.0,
+          "source_policy": "rho0.45_slack3600.0s"
+        },
+        "predicted_goodput_per_dollar": 919514.0056022409,
+        "predicted_sla_safe_goodput": 656533.0,
+        "predicted_deadline_miss_rate_pct": 0.0,
+        "predicted_timeout_rate_pct": 3.497368033954382,
+        "predicted_queue_p95_ms": 127.77890889319546,
+        "predicted_queue_p99_ms": 206.66389759924306,
+        "predicted_latency_p95_ms": 5252.1274918943955,
+        "predicted_latency_p99_ms": 10511.226606369233,
+        "predicted_gpu_hours": 0.35,
+        "predicted_mean_utilization": 0.48064034982755477,
+        "predicted_cost_per_sla_compliant_token": 1.0875310151964942e-06,
+        "safety_status": "SAFE",
+        "safety_vetoes": [],
+        "notes": [
+          "anticipatory"
+        ]
+      },
+      {
+        "candidate": {
+          "batch_window_seconds": null,
+          "batch_concurrency": null,
+          "target_rho": 0.55,
+          "deadline_slack_seconds": 0.0,
+          "source_policy": "rho0.55_slack0.0s"
+        },
+        "predicted_goodput_per_dollar": 1199167.2794117646,
+        "predicted_sla_safe_goodput": 652347.0,
+        "predicted_deadline_miss_rate_pct": 100.0,
+        "predicted_timeout_rate_pct": 4.119816893600281,
+        "predicted_queue_p95_ms": 205.54347846722112,
+        "predicted_queue_p99_ms": 343.4123407224078,
+        "predicted_latency_p95_ms": 5461.184344355198,
+        "predicted_latency_p99_ms": 10991.66036007984,
+        "predicted_gpu_hours": 0.26666666666666666,
+        "predicted_mean_utilization": 0.5357947026886494,
+        "predicted_cost_per_sla_compliant_token": 8.339120130850607e-07,
+        "safety_status": "UNSAFE",
+        "safety_vetoes": [
+          "deadline_miss_exceeds_threshold",
+          "deadline_miss_exceeds_profile_sla"
+        ],
+        "notes": [
+          "anticipatory"
+        ]
+      },
+      {
+        "candidate": {
+          "batch_window_seconds": null,
+          "batch_concurrency": null,
+          "target_rho": 0.55,
+          "deadline_slack_seconds": 30.0,
+          "source_policy": "rho0.55_slack30.0s"
+        },
+        "predicted_goodput_per_dollar": 1199167.2794117646,
+        "predicted_sla_safe_goodput": 652347.0,
+        "predicted_deadline_miss_rate_pct": 0.0,
+        "predicted_timeout_rate_pct": 4.119816893600281,
+        "predicted_queue_p95_ms": 205.54347846722112,
+        "predicted_queue_p99_ms": 343.4123407224078,
+        "predicted_latency_p95_ms": 5461.184344355198,
+        "predicted_latency_p99_ms": 10991.66036007984,
+        "predicted_gpu_hours": 0.26666666666666666,
+        "predicted_mean_utilization": 0.5357947026886494,
+        "predicted_cost_per_sla_compliant_token": 8.339120130850607e-07,
+        "safety_status": "SAFE",
+        "safety_vetoes": [],
+        "notes": [
+          "anticipatory"
+        ]
+      },
+      {
+        "candidate": {
+          "batch_window_seconds": null,
+          "batch_concurrency": null,
+          "target_rho": 0.55,
+          "deadline_slack_seconds": 60.0,
+          "source_policy": "rho0.55_slack60.0s"
+        },
+        "predicted_goodput_per_dollar": 1199167.2794117646,
+        "predicted_sla_safe_goodput": 652347.0,
+        "predicted_deadline_miss_rate_pct": 0.0,
+        "predicted_timeout_rate_pct": 4.119816893600281,
+        "predicted_queue_p95_ms": 205.54347846722112,
+        "predicted_queue_p99_ms": 343.4123407224078,
+        "predicted_latency_p95_ms": 5461.184344355198,
+        "predicted_latency_p99_ms": 10991.66036007984,
+        "predicted_gpu_hours": 0.26666666666666666,
+        "predicted_mean_utilization": 0.5357947026886494,
+        "predicted_cost_per_sla_compliant_token": 8.339120130850607e-07,
+        "safety_status": "SAFE",
+        "safety_vetoes": [],
+        "notes": [
+          "anticipatory"
+        ]
+      },
+      {
+        "candidate": {
+          "batch_window_seconds": null,
+          "batch_concurrency": null,
+          "target_rho": 0.55,
+          "deadline_slack_seconds": 300.0,
+          "source_policy": "rho0.55_slack300.0s"
+        },
+        "predicted_goodput_per_dollar": 1199167.2794117646,
+        "predicted_sla_safe_goodput": 652347.0,
+        "predicted_deadline_miss_rate_pct": 0.0,
+        "predicted_timeout_rate_pct": 4.119816893600281,
+        "predicted_queue_p95_ms": 205.54347846722112,
+        "predicted_queue_p99_ms": 343.4123407224078,
+        "predicted_latency_p95_ms": 5461.184344355198,
+        "predicted_latency_p99_ms": 10991.66036007984,
+        "predicted_gpu_hours": 0.26666666666666666,
+        "predicted_mean_utilization": 0.5357947026886494,
+        "predicted_cost_per_sla_compliant_token": 8.339120130850607e-07,
+        "safety_status": "SAFE",
+        "safety_vetoes": [],
+        "notes": [
+          "anticipatory"
+        ]
+      },
+      {
+        "candidate": {
+          "batch_window_seconds": null,
+          "batch_concurrency": null,
+          "target_rho": 0.55,
+          "deadline_slack_seconds": 900.0,
+          "source_policy": "rho0.55_slack900.0s"
+        },
+        "predicted_goodput_per_dollar": 1199167.2794117646,
+        "predicted_sla_safe_goodput": 652347.0,
+        "predicted_deadline_miss_rate_pct": 0.0,
+        "predicted_timeout_rate_pct": 4.119816893600281,
+        "predicted_queue_p95_ms": 205.54347846722112,
+        "predicted_queue_p99_ms": 343.4123407224078,
+        "predicted_latency_p95_ms": 5461.184344355198,
+        "predicted_latency_p99_ms": 10991.66036007984,
+        "predicted_gpu_hours": 0.26666666666666666,
+        "predicted_mean_utilization": 0.5357947026886494,
+        "predicted_cost_per_sla_compliant_token": 8.339120130850607e-07,
+        "safety_status": "SAFE",
+        "safety_vetoes": [],
+        "notes": [
+          "anticipatory"
+        ]
+      },
+      {
+        "candidate": {
+          "batch_window_seconds": null,
+          "batch_concurrency": null,
+          "target_rho": 0.55,
+          "deadline_slack_seconds": 3600.0,
+          "source_policy": "rho0.55_slack3600.0s"
+        },
+        "predicted_goodput_per_dollar": 1199167.2794117646,
+        "predicted_sla_safe_goodput": 652347.0,
+        "predicted_deadline_miss_rate_pct": 0.0,
+        "predicted_timeout_rate_pct": 4.119816893600281,
+        "predicted_queue_p95_ms": 205.54347846722112,
+        "predicted_queue_p99_ms": 343.4123407224078,
+        "predicted_latency_p95_ms": 5461.184344355198,
+        "predicted_latency_p99_ms": 10991.66036007984,
+        "predicted_gpu_hours": 0.26666666666666666,
+        "predicted_mean_utilization": 0.5357947026886494,
+        "predicted_cost_per_sla_compliant_token": 8.339120130850607e-07,
+        "safety_status": "SAFE",
+        "safety_vetoes": [],
+        "notes": [
+          "anticipatory"
+        ]
+      },
+      {
+        "candidate": {
+          "batch_window_seconds": null,
+          "batch_concurrency": null,
+          "target_rho": 0.65,
+          "deadline_slack_seconds": 0.0,
+          "source_policy": "rho0.65_slack0.0s"
+        },
+        "predicted_goodput_per_dollar": 1199167.2794117646,
+        "predicted_sla_safe_goodput": 652347.0,
+        "predicted_deadline_miss_rate_pct": 100.0,
+        "predicted_timeout_rate_pct": 4.119816893600281,
+        "predicted_queue_p95_ms": 205.54347846722112,
+        "predicted_queue_p99_ms": 343.4123407224078,
+        "predicted_latency_p95_ms": 5461.184344355198,
+        "predicted_latency_p99_ms": 10991.66036007984,
+        "predicted_gpu_hours": 0.26666666666666666,
+        "predicted_mean_utilization": 0.5357947026886494,
+        "predicted_cost_per_sla_compliant_token": 8.339120130850607e-07,
+        "safety_status": "UNSAFE",
+        "safety_vetoes": [
+          "deadline_miss_exceeds_threshold",
+          "deadline_miss_exceeds_profile_sla"
+        ],
+        "notes": [
+          "anticipatory"
+        ]
+      },
+      {
+        "candidate": {
+          "batch_window_seconds": null,
+          "batch_concurrency": null,
+          "target_rho": 0.65,
+          "deadline_slack_seconds": 30.0,
+          "source_policy": "rho0.65_slack30.0s"
+        },
+        "predicted_goodput_per_dollar": 1199167.2794117646,
+        "predicted_sla_safe_goodput": 652347.0,
+        "predicted_deadline_miss_rate_pct": 0.0,
+        "predicted_timeout_rate_pct": 4.119816893600281,
+        "predicted_queue_p95_ms": 205.54347846722112,
+        "predicted_queue_p99_ms": 343.4123407224078,
+        "predicted_latency_p95_ms": 5461.184344355198,
+        "predicted_latency_p99_ms": 10991.66036007984,
+        "predicted_gpu_hours": 0.26666666666666666,
+        "predicted_mean_utilization": 0.5357947026886494,
+        "predicted_cost_per_sla_compliant_token": 8.339120130850607e-07,
+        "safety_status": "SAFE",
+        "safety_vetoes": [],
+        "notes": [
+          "anticipatory"
+        ]
+      },
+      {
+        "candidate": {
+          "batch_window_seconds": null,
+          "batch_concurrency": null,
+          "target_rho": 0.65,
+          "deadline_slack_seconds": 60.0,
+          "source_policy": "rho0.65_slack60.0s"
+        },
+        "predicted_goodput_per_dollar": 1199167.2794117646,
+        "predicted_sla_safe_goodput": 652347.0,
+        "predicted_deadline_miss_rate_pct": 0.0,
+        "predicted_timeout_rate_pct": 4.119816893600281,
+        "predicted_queue_p95_ms": 205.54347846722112,
+        "predicted_queue_p99_ms": 343.4123407224078,
+        "predicted_latency_p95_ms": 5461.184344355198,
+        "predicted_latency_p99_ms": 10991.66036007984,
+        "predicted_gpu_hours": 0.26666666666666666,
+        "predicted_mean_utilization": 0.5357947026886494,
+        "predicted_cost_per_sla_compliant_token": 8.339120130850607e-07,
+        "safety_status": "SAFE",
+        "safety_vetoes": [],
+        "notes": [
+          "anticipatory"
+        ]
+      },
+      {
+        "candidate": {
+          "batch_window_seconds": null,
+          "batch_concurrency": null,
+          "target_rho": 0.65,
+          "deadline_slack_seconds": 300.0,
+          "source_policy": "rho0.65_slack300.0s"
+        },
+        "predicted_goodput_per_dollar": 1199167.2794117646,
+        "predicted_sla_safe_goodput": 652347.0,
+        "predicted_deadline_miss_rate_pct": 0.0,
+        "predicted_timeout_rate_pct": 4.119816893600281,
+        "predicted_queue_p95_ms": 205.54347846722112,
+        "predicted_queue_p99_ms": 343.4123407224078,
+        "predicted_latency_p95_ms": 5461.184344355198,
+        "predicted_latency_p99_ms": 10991.66036007984,
+        "predicted_gpu_hours": 0.26666666666666666,
+        "predicted_mean_utilization": 0.5357947026886494,
+        "predicted_cost_per_sla_compliant_token": 8.339120130850607e-07,
+        "safety_status": "SAFE",
+        "safety_vetoes": [],
+        "notes": [
+          "anticipatory"
+        ]
+      },
+      {
+        "candidate": {
+          "batch_window_seconds": null,
+          "batch_concurrency": null,
+          "target_rho": 0.65,
+          "deadline_slack_seconds": 900.0,
+          "source_policy": "rho0.65_slack900.0s"
+        },
+        "predicted_goodput_per_dollar": 1199167.2794117646,
+        "predicted_sla_safe_goodput": 652347.0,
+        "predicted_deadline_miss_rate_pct": 0.0,
+        "predicted_timeout_rate_pct": 4.119816893600281,
+        "predicted_queue_p95_ms": 205.54347846722112,
+        "predicted_queue_p99_ms": 343.4123407224078,
+        "predicted_latency_p95_ms": 5461.184344355198,
+        "predicted_latency_p99_ms": 10991.66036007984,
+        "predicted_gpu_hours": 0.26666666666666666,
+        "predicted_mean_utilization": 0.5357947026886494,
+        "predicted_cost_per_sla_compliant_token": 8.339120130850607e-07,
+        "safety_status": "SAFE",
+        "safety_vetoes": [],
+        "notes": [
+          "anticipatory"
+        ]
+      },
+      {
+        "candidate": {
+          "batch_window_seconds": null,
+          "batch_concurrency": null,
+          "target_rho": 0.65,
+          "deadline_slack_seconds": 3600.0,
+          "source_policy": "rho0.65_slack3600.0s"
+        },
+        "predicted_goodput_per_dollar": 1199167.2794117646,
+        "predicted_sla_safe_goodput": 652347.0,
+        "predicted_deadline_miss_rate_pct": 0.0,
+        "predicted_timeout_rate_pct": 4.119816893600281,
+        "predicted_queue_p95_ms": 205.54347846722112,
+        "predicted_queue_p99_ms": 343.4123407224078,
+        "predicted_latency_p95_ms": 5461.184344355198,
+        "predicted_latency_p99_ms": 10991.66036007984,
+        "predicted_gpu_hours": 0.26666666666666666,
+        "predicted_mean_utilization": 0.5357947026886494,
+        "predicted_cost_per_sla_compliant_token": 8.339120130850607e-07,
+        "safety_status": "SAFE",
+        "safety_vetoes": [],
+        "notes": [
+          "anticipatory"
+        ]
+      },
+      {
+        "candidate": {
+          "batch_window_seconds": null,
+          "batch_concurrency": null,
+          "target_rho": 0.75,
+          "deadline_slack_seconds": 0.0,
+          "source_policy": "rho0.75_slack0.0s"
+        },
+        "predicted_goodput_per_dollar": 1199167.2794117646,
+        "predicted_sla_safe_goodput": 652347.0,
+        "predicted_deadline_miss_rate_pct": 100.0,
+        "predicted_timeout_rate_pct": 4.119816893600281,
+        "predicted_queue_p95_ms": 205.54347846722112,
+        "predicted_queue_p99_ms": 343.4123407224078,
+        "predicted_latency_p95_ms": 5461.184344355198,
+        "predicted_latency_p99_ms": 10991.66036007984,
+        "predicted_gpu_hours": 0.26666666666666666,
+        "predicted_mean_utilization": 0.5357947026886494,
+        "predicted_cost_per_sla_compliant_token": 8.339120130850607e-07,
+        "safety_status": "UNSAFE",
+        "safety_vetoes": [
+          "deadline_miss_exceeds_threshold",
+          "deadline_miss_exceeds_profile_sla"
+        ],
+        "notes": [
+          "anticipatory"
+        ]
+      },
+      {
+        "candidate": {
+          "batch_window_seconds": null,
+          "batch_concurrency": null,
+          "target_rho": 0.75,
+          "deadline_slack_seconds": 30.0,
+          "source_policy": "rho0.75_slack30.0s"
+        },
+        "predicted_goodput_per_dollar": 1199167.2794117646,
+        "predicted_sla_safe_goodput": 652347.0,
+        "predicted_deadline_miss_rate_pct": 0.0,
+        "predicted_timeout_rate_pct": 4.119816893600281,
+        "predicted_queue_p95_ms": 205.54347846722112,
+        "predicted_queue_p99_ms": 343.4123407224078,
+        "predicted_latency_p95_ms": 5461.184344355198,
+        "predicted_latency_p99_ms": 10991.66036007984,
+        "predicted_gpu_hours": 0.26666666666666666,
+        "predicted_mean_utilization": 0.5357947026886494,
+        "predicted_cost_per_sla_compliant_token": 8.339120130850607e-07,
+        "safety_status": "SAFE",
+        "safety_vetoes": [],
+        "notes": [
+          "anticipatory"
+        ]
+      },
+      {
+        "candidate": {
+          "batch_window_seconds": null,
+          "batch_concurrency": null,
+          "target_rho": 0.75,
+          "deadline_slack_seconds": 60.0,
+          "source_policy": "rho0.75_slack60.0s"
+        },
+        "predicted_goodput_per_dollar": 1199167.2794117646,
+        "predicted_sla_safe_goodput": 652347.0,
+        "predicted_deadline_miss_rate_pct": 0.0,
+        "predicted_timeout_rate_pct": 4.119816893600281,
+        "predicted_queue_p95_ms": 205.54347846722112,
+        "predicted_queue_p99_ms": 343.4123407224078,
+        "predicted_latency_p95_ms": 5461.184344355198,
+        "predicted_latency_p99_ms": 10991.66036007984,
+        "predicted_gpu_hours": 0.26666666666666666,
+        "predicted_mean_utilization": 0.5357947026886494,
+        "predicted_cost_per_sla_compliant_token": 8.339120130850607e-07,
+        "safety_status": "SAFE",
+        "safety_vetoes": [],
+        "notes": [
+          "anticipatory"
+        ]
+      },
+      {
+        "candidate": {
+          "batch_window_seconds": null,
+          "batch_concurrency": null,
+          "target_rho": 0.75,
+          "deadline_slack_seconds": 300.0,
+          "source_policy": "rho0.75_slack300.0s"
+        },
+        "predicted_goodput_per_dollar": 1199167.2794117646,
+        "predicted_sla_safe_goodput": 652347.0,
+        "predicted_deadline_miss_rate_pct": 0.0,
+        "predicted_timeout_rate_pct": 4.119816893600281,
+        "predicted_queue_p95_ms": 205.54347846722112,
+        "predicted_queue_p99_ms": 343.4123407224078,
+        "predicted_latency_p95_ms": 5461.184344355198,
+        "predicted_latency_p99_ms": 10991.66036007984,
+        "predicted_gpu_hours": 0.26666666666666666,
+        "predicted_mean_utilization": 0.5357947026886494,
+        "predicted_cost_per_sla_compliant_token": 8.339120130850607e-07,
+        "safety_status": "SAFE",
+        "safety_vetoes": [],
+        "notes": [
+          "anticipatory"
+        ]
+      },
+      {
+        "candidate": {
+          "batch_window_seconds": null,
+          "batch_concurrency": null,
+          "target_rho": 0.75,
+          "deadline_slack_seconds": 900.0,
+          "source_policy": "rho0.75_slack900.0s"
+        },
+        "predicted_goodput_per_dollar": 1199167.2794117646,
+        "predicted_sla_safe_goodput": 652347.0,
+        "predicted_deadline_miss_rate_pct": 0.0,
+        "predicted_timeout_rate_pct": 4.119816893600281,
+        "predicted_queue_p95_ms": 205.54347846722112,
+        "predicted_queue_p99_ms": 343.4123407224078,
+        "predicted_latency_p95_ms": 5461.184344355198,
+        "predicted_latency_p99_ms": 10991.66036007984,
+        "predicted_gpu_hours": 0.26666666666666666,
+        "predicted_mean_utilization": 0.5357947026886494,
+        "predicted_cost_per_sla_compliant_token": 8.339120130850607e-07,
+        "safety_status": "SAFE",
+        "safety_vetoes": [],
+        "notes": [
+          "anticipatory"
+        ]
+      },
+      {
+        "candidate": {
+          "batch_window_seconds": null,
+          "batch_concurrency": null,
+          "target_rho": 0.75,
+          "deadline_slack_seconds": 3600.0,
+          "source_policy": "rho0.75_slack3600.0s"
+        },
+        "predicted_goodput_per_dollar": 1199167.2794117646,
+        "predicted_sla_safe_goodput": 652347.0,
+        "predicted_deadline_miss_rate_pct": 0.0,
+        "predicted_timeout_rate_pct": 4.119816893600281,
+        "predicted_queue_p95_ms": 205.54347846722112,
+        "predicted_queue_p99_ms": 343.4123407224078,
+        "predicted_latency_p95_ms": 5461.184344355198,
+        "predicted_latency_p99_ms": 10991.66036007984,
+        "predicted_gpu_hours": 0.26666666666666666,
+        "predicted_mean_utilization": 0.5357947026886494,
+        "predicted_cost_per_sla_compliant_token": 8.339120130850607e-07,
+        "safety_status": "SAFE",
+        "safety_vetoes": [],
+        "notes": [
+          "anticipatory"
+        ]
+      },
+      {
+        "candidate": {
+          "batch_window_seconds": null,
+          "batch_concurrency": null,
+          "target_rho": 0.85,
+          "deadline_slack_seconds": 0.0,
+          "source_policy": "rho0.85_slack0.0s"
+        },
+        "predicted_goodput_per_dollar": 1199167.2794117646,
+        "predicted_sla_safe_goodput": 652347.0,
+        "predicted_deadline_miss_rate_pct": 100.0,
+        "predicted_timeout_rate_pct": 4.119816893600281,
+        "predicted_queue_p95_ms": 205.54347846722112,
+        "predicted_queue_p99_ms": 343.4123407224078,
+        "predicted_latency_p95_ms": 5461.184344355198,
+        "predicted_latency_p99_ms": 10991.66036007984,
+        "predicted_gpu_hours": 0.26666666666666666,
+        "predicted_mean_utilization": 0.5357947026886494,
+        "predicted_cost_per_sla_compliant_token": 8.339120130850607e-07,
+        "safety_status": "UNSAFE",
+        "safety_vetoes": [
+          "deadline_miss_exceeds_threshold",
+          "deadline_miss_exceeds_profile_sla"
+        ],
+        "notes": [
+          "anticipatory"
+        ]
+      },
+      {
+        "candidate": {
+          "batch_window_seconds": null,
+          "batch_concurrency": null,
+          "target_rho": 0.85,
+          "deadline_slack_seconds": 30.0,
+          "source_policy": "rho0.85_slack30.0s"
+        },
+        "predicted_goodput_per_dollar": 1199167.2794117646,
+        "predicted_sla_safe_goodput": 652347.0,
+        "predicted_deadline_miss_rate_pct": 0.0,
+        "predicted_timeout_rate_pct": 4.119816893600281,
+        "predicted_queue_p95_ms": 205.54347846722112,
+        "predicted_queue_p99_ms": 343.4123407224078,
+        "predicted_latency_p95_ms": 5461.184344355198,
+        "predicted_latency_p99_ms": 10991.66036007984,
+        "predicted_gpu_hours": 0.26666666666666666,
+        "predicted_mean_utilization": 0.5357947026886494,
+        "predicted_cost_per_sla_compliant_token": 8.339120130850607e-07,
+        "safety_status": "SAFE",
+        "safety_vetoes": [],
+        "notes": [
+          "anticipatory"
+        ]
+      },
+      {
+        "candidate": {
+          "batch_window_seconds": null,
+          "batch_concurrency": null,
+          "target_rho": 0.85,
+          "deadline_slack_seconds": 60.0,
+          "source_policy": "rho0.85_slack60.0s"
+        },
+        "predicted_goodput_per_dollar": 1199167.2794117646,
+        "predicted_sla_safe_goodput": 652347.0,
+        "predicted_deadline_miss_rate_pct": 0.0,
+        "predicted_timeout_rate_pct": 4.119816893600281,
+        "predicted_queue_p95_ms": 205.54347846722112,
+        "predicted_queue_p99_ms": 343.4123407224078,
+        "predicted_latency_p95_ms": 5461.184344355198,
+        "predicted_latency_p99_ms": 10991.66036007984,
+        "predicted_gpu_hours": 0.26666666666666666,
+        "predicted_mean_utilization": 0.5357947026886494,
+        "predicted_cost_per_sla_compliant_token": 8.339120130850607e-07,
+        "safety_status": "SAFE",
+        "safety_vetoes": [],
+        "notes": [
+          "anticipatory"
+        ]
+      },
+      {
+        "candidate": {
+          "batch_window_seconds": null,
+          "batch_concurrency": null,
+          "target_rho": 0.85,
+          "deadline_slack_seconds": 300.0,
+          "source_policy": "rho0.85_slack300.0s"
+        },
+        "predicted_goodput_per_dollar": 1199167.2794117646,
+        "predicted_sla_safe_goodput": 652347.0,
+        "predicted_deadline_miss_rate_pct": 0.0,
+        "predicted_timeout_rate_pct": 4.119816893600281,
+        "predicted_queue_p95_ms": 205.54347846722112,
+        "predicted_queue_p99_ms": 343.4123407224078,
+        "predicted_latency_p95_ms": 5461.184344355198,
+        "predicted_latency_p99_ms": 10991.66036007984,
+        "predicted_gpu_hours": 0.26666666666666666,
+        "predicted_mean_utilization": 0.5357947026886494,
+        "predicted_cost_per_sla_compliant_token": 8.339120130850607e-07,
+        "safety_status": "SAFE",
+        "safety_vetoes": [],
+        "notes": [
+          "anticipatory"
+        ]
+      },
+      {
+        "candidate": {
+          "batch_window_seconds": null,
+          "batch_concurrency": null,
+          "target_rho": 0.85,
+          "deadline_slack_seconds": 900.0,
+          "source_policy": "rho0.85_slack900.0s"
+        },
+        "predicted_goodput_per_dollar": 1199167.2794117646,
+        "predicted_sla_safe_goodput": 652347.0,
+        "predicted_deadline_miss_rate_pct": 0.0,
+        "predicted_timeout_rate_pct": 4.119816893600281,
+        "predicted_queue_p95_ms": 205.54347846722112,
+        "predicted_queue_p99_ms": 343.4123407224078,
+        "predicted_latency_p95_ms": 5461.184344355198,
+        "predicted_latency_p99_ms": 10991.66036007984,
+        "predicted_gpu_hours": 0.26666666666666666,
+        "predicted_mean_utilization": 0.5357947026886494,
+        "predicted_cost_per_sla_compliant_token": 8.339120130850607e-07,
+        "safety_status": "SAFE",
+        "safety_vetoes": [],
+        "notes": [
+          "anticipatory"
+        ]
+      },
+      {
+        "candidate": {
+          "batch_window_seconds": null,
+          "batch_concurrency": null,
+          "target_rho": 0.85,
+          "deadline_slack_seconds": 3600.0,
+          "source_policy": "rho0.85_slack3600.0s"
+        },
+        "predicted_goodput_per_dollar": 1199167.2794117646,
+        "predicted_sla_safe_goodput": 652347.0,
+        "predicted_deadline_miss_rate_pct": 0.0,
+        "predicted_timeout_rate_pct": 4.119816893600281,
+        "predicted_queue_p95_ms": 205.54347846722112,
+        "predicted_queue_p99_ms": 343.4123407224078,
+        "predicted_latency_p95_ms": 5461.184344355198,
+        "predicted_latency_p99_ms": 10991.66036007984,
+        "predicted_gpu_hours": 0.26666666666666666,
+        "predicted_mean_utilization": 0.5357947026886494,
+        "predicted_cost_per_sla_compliant_token": 8.339120130850607e-07,
+        "safety_status": "SAFE",
+        "safety_vetoes": [],
+        "notes": [
+          "anticipatory"
+        ]
+      },
+      {
+        "candidate": {
+          "batch_window_seconds": null,
+          "batch_concurrency": null,
+          "target_rho": 0.95,
+          "deadline_slack_seconds": 0.0,
+          "source_policy": "rho0.95_slack0.0s"
+        },
+        "predicted_goodput_per_dollar": 1199167.2794117646,
+        "predicted_sla_safe_goodput": 652347.0,
+        "predicted_deadline_miss_rate_pct": 100.0,
+        "predicted_timeout_rate_pct": 4.119816893600281,
+        "predicted_queue_p95_ms": 205.54347846722112,
+        "predicted_queue_p99_ms": 343.4123407224078,
+        "predicted_latency_p95_ms": 5461.184344355198,
+        "predicted_latency_p99_ms": 10991.66036007984,
+        "predicted_gpu_hours": 0.26666666666666666,
+        "predicted_mean_utilization": 0.5357947026886494,
+        "predicted_cost_per_sla_compliant_token": 8.339120130850607e-07,
+        "safety_status": "UNSAFE",
+        "safety_vetoes": [
+          "deadline_miss_exceeds_threshold",
+          "deadline_miss_exceeds_profile_sla"
+        ],
+        "notes": [
+          "anticipatory"
+        ]
+      },
+      {
+        "candidate": {
+          "batch_window_seconds": null,
+          "batch_concurrency": null,
+          "target_rho": 0.95,
+          "deadline_slack_seconds": 30.0,
+          "source_policy": "rho0.95_slack30.0s"
+        },
+        "predicted_goodput_per_dollar": 1199167.2794117646,
+        "predicted_sla_safe_goodput": 652347.0,
+        "predicted_deadline_miss_rate_pct": 0.0,
+        "predicted_timeout_rate_pct": 4.119816893600281,
+        "predicted_queue_p95_ms": 205.54347846722112,
+        "predicted_queue_p99_ms": 343.4123407224078,
+        "predicted_latency_p95_ms": 5461.184344355198,
+        "predicted_latency_p99_ms": 10991.66036007984,
+        "predicted_gpu_hours": 0.26666666666666666,
+        "predicted_mean_utilization": 0.5357947026886494,
+        "predicted_cost_per_sla_compliant_token": 8.339120130850607e-07,
+        "safety_status": "SAFE",
+        "safety_vetoes": [],
+        "notes": [
+          "anticipatory"
+        ]
+      },
+      {
+        "candidate": {
+          "batch_window_seconds": null,
+          "batch_concurrency": null,
+          "target_rho": 0.95,
+          "deadline_slack_seconds": 60.0,
+          "source_policy": "rho0.95_slack60.0s"
+        },
+        "predicted_goodput_per_dollar": 1199167.2794117646,
+        "predicted_sla_safe_goodput": 652347.0,
+        "predicted_deadline_miss_rate_pct": 0.0,
+        "predicted_timeout_rate_pct": 4.119816893600281,
+        "predicted_queue_p95_ms": 205.54347846722112,
+        "predicted_queue_p99_ms": 343.4123407224078,
+        "predicted_latency_p95_ms": 5461.184344355198,
+        "predicted_latency_p99_ms": 10991.66036007984,
+        "predicted_gpu_hours": 0.26666666666666666,
+        "predicted_mean_utilization": 0.5357947026886494,
+        "predicted_cost_per_sla_compliant_token": 8.339120130850607e-07,
+        "safety_status": "SAFE",
+        "safety_vetoes": [],
+        "notes": [
+          "anticipatory"
+        ]
+      },
+      {
+        "candidate": {
+          "batch_window_seconds": null,
+          "batch_concurrency": null,
+          "target_rho": 0.95,
+          "deadline_slack_seconds": 300.0,
+          "source_policy": "rho0.95_slack300.0s"
+        },
+        "predicted_goodput_per_dollar": 1199167.2794117646,
+        "predicted_sla_safe_goodput": 652347.0,
+        "predicted_deadline_miss_rate_pct": 0.0,
+        "predicted_timeout_rate_pct": 4.119816893600281,
+        "predicted_queue_p95_ms": 205.54347846722112,
+        "predicted_queue_p99_ms": 343.4123407224078,
+        "predicted_latency_p95_ms": 5461.184344355198,
+        "predicted_latency_p99_ms": 10991.66036007984,
+        "predicted_gpu_hours": 0.26666666666666666,
+        "predicted_mean_utilization": 0.5357947026886494,
+        "predicted_cost_per_sla_compliant_token": 8.339120130850607e-07,
+        "safety_status": "SAFE",
+        "safety_vetoes": [],
+        "notes": [
+          "anticipatory"
+        ]
+      },
+      {
+        "candidate": {
+          "batch_window_seconds": null,
+          "batch_concurrency": null,
+          "target_rho": 0.95,
+          "deadline_slack_seconds": 900.0,
+          "source_policy": "rho0.95_slack900.0s"
+        },
+        "predicted_goodput_per_dollar": 1199167.2794117646,
+        "predicted_sla_safe_goodput": 652347.0,
+        "predicted_deadline_miss_rate_pct": 0.0,
+        "predicted_timeout_rate_pct": 4.119816893600281,
+        "predicted_queue_p95_ms": 205.54347846722112,
+        "predicted_queue_p99_ms": 343.4123407224078,
+        "predicted_latency_p95_ms": 5461.184344355198,
+        "predicted_latency_p99_ms": 10991.66036007984,
+        "predicted_gpu_hours": 0.26666666666666666,
+        "predicted_mean_utilization": 0.5357947026886494,
+        "predicted_cost_per_sla_compliant_token": 8.339120130850607e-07,
+        "safety_status": "SAFE",
+        "safety_vetoes": [],
+        "notes": [
+          "anticipatory"
+        ]
+      },
+      {
+        "candidate": {
+          "batch_window_seconds": null,
+          "batch_concurrency": null,
+          "target_rho": 0.95,
+          "deadline_slack_seconds": 3600.0,
+          "source_policy": "rho0.95_slack3600.0s"
+        },
+        "predicted_goodput_per_dollar": 1199167.2794117646,
+        "predicted_sla_safe_goodput": 652347.0,
+        "predicted_deadline_miss_rate_pct": 0.0,
+        "predicted_timeout_rate_pct": 4.119816893600281,
+        "predicted_queue_p95_ms": 205.54347846722112,
+        "predicted_queue_p99_ms": 343.4123407224078,
+        "predicted_latency_p95_ms": 5461.184344355198,
+        "predicted_latency_p99_ms": 10991.66036007984,
+        "predicted_gpu_hours": 0.26666666666666666,
+        "predicted_mean_utilization": 0.5357947026886494,
+        "predicted_cost_per_sla_compliant_token": 8.339120130850607e-07,
+        "safety_status": "SAFE",
+        "safety_vetoes": [],
+        "notes": [
+          "anticipatory"
+        ]
+      }
+    ],
+    "action": "RECOMMEND_BATCH_FRONTIER",
+    "reason": "highest_safe_goodput_per_dollar_point",
+    "expected_goodput_per_dollar_delta": null,
+    "expected_deadline_miss_delta_pct": null,
+    "expected_gpu_hour_delta": null,
+    "confidence": "medium",
+    "execution_mode": "shadow",
+    "executable_in_simulator": true,
+    "executable_in_real_cluster": false,
+    "safety_vetoes": [],
+    "source": "batch_inference_frontier_v1",
+    "notes": []
+  },
+  "honesty_notes": [
+    "simulator / public-trace evidence only \u2014 NOT production savings",
+    "Azure LLM 2024 is a SERVING trace, NOT a native batch trace; the deadline-slack scenario is SYNTHETIC and labelled (azure_llm_2024_batch_flex_scenario_v1)",
+    "no oracle / clairvoyant baseline used as headline",
+    "no serving rho controller default changed",
+    "executable_in_real_cluster is False at construction"
+  ]
+}
