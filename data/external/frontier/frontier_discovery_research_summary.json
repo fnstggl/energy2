@@ -1,0 +1,498 @@
+{
+  "doc_version": "frontier_discovery_research_audit_v1",
+  "stage": "discovery_signal_scan",
+  "production_claim": false,
+  "ml_training": false,
+  "modifies_robust_energy_engine": false,
+  "modifies_controllers_or_defaults": false,
+  "downloaded_new_datasets": false,
+  "uses_oracle_as_headline": false,
+  "reading_dependencies": [
+    "docs/RESULTS.md",
+    "docs/PUBLIC_TRACE_BACKTESTS.md",
+    "docs/DYNAMIC_SAFE_FRONTIER_ESTIMATOR.md",
+    "docs/DYNAMIC_SERVING_FRONTIER_CALIBRATION.md",
+    "docs/TRAINING_SAFE_UTILIZATION_FRONTIER.md",
+    "docs/MIT_SUPERCLOUD_BOUNDED_REAL_SAMPLE_RESULTS.md",
+    "docs/AZURE_LLM_2024_BACKTEST_RESULTS.md",
+    "docs/AZURE_2024_DYNAMIC_FRONTIER_RESULTS.md"
+  ],
+  "current_evidence_baseline": {
+    "serving_frontier": {
+      "status": "strong_alpha",
+      "kpi_lift_vs_sla_aware_pct": 25.75,
+      "source_doc": "docs/AZURE_LLM_2024_BACKTEST_RESULTS.md",
+      "dynamic_oracle_recovery_pct": 73.17,
+      "dynamic_source_doc": "docs/AZURE_2024_DYNAMIC_FRONTIER_RESULTS.md"
+    },
+    "training_frontier": {
+      "status": "ties_directional",
+      "source_docs": [
+        "docs/TRAINING_SAFE_UTILIZATION_FRONTIER.md",
+        "docs/MIT_SUPERCLOUD_BOUNDED_REAL_SAMPLE_RESULTS.md"
+      ]
+    },
+    "residency_affinity": {
+      "status": "safety_win_modest_kpi_alpha",
+      "source_docs": [
+        "docs/MODEL_RESIDENCY_DECISION_ENGINE_RESULTS.md",
+        "docs/ALIBABA_GENAI_BACKTEST_RESULTS.md"
+      ]
+    }
+  },
+  "workload_classes": [
+    {
+      "id": 1,
+      "name": "batch_inference",
+      "best_public_trace": {
+        "primary": "azure_llm_2024_week",
+        "secondary": ["burstgpt"],
+        "harness_only": ["aiperf_burstgpt_replay"],
+        "committed_in_repo": ["azure_llm_2024", "burstgpt"],
+        "urls": [
+          "https://github.com/Azure/AzurePublicDataset/blob/master/AzureLLMInferenceDataset2024.md",
+          "https://github.com/HPMLL/BurstGPT",
+          "https://github.com/ai-dynamo/aiperf/blob/main/docs/tutorials/burst-gpt-trace.md"
+        ]
+      },
+      "sample_size": {
+        "azure_llm_2024_rows": 44107694,
+        "azure_llm_2024_duration_days": 9.0,
+        "azure_llm_2024_ticks_60s": 12960,
+        "burstgpt_rows_canonical": 17689,
+        "burstgpt_duration_min": 33.4
+      },
+      "signals_available": [
+        "arrival_timestamp",
+        "prompt_tokens",
+        "output_tokens",
+        "log_type_conv_or_code",
+        "diurnal_periodicity",
+        "weekly_periodicity"
+      ],
+      "missing_signals": [
+        "per_request_deadline",
+        "batch_boundary_label",
+        "model_or_service_id",
+        "session_or_cache_key",
+        "latency_or_ttft_or_elapsed_azure_2024",
+        "explicit_failure_flag_azure_2024"
+      ],
+      "candidate_frontier_variable": [
+        "batch_window_seconds",
+        "batch_concurrency",
+        "target_rho",
+        "deadline_slack_seconds"
+      ],
+      "safety_constraints": [
+        "deadline_miss_rate_ceiling",
+        "queue_p99_ceiling",
+        "no_sla_regression_vs_strongest_non_batch_baseline",
+        "cost_per_sla_compliant_token_monotone_non_worsening"
+      ],
+      "economic_lever": "shift_batches_into_low_utilization_windows_and_run_hotter_rho_than_interactive",
+      "feasibility_score": 5,
+      "expected_alpha_score": 4,
+      "implementation_complexity_score": 2,
+      "recommendation": "build_now"
+    },
+    {
+      "id": 2,
+      "name": "embedding_generation",
+      "best_public_trace": {
+        "primary_proxy": "azure_llm_2024_week",
+        "secondary_proxy": "azure_functions_2019",
+        "harness_only": ["aiperf"],
+        "committed_in_repo": ["azure_llm_2024"],
+        "not_committed": ["azure_functions_2019"],
+        "urls": [
+          "https://github.com/ai-dynamo/aiperf",
+          "https://github.com/Azure/AzurePublicDataset/blob/master/AzureFunctionsDataset2019.md"
+        ]
+      },
+      "sample_size": {
+        "azure_llm_2024_rows": 44107694,
+        "azure_functions_2019_invocations_approx": 1000000000,
+        "azure_functions_2019_committed": false
+      },
+      "signals_available": [
+        "arrival_rate_proxy",
+        "input_token_distribution",
+        "fan_out_arrival_shape_if_functions_ingested"
+      ],
+      "missing_signals": [
+        "per_embedding_latency",
+        "per_replica_embedding_throughput",
+        "memory_pressure",
+        "real_failure_mode"
+      ],
+      "candidate_frontier_variable": [
+        "batch_size",
+        "target_rho",
+        "replica_concurrency",
+        "memory_headroom"
+      ],
+      "safety_constraints": [
+        "oom_ceiling",
+        "end_to_end_latency_p99",
+        "queue_depth_ceiling"
+      ],
+      "economic_lever": "bigger_safe_batches_per_replica_at_higher_safe_rho",
+      "feasibility_score": 3,
+      "expected_alpha_score": 3,
+      "implementation_complexity_score": 3,
+      "recommendation": "investigate_later"
+    },
+    {
+      "id": 3,
+      "name": "data_processing_etl_feature_engineering",
+      "best_public_trace": {
+        "primary": "azure_functions_2019",
+        "secondary": "mit_supercloud_bounded_real_sample",
+        "tertiary": "azure_functions_invocation_trace_2021",
+        "committed_in_repo": ["mit_supercloud"],
+        "not_committed": ["azure_functions_2019", "azure_functions_invocation_trace_2021"],
+        "urls": [
+          "https://github.com/Azure/AzurePublicDataset/blob/master/AzureFunctionsDataset2019.md",
+          "https://github.com/Azure/AzurePublicDataset",
+          "https://github.com/MIT-AI-Accelerator/MIT-Supercloud-Dataset"
+        ]
+      },
+      "sample_size": {
+        "mit_supercloud_bounded_jobs": 10000,
+        "mit_supercloud_bounded_duration_days": 55.9,
+        "mit_supercloud_gpu_util_matches": 7,
+        "azure_functions_2019_invocations_approx": 1000000000,
+        "azure_functions_2019_duration_days_approx": 14
+      },
+      "signals_available": [
+        "queue_wait_mit",
+        "job_duration_mit",
+        "gpu_count_mit",
+        "status_distribution_mit"
+      ],
+      "missing_signals": [
+        "per_job_deadline_or_freshness_target",
+        "job_graph_dependencies",
+        "io_pressure",
+        "downstream_consumer_ack"
+      ],
+      "candidate_frontier_variable": [
+        "concurrency_cap",
+        "batch_window",
+        "max_queue_delay",
+        "deferral_budget"
+      ],
+      "safety_constraints": [
+        "completion_rate_ceiling",
+        "queue_delay_ceiling",
+        "freshness_target_compliance"
+      ],
+      "economic_lever": "defer_non_critical_etl_to_cheap_power_or_low_util_windows_and_raise_concurrency_when_consumers_tolerate_it",
+      "feasibility_score": 3,
+      "expected_alpha_score": 3,
+      "implementation_complexity_score": 3,
+      "recommendation": "investigate_later"
+    },
+    {
+      "id": 4,
+      "name": "vector_indexing_rag_indexing",
+      "best_public_trace": {
+        "primary_proxy": "azure_functions_2019",
+        "secondary_proxy": "alibaba_gpu_v2023_or_protean",
+        "committed_in_repo": ["alibaba_gpu"],
+        "not_committed": ["azure_functions_2019"],
+        "urls": [
+          "https://github.com/Azure/AzurePublicDataset/blob/master/AzureFunctionsDataset2019.md",
+          "https://github.com/alibaba/clusterdata",
+          "https://github.com/MIT-AI-Accelerator/MIT-Supercloud-Dataset"
+        ]
+      },
+      "sample_size": {
+        "alibaba_gpu_v2023_jobs": 6282,
+        "alibaba_gpu_v2023_duration_days": 149.3,
+        "alibaba_gpu_v2023_fleet_gpu_count": 6212
+      },
+      "signals_available": [
+        "gpu_type_distribution",
+        "fragmentation_score",
+        "packing_density",
+        "queue_wait"
+      ],
+      "missing_signals": [
+        "per_indexing_job_memory_pressure",
+        "io_throughput",
+        "embedding_pipeline_lag",
+        "vector_store_throughput_limit"
+      ],
+      "candidate_frontier_variable": [
+        "concurrent_indexers",
+        "batch_vector_count",
+        "memory_headroom",
+        "io_budget"
+      ],
+      "safety_constraints": [
+        "oom",
+        "io_saturation",
+        "queue_blowup"
+      ],
+      "economic_lever": "more_parallel_indexers_when_memory_io_headroom_allows_lower_replica_count_in_quiet_windows",
+      "feasibility_score": 2,
+      "expected_alpha_score": 2,
+      "implementation_complexity_score": 4,
+      "recommendation": "not_enough_data"
+    },
+    {
+      "id": 5,
+      "name": "synthetic_data_generation",
+      "best_public_trace": {
+        "primary": "burstgpt",
+        "secondary": "azure_llm_2024_week",
+        "tertiary": "alibaba_genai_2026",
+        "committed_in_repo": ["burstgpt", "azure_llm_2024", "alibaba_genai"],
+        "urls": [
+          "https://github.com/HPMLL/BurstGPT",
+          "https://github.com/Azure/AzurePublicDataset/blob/master/AzureLLMInferenceDataset2024.md",
+          "https://github.com/alibaba/clusterdata/tree/master/cluster-trace-v2026-GenAI"
+        ]
+      },
+      "sample_size": {
+        "burstgpt_rows_canonical": 17689,
+        "azure_llm_2024_rows": 44107694,
+        "alibaba_genai_application_requests": 26392,
+        "alibaba_genai_duration_days_approx": 23.0,
+        "alibaba_genai_distinct_models": 79,
+        "alibaba_genai_lora_request_fraction": 0.1652,
+        "alibaba_genai_e2e_p99_s": 106
+      },
+      "signals_available": [
+        "arrival_timestamps",
+        "prompt_tokens",
+        "output_tokens",
+        "real_e2e_latency_genai",
+        "measured_base_model_cold_start_medians_genai"
+      ],
+      "missing_signals": [
+        "per_job_deadline",
+        "downstream_consumer_sla",
+        "eval_pass_criterion"
+      ],
+      "candidate_frontier_variable": [
+        "batch_window_seconds",
+        "prewarm_set_size",
+        "target_rho",
+        "deadline_slack_seconds"
+      ],
+      "safety_constraints": [
+        "failure_rate_ceiling",
+        "cold_start_tail_latency_ceiling",
+        "deadline_miss_ceiling"
+      ],
+      "economic_lever": "deadline_flexible_generation_runs_hotter_than_interactive_serving_with_aggressive_prewarm",
+      "feasibility_score": 5,
+      "expected_alpha_score": 4,
+      "implementation_complexity_score": 2,
+      "recommendation": "investigate_later"
+    },
+    {
+      "id": 6,
+      "name": "evaluation_workloads_eval_harnesses",
+      "best_public_trace": {
+        "primary": "lmsys_chatbot_arena_conversations",
+        "secondary": "sharegpt_via_aiperf",
+        "tertiary_proxy": ["azure_llm_2024_week", "burstgpt"],
+        "committed_in_repo": ["azure_llm_2024", "burstgpt"],
+        "not_committed": ["lmsys_chatbot_arena_conversations", "sharegpt_via_aiperf"],
+        "urls": [
+          "https://huggingface.co/datasets/lmsys/chatbot_arena_conversations",
+          "https://docs.nvidia.com/aiperf/tutorials/datasets-inputs/profile-with-share-gpt-dataset"
+        ]
+      },
+      "sample_size": {
+        "lmsys_chatbot_arena_conversations_approx": 33000,
+        "sharegpt_conversations_approx": 52000,
+        "lmsys_committed": false,
+        "sharegpt_committed": false,
+        "azure_llm_2024_proxy_rows": 44107694
+      },
+      "signals_available": [
+        "multi_turn_prompt_response_token_counts",
+        "conversation_length_distribution",
+        "model_id_lmsys"
+      ],
+      "missing_signals": [
+        "per_eval_suite_deadline",
+        "per_eval_pass_fail_criterion",
+        "real_serving_latency_under_eval_load"
+      ],
+      "candidate_frontier_variable": [
+        "eval_batch_window_hours",
+        "concurrency",
+        "target_rho",
+        "deadline_slack"
+      ],
+      "safety_constraints": [
+        "eval_suite_completion_deadline",
+        "mixed_fleet_no_interactive_sla_leak",
+        "telemetry_failsafe_keep_correct_when_signals_missing"
+      ],
+      "economic_lever": "evals_tolerate_hours_to_days_of_deadline_slack_far_more_than_any_interactive_class_so_safe_rho_is_plausibly_near_one_on_a_dedicated_fleet",
+      "feasibility_score": 4,
+      "expected_alpha_score": 5,
+      "implementation_complexity_score": 2,
+      "recommendation": "build_now"
+    },
+    {
+      "id": 7,
+      "name": "rlhf_pipelines",
+      "best_public_trace": {
+        "primary": "none_native_composite_proxy_only",
+        "composite_parts": [
+          "mit_supercloud_bounded_real_sample",
+          "alibaba_gpu_v2023",
+          "azure_llm_2024_week",
+          "burstgpt"
+        ],
+        "committed_in_repo": ["mit_supercloud", "alibaba_gpu", "azure_llm_2024", "burstgpt"],
+        "urls": []
+      },
+      "sample_size": {
+        "note": "per_stage_sizes_are_the_cited_traces_no_end_to_end_rlhf_run_exists_in_any_committed_dataset"
+      },
+      "signals_available": [
+        "queue_wait_training_proxy",
+        "packing_density_training_proxy",
+        "arrival_shape_inference_proxy",
+        "tokens_inference_proxy"
+      ],
+      "missing_signals": [
+        "reward_model_evaluation_latency",
+        "rl_update_synchronization",
+        "off_policy_buffer_lag",
+        "fine_tune_step_rollout_inference_handoff_timing"
+      ],
+      "candidate_frontier_variable": [
+        "training_rho",
+        "rollout_rho",
+        "eval_rho",
+        "composed_sub_frontier"
+      ],
+      "safety_constraints": [
+        "gang_failure_training",
+        "queue_p99_rollout",
+        "deadline_eval"
+      ],
+      "economic_lever": "cross_stage_pipelining_and_asynchrony_theoretically_large_evidentially_nearly_invisible_on_public_traces",
+      "feasibility_score": 1,
+      "expected_alpha_score": 2,
+      "implementation_complexity_score": 5,
+      "recommendation": "not_enough_data"
+    },
+    {
+      "id": 8,
+      "name": "agent_swarms",
+      "best_public_trace": {
+        "primary_proxy": ["lmsys_chatbot_arena_conversations", "sharegpt_via_aiperf"],
+        "secondary_proxy": ["azure_llm_2024_week", "burstgpt"],
+        "tertiary_proxy": ["azure_functions_2019"],
+        "committed_in_repo": ["azure_llm_2024", "burstgpt"],
+        "not_committed": ["lmsys_chatbot_arena_conversations", "sharegpt_via_aiperf", "azure_functions_2019", "aiperf_agentic_benchmark_datasets"],
+        "urls": [
+          "https://docs.nvidia.com/aiperf/reference/benchmark-datasets"
+        ]
+      },
+      "sample_size": {
+        "note": "proxy_only_no_committed_agent_step_resolved_trace"
+      },
+      "signals_available": [
+        "conversation_length_proxy",
+        "multi_turn_shape_proxy",
+        "request_burstiness_proxy"
+      ],
+      "missing_signals": [
+        "tool_call_latencies",
+        "per_step_memory_state",
+        "retry_loop_behaviour",
+        "end_to_end_multi_step_deadline"
+      ],
+      "candidate_frontier_variable": [
+        "concurrent_agents",
+        "per_step_rho",
+        "multi_step_deadline",
+        "retry_budget"
+      ],
+      "safety_constraints": [
+        "end_to_end_multi_step_latency_p99",
+        "retry_loop_divergence",
+        "queue_blowup_on_bursty_fan_out"
+      ],
+      "economic_lever": "burst_spike_scheduling_vs_steady_state_agent_pool_sizing",
+      "feasibility_score": 3,
+      "expected_alpha_score": 3,
+      "implementation_complexity_score": 4,
+      "recommendation": "investigate_later"
+    }
+  ],
+  "ranked_recommendation": {
+    "build_now": [
+      {"id": 6, "name": "evaluation_workloads_eval_harnesses", "rationale": "highest_new_expected_alpha_per_effort_deadline_slack_is_the_steepest_lever_lmsys_and_sharegpt_are_bounded_ingest_feasible"},
+      {"id": 1, "name": "batch_inference", "rationale": "highest_feasibility_azure_llm_2024_already_ingested_small_multi_axis_sweep_over_existing_replay"}
+    ],
+    "investigate_later": [
+      {"id": 5, "name": "synthetic_data_generation", "rationale": "strong_feasibility_alpha_plausibly_large_but_levers_overlap_eval_class_v1"},
+      {"id": 3, "name": "data_processing_etl_feature_engineering", "rationale": "real_alpha_but_heavily_overlaps_training_frontier_wait_for_second_training_class_trace"},
+      {"id": 2, "name": "embedding_generation", "rationale": "useful_but_evidentially_weak_no_public_embedding_trace_with_measured_latency"},
+      {"id": 8, "name": "agent_swarms", "rationale": "proxy_grade_no_committed_agent_step_resolved_trace"}
+    ],
+    "not_enough_data": [
+      {"id": 4, "name": "vector_indexing_rag_indexing", "rationale": "no_committed_trace_measures_io_or_memory_pressure_indexing_framing_on_alibaba_gpu_is_heavy_proxy"},
+      {"id": 7, "name": "rlhf_pipelines", "rationale": "no_public_end_to_end_rlhf_trace_v1_would_compose_three_sub_frontiers_across_unrelated_traces_violates_classified_linkage_quality"}
+    ],
+    "low_expected_alpha": []
+  },
+  "next_datasets_to_ingest_bounded_only": [
+    {
+      "dataset": "lmsys_chatbot_arena_conversations",
+      "url": "https://huggingface.co/datasets/lmsys/chatbot_arena_conversations",
+      "proposed_bound": "head_bounded_sample_le_200_mb",
+      "purpose": "eval_class_deadline_flex_shape"
+    },
+    {
+      "dataset": "sharegpt_via_aiperf",
+      "url": "https://docs.nvidia.com/aiperf/tutorials/datasets-inputs/profile-with-share-gpt-dataset",
+      "proposed_bound": "packaged_sample_le_100_mb",
+      "purpose": "eval_class_conversation_shape"
+    },
+    {
+      "dataset": "azure_functions_2019",
+      "url": "https://github.com/Azure/AzurePublicDataset/blob/master/AzureFunctionsDataset2019.md",
+      "proposed_bound": "head_bounded_le_500_mb_invocation_subset",
+      "purpose": "short_task_arrival_shape_for_etl_and_embedding_fan_out"
+    }
+  ],
+  "what_not_to_build_yet": [
+    "no_ml_training",
+    "no_new_controller_default",
+    "no_large_dataset_ingest_without_bound",
+    "no_production_savings_claims",
+    "no_oracle_as_headline",
+    "no_secondary_kpi_folded_into_primary",
+    "no_invented_missing_signals",
+    "no_rlhf_or_vector_indexing_until_a_public_trace_with_missing_signals_exists"
+  ],
+  "honesty_scope": {
+    "discovery_stage_signal_scan_not_a_benchmark": true,
+    "expected_alpha_is_researcher_estimate_not_measured": true,
+    "every_build_now_recommendation_requires_bounded_ingest_first": true,
+    "samples_sourced_from_committed_processed_summaries_or_publicly_documented_sizes_of_uncommitted_datasets": true,
+    "uncommitted_datasets_flagged": [
+      "lmsys_chatbot_arena_conversations",
+      "sharegpt_via_aiperf",
+      "azure_functions_2019",
+      "azure_functions_invocation_trace_2021",
+      "aiperf_agentic_benchmark_datasets"
+    ],
+    "kpi_unchanged_per_results_md_section_1": true,
+    "production_claim_gate_unchanged_per_results_md_section_8": true
+  }
+}
