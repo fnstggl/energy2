@@ -1,0 +1,159 @@
+{
+  "discovery": {
+    "dcc_data_url": "https://dcc.mit.edu/data",
+    "files": [
+      {
+        "classification": "primary",
+        "kind": "scheduler",
+        "name": "scheduler-log.csv",
+        "notes": "Slurm accounting log",
+        "path": "/home/user/energy2/tests/fixtures/mit_supercloud_sample/scheduler-log.csv",
+        "status": "present"
+      },
+      {
+        "classification": "label_metadata",
+        "kind": "label",
+        "name": "labelled_jobids.csv",
+        "notes": "id_job \u2192 DNN model label",
+        "path": "/home/user/energy2/tests/fixtures/mit_supercloud_sample/labelled_jobids.csv",
+        "status": "present"
+      },
+      {
+        "classification": "scheduler_metadata",
+        "kind": "tres_mapping",
+        "name": "tres-mapping.txt",
+        "notes": "TRES integer \u2194 resource name",
+        "path": "/home/user/energy2/tests/fixtures/mit_supercloud_sample/tres-mapping.txt",
+        "status": "present"
+      },
+      {
+        "classification": "node_inventory",
+        "kind": "node",
+        "name": "node-data.csv",
+        "notes": "5-min per-node snapshots",
+        "path": "/home/user/energy2/tests/fixtures/mit_supercloud_sample/node-data.csv",
+        "status": "present"
+      },
+      {
+        "classification": "primary",
+        "kind": "gpu_metric",
+        "name": "gpu",
+        "notes": "per-job nvidia-smi CSVs (100 ms); samples present",
+        "path": "/home/user/energy2/tests/fixtures/mit_supercloud_sample/gpu",
+        "status": "present"
+      },
+      {
+        "classification": "primary",
+        "kind": "cpu_metric",
+        "name": "cpu",
+        "notes": "per-job CPU CSVs (10 s)",
+        "path": "/home/user/energy2/tests/fixtures/mit_supercloud_sample/cpu",
+        "status": "present"
+      }
+    ],
+    "paper_url": "https://arxiv.org/abs/2108.02037",
+    "repo_url": "https://github.com/MIT-AI-Accelerator/MIT-Supercloud-Dataset",
+    "source_dir": "/home/user/energy2/tests/fixtures/mit_supercloud_sample",
+    "summary": {
+      "cpu_util_present": true,
+      "gpu_util_present": true,
+      "label_present": true,
+      "missing_count": 0,
+      "node_data_present": true,
+      "present_count": 6,
+      "primary_present": true,
+      "tres_mapping_present": true
+    }
+  },
+  "filters": {
+    "gpu_jobs_only": false,
+    "include_utilization": true,
+    "labelled_only": false,
+    "max_util_files": 200,
+    "sample_size": null,
+    "seed": 0
+  },
+  "join_quality": {
+    "joins": [
+      {
+        "confidence": "high",
+        "join_kind": "exact_job_id_join",
+        "join_name": "label_to_job",
+        "left_total": 6,
+        "matched_left": 6,
+        "matched_right": 6,
+        "notes": "job_id appears in labelled_jobids.csv",
+        "right_total": 12
+      },
+      {
+        "confidence": "high",
+        "join_kind": "exact_job_id_join",
+        "join_name": "gpu_util_to_job",
+        "left_total": 2,
+        "matched_left": 2,
+        "matched_right": 2,
+        "notes": "GPU sample file name == job_id (per the MIT intro notebook); join is exact",
+        "right_total": 12
+      },
+      {
+        "confidence": "medium",
+        "join_kind": "node_time_join",
+        "join_name": "node_util_to_job",
+        "left_total": 4,
+        "matched_left": 5,
+        "matched_right": 5,
+        "notes": "node snapshot \u2194 job by node-name intersection + [start,end] window overlap; medium confidence because snapshots are 5-min granular",
+        "right_total": 12
+      }
+    ],
+    "n_jobs": 12,
+    "n_jobs_with_gpu_util": 2,
+    "n_jobs_with_label": 6,
+    "n_jobs_with_node_util_match": 5
+  },
+  "repo_url": "https://github.com/MIT-AI-Accelerator/MIT-Supercloud-Dataset",
+  "source": "fixture",
+  "source_dir": "tests/fixtures/mit_supercloud_sample",
+  "trace_summary": {
+    "duration_s_p50": 2000.0,
+    "duration_s_p95": 10000.0,
+    "duration_s_p99": 10000.0,
+    "gpu_count_distribution": {
+      "1": 2,
+      "2": 5,
+      "4": 2,
+      "8": 1
+    },
+    "gpu_job_count": 10,
+    "gpu_type_distribution": {
+      "gpu:tesla": 6,
+      "gpu:volta": 4
+    },
+    "job_count": 12,
+    "labelled_job_count": 6,
+    "missing_fields": [
+      "per_job_gpu_utilization_unless_gpu_util_loaded",
+      "per_job_cpu_utilization_unless_cpu_util_loaded",
+      "node_utilization_unless_node_data_loaded",
+      "node_assignment_unless_present_in_scheduler_log"
+    ],
+    "queue_wait_s_p50": 190.0,
+    "queue_wait_s_p95": 910.0,
+    "queue_wait_s_p99": 910.0,
+    "status_distribution": {
+      "CANCELLED": 1,
+      "COMPLETED": 9,
+      "FAILED": 2
+    },
+    "time_end_s": 1700000110.0,
+    "time_start_s": 1700000000.0,
+    "workload_label_distribution": {
+      "Bert": 1,
+      "DistillBert": 1,
+      "Inception": 1,
+      "ResNet": 1,
+      "U-Net": 1,
+      "VGG": 1
+    }
+  }
+}

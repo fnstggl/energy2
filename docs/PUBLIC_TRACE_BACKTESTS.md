@@ -86,7 +86,7 @@ baselines, not the serving-physics replay. Same canonical KPI
 | **Alibaba GPU cluster trace (v2023)** | Fragmentation / heterogeneous GPU scheduling — whole-GPU + fractional (`gpu_milli`) packing onto a heterogeneous fleet, with **executable** packing baselines (`first_fit`/`best_fit`/FFD/`greedy_packing`). | **Implemented** (`CANONICAL_TRACE_BACKTEST_ALIBABA_GPU_V2023_FRAGMENTATION_V1`) |
 | **Philly (Microsoft) traces** | Training / fine-tuning GPU jobs — multi-tenant **temporal** job scheduling (queueing, backfill, fragmentation, fairness, retry/failure) on a fixed fleet. | **Implemented** (`CANONICAL_TRACE_BACKTEST_PHILLY_TRAINING_V1`) |
 | **Alibaba GenAI 2026 (GenTD26)** | Top-down **multi-layer** stable-diffusion serving — application (requests + e2e latency), middleware (gateway queues), scheduler (pipeline/cold-start), infrastructure (GPU util/memory). Layers ingested with **classified linkage quality** (no faked joins). | **Implemented** (`CANONICAL_TRACE_BACKTEST_ALIBABA_GENAI_2026_V1`) |
-| **MIT Supercloud** | Utilization / power / monitoring calibration — to calibrate the simulator's utilization, power and thermal priors against real datacenter monitoring. | Roadmap — not ingested |
+| **MIT Supercloud** | Slurm scheduler + nvidia-smi GPU utilization + node-data snapshots + labelled DNN workloads — used to **validate Training Safe Utilization Frontier v1** on a third training-class trace (sibling of Philly + Alibaba GPU v2023). | **Implemented** (read-only ingestion + Training Frontier validation; `aurelius/traces/mit_supercloud.py`, `scripts/ingest_mit_supercloud.py`, `scripts/run_mit_supercloud_training_frontier.py`, `docs/MIT_SUPERCLOUD_TRAINING_FRONTIER_RESULTS.md`). Raw ~1 TB archive at https://dcc.mit.edu/data is **NOT committed**. |
 
 Known sources (for the future ingestion PRs — **do not download/ingest here**):
 - Azure: https://github.com/Azure/AzurePublicDataset (`AzureLLMInferenceTrace`)
@@ -327,8 +327,13 @@ demonstration** unless the tarball is downloaded.
 - **Training Safe Utilization Frontier v1** (sibling of the serving frontier
   controller) reuses the Philly + Alibaba GPU v2023 committed backtest
   summaries — see `docs/TRAINING_SAFE_UTILIZATION_FRONTIER.md` +
-  `docs/TRAINING_SAFE_UTILIZATION_FRONTIER_RESULTS.md`. No new datasets
-  ingested; MIT Supercloud is the next validation step.
+  `docs/TRAINING_SAFE_UTILIZATION_FRONTIER_RESULTS.md`.
+- **MIT Supercloud Training Frontier validation** is now in place — see
+  `docs/MIT_SUPERCLOUD_TRAINING_FRONTIER_RESULTS.md` +
+  `aurelius/traces/mit_supercloud.py`. Raw archive (~1 TB) lives at
+  https://dcc.mit.edu/data and is **NOT committed**; the small synthetic
+  fixture under `tests/fixtures/mit_supercloud_sample/` exercises every
+  code path.
 - No Azure **LMM/multimodal** or MIT ingestion yet (this PR did **not** ingest
   Azure LMM/multimodal).
 - No ML training, no neural forecasting.

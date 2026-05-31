@@ -1,0 +1,7 @@
+id_job,model
+1001,VGG
+1003,ResNet
+1006,Bert
+1008,U-Net
+1010,Inception
+1011,DistillBert

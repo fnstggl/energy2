@@ -1,0 +1,7 @@
+utilization_gpu_pct,utilization_memory_pct,memory_free_MiB,memory_used_MiB,temperature_gpu,temperature_memory,power_draw_W
+60,30,7600,3200,60,55,160
+78,46,6800,4000,68,62,225
+92,60,5500,5300,76,71,285
+95,62,5400,5400,77,72,290
+93,60,5600,5200,76,71,288
+60,32,7000,3800,62,58,180

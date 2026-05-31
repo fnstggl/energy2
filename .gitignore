@@ -50,6 +50,18 @@ data/external/alibaba_gpu/raw/*.csv
 data/external/alibaba_gpu/processed/alibaba_gpu_normalized.json
 data/external/philly/raw/*
 !data/external/philly/raw/.gitkeep
+# MIT Supercloud raw archives (~1 TB compressed; downloaded from
+# https://dcc.mit.edu/data, NOT committed). Small processed summary
+# JSON + tiny synthetic fixtures ARE committed.
+data/external/mit_supercloud/raw/*
+!data/external/mit_supercloud/raw/.gitkeep
+data/external/mit_supercloud/processed/mit_supercloud_normalized.json
+data/external/mit_supercloud/processed/scheduler-log.csv
+data/external/mit_supercloud/processed/labelled_jobids.csv
+data/external/mit_supercloud/processed/tres-mapping.txt
+data/external/mit_supercloud/processed/node-data.csv
+data/external/mit_supercloud/processed/gpu/
+data/external/mit_supercloud/processed/cpu/
 data/external/philly/processed/philly_normalized.json
 data/external/alibaba_genai/raw/*
 !data/external/alibaba_genai/raw/.gitkeep
