@@ -11,7 +11,6 @@ The pipeline must:
 
 from __future__ import annotations
 
-import json
 import os
 import sys
 
@@ -27,10 +26,8 @@ from aurelius.forecasting.cache_prefix_features import (  # noqa: E402
     HIGH_REUSE_THRESHOLD,
     INPUT_TOKEN_BINS,
     LEAKAGE_TARGET_FIELDS,
-    PREDICT_TIME_CATEGORICAL_FEATURES,
     PREDICT_TIME_NUMERIC_FEATURES,
     TARGETS,
-    FeatureSpec,
     LeakageError,
     _parse_swissai_iso,
     add_rolling_features,
@@ -49,7 +46,6 @@ from aurelius.forecasting.cache_prefix_features import (  # noqa: E402
     random_holdout,
     time_holdout,
 )
-
 
 # ---------- 1. Leakage rules --------------------------------------------
 

@@ -30,7 +30,6 @@ from typing import Iterable, Optional
 
 import numpy as np
 
-
 # ---------------------------------------------------------------------------
 # Leakage rules + canonical targets
 # ---------------------------------------------------------------------------

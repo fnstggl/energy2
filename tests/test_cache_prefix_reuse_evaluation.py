@@ -58,7 +58,7 @@ def _git_tracked(path: Path) -> bool:
 
 def test_summary_exists_and_is_valid_json():
     assert SUMMARY_PATH.exists(), (
-        f"Phase C summary missing — re-run scripts/run_cache_prefix_reuse_forecaster_v1.py")
+        "Phase C summary missing — re-run scripts/run_cache_prefix_reuse_forecaster_v1.py")
     payload = json.loads(SUMMARY_PATH.read_text())
     assert payload["doc_version"] == "cache_prefix_reuse_forecaster_v1"
     assert payload["production_claim"] is False
@@ -70,7 +70,7 @@ def test_summary_exists_and_is_valid_json():
 
 def test_data_readiness_audit_exists():
     assert AUDIT_PATH.exists(), (
-        f"Data-readiness audit missing — re-run the driver script")
+        "Data-readiness audit missing — re-run the driver script")
     audit = json.loads(AUDIT_PATH.read_text())
     assert audit["doc_version"] == "cache_prefix_reuse_data_readiness_audit_v1"
     assert audit["shadow_only"] is True

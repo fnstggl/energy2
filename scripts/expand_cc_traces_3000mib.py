@@ -375,7 +375,7 @@ def main(argv=None) -> int:
 
     # Strength stats vs the 80 MiB committed sample.
     old = _old_sample_stats()
-    new = _compute_strength(flat, label=f"3000_MiB_cap")
+    new = _compute_strength(flat, label="3000_MiB_cap")
 
     # Decision
     decision, reason = _decide(old, new)

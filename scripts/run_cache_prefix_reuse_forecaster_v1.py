@@ -49,7 +49,6 @@ from aurelius.forecasting.cache_prefix_forecaster import (  # noqa: E402
     LogisticReuseClassifier,
     PerGroupReuseRateBaseline,
     PerSessionHistoryBaseline,
-    PrefixGroupBaseline,
     RandomForestReuseClassifier,
     RecencyFrequencyBaseline,
     auprc,
@@ -671,7 +670,7 @@ def _run_swissai(swissai_rows: list) -> dict:
     # session-holdout — SwissAI bucket_reuse doesn't have session_id but
     # bucket_ids_hash can stand in.
     uniq_hashes = group_keys.get("session_id")
-    if uniq_hashes is not None and (uniq_hashes != None).any():
+    if uniq_hashes is not None and any(x is not None for x in uniq_hashes.tolist()):
         s_tr, s_te = holdout_by_session(uniq_hashes)
         if s_te.size > 0:
             holdouts["holdout_by_session"] = (s_tr, s_te)

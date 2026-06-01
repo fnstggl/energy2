@@ -23,7 +23,6 @@ from aurelius.forecasting.cache_prefix_forecaster import (  # noqa: E402
     LogisticReuseClassifier,
     PerGroupReuseRateBaseline,
     PerSessionHistoryBaseline,
-    PrefixGroupBaseline,
     RandomForestReuseClassifier,
     RecencyFrequencyBaseline,
     auprc,
@@ -34,7 +33,6 @@ from aurelius.forecasting.cache_prefix_forecaster import (  # noqa: E402
     mae,
     rmse,
 )
-
 
 # ---------- 1. Baselines -----------------------------------------------
 
