@@ -1,0 +1,1844 @@
+{
+  "accepted_columns": [
+    "config.name",
+    "config.backend.name",
+    "config.backend.version",
+    "config.backend._target_",
+    "config.backend.task",
+    "config.backend.library",
+    "config.backend.model_type",
+    "config.backend.model",
+    "config.backend.processor",
+    "config.backend.device",
+    "config.backend.device_ids",
+    "config.backend.seed",
+    "config.backend.inter_op_num_threads",
+    "config.backend.intra_op_num_threads",
+    "config.backend.model_kwargs.trust_remote_code",
+    "config.backend.no_weights",
+    "config.backend.device_map",
+    "config.backend.torch_dtype",
+    "config.backend.eval_mode",
+    "config.backend.to_bettertransformer",
+    "config.backend.low_cpu_mem_usage",
+    "config.backend.attn_implementation",
+    "config.backend.cache_implementation",
+    "config.backend.autocast_enabled",
+    "config.backend.autocast_dtype",
+    "config.backend.torch_compile",
+    "config.backend.torch_compile_target",
+    "config.backend.quantization_scheme",
+    "config.backend.quantization_config.llm_int8_threshold",
+    "config.backend.quantization_config.load_in_8bit",
+    "config.backend.deepspeed_inference",
+    "config.backend.peft_type",
+    "config.scenario.name",
+    "config.scenario._target_",
+    "config.scenario.iterations",
+    "config.scenario.duration",
+    "config.scenario.warmup_runs",
+    "config.scenario.input_shapes.batch_size",
+    "config.scenario.input_shapes.num_choices",
+    "config.scenario.input_shapes.sequence_length",
+    "config.scenario.new_tokens",
+    "config.scenario.memory",
+    "config.scenario.latency",
+    "config.scenario.energy",
+    "config.scenario.generate_kwargs.max_new_tokens",
+    "config.scenario.generate_kwargs.min_new_tokens",
+    "config.launcher.name",
+    "config.launcher._target_",
+    "config.launcher.device_isolation",
+    "config.launcher.device_isolation_action",
+    "config.launcher.numactl",
+    "config.launcher.start_method",
+    "config.environment.cpu",
+    "config.environment.cpu_count",
+    "config.environment.cpu_ram_mb",
+    "config.environment.system",
+    "config.environment.machine",
+    "config.environment.platform",
+    "config.environment.processor",
+    "config.environment.python_version",
+    "config.environment.gpu",
+    "config.environment.gpu_count",
+    "config.environment.gpu_vram_mb",
+    "config.environment.optimum_benchmark_version",
+    "config.environment.optimum_benchmark_commit",
+    "config.environment.transformers_version",
+    "config.environment.transformers_commit",
+    "config.environment.accelerate_version",
+    "config.environment.accelerate_commit",
+    "config.environment.diffusers_version",
+    "config.environment.diffusers_commit",
+    "config.environment.optimum_version",
+    "config.environment.optimum_commit",
+    "config.environment.timm_version",
+    "config.environment.timm_commit",
+    "config.environment.peft_version",
+    "config.environment.peft_commit",
+    "config.print_report",
+    "config.log_report",
+    "report.traceback",
+    "report.load.memory.unit",
+    "report.load.memory.max_ram",
+    "report.load.memory.max_global_vram",
+    "report.load.memory.max_process_vram",
+    "report.load.memory.max_reserved",
+    "report.load.memory.max_allocated",
+    "report.load.latency.unit",
+    "report.load.latency.values",
+    "report.load.latency.count",
+    "report.load.latency.total",
+    "report.load.latency.mean",
+    "report.load.latency.p50",
+    "report.load.latency.p90",
+    "report.load.latency.p95",
+    "report.load.latency.p99",
+    "report.load.latency.stdev",
+    "report.load.latency.stdev_",
+    "report.load.throughput",
+    "report.load.energy.unit",
+    "report.load.energy.cpu",
+    "report.load.energy.ram",
+    "report.load.energy.gpu",
+    "report.load.energy.total",
+    "report.load.efficiency",
+    "report.prefill.memory.unit",
+    "report.prefill.memory.max_ram",
+    "report.prefill.memory.max_global_vram",
+    "report.prefill.memory.max_process_vram",
+    "report.prefill.memory.max_reserved",
+    "report.prefill.memory.max_allocated",
+    "report.prefill.latency.unit",
+    "report.prefill.latency.values",
+    "report.prefill.latency.count",
+    "report.prefill.latency.total",
+    "report.prefill.latency.mean",
+    "report.prefill.latency.p50",
+    "report.prefill.latency.p90",
+    "report.prefill.latency.p95",
+    "report.prefill.latency.p99",
+    "report.prefill.latency.stdev",
+    "report.prefill.latency.stdev_",
+    "report.prefill.throughput.unit",
+    "report.prefill.throughput.value",
+    "report.prefill.energy.unit",
+    "report.prefill.energy.cpu",
+    "report.prefill.energy.ram",
+    "report.prefill.energy.gpu",
+    "report.prefill.energy.total",
+    "report.prefill.efficiency.unit",
+    "report.prefill.efficiency.value",
+    "report.decode.memory.unit",
+    "report.decode.memory.max_ram",
+    "report.decode.memory.max_global_vram",
+    "report.decode.memory.max_process_vram",
+    "report.decode.memory.max_reserved",
+    "report.decode.memory.max_allocated",
+    "report.decode.latency.unit",
+    "report.decode.latency.values",
+    "report.decode.latency.count",
+    "report.decode.latency.total",
+    "report.decode.latency.mean",
+    "report.decode.latency.p50",
+    "report.decode.latency.p90",
+    "report.decode.latency.p95",
+    "report.decode.latency.p99",
+    "report.decode.latency.stdev",
+    "report.decode.latency.stdev_",
+    "report.decode.throughput.unit",
+    "report.decode.throughput.value",
+    "report.decode.energy.unit",
+    "report.decode.energy.cpu",
+    "report.decode.energy.ram",
+    "report.decode.energy.gpu",
+    "report.decode.energy.total",
+    "report.decode.efficiency.unit",
+    "report.decode.efficiency.value",
+    "report.per_token.memory",
+    "report.per_token.latency.unit",
+    "report.per_token.latency.values",
+    "report.per_token.latency.count",
+    "report.per_token.latency.total",
+    "report.per_token.latency.mean",
+    "report.per_token.latency.p50",
+    "report.per_token.latency.p90",
+    "report.per_token.latency.p95",
+    "report.per_token.latency.p99",
+    "report.per_token.latency.stdev",
+    "report.per_token.latency.stdev_",
+    "report.per_token.throughput.unit",
+    "report.per_token.throughput.value",
+    "report.per_token.energy",
+    "report.per_token.efficiency",
+    "config.backend.quantization_config.load_in_4bit",
+    "report.load.energy",
+    "report.load_model.memory.unit",
+    "report.load_model.memory.max_ram",
+    "report.load_model.memory.max_global_vram",
+    "report.load_model.memory.max_process_vram",
+    "report.load_model.memory.max_reserved",
+    "report.load_model.memory.max_allocated",
+    "report.load_model.latency.unit",
+    "report.load_model.latency.values",
+    "report.load_model.latency.count",
+    "report.load_model.latency.total",
+    "report.load_model.latency.mean",
+    "report.load_model.latency.p50",
+    "report.load_model.latency.p90",
+    "report.load_model.latency.p95",
+    "report.load_model.latency.p99",
+    "report.load_model.latency.stdev",
+    "report.load_model.latency.stdev_",
+    "report.load_model.throughput",
+    "report.load_model.energy.unit",
+    "report.load_model.energy.cpu",
+    "report.load_model.energy.ram",
+    "report.load_model.energy.gpu",
+    "report.load_model.energy.total",
+    "report.load_model.efficiency",
+    "report.per_token.throughput"
+  ],
+  "config_name": "pytorch_cuda_bnb_1xT4",
+  "dataset_id": "optimum-benchmark/llm-perf-leaderboard",
+  "dtypes": {
+    "config.backend._target_": [
+      "str"
+    ],
+    "config.backend.attn_implementation": [
+      "str"
+    ],
+    "config.backend.autocast_dtype": [
+      "str"
+    ],
+    "config.backend.autocast_enabled": [
+      "str"
+    ],
+    "config.backend.cache_implementation": [
+      "str"
+    ],
+    "config.backend.deepspeed_inference": [
+      "str"
+    ],
+    "config.backend.device": [
+      "str"
+    ],
+    "config.backend.device_ids": [
+      "str"
+    ],
+    "config.backend.device_map": [
+      "str"
+    ],
+    "config.backend.eval_mode": [
+      "str"
+    ],
+    "config.backend.inter_op_num_threads": [
+      "str"
+    ],
+    "config.backend.intra_op_num_threads": [
+      "str"
+    ],
+    "config.backend.library": [
+      "str"
+    ],
+    "config.backend.low_cpu_mem_usage": [
+      "str"
+    ],
+    "config.backend.model": [
+      "str"
+    ],
+    "config.backend.model_kwargs.trust_remote_code": [
+      "str"
+    ],
+    "config.backend.model_type": [
+      "str"
+    ],
+    "config.backend.name": [
+      "str"
+    ],
+    "config.backend.no_weights": [
+      "str"
+    ],
+    "config.backend.peft_type": [
+      "str"
+    ],
+    "config.backend.processor": [
+      "str"
+    ],
+    "config.backend.quantization_config.llm_int8_threshold": [
+      "str"
+    ],
+    "config.backend.quantization_config.load_in_4bit": [
+      "str"
+    ],
+    "config.backend.quantization_config.load_in_8bit": [
+      "str"
+    ],
+    "config.backend.quantization_scheme": [
+      "str"
+    ],
+    "config.backend.seed": [
+      "str"
+    ],
+    "config.backend.task": [
+      "str"
+    ],
+    "config.backend.to_bettertransformer": [
+      "str"
+    ],
+    "config.backend.torch_compile": [
+      "str"
+    ],
+    "config.backend.torch_compile_target": [
+      "str"
+    ],
+    "config.backend.torch_dtype": [
+      "str"
+    ],
+    "config.backend.version": [
+      "str"
+    ],
+    "config.environment.accelerate_commit": [
+      "str"
+    ],
+    "config.environment.accelerate_version": [
+      "str"
+    ],
+    "config.environment.cpu": [
+      "str"
+    ],
+    "config.environment.cpu_count": [
+      "str"
+    ],
+    "config.environment.cpu_ram_mb": [
+      "str"
+    ],
+    "config.environment.diffusers_commit": [
+      "str"
+    ],
+    "config.environment.diffusers_version": [
+      "str"
+    ],
+    "config.environment.gpu": [
+      "str"
+    ],
+    "config.environment.gpu_count": [
+      "str"
+    ],
+    "config.environment.gpu_vram_mb": [
+      "str"
+    ],
+    "config.environment.machine": [
+      "str"
+    ],
+    "config.environment.optimum_benchmark_commit": [
+      "str"
+    ],
+    "config.environment.optimum_benchmark_version": [
+      "str"
+    ],
+    "config.environment.optimum_commit": [
+      "str"
+    ],
+    "config.environment.optimum_version": [
+      "str"
+    ],
+    "config.environment.peft_commit": [
+      "str"
+    ],
+    "config.environment.peft_version": [
+      "str"
+    ],
+    "config.environment.platform": [
+      "str"
+    ],
+    "config.environment.processor": [
+      "str"
+    ],
+    "config.environment.python_version": [
+      "str"
+    ],
+    "config.environment.system": [
+      "str"
+    ],
+    "config.environment.timm_commit": [
+      "str"
+    ],
+    "config.environment.timm_version": [
+      "str"
+    ],
+    "config.environment.transformers_commit": [
+      "str"
+    ],
+    "config.environment.transformers_version": [
+      "str"
+    ],
+    "config.launcher._target_": [
+      "str"
+    ],
+    "config.launcher.device_isolation": [
+      "str"
+    ],
+    "config.launcher.device_isolation_action": [
+      "str"
+    ],
+    "config.launcher.name": [
+      "str"
+    ],
+    "config.launcher.numactl": [
+      "str"
+    ],
+    "config.launcher.start_method": [
+      "str"
+    ],
+    "config.log_report": [
+      "str"
+    ],
+    "config.name": [
+      "str"
+    ],
+    "config.print_report": [
+      "str"
+    ],
+    "config.scenario._target_": [
+      "str"
+    ],
+    "config.scenario.duration": [
+      "str"
+    ],
+    "config.scenario.energy": [
+      "str"
+    ],
+    "config.scenario.generate_kwargs.max_new_tokens": [
+      "str"
+    ],
+    "config.scenario.generate_kwargs.min_new_tokens": [
+      "str"
+    ],
+    "config.scenario.input_shapes.batch_size": [
+      "str"
+    ],
+    "config.scenario.input_shapes.num_choices": [
+      "str"
+    ],
+    "config.scenario.input_shapes.sequence_length": [
+      "str"
+    ],
+    "config.scenario.iterations": [
+      "str"
+    ],
+    "config.scenario.latency": [
+      "str"
+    ],
+    "config.scenario.memory": [
+      "str"
+    ],
+    "config.scenario.name": [
+      "str"
+    ],
+    "config.scenario.new_tokens": [
+      "str"
+    ],
+    "config.scenario.warmup_runs": [
+      "str"
+    ],
+    "report.decode.efficiency.unit": [
+      "str"
+    ],
+    "report.decode.efficiency.value": [
+      "str"
+    ],
+    "report.decode.energy.cpu": [
+      "str"
+    ],
+    "report.decode.energy.gpu": [
+      "str"
+    ],
+    "report.decode.energy.ram": [
+      "str"
+    ],
+    "report.decode.energy.total": [
+      "str"
+    ],
+    "report.decode.energy.unit": [
+      "str"
+    ],
+    "report.decode.latency.count": [
+      "str"
+    ],
+    "report.decode.latency.mean": [
+      "str"
+    ],
+    "report.decode.latency.p50": [
+      "str"
+    ],
+    "report.decode.latency.p90": [
+      "str"
+    ],
+    "report.decode.latency.p95": [
+      "str"
+    ],
+    "report.decode.latency.p99": [
+      "str"
+    ],
+    "report.decode.latency.stdev": [
+      "str"
+    ],
+    "report.decode.latency.stdev_": [
+      "str"
+    ],
+    "report.decode.latency.total": [
+      "str"
+    ],
+    "report.decode.latency.unit": [
+      "str"
+    ],
+    "report.decode.latency.values": [
+      "str"
+    ],
+    "report.decode.memory.max_allocated": [
+      "str"
+    ],
+    "report.decode.memory.max_global_vram": [
+      "str"
+    ],
+    "report.decode.memory.max_process_vram": [
+      "str"
+    ],
+    "report.decode.memory.max_ram": [
+      "str"
+    ],
+    "report.decode.memory.max_reserved": [
+      "str"
+    ],
+    "report.decode.memory.unit": [
+      "str"
+    ],
+    "report.decode.throughput.unit": [
+      "str"
+    ],
+    "report.decode.throughput.value": [
+      "str"
+    ],
+    "report.load.efficiency": [
+      "str"
+    ],
+    "report.load.energy": [
+      "str"
+    ],
+    "report.load.energy.cpu": [
+      "str"
+    ],
+    "report.load.energy.gpu": [
+      "str"
+    ],
+    "report.load.energy.ram": [
+      "str"
+    ],
+    "report.load.energy.total": [
+      "str"
+    ],
+    "report.load.energy.unit": [
+      "str"
+    ],
+    "report.load.latency.count": [
+      "str"
+    ],
+    "report.load.latency.mean": [
+      "str"
+    ],
+    "report.load.latency.p50": [
+      "str"
+    ],
+    "report.load.latency.p90": [
+      "str"
+    ],
+    "report.load.latency.p95": [
+      "str"
+    ],
+    "report.load.latency.p99": [
+      "str"
+    ],
+    "report.load.latency.stdev": [
+      "str"
+    ],
+    "report.load.latency.stdev_": [
+      "str"
+    ],
+    "report.load.latency.total": [
+      "str"
+    ],
+    "report.load.latency.unit": [
+      "str"
+    ],
+    "report.load.latency.values": [
+      "str"
+    ],
+    "report.load.memory.max_allocated": [
+      "str"
+    ],
+    "report.load.memory.max_global_vram": [
+      "str"
+    ],
+    "report.load.memory.max_process_vram": [
+      "str"
+    ],
+    "report.load.memory.max_ram": [
+      "str"
+    ],
+    "report.load.memory.max_reserved": [
+      "str"
+    ],
+    "report.load.memory.unit": [
+      "str"
+    ],
+    "report.load.throughput": [
+      "str"
+    ],
+    "report.load_model.efficiency": [
+      "str"
+    ],
+    "report.load_model.energy.cpu": [
+      "str"
+    ],
+    "report.load_model.energy.gpu": [
+      "str"
+    ],
+    "report.load_model.energy.ram": [
+      "str"
+    ],
+    "report.load_model.energy.total": [
+      "str"
+    ],
+    "report.load_model.energy.unit": [
+      "str"
+    ],
+    "report.load_model.latency.count": [
+      "str"
+    ],
+    "report.load_model.latency.mean": [
+      "str"
+    ],
+    "report.load_model.latency.p50": [
+      "str"
+    ],
+    "report.load_model.latency.p90": [
+      "str"
+    ],
+    "report.load_model.latency.p95": [
+      "str"
+    ],
+    "report.load_model.latency.p99": [
+      "str"
+    ],
+    "report.load_model.latency.stdev": [
+      "str"
+    ],
+    "report.load_model.latency.stdev_": [
+      "str"
+    ],
+    "report.load_model.latency.total": [
+      "str"
+    ],
+    "report.load_model.latency.unit": [
+      "str"
+    ],
+    "report.load_model.latency.values": [
+      "str"
+    ],
+    "report.load_model.memory.max_allocated": [
+      "str"
+    ],
+    "report.load_model.memory.max_global_vram": [
+      "str"
+    ],
+    "report.load_model.memory.max_process_vram": [
+      "str"
+    ],
+    "report.load_model.memory.max_ram": [
+      "str"
+    ],
+    "report.load_model.memory.max_reserved": [
+      "str"
+    ],
+    "report.load_model.memory.unit": [
+      "str"
+    ],
+    "report.load_model.throughput": [
+      "str"
+    ],
+    "report.per_token.efficiency": [
+      "str"
+    ],
+    "report.per_token.energy": [
+      "str"
+    ],
+    "report.per_token.latency.count": [
+      "str"
+    ],
+    "report.per_token.latency.mean": [
+      "str"
+    ],
+    "report.per_token.latency.p50": [
+      "str"
+    ],
+    "report.per_token.latency.p90": [
+      "str"
+    ],
+    "report.per_token.latency.p95": [
+      "str"
+    ],
+    "report.per_token.latency.p99": [
+      "str"
+    ],
+    "report.per_token.latency.stdev": [
+      "str"
+    ],
+    "report.per_token.latency.stdev_": [
+      "str"
+    ],
+    "report.per_token.latency.total": [
+      "str"
+    ],
+    "report.per_token.latency.unit": [
+      "str"
+    ],
+    "report.per_token.latency.values": [
+      "str"
+    ],
+    "report.per_token.memory": [
+      "str"
+    ],
+    "report.per_token.throughput": [
+      "str"
+    ],
+    "report.per_token.throughput.unit": [
+      "str"
+    ],
+    "report.per_token.throughput.value": [
+      "str"
+    ],
+    "report.prefill.efficiency.unit": [
+      "str"
+    ],
+    "report.prefill.efficiency.value": [
+      "str"
+    ],
+    "report.prefill.energy.cpu": [
+      "str"
+    ],
+    "report.prefill.energy.gpu": [
+      "str"
+    ],
+    "report.prefill.energy.ram": [
+      "str"
+    ],
+    "report.prefill.energy.total": [
+      "str"
+    ],
+    "report.prefill.energy.unit": [
+      "str"
+    ],
+    "report.prefill.latency.count": [
+      "str"
+    ],
+    "report.prefill.latency.mean": [
+      "str"
+    ],
+    "report.prefill.latency.p50": [
+      "str"
+    ],
+    "report.prefill.latency.p90": [
+      "str"
+    ],
+    "report.prefill.latency.p95": [
+      "str"
+    ],
+    "report.prefill.latency.p99": [
+      "str"
+    ],
+    "report.prefill.latency.stdev": [
+      "str"
+    ],
+    "report.prefill.latency.stdev_": [
+      "str"
+    ],
+    "report.prefill.latency.total": [
+      "str"
+    ],
+    "report.prefill.latency.unit": [
+      "str"
+    ],
+    "report.prefill.latency.values": [
+      "str"
+    ],
+    "report.prefill.memory.max_allocated": [
+      "str"
+    ],
+    "report.prefill.memory.max_global_vram": [
+      "str"
+    ],
+    "report.prefill.memory.max_process_vram": [
+      "str"
+    ],
+    "report.prefill.memory.max_ram": [
+      "str"
+    ],
+    "report.prefill.memory.max_reserved": [
+      "str"
+    ],
+    "report.prefill.memory.unit": [
+      "str"
+    ],
+    "report.prefill.throughput.unit": [
+      "str"
+    ],
+    "report.prefill.throughput.value": [
+      "str"
+    ],
+    "report.traceback": [
+      "str"
+    ]
+  },
+  "example_values": {
+    "config.backend._target_": [
+      "'optimum_benchmark.backends.pytorch.backend.PyTorchBackend'",
+      "'optimum_benchmark.backends.pytorch.backend.PyTorchBackend'",
+      "'optimum_benchmark.backends.pytorch.backend.PyTorchBackend'"
+    ],
+    "config.backend.attn_implementation": [
+      "'flash_attention_2'",
+      "'flash_attention_2'",
+      "'flash_attention_2'"
+    ],
+    "config.backend.autocast_dtype": [],
+    "config.backend.autocast_enabled": [
+      "'False'",
+      "'False'",
+      "'False'"
+    ],
+    "config.backend.cache_implementation": [],
+    "config.backend.deepspeed_inference": [
+      "'False'",
+      "'False'",
+      "'False'"
+    ],
+    "config.backend.device": [
+      "'cuda'",
+      "'cuda'",
+      "'cuda'"
+    ],
+    "config.backend.device_ids": [
+      "'0'",
+      "'0'",
+      "'0'"
+    ],
+    "config.backend.device_map": [],
+    "config.backend.eval_mode": [
+      "'True'",
+      "'True'",
+      "'True'"
+    ],
+    "config.backend.inter_op_num_threads": [],
+    "config.backend.intra_op_num_threads": [],
+    "config.backend.library": [
+      "'transformers'",
+      "'transformers'",
+      "'transformers'"
+    ],
+    "config.backend.low_cpu_mem_usage": [],
+    "config.backend.model": [
+      "'openai-community/gpt2-large'",
+      "'EleutherAI/pythia-1.4b'",
+      "'stabilityai/stablelm-3b-4e1t'"
+    ],
+    "config.backend.model_kwargs.trust_remote_code": [
+      "'True'",
+      "'True'",
+      "'True'"
+    ],
+    "config.backend.model_type": [
+      "'gpt2'",
+      "'gpt_neox'",
+      "'stablelm'"
+    ],
+    "config.backend.name": [
+      "'pytorch'",
+      "'pytorch'",
+      "'pytorch'"
+    ],
+    "config.backend.no_weights": [
+      "'True'",
+      "'True'",
+      "'True'"
+    ],
+    "config.backend.peft_type": [],
+    "config.backend.processor": [
+      "'openai-community/gpt2-large'",
+      "'EleutherAI/pythia-1.4b'",
+      "'stabilityai/stablelm-3b-4e1t'"
+    ],
+    "config.backend.quantization_config.llm_int8_threshold": [
+      "'0.0'",
+      "'0.0'",
+      "'0.0'"
+    ],
+    "config.backend.quantization_config.load_in_4bit": [
+      "'True'",
+      "'True'",
+      "'True'"
+    ],
+    "config.backend.quantization_config.load_in_8bit": [
+      "'True'",
+      "'True'",
+      "'True'"
+    ],
+    "config.backend.quantization_scheme": [
+      "'bnb'",
+      "'bnb'",
+      "'bnb'"
+    ],
+    "config.backend.seed": [
+      "'42'",
+      "'42'",
+      "'42'"
+    ],
+    "config.backend.task": [
+      "'text-generation'",
+      "'text-generation'",
+      "'text-generation'"
+    ],
+    "config.backend.to_bettertransformer": [
+      "'False'",
+      "'False'",
+      "'False'"
+    ],
+    "config.backend.torch_compile": [
+      "'False'",
+      "'False'",
+      "'False'"
+    ],
+    "config.backend.torch_compile_target": [
+      "'forward'",
+      "'forward'",
+      "'forward'"
+    ],
+    "config.backend.torch_dtype": [
+      "'float16'",
+      "'float16'",
+      "'float16'"
+    ],
+    "config.backend.version": [
+      "'2.4.1+cu124'",
+      "'2.4.1+cu124'",
+      "'2.4.1+cu124'"
+    ],
+    "config.environment.accelerate_commit": [],
+    "config.environment.accelerate_version": [
+      "'0.34.2'",
+      "'0.34.2'",
+      "'0.34.2'"
+    ],
+    "config.environment.cpu": [
+      "' Intel(R) Xeon(R) Platinum 8259CL CPU @ 2.50GHz'",
+      "' Intel(R) Xeon(R) Platinum 8259CL CPU @ 2.50GHz'",
+      "' Intel(R) Xeon(R) Platinum 8259CL CPU @ 2.50GHz'"
+    ],
+    "config.environment.cpu_count": [
+      "'8'",
+      "'8'",
+      "'8'"
+    ],
+    "config.environment.cpu_ram_mb": [
+      "'33163.759616'",
+      "'33163.759616'",
+      "'33163.759616'"
+    ],
+    "config.environment.diffusers_commit": [],
+    "config.environment.diffusers_version": [],
+    "config.environment.gpu": [
+      "\"['Tesla T4']\"",
+      "\"['Tesla T4']\"",
+      "\"['Tesla T4']\""
+    ],
+    "config.environment.gpu_count": [
+      "'1'",
+      "'1'",
+      "'1'"
+    ],
+    "config.environment.gpu_vram_mb": [
+      "'16106127360'",
+      "'16106127360'",
+      "'16106127360'"
+    ],
+    "config.environment.machine": [
+      "'x86_64'",
+      "'x86_64'",
+      "'x86_64'"
+    ],
+    "config.environment.optimum_benchmark_commit": [],
+    "config.environment.optimum_benchmark_version": [
+      "'0.5.0'",
+      "'0.5.0'",
+      "'0.5.0'"
+    ],
+    "config.environment.optimum_commit": [],
+    "config.environment.optimum_version": [
+      "'1.22.0'",
+      "'1.22.0'",
+      "'1.22.0'"
+    ],
+    "config.environment.peft_commit": [],
+    "config.environment.peft_version": [
+      "'0.13.0'",
+      "'0.13.0'",
+      "'0.13.0'"
+    ],
+    "config.environment.platform": [
+      "'Linux-5.10.225-213.878.amzn2.x86_64-x86_64-with-glibc2.35'",
+      "'Linux-5.10.225-213.878.amzn2.x86_64-x86_64-with-glibc2.35'",
+      "'Linux-5.10.225-213.878.amzn2.x86_64-x86_64-with-glibc2.35'"
+    ],
+    "config.environment.processor": [
+      "'x86_64'",
+      "'x86_64'",
+      "'x86_64'"
+    ],
+    "config.environment.python_version": [
+      "'3.10.12'",
+      "'3.10.12'",
+      "'3.10.12'"
+    ],
+    "config.environment.system": [
+      "'Linux'",
+      "'Linux'",
+      "'Linux'"
+    ],
+    "config.environment.timm_commit": [],
+    "config.environment.timm_version": [],
+    "config.environment.transformers_commit": [],
+    "config.environment.transformers_version": [
+      "'4.45.1'",
+      "'4.45.1'",
+      "'4.45.1'"
+    ],
+    "config.launcher._target_": [
+      "'optimum_benchmark.launchers.process.launcher.ProcessLauncher'",
+      "'optimum_benchmark.launchers.process.launcher.ProcessLauncher'",
+      "'optimum_benchmark.launchers.process.launcher.ProcessLauncher'"
+    ],
+    "config.launcher.device_isolation": [
+      "'True'",
+      "'True'",
+      "'True'"
+    ],
+    "config.launcher.device_isolation_action": [
+      "'kill'",
+      "'kill'",
+      "'kill'"
+    ],
+    "config.launcher.name": [
+      "'process'",
+      "'process'",
+      "'process'"
+    ],
+    "config.launcher.numactl": [
+      "'False'",
+      "'False'",
+      "'False'"
+    ],
+    "config.launcher.start_method": [
+      "'spawn'",
+      "'spawn'",
+      "'spawn'"
+    ],
+    "config.log_report": [
+      "'True'",
+      "'True'",
+      "'True'"
+    ],
+    "config.name": [
+      "'8bit-bnb-flash_attention_2'",
+      "'8bit-bnb-flash_attention_2'",
+      "'8bit-bnb-flash_attention_2'"
+    ],
+    "config.print_report": [
+      "'False'",
+      "'False'",
+      "'False'"
+    ],
+    "config.scenario._target_": [
+      "'optimum_benchmark.scenarios.inference.scenario.InferenceScenario'",
+      "'optimum_benchmark.scenarios.inference.scenario.InferenceScenario'",
+      "'optimum_benchmark.scenarios.inference.scenario.InferenceScenario'"
+    ],
+    "config.scenario.duration": [
+      "'10'",
+      "'10'",
+      "'10'"
+    ],
+    "config.scenario.energy": [
+      "'True'",
+      "'True'",
+      "'True'"
+    ],
+    "config.scenario.generate_kwargs.max_new_tokens": [
+      "'64'",
+      "'64'",
+      "'64'"
+    ],
+    "config.scenario.generate_kwargs.min_new_tokens": [
+      "'64'",
+      "'64'",
+      "'64'"
+    ],
+    "config.scenario.input_shapes.batch_size": [
+      "'1'",
+      "'1'",
+      "'1'"
+    ],
+    "config.scenario.input_shapes.num_choices": [
+      "'2'",
+      "'2'",
+      "'2'"
+    ],
+    "config.scenario.input_shapes.sequence_length": [
+      "'256'",
+      "'256'",
+      "'256'"
+    ],
+    "config.scenario.iterations": [
+      "'10'",
+      "'10'",
+      "'10'"
+    ],
+    "config.scenario.latency": [
+      "'True'",
+      "'True'",
+      "'True'"
+    ],
+    "config.scenario.memory": [
+      "'True'",
+      "'True'",
+      "'True'"
+    ],
+    "config.scenario.name": [
+      "'inference'",
+      "'inference'",
+      "'inference'"
+    ],
+    "config.scenario.new_tokens": [],
+    "config.scenario.warmup_runs": [
+      "'10'",
+      "'10'",
+      "'10'"
+    ],
+    "report.decode.efficiency.unit": [
+      "'tokens/kWh'"
+    ],
+    "report.decode.efficiency.value": [
+      "'181059.1783200273'"
+    ],
+    "report.decode.energy.cpu": [
+      "'0.0002144734256918747'"
+    ],
+    "report.decode.energy.gpu": [
+      "'0.00010982166424615'"
+    ],
+    "report.decode.energy.ram": [
+      "'2.3657444612008882e-05'"
+    ],
+    "report.decode.energy.total": [
+      "'0.00034795253455003364'"
+    ],
+    "report.decode.energy.unit": [
+      "'kWh'"
+    ],
+    "report.decode.latency.count": [
+      "'10'"
+    ],
+    "report.decode.latency.mean": [
+      "'7.3006227050781245'"
+    ],
+    "report.decode.latency.p50": [
+      "'7.300080810546875'"
+    ],
+    "report.decode.latency.p90": [
+      "'7.32080166015625'"
+    ],
+    "report.decode.latency.p95": [
+      "'7.3236291015625'"
+    ],
+    "report.decode.latency.p99": [
+      "'7.3258910546875'"
+    ],
+    "report.decode.latency.stdev": [
+      "'0.016843565972124462'"
+    ],
+    "report.decode.latency.stdev_": [
+      "'0.016843565972124462'"
+    ],
+    "report.decode.latency.total": [
+      "'73.00622705078125'"
+    ],
+    "report.decode.latency.unit": [
+      "'s'"
+    ],
+    "report.decode.latency.values": [
+      "'[7.310501953125, 7.32017333984375, 7.32645654296875, 7.31858203125, 7.2788623046875, 7.3018740234375, 7.29828759765625,"
+    ],
+    "report.decode.memory.max_allocated": [
+      "'7514.46784'"
+    ],
+    "report.decode.memory.max_global_vram": [
+      "'8010.006528'"
+    ],
+    "report.decode.memory.max_process_vram": [
+      "'0.0'"
+    ],
+    "report.decode.memory.max_ram": [
+      "'1371.017216'"
+    ],
+    "report.decode.memory.max_reserved": [
+      "'7593.787392'"
+    ],
+    "report.decode.memory.unit": [
+      "'MB'"
+    ],
+    "report.decode.throughput.unit": [
+      "'tokens/s'"
+    ],
+    "report.decode.throughput.value": [
+      "'8.629400880582258'"
+    ],
+    "report.load.efficiency": [],
+    "report.load.energy": [],
+    "report.load.energy.cpu": [
+      "'0.0007489382572000029'"
+    ],
+    "report.load.energy.gpu": [
+      "'0.0002828680040719983'"
+    ],
+    "report.load.energy.ram": [
+      "'8.260589899749046e-05'"
+    ],
+    "report.load.energy.total": [
+      "'0.0011144121602694916'"
+    ],
+    "report.load.energy.unit": [
+      "'kWh'"
+    ],
+    "report.load.latency.count": [
+      "'1'"
+    ],
+    "report.load.latency.mean": [
+      "'32.763345703125'"
+    ],
+    "report.load.latency.p50": [
+      "'32.763345703125'"
+    ],
+    "report.load.latency.p90": [
+      "'32.763345703125'"
+    ],
+    "report.load.latency.p95": [
+      "'32.763345703125'"
+    ],
+    "report.load.latency.p99": [
+      "'32.763345703125'"
+    ],
+    "report.load.latency.stdev": [
+      "'0.0'"
+    ],
+    "report.load.latency.stdev_": [
+      "'0.0'"
+    ],
+    "report.load.latency.total": [
+      "'32.763345703125'"
+    ],
+    "report.load.latency.unit": [
+      "'s'"
+    ],
+    "report.load.latency.values": [
+      "'[32.763345703125]'"
+    ],
+    "report.load.memory.max_allocated": [
+      "'7445.507072'"
+    ],
+    "report.load.memory.max_global_vram": [
+      "'7846.428672'"
+    ],
+    "report.load.memory.max_process_vram": [
+      "'0.0'"
+    ],
+    "report.load.memory.max_ram": [
+      "'14672.269312'"
+    ],
+    "report.load.memory.max_reserved": [
+      "'7451.181056'"
+    ],
+    "report.load.memory.unit": [
+      "'MB'"
+    ],
+    "report.load.throughput": [],
+    "report.load_model.efficiency": [],
+    "report.load_model.energy.cpu": [],
+    "report.load_model.energy.gpu": [],
+    "report.load_model.energy.ram": [],
+    "report.load_model.energy.total": [],
+    "report.load_model.energy.unit": [],
+    "report.load_model.latency.count": [],
+    "report.load_model.latency.mean": [],
+    "report.load_model.latency.p50": [],
+    "report.load_model.latency.p90": [],
+    "report.load_model.latency.p95": [],
+    "report.load_model.latency.p99": [],
+    "report.load_model.latency.stdev": [],
+    "report.load_model.latency.stdev_": [],
+    "report.load_model.latency.total": [],
+    "report.load_model.latency.unit": [],
+    "report.load_model.latency.values": [],
+    "report.load_model.memory.max_allocated": [],
+    "report.load_model.memory.max_global_vram": [],
+    "report.load_model.memory.max_process_vram": [],
+    "report.load_model.memory.max_ram": [],
+    "report.load_model.memory.max_reserved": [],
+    "report.load_model.memory.unit": [],
+    "report.load_model.throughput": [],
+    "report.per_token.efficiency": [],
+    "report.per_token.energy": [],
+    "report.per_token.latency.count": [
+      "'630'"
+    ],
+    "report.per_token.latency.mean": [
+      "'0.11587695964026072'"
+    ],
+    "report.per_token.latency.p50": [
+      "'0.11570410919189453'"
+    ],
+    "report.per_token.latency.p90": [
+      "'0.11685232391357421'"
+    ],
+    "report.per_token.latency.p95": [
+      "'0.11739402809143067'"
+    ],
+    "report.per_token.latency.p99": [
+      "'0.11972997146606446'"
+    ],
+    "report.per_token.latency.stdev": [
+      "'0.00110443629695133'"
+    ],
+    "report.per_token.latency.stdev_": [
+      "'0.00110443629695133'"
+    ],
+    "report.per_token.latency.total": [
+      "'73.00248457336426'"
+    ],
+    "report.per_token.latency.unit": [
+      "'s'"
+    ],
+    "report.per_token.latency.values": [
+      "'[0.11452957153320313, 0.11483833312988281, 0.11656124877929687, 0.11619590759277344, 0.11579801940917969, 0.11623744201"
+    ],
+    "report.per_token.memory": [],
+    "report.per_token.throughput": [],
+    "report.per_token.throughput.unit": [
+      "'tokens/s'"
+    ],
+    "report.per_token.throughput.value": [
+      "'8.629843267414795'"
+    ],
+    "report.prefill.efficiency.unit": [
+      "'tokens/kWh'"
+    ],
+    "report.prefill.efficiency.value": [
+      "'39237590.22018294'"
+    ],
+    "report.prefill.energy.cpu": [
+      "'3.6786270893749892e-06'"
+    ],
+    "report.prefill.energy.gpu": [
+      "'2.4400644520500062e-06'"
+    ],
+    "report.prefill.energy.ram": [
+      "'4.056642756230992e-07'"
+    ],
+    "report.prefill.energy.total": [
+      "'6.524355817048094e-06'"
+    ],
+    "report.prefill.energy.unit": [
+      "'kWh'"
+    ],
+    "report.prefill.latency.count": [
+      "'10'"
+    ],
+    "report.prefill.latency.mean": [
+      "'0.12404065856933592'"
+    ],
+    "report.prefill.latency.p50": [
+      "'0.12393275070190429'"
+    ],
+    "report.prefill.latency.p90": [
+      "'0.12430681533813477'"
+    ],
+    "report.prefill.latency.p95": [
+      "'0.12457982215881347'"
+    ],
+    "report.prefill.latency.p99": [
+      "'0.12479822761535644'"
+    ],
+    "report.prefill.latency.stdev": [
+      "'0.00030640996927625664'"
+    ],
+    "report.prefill.latency.stdev_": [
+      "'0.00030640996927625664'"
+    ],
+    "report.prefill.latency.total": [
+      "'1.2404065856933593'"
+    ],
+    "report.prefill.latency.unit": [
+      "'s'"
+    ],
+    "report.prefill.latency.values": [
+      "'[0.12392790222167968, 0.12415155029296875, 0.12395753479003906, 0.12372345733642579, 0.1239375991821289, 0.123897155761"
+    ],
+    "report.prefill.memory.max_allocated": [
+      "'7570.843648'"
+    ],
+    "report.prefill.memory.max_global_vram": [
+      "'7997.423616'"
+    ],
+    "report.prefill.memory.max_process_vram": [
+      "'0.0'"
+    ],
+    "report.prefill.memory.max_ram": [
+      "'1351.00416'"
+    ],
+    "report.prefill.memory.max_reserved": [
+      "'7581.20448'"
+    ],
+    "report.prefill.memory.unit": [
+      "'MB'"
+    ],
+    "report.prefill.throughput.unit": [
+      "'tokens/s'"
+    ],
+    "report.prefill.throughput.value": [
+      "'2063.8394132428907'"
+    ],
+    "report.traceback": [
+      "'Traceback (most recent call last):\\n  File \"/workspace/llm_perf/update_llm_perf_cuda_pytorch.py\", line 153, in benchmar",
+      "'Traceback (most recent call last):\\n  File \"/workspace/llm_perf/update_llm_perf_cuda_pytorch.py\", line 153, in benchmar",
+      "'Traceback (most recent call last):\\n  File \"/workspace/llm_perf/update_llm_perf_cuda_pytorch.py\", line 153, in benchmar"
+    ]
+  },
+  "file_size_bytes": 7386884,
+  "inspected_row_count": 775,
+  "list_length_summaries": {},
+  "missing_rates": {
+    "config.backend._target_": 0.0,
+    "config.backend.attn_implementation": 0.0,
+    "config.backend.autocast_dtype": 1.0,
+    "config.backend.autocast_enabled": 0.0,
+    "config.backend.cache_implementation": 1.0,
+    "config.backend.deepspeed_inference": 0.0,
+    "config.backend.device": 0.0,
+    "config.backend.device_ids": 0.0,
+    "config.backend.device_map": 1.0,
+    "config.backend.eval_mode": 0.0,
+    "config.backend.inter_op_num_threads": 1.0,
+    "config.backend.intra_op_num_threads": 1.0,
+    "config.backend.library": 0.0,
+    "config.backend.low_cpu_mem_usage": 1.0,
+    "config.backend.model": 0.0,
+    "config.backend.model_kwargs.trust_remote_code": 0.0,
+    "config.backend.model_type": 0.0,
+    "config.backend.name": 0.0,
+    "config.backend.no_weights": 0.0,
+    "config.backend.peft_type": 1.0,
+    "config.backend.processor": 0.0,
+    "config.backend.quantization_config.llm_int8_threshold": 0.0,
+    "config.backend.quantization_config.load_in_4bit": 0.79,
+    "config.backend.quantization_config.load_in_8bit": 0.21,
+    "config.backend.quantization_scheme": 0.0,
+    "config.backend.seed": 0.0,
+    "config.backend.task": 0.0,
+    "config.backend.to_bettertransformer": 0.0,
+    "config.backend.torch_compile": 0.0,
+    "config.backend.torch_compile_target": 0.0,
+    "config.backend.torch_dtype": 0.0,
+    "config.backend.version": 0.0,
+    "config.environment.accelerate_commit": 1.0,
+    "config.environment.accelerate_version": 0.0,
+    "config.environment.cpu": 0.0,
+    "config.environment.cpu_count": 0.0,
+    "config.environment.cpu_ram_mb": 0.0,
+    "config.environment.diffusers_commit": 1.0,
+    "config.environment.diffusers_version": 1.0,
+    "config.environment.gpu": 0.0,
+    "config.environment.gpu_count": 0.0,
+    "config.environment.gpu_vram_mb": 0.0,
+    "config.environment.machine": 0.0,
+    "config.environment.optimum_benchmark_commit": 1.0,
+    "config.environment.optimum_benchmark_version": 0.0,
+    "config.environment.optimum_commit": 1.0,
+    "config.environment.optimum_version": 0.0,
+    "config.environment.peft_commit": 1.0,
+    "config.environment.peft_version": 0.0,
+    "config.environment.platform": 0.0,
+    "config.environment.processor": 0.0,
+    "config.environment.python_version": 0.0,
+    "config.environment.system": 0.0,
+    "config.environment.timm_commit": 1.0,
+    "config.environment.timm_version": 1.0,
+    "config.environment.transformers_commit": 1.0,
+    "config.environment.transformers_version": 0.0,
+    "config.launcher._target_": 0.0,
+    "config.launcher.device_isolation": 0.0,
+    "config.launcher.device_isolation_action": 0.0,
+    "config.launcher.name": 0.0,
+    "config.launcher.numactl": 0.0,
+    "config.launcher.start_method": 0.0,
+    "config.log_report": 0.0,
+    "config.name": 0.0,
+    "config.print_report": 0.0,
+    "config.scenario._target_": 0.0,
+    "config.scenario.duration": 0.0,
+    "config.scenario.energy": 0.0,
+    "config.scenario.generate_kwargs.max_new_tokens": 0.0,
+    "config.scenario.generate_kwargs.min_new_tokens": 0.0,
+    "config.scenario.input_shapes.batch_size": 0.0,
+    "config.scenario.input_shapes.num_choices": 0.0,
+    "config.scenario.input_shapes.sequence_length": 0.0,
+    "config.scenario.iterations": 0.0,
+    "config.scenario.latency": 0.0,
+    "config.scenario.memory": 0.0,
+    "config.scenario.name": 0.0,
+    "config.scenario.new_tokens": 1.0,
+    "config.scenario.warmup_runs": 0.0,
+    "report.decode.efficiency.unit": 0.99,
+    "report.decode.efficiency.value": 0.99,
+    "report.decode.energy.cpu": 0.99,
+    "report.decode.energy.gpu": 0.99,
+    "report.decode.energy.ram": 0.99,
+    "report.decode.energy.total": 0.99,
+    "report.decode.energy.unit": 0.99,
+    "report.decode.latency.count": 0.99,
+    "report.decode.latency.mean": 0.99,
+    "report.decode.latency.p50": 0.99,
+    "report.decode.latency.p90": 0.99,
+    "report.decode.latency.p95": 0.99,
+    "report.decode.latency.p99": 0.99,
+    "report.decode.latency.stdev": 0.99,
+    "report.decode.latency.stdev_": 0.99,
+    "report.decode.latency.total": 0.99,
+    "report.decode.latency.unit": 0.99,
+    "report.decode.latency.values": 0.99,
+    "report.decode.memory.max_allocated": 0.99,
+    "report.decode.memory.max_global_vram": 0.99,
+    "report.decode.memory.max_process_vram": 0.99,
+    "report.decode.memory.max_ram": 0.99,
+    "report.decode.memory.max_reserved": 0.99,
+    "report.decode.memory.unit": 0.99,
+    "report.decode.throughput.unit": 0.99,
+    "report.decode.throughput.value": 0.99,
+    "report.load.efficiency": 1.0,
+    "report.load.energy": 1.0,
+    "report.load.energy.cpu": 0.99,
+    "report.load.energy.gpu": 0.99,
+    "report.load.energy.ram": 0.99,
+    "report.load.energy.total": 0.99,
+    "report.load.energy.unit": 0.99,
+    "report.load.latency.count": 0.99,
+    "report.load.latency.mean": 0.99,
+    "report.load.latency.p50": 0.99,
+    "report.load.latency.p90": 0.99,
+    "report.load.latency.p95": 0.99,
+    "report.load.latency.p99": 0.99,
+    "report.load.latency.stdev": 0.99,
+    "report.load.latency.stdev_": 0.99,
+    "report.load.latency.total": 0.99,
+    "report.load.latency.unit": 0.99,
+    "report.load.latency.values": 0.99,
+    "report.load.memory.max_allocated": 0.99,
+    "report.load.memory.max_global_vram": 0.99,
+    "report.load.memory.max_process_vram": 0.99,
+    "report.load.memory.max_ram": 0.99,
+    "report.load.memory.max_reserved": 0.99,
+    "report.load.memory.unit": 0.99,
+    "report.load.throughput": 1.0,
+    "report.load_model.efficiency": 1.0,
+    "report.load_model.energy.cpu": 1.0,
+    "report.load_model.energy.gpu": 1.0,
+    "report.load_model.energy.ram": 1.0,
+    "report.load_model.energy.total": 1.0,
+    "report.load_model.energy.unit": 1.0,
+    "report.load_model.latency.count": 1.0,
+    "report.load_model.latency.mean": 1.0,
+    "report.load_model.latency.p50": 1.0,
+    "report.load_model.latency.p90": 1.0,
+    "report.load_model.latency.p95": 1.0,
+    "report.load_model.latency.p99": 1.0,
+    "report.load_model.latency.stdev": 1.0,
+    "report.load_model.latency.stdev_": 1.0,
+    "report.load_model.latency.total": 1.0,
+    "report.load_model.latency.unit": 1.0,
+    "report.load_model.latency.values": 1.0,
+    "report.load_model.memory.max_allocated": 1.0,
+    "report.load_model.memory.max_global_vram": 1.0,
+    "report.load_model.memory.max_process_vram": 1.0,
+    "report.load_model.memory.max_ram": 1.0,
+    "report.load_model.memory.max_reserved": 1.0,
+    "report.load_model.memory.unit": 1.0,
+    "report.load_model.throughput": 1.0,
+    "report.per_token.efficiency": 1.0,
+    "report.per_token.energy": 1.0,
+    "report.per_token.latency.count": 0.99,
+    "report.per_token.latency.mean": 0.99,
+    "report.per_token.latency.p50": 0.99,
+    "report.per_token.latency.p90": 0.99,
+    "report.per_token.latency.p95": 0.99,
+    "report.per_token.latency.p99": 0.99,
+    "report.per_token.latency.stdev": 0.99,
+    "report.per_token.latency.stdev_": 0.99,
+    "report.per_token.latency.total": 0.99,
+    "report.per_token.latency.unit": 0.99,
+    "report.per_token.latency.values": 0.99,
+    "report.per_token.memory": 1.0,
+    "report.per_token.throughput": 1.0,
+    "report.per_token.throughput.unit": 0.99,
+    "report.per_token.throughput.value": 0.99,
+    "report.prefill.efficiency.unit": 0.99,
+    "report.prefill.efficiency.value": 0.99,
+    "report.prefill.energy.cpu": 0.99,
+    "report.prefill.energy.gpu": 0.99,
+    "report.prefill.energy.ram": 0.99,
+    "report.prefill.energy.total": 0.99,
+    "report.prefill.energy.unit": 0.99,
+    "report.prefill.latency.count": 0.99,
+    "report.prefill.latency.mean": 0.99,
+    "report.prefill.latency.p50": 0.99,
+    "report.prefill.latency.p90": 0.99,
+    "report.prefill.latency.p95": 0.99,
+    "report.prefill.latency.p99": 0.99,
+    "report.prefill.latency.stdev": 0.99,
+    "report.prefill.latency.stdev_": 0.99,
+    "report.prefill.latency.total": 0.99,
+    "report.prefill.latency.unit": 0.99,
+    "report.prefill.latency.values": 0.99,
+    "report.prefill.memory.max_allocated": 0.99,
+    "report.prefill.memory.max_global_vram": 0.99,
+    "report.prefill.memory.max_process_vram": 0.99,
+    "report.prefill.memory.max_ram": 0.99,
+    "report.prefill.memory.max_reserved": 0.99,
+    "report.prefill.memory.unit": 0.99,
+    "report.prefill.throughput.unit": 0.99,
+    "report.prefill.throughput.value": 0.99,
+    "report.traceback": 0.01
+  },
+  "nested_keys": [],
+  "raw_columns": [
+    "config.name",
+    "config.backend.name",
+    "config.backend.version",
+    "config.backend._target_",
+    "config.backend.task",
+    "config.backend.library",
+    "config.backend.model_type",
+    "config.backend.model",
+    "config.backend.processor",
+    "config.backend.device",
+    "config.backend.device_ids",
+    "config.backend.seed",
+    "config.backend.inter_op_num_threads",
+    "config.backend.intra_op_num_threads",
+    "config.backend.model_kwargs.trust_remote_code",
+    "config.backend.no_weights",
+    "config.backend.device_map",
+    "config.backend.torch_dtype",
+    "config.backend.eval_mode",
+    "config.backend.to_bettertransformer",
+    "config.backend.low_cpu_mem_usage",
+    "config.backend.attn_implementation",
+    "config.backend.cache_implementation",
+    "config.backend.autocast_enabled",
+    "config.backend.autocast_dtype",
+    "config.backend.torch_compile",
+    "config.backend.torch_compile_target",
+    "config.backend.quantization_scheme",
+    "config.backend.quantization_config.llm_int8_threshold",
+    "config.backend.quantization_config.load_in_8bit",
+    "config.backend.deepspeed_inference",
+    "config.backend.peft_type",
+    "config.scenario.name",
+    "config.scenario._target_",
+    "config.scenario.iterations",
+    "config.scenario.duration",
+    "config.scenario.warmup_runs",
+    "config.scenario.input_shapes.batch_size",
+    "config.scenario.input_shapes.num_choices",
+    "config.scenario.input_shapes.sequence_length",
+    "config.scenario.new_tokens",
+    "config.scenario.memory",
+    "config.scenario.latency",
+    "config.scenario.energy",
+    "config.scenario.generate_kwargs.max_new_tokens",
+    "config.scenario.generate_kwargs.min_new_tokens",
+    "config.launcher.name",
+    "config.launcher._target_",
+    "config.launcher.device_isolation",
+    "config.launcher.device_isolation_action",
+    "config.launcher.numactl",
+    "config.launcher.start_method",
+    "config.environment.cpu",
+    "config.environment.cpu_count",
+    "config.environment.cpu_ram_mb",
+    "config.environment.system",
+    "config.environment.machine",
+    "config.environment.platform",
+    "config.environment.processor",
+    "config.environment.python_version",
+    "config.environment.gpu",
+    "config.environment.gpu_count",
+    "config.environment.gpu_vram_mb",
+    "config.environment.optimum_benchmark_version",
+    "config.environment.optimum_benchmark_commit",
+    "config.environment.transformers_version",
+    "config.environment.transformers_commit",
+    "config.environment.accelerate_version",
+    "config.environment.accelerate_commit",
+    "config.environment.diffusers_version",
+    "config.environment.diffusers_commit",
+    "config.environment.optimum_version",
+    "config.environment.optimum_commit",
+    "config.environment.timm_version",
+    "config.environment.timm_commit",
+    "config.environment.peft_version",
+    "config.environment.peft_commit",
+    "config.print_report",
+    "config.log_report",
+    "report.traceback",
+    "report.load.memory.unit",
+    "report.load.memory.max_ram",
+    "report.load.memory.max_global_vram",
+    "report.load.memory.max_process_vram",
+    "report.load.memory.max_reserved",
+    "report.load.memory.max_allocated",
+    "report.load.latency.unit",
+    "report.load.latency.values",
+    "report.load.latency.count",
+    "report.load.latency.total",
+    "report.load.latency.mean",
+    "report.load.latency.p50",
+    "report.load.latency.p90",
+    "report.load.latency.p95",
+    "report.load.latency.p99",
+    "report.load.latency.stdev",
+    "report.load.latency.stdev_",
+    "report.load.throughput",
+    "report.load.energy.unit",
+    "report.load.energy.cpu",
+    "report.load.energy.ram",
+    "report.load.energy.gpu",
+    "report.load.energy.total",
+    "report.load.efficiency",
+    "report.prefill.memory.unit",
+    "report.prefill.memory.max_ram",
+    "report.prefill.memory.max_global_vram",
+    "report.prefill.memory.max_process_vram",
+    "report.prefill.memory.max_reserved",
+    "report.prefill.memory.max_allocated",
+    "report.prefill.latency.unit",
+    "report.prefill.latency.values",
+    "report.prefill.latency.count",
+    "report.prefill.latency.total",
+    "report.prefill.latency.mean",
+    "report.prefill.latency.p50",
+    "report.prefill.latency.p90",
+    "report.prefill.latency.p95",
+    "report.prefill.latency.p99",
+    "report.prefill.latency.stdev",
+    "report.prefill.latency.stdev_",
+    "report.prefill.throughput.unit",
+    "report.prefill.throughput.value",
+    "report.prefill.energy.unit",
+    "report.prefill.energy.cpu",
+    "report.prefill.energy.ram",
+    "report.prefill.energy.gpu",
+    "report.prefill.energy.total",
+    "report.prefill.efficiency.unit",
+    "report.prefill.efficiency.value",
+    "report.decode.memory.unit",
+    "report.decode.memory.max_ram",
+    "report.decode.memory.max_global_vram",
+    "report.decode.memory.max_process_vram",
+    "report.decode.memory.max_reserved",
+    "report.decode.memory.max_allocated",
+    "report.decode.latency.unit",
+    "report.decode.latency.values",
+    "report.decode.latency.count",
+    "report.decode.latency.total",
+    "report.decode.latency.mean",
+    "report.decode.latency.p50",
+    "report.decode.latency.p90",
+    "report.decode.latency.p95",
+    "report.decode.latency.p99",
+    "report.decode.latency.stdev",
+    "report.decode.latency.stdev_",
+    "report.decode.throughput.unit",
+    "report.decode.throughput.value",
+    "report.decode.energy.unit",
+    "report.decode.energy.cpu",
+    "report.decode.energy.ram",
+    "report.decode.energy.gpu",
+    "report.decode.energy.total",
+    "report.decode.efficiency.unit",
+    "report.decode.efficiency.value",
+    "report.per_token.memory",
+    "report.per_token.latency.unit",
+    "report.per_token.latency.values",
+    "report.per_token.latency.count",
+    "report.per_token.latency.total",
+    "report.per_token.latency.mean",
+    "report.per_token.latency.p50",
+    "report.per_token.latency.p90",
+    "report.per_token.latency.p95",
+    "report.per_token.latency.p99",
+    "report.per_token.latency.stdev",
+    "report.per_token.latency.stdev_",
+    "report.per_token.throughput.unit",
+    "report.per_token.throughput.value",
+    "report.per_token.energy",
+    "report.per_token.efficiency",
+    "config.backend.quantization_config.load_in_4bit",
+    "report.load.energy",
+    "report.load_model.memory.unit",
+    "report.load_model.memory.max_ram",
+    "report.load_model.memory.max_global_vram",
+    "report.load_model.memory.max_process_vram",
+    "report.load_model.memory.max_reserved",
+    "report.load_model.memory.max_allocated",
+    "report.load_model.latency.unit",
+    "report.load_model.latency.values",
+    "report.load_model.latency.count",
+    "report.load_model.latency.total",
+    "report.load_model.latency.mean",
+    "report.load_model.latency.p50",
+    "report.load_model.latency.p90",
+    "report.load_model.latency.p95",
+    "report.load_model.latency.p99",
+    "report.load_model.latency.stdev",
+    "report.load_model.latency.stdev_",
+    "report.load_model.throughput",
+    "report.load_model.energy.unit",
+    "report.load_model.energy.cpu",
+    "report.load_model.energy.ram",
+    "report.load_model.energy.gpu",
+    "report.load_model.energy.total",
+    "report.load_model.efficiency",
+    "report.per_token.throughput"
+  ],
+  "rejected_columns": [],
+  "source_file": "data/perf-df-pytorch-cuda-bnb-1xT4.csv",
+  "unknown_columns": []
+}

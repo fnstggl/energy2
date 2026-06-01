@@ -3300,3 +3300,133 @@ curve as a memory-pressure prior input to the cache/residency
 forecaster (`aurelius/forecasting/cache_prefix_reuse_forecaster.py`);
 revisit intellistream once a licence is added upstream; continue
 monitoring INGEST_LATER candidates as their license / size changes.
+
+## 2026-06-01 — HF corpus round-2 broadened discovery (`feature/hf-corpus-broaden-discovery-round2`)
+
+**Scope.** Second broadened-discovery pass on the federated HF benchmark
+corpus. The mission's short-term focused audits (AcmeTrace, prefixbench,
+etc.) and the first broadened-discovery pass (odyn-network / memoriant /
+intellistream) were already done — this round broadens to new
+high-value datasets that fill explicit gaps in Aurelius' priors.
+
+**Primary ingest: `optimum-benchmark/llm-perf-leaderboard`.** HuggingFace's
+own `optimum-benchmark` performance leaderboard data — the strongest
+public Tier-4 `latency_benchmark_trace` available with real measured
+prefill (TTFT) + decode (TPOT) latency at p50/p90/p95/p99, **per-request
+GPU/CPU/RAM energy in kWh** (via `codecarbon`), and peak VRAM/RAM memory.
+9 configs ingested covering the (hardware × backend × quantization)
+matrix: A100 / A10 / T4 / 32vCPU-C7i × pytorch-cuda / pytorch-cpu ×
+unquantized / awq / bnb / gptq / torchao. 1 sub-config rejected
+(`openvino_cpu_unquantized_32vCPU_C7i` — every row is a process crash
+with zero latency columns).
+
+This is the first dataset in the federated corpus with **measured
+per-request energy** at this granularity, directly feeding the energy /
+carbon cost terms in the Aurelius objective function. It is also the
+first cross-quantization performance surface, addressing the gap in
+the constraint-aware placement engine's quantization-aware decisions.
+
+**Promotion outcomes** (9 configs):
+- 7 → `promoted_for_performance_priors` (+ `constraint_aware_evaluation`,
+  `training_priors`) — strong/moderate statistical sample (190–1,569 rows
+  per config × 36–93 distinct models per config).
+- 2 → `promoted_for_training_priors` only — small-sample configs
+  (torchao A10: 15 rows; pytorch_cpu C7i was strong; openvino was
+  rejected).
+
+**Discovery-only audit (9 new rejection / deferral records):**
+- `Exgentic/agent-llm-traces` — DEFERRED (high-value, large size).
+  1,781 OpenTelemetry agent traces across 6 benchmarks × 5 frameworks
+  × 6 models, 2.77 GB across 39 parquet files, cdla-permissive-2.0
+  (redistribution-friendly). Deferred to next-run for a targeted
+  single-parquet bounded ingest. Documented as the exact next task in
+  `docs/HF_DATASET_REGISTRY.md` §10.
+- `kshitijthakkar/moe-inference-benchmark` +
+  `kshitijthakkar/large-moe-inference-benchmark` — DEFERRED pending
+  HF datasets-server auto-conversion (currently returns 404).
+- `wseaton/prefix-cache-bench` — REJECTED (misleading name; just
+  500 prompt strings, no measured cache / latency / queue / GPU signal).
+- `aintech/vdf_prefix-cache` — REJECTED (despite the name, this is a
+  vector-DB VDF export, not LLM prefix-cache telemetry).
+- `JohnGavin/llmtelemetry-metrics` — REJECTED (daily billing roll-up,
+  not infrastructure telemetry).
+- `abdallah1008/semantic-router-benchmark-data` — REJECTED (router
+  training labels only, not measured routing telemetry).
+- `Nathan-Maine/dgx-spark-kv-cache-benchmark` — REJECTED (near-duplicate
+  of the already-ingested `memoriant/dgx-spark-kv-cache-benchmark`).
+- `fabric/inference-benchmarker` — REJECTED (ShareGPT-derived prompt
+  fixtures, duplicate of `sharegpt_aiperf` role).
+- `optimum-benchmark/llm-perf-leaderboard@openvino_cpu_unquantized_32vCPU_C7i`
+  — REJECTED as failure-only sub-config (zero measured latency
+  columns; only `report.traceback` populated).
+
+**Trust-hierarchy honesty.** Every promoted entry is Tier-4
+`latency_benchmark_trace` — research-class priors, NOT pilot telemetry.
+The objective function uses the energy column as a quantization-aware
+energy prior, NOT as production billing truth. The dataset card has
+NO declared license (frontmatter empty, no LICENSE file) — recorded as
+`license=None` and treated under the conservative
+`license_unspecified_no_redistribution_promise` policy (no committed
+normalised sample; raw downloads gitignored).
+
+**Artefacts:**
+- `scripts/ingest_hf_optimum_benchmark.py` — new ingester (1 file).
+- `data/external/hf/optimum-benchmark__llm-perf-leaderboard/<config>/processed/`
+  — per-config `schema_profile.json` + `schema_mapping.json` +
+  `summary.json` + `statistical_rollups.json` (~80 KiB committed
+  per config; 9 configs ≈ 720 KiB total). Raw CSVs (~73 MiB total)
+  gitignored. Analysis samples (~5 MiB total) gitignored.
+- `tests/fixtures/hf/optimum-benchmark__llm-perf-leaderboard__<config>_sample.jsonl`
+  — 9 deterministic 5-row fixtures, ≤ 8 KiB each.
+- `data/external/hf_discovery/canonical_corpus_registry.json` —
+  grows from 32 → 41 entries.
+- `data/external/hf_discovery/broadened_discovery_audit_summary.json`
+  — merged with round-1; 17 ingested + 17 discovery-only records total.
+- `docs/HF_DATASET_REGISTRY.md` §3 + §7.1 + §7.2 + §10 updated with
+  the new pipeline reference, table rows, the new optimum-benchmark
+  detail block, the 10 rejection / deferral entries, and a refreshed
+  next-actions list.
+- `tests/test_hf_optimum_benchmark_ingest.py` — new test module (24
+  test functions, 219 parameterised cases) covering: no raw / no
+  analysis_sample committed; fixtures committed and < 16 KiB;
+  per-config schema_profile + schema_mapping + summary +
+  statistical_rollups present; latency / energy / memory columns
+  correctly classified into the Aurelius signal taxonomy; license
+  recorded as None with no committed normalised sample; promotion
+  gates pass for all 9 configs; strong-sample configs reach
+  `promoted_for_performance_priors`; fixture rows have measured
+  TTFT or TPOT; signal lists are explicit (concurrency / queue /
+  cache / routing / SLA in missing_signals; TTFT / TPOT /
+  throughput / energy / memory in available_signals); audit summary
+  records all 9 configs + 9 round-2 discovery-only IDs.
+- `tests/test_hf_latency_benchmarks_ingest.py` — minor update: the
+  round-1 audit-summary `==` set-equality checks were relaxed to
+  subset checks so the audit summary can keep accumulating across
+  future broadened-discovery rounds.
+
+**Tests:** 219 new (all green). Existing HF tests (10 modules, 471
+total green including new). Public-trace ingestion tests (8 modules,
+143 green) unaffected. Frontier tests (8 modules, 159 green)
+unaffected.
+
+**Honesty invariants:** raw + analysis samples gitignored; no HF
+token committed anywhere; trust tier is Tier 4 (NOT pilot telemetry);
+benchmark data never treated as production telemetry; every promoted
+entry carries `license`, `gated`, `provenance`, `field_quality`,
+`limitations`; no oracle as headline; no scheduler / controller /
+robust energy engine touched; license=None → committed normalised
+sample explicitly skipped with
+`license_unspecified_no_redistribution_promise` reason; failure-only
+sub-config explicitly documented in the audit summary rather than
+silently dropped.
+
+**Next (documented exactly in `docs/HF_DATASET_REGISTRY.md` §10):**
+ingest `Exgentic/agent-llm-traces` next run (1 of 39 parquet files,
+~70 MiB bounded) — the cdla-permissive-2.0 license permits a
+redistributable normalised sample. Cross-validate
+`optimum-benchmark/llm-perf-leaderboard` mean_ttft_ms / mean_tpot_ms
+against AgentPerfBench `trace_replay` for matched (model_family,
+batch_size, sequence_length) triples. Combine the optimum
+`prefill_energy_gpu_kwh` + `decode_energy_gpu_kwh` columns with
+regional CO2 g/kWh from the existing CAISO/PJM/WattTime ingester to
+produce the corpus' first end-to-end carbon-aware placement prior.

@@ -105,6 +105,13 @@ scripts/ingest_hf_latency_benchmarks.py
      memoriant/dgx-spark-kv-cache-benchmark,
      intellistream/vllm-hust-benchmark-results).
 
+scripts/ingest_hf_optimum_benchmark.py
+  -> 9 optimum-benchmark/llm-perf-leaderboard configs covering A100 / A10 /
+     T4 / 32vCPU-C7i × pytorch-cuda / pytorch-cpu × unquantized / awq / bnb
+     / gptq / torchao. Real measured prefill (TTFT) + decode (TPOT) latency
+     at p50/p90/p95/p99, per-request GPU/CPU/RAM energy (kWh) and peak
+     VRAM/RAM memory.
+
 scripts/run_hf_corpus_evaluations.py
   -> data/external/hf_discovery/hf_corpus_evaluation_summary.json
 ```
@@ -220,6 +227,15 @@ Rules (binding):
 | `memoriant/dgx-spark-kv-cache-benchmark` | **`v3_corrected`** | `latency_benchmark_trace` | Tier 4 | `promoted_for_training_priors` | 5 | 18 | weak | 2026-06-01 |
 | `intellistream/vllm-hust-benchmark-results` | **`single_gpu`** | `latency_benchmark_trace` | Tier 4 | `promoted_for_performance_priors` (+ `constraint_aware_evaluation`, `training_priors`) | 5 | 42 | moderate | 2026-06-01 |
 | `intellistream/vllm-hust-benchmark-results` | **`multi_gpu`** | `latency_benchmark_trace` | Tier 4 | `promoted_for_training_priors` | 3 | 3 | weak | 2026-06-01 |
+| `optimum-benchmark/llm-perf-leaderboard` | **`pytorch_cuda_unquantized_1xA100`** | `latency_benchmark_trace` | Tier 4 | `promoted_for_performance_priors` (+ `constraint_aware_evaluation`, `training_priors`) | 5 | 190 | moderate | 2026-06-01 |
+| `optimum-benchmark/llm-perf-leaderboard` | **`pytorch_cuda_unquantized_1xA10`** | `latency_benchmark_trace` | Tier 4 | `promoted_for_performance_priors` (+ `constraint_aware_evaluation`, `training_priors`) | 5 | **1,344** | strong | 2026-06-01 |
+| `optimum-benchmark/llm-perf-leaderboard` | **`pytorch_cuda_unquantized_1xT4`** | `latency_benchmark_trace` | Tier 4 | `promoted_for_performance_priors` (+ `constraint_aware_evaluation`, `training_priors`) | 5 | **1,265** | strong | 2026-06-01 |
+| `optimum-benchmark/llm-perf-leaderboard` | **`pytorch_cuda_bnb_1xA100`** | `latency_benchmark_trace` | Tier 4 | `promoted_for_performance_priors` (+ `constraint_aware_evaluation`, `training_priors`) | 5 | 401 | strong | 2026-06-01 |
+| `optimum-benchmark/llm-perf-leaderboard` | **`pytorch_cuda_gptq_1xA100`** | `latency_benchmark_trace` | Tier 4 | `promoted_for_performance_priors` (+ `constraint_aware_evaluation`, `training_priors`) | 5 | 314 | strong | 2026-06-01 |
+| `optimum-benchmark/llm-perf-leaderboard` | **`pytorch_cuda_awq_1xA10`** | `latency_benchmark_trace` | Tier 4 | `promoted_for_performance_priors` (+ `constraint_aware_evaluation`, `training_priors`) | 5 | **1,569** | strong | 2026-06-01 |
+| `optimum-benchmark/llm-perf-leaderboard` | **`pytorch_cuda_bnb_1xT4`** | `latency_benchmark_trace` | Tier 4 | `promoted_for_performance_priors` (+ `constraint_aware_evaluation`, `training_priors`) | 5 | 775 | strong | 2026-06-01 |
+| `optimum-benchmark/llm-perf-leaderboard` | **`pytorch_cuda_torchao_1xA10`** | `latency_benchmark_trace` | Tier 4 | `promoted_for_training_priors` | 5 | 15 | weak | 2026-06-01 |
+| `optimum-benchmark/llm-perf-leaderboard` | **`pytorch_cpu_unquantized_32vCPU_C7i`** | `latency_benchmark_trace` | Tier 4 | `promoted_for_performance_priors` (+ `constraint_aware_evaluation`, `training_priors`) | 5 | **1,128** | strong | 2026-06-01 |
 
 > **CARA** is the first Tier 2 (public telemetry trace) entry in the
 > federated corpus. CARA **train_flat** + **train_queue_details** are
@@ -566,6 +582,85 @@ Rules (binding):
   - Request-level scheduler backtests.
   - SLA / queue calibration.
 
+#### Optimum-benchmark — Tier-4 cross-hardware × quantization × model
+
+- **Provenance.** [`optimum-benchmark/llm-perf-leaderboard`](https://huggingface.co/datasets/optimum-benchmark/llm-perf-leaderboard)
+  — HuggingFace's official `optimum-benchmark` performance leaderboard
+  data. The upstream tool ([huggingface/optimum-benchmark](https://github.com/huggingface/optimum-benchmark))
+  is Apache-2.0 and uses `codecarbon` for energy measurement. The HF
+  dataset card itself has NO declared license — recorded as `license=None`
+  and treated under the conservative
+  `license_unspecified_no_redistribution_promise` policy (no committed
+  normalised sample; raw downloads gitignored).
+- **Configs ingested (9 of 16 available; 1 dropped as failure-only).**
+  The leaderboard ships one CSV per (hardware, backend, quantization)
+  combo. The 9 configs cover:
+  - **NVIDIA A100-SXM4-80GB:** `pytorch_cuda_unquantized_1xA100` (190 rows),
+    `pytorch_cuda_bnb_1xA100` (401), `pytorch_cuda_gptq_1xA100` (314).
+  - **NVIDIA A10G:** `pytorch_cuda_unquantized_1xA10` (1,344),
+    `pytorch_cuda_awq_1xA10` (1,569),
+    `pytorch_cuda_torchao_1xA10` (15 — weak).
+  - **NVIDIA Tesla T4:** `pytorch_cuda_unquantized_1xT4` (1,265),
+    `pytorch_cuda_bnb_1xT4` (775).
+  - **32vCPU Sapphire-Rapids (AWS C7i):**
+    `pytorch_cpu_unquantized_32vCPU_C7i` (1,128).
+  - **Excluded:** `openvino_cpu_unquantized_32vCPU_C7i` — every row is an
+    isolated-process crash with zero measured latency columns (recorded
+    in the audit summary as `reject_failure_only_no_measurements`).
+- **Available signals:** TTFT (= prefill latency mean / p50 / p90 / p95 /
+  p99 / count), TPOT (= decode latency mean / p50 / p90 / p95 / p99 /
+  count), prefill + decode throughput (tokens/s), per-request energy
+  (kWh — CPU + RAM + GPU + total, separately), peak memory (max_global_vram
+  / max_allocated / max_reserved / max_ram MB), model, model_family,
+  GPU type, backend (pytorch / openvino / onnxruntime), quantization
+  scheme (unquantized / awq / bnb / gptq / torchao), dtype, batch_size,
+  sequence_length, new_tokens, error_type / error_message.
+- **Missing signals:** concurrency (all runs are single-stream with
+  batch_size=1), real queue / arrival / dispatch trace, cache hit /
+  prefix reuse, model residency / cold start, autoscaling / replica
+  count, SLA / timeout label (failures are crashes, not SLA violations),
+  routing state, carbon intensity (energy is in kWh; consumers must
+  combine with regional CO2 g/kWh to derive carbon).
+- **Recommended Aurelius uses:**
+  - **Quantization-aware placement priors** — measured latency × memory ×
+    energy delta for AWQ / BNB / GPTQ / TorchAO vs unquantized across
+    A100 / A10 / T4. The constraint-aware placement engine previously
+    had no cross-quantization performance surface — this is the
+    strongest public one (≥314 rows per quantization × hardware combo,
+    36-93 distinct models per combo).
+  - **Energy-aware scheduling priors** — real per-request GPU/CPU/RAM
+    energy (kWh) for the energy / carbon cost terms in the Aurelius
+    objective function. The first public dataset in the federated
+    corpus with measured per-request energy at this granularity.
+  - **Cross-hardware throughput priors** — decode + prefill throughput
+    (tokens/s) across A100 / A10 / T4 / Sapphire-Rapids vCPU lets the
+    routing/residency engine reason about which GPU class a model fits.
+  - **OOM / memory-pressure priors** — peak `max_global_vram` and
+    `max_allocated` per (model, quantization, hardware) feeds the
+    constraint-aware placement engine's memory headroom check; rows
+    with null measurements (OOM on the listed GPU) are themselves a
+    valuable failure prior.
+- **Prohibited uses:**
+  - **Real-arrival scheduling.** All runs are single-stream batch_size=1;
+    NO arrival process, NO queue, NO concurrent request mix.
+  - **Production latency calibration.** Tier 4 benchmark — pilot
+    telemetry remains the only Tier 1 calibration source.
+  - **Cross-quantization-method generalisation outside the matrix.**
+    The CSV is one quantization method × one hardware; rolling-up
+    "AWQ vs unquantized" requires explicit matching by (model, hardware).
+  - **Single-config p95/p99 claims with < 10 measurements.** The TPOT
+    p95/p99 within one row reflects only `report.decode.latency.count`
+    iterations (typically 10-100) — use the across-row rollups in
+    `statistical_rollups.json` for cross-model p95/p99.
+- **Bounded ingest layout:** raw CSVs (~73 MiB total across 9 files)
+  live under `data/external/hf/optimum-benchmark__llm-perf-leaderboard/raw/`
+  and are gitignored. Per-config processed `summary.json`,
+  `schema_profile.json`, `schema_mapping.json`, `statistical_rollups.json`,
+  and 5-row fixture (≤ 16 KiB) ARE committed. Per-config
+  `analysis_sample.jsonl` (~5 MiB total) is gitignored — regenerable
+  from the bounded raw download via
+  `scripts/ingest_hf_optimum_benchmark.py`.
+
 ### 7.2 Datasets evaluated but rejected / blocked
 
 | dataset_id | trace_type | state | reason |
@@ -585,6 +680,16 @@ Rules (binding):
 | `MCP-1st-Birthday/smoltrace-cloud-cost-tasks` | `mixed_or_unknown_trace` | `reject_synthetic_agent_eval` | Synthetic MCP agent-evaluation task set (smoltrace). No measured infrastructure signals (latency / queue / GPU / cache). Tier 6. |
 | `rbgo/llm-inference-benchmark` | `latency_benchmark_trace` | `license_unspecified_low_priority` | Single CSV with inference benchmark numbers, license=None. Without license clarity, committing a normalised sample is unsafe. Lower priority than `odyn-network/odyn-benchmarks` + `memoriant/dgx-spark-kv-cache-benchmark` (both Apache-2.0) which fill the same Tier-4 role. |
 | `project-vajra/dev-staging-h100-dgx` | `kernel_profile_trace` | `license_unspecified_low_priority` | NCCL `all_reduce` / `send_recv` CSV traces (compressed `.xz`). Potentially useful as inter-GPU communication priors; license=None. Revisit if licence clarified or if Aurelius adds a multi-GPU placement / collective evaluator. |
+| `Exgentic/agent-llm-traces` | `request_shape_trace` | `defer_high_value_large_size` | 1,781 OpenTelemetry agent traces across 6 benchmarks × 5 frameworks × 6 models (Claude / GPT / Gemini / DeepSeek / Kimi). Has span `start_time`/`end_time` + `gen_ai.usage.{input,output}_tokens` + `status.code`. 2.77 GB across 39 parquet files. cdla-permissive-2.0 (redistribution-friendly). HIGH VALUE for agent workload-shape + per-model duration priors, but timing is closed-API end-to-end latency (API + network + serving), NOT GPU-serving telemetry. Deferred to next-run for a targeted single-parquet bounded ingest once the request-shape ingester contract handles OpenTelemetry span lists. |
+| `wseaton/prefix-cache-bench` | `request_shape_trace` | `reject_low_information_density` | Single `text` column with 500 prompt strings. Despite the name, contains NO measured cache / latency / queue / GPU signal — workload-shape fixture only. Duplicates the existing `sharegpt_aiperf` role at lower density. |
+| `aintech/vdf_prefix-cache` | `mixed_or_unknown_trace` | `reject_misleading_name` | Despite "prefix-cache" in the name, this is a vector-DB VDF (vector-io) export — embedding vectors, not LLM prefix-cache telemetry. Tier 6. |
+| `kshitijthakkar/moe-inference-benchmark` | `latency_benchmark_trace` | `defer_pending_schema_inspection` | Apache-2.0 MoE inference benchmark (n<1K rows). README returned HTTP 403 and datasets-server returned 404 during discovery. Deferred until HF auto-conversion completes OR a manual schema probe is done. |
+| `kshitijthakkar/large-moe-inference-benchmark` | `latency_benchmark_trace` | `defer_pending_schema_inspection` | Companion "large" MoE benchmark. license=None; schema not yet accessible via datasets-server. Deferred paired with the small MoE benchmark. |
+| `JohnGavin/llmtelemetry-metrics` | `mixed_or_unknown_trace` | `reject_no_infrastructure_signal` | `costs.parquet` + `sessions.parquet` with daily billing roll-up (`cost_id`, `project`, `date`, `daily_cost_usd`, `n_sessions`, `duration_min`). NO request-level latency / queue / GPU / cache. Project-level cost accounting, not infrastructure telemetry. |
+| `abdallah1008/semantic-router-benchmark-data` | `request_shape_trace` | `reject_classification_labels_only` | Single JSONL with prompt + route-label pairs for training a semantic-router classifier. NO measured routing latency, throughput, model residency, or cache hit signal. The routing-quality term in the Aurelius objective needs measured-routing telemetry — this is router training labels only. |
+| `Nathan-Maine/dgx-spark-kv-cache-benchmark` | `latency_benchmark_trace` | `duplicate_existing` | Same KV cache benchmark CSV as `memoriant/dgx-spark-kv-cache-benchmark` (already ingested as Tier-4 `v3_corrected`). Apache-2.0; near-duplicate of the same upstream Nathan-Maine work. |
+| `fabric/inference-benchmarker` | `request_shape_trace` | `duplicate_existing` | ShareGPT-derived prompt fixtures used to drive the upstream huggingface/inference-benchmarker tool — identical role to `hlarcher/inference-benchmarker` (already rejected) and to the existing `sharegpt_aiperf` request-shape ingester. |
+| `optimum-benchmark/llm-perf-leaderboard@openvino_cpu_unquantized_32vCPU_C7i` | `latency_benchmark_trace` (sub-config) | `reject_failure_only_no_measurements` | Every row is an isolated-process crash (`RuntimeError: Isolated process exited with non-zero code -6` in `report.traceback`); ZERO measured `report.prefill.latency.*` / `report.decode.latency.*` columns in the CSV header. The 9 working `optimum-benchmark` configs already cover the pytorch-cpu C7i baseline for cross-backend comparison. Re-add if a future openvino sub-run produces real latency. |
 
 ### 7.3 Datasets known in repo (non-HF or other ingest paths)
 
@@ -688,6 +793,39 @@ Re-running `scripts/discover_hf_aurelius_datasets.py` rebuilds
   is regenerable-from-source only.
 - Look for `osteele/llm-calibration-db` access escalation — still
   gated_blocked from PR #133.
+- **Done 2026-06-01** — Round-2 broadened discovery: ingested
+  `optimum-benchmark/llm-perf-leaderboard` as 9 Tier-4
+  `latency_benchmark_trace` configs covering A100 / A10 / T4 / 32vCPU-C7i
+  × pytorch / openvino × unquantized / awq / bnb / gptq / torchao. Real
+  measured prefill (TTFT) + decode (TPOT) latency at p50/p90/p95/p99
+  with per-request GPU/CPU/RAM energy (kWh) — the first public dataset
+  in the federated corpus with measured per-request energy at this
+  granularity, directly feeding the energy / carbon cost terms in the
+  Aurelius objective.
+- Ingest `Exgentic/agent-llm-traces` next (1,781 OpenTelemetry agent
+  traces, cdla-permissive-2.0, 2.77 GB across 39 parquet files). Plan:
+  download the smallest parquet file (~70 MiB) and normalise the span
+  list into a `request_shape_trace` extended with `duration_ms`,
+  `input_tokens`, `output_tokens`, `status_code` per LLM call. This
+  fills the agent-task duration / token-usage gap currently covered
+  only by `sammshen/lmcache-agentic-traces`.
+- Cross-validate `optimum-benchmark/llm-perf-leaderboard` mean_ttft_ms
+  / mean_tpot_ms surfaces against `agent-perf-bench/AgentPerfBench`
+  `trace_replay` for matched (model_family, batch_size, sequence_length)
+  triples — both are Tier-4 latency benchmarks and a cross-reference
+  audit would calibrate which measurement campaign is the stronger
+  prior for which (GPU, model) cell.
+- Use `optimum-benchmark/llm-perf-leaderboard` per-request
+  `prefill_energy_gpu_kwh` + `decode_energy_gpu_kwh` × regional CO2
+  g/kWh from the existing `caiso_pjm_prices` / WattTime ingester to
+  produce a carbon-aware placement prior (model × GPU × quantization →
+  gCO2 per request). This would be the first end-to-end energy →
+  carbon prior the constraint-aware engine can consume.
+- Probe `kshitijthakkar/moe-inference-benchmark` +
+  `kshitijthakkar/large-moe-inference-benchmark` once the HF
+  auto-conversion completes — these would be the first MoE-specific
+  serving latency priors in the corpus (current latency benchmarks
+  are dense-only).
 
 ## 11. License + auth
 

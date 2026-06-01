@@ -1,0 +1,2475 @@
+{
+  "accepted_columns": [
+    "config.name",
+    "config.backend.name",
+    "config.backend.version",
+    "config.backend._target_",
+    "config.backend.task",
+    "config.backend.library",
+    "config.backend.model_type",
+    "config.backend.model",
+    "config.backend.processor",
+    "config.backend.device",
+    "config.backend.device_ids",
+    "config.backend.seed",
+    "config.backend.inter_op_num_threads",
+    "config.backend.intra_op_num_threads",
+    "config.backend.model_kwargs.trust_remote_code",
+    "config.backend.no_weights",
+    "config.backend.device_map",
+    "config.backend.torch_dtype",
+    "config.backend.eval_mode",
+    "config.backend.to_bettertransformer",
+    "config.backend.low_cpu_mem_usage",
+    "config.backend.attn_implementation",
+    "config.backend.cache_implementation",
+    "config.backend.autocast_enabled",
+    "config.backend.autocast_dtype",
+    "config.backend.torch_compile",
+    "config.backend.torch_compile_target",
+    "config.backend.quantization_scheme",
+    "config.backend.quantization_config.quant_type",
+    "config.backend.quantization_config.group_size",
+    "config.backend.deepspeed_inference",
+    "config.backend.peft_type",
+    "config.scenario.name",
+    "config.scenario._target_",
+    "config.scenario.iterations",
+    "config.scenario.duration",
+    "config.scenario.warmup_runs",
+    "config.scenario.input_shapes.batch_size",
+    "config.scenario.input_shapes.sequence_length",
+    "config.scenario.new_tokens",
+    "config.scenario.memory",
+    "config.scenario.latency",
+    "config.scenario.energy",
+    "config.scenario.generate_kwargs.max_new_tokens",
+    "config.scenario.generate_kwargs.min_new_tokens",
+    "config.launcher.name",
+    "config.launcher._target_",
+    "config.launcher.device_isolation",
+    "config.launcher.device_isolation_action",
+    "config.launcher.numactl",
+    "config.launcher.start_method",
+    "config.environment.cpu",
+    "config.environment.cpu_count",
+    "config.environment.cpu_ram_mb",
+    "config.environment.system",
+    "config.environment.machine",
+    "config.environment.platform",
+    "config.environment.processor",
+    "config.environment.python_version",
+    "config.environment.gpu",
+    "config.environment.gpu_count",
+    "config.environment.gpu_vram_mb",
+    "config.environment.optimum_benchmark_version",
+    "config.environment.optimum_benchmark_commit",
+    "config.environment.transformers_version",
+    "config.environment.transformers_commit",
+    "config.environment.accelerate_version",
+    "config.environment.accelerate_commit",
+    "config.environment.diffusers_version",
+    "config.environment.diffusers_commit",
+    "config.environment.optimum_version",
+    "config.environment.optimum_commit",
+    "config.environment.timm_version",
+    "config.environment.timm_commit",
+    "config.environment.peft_version",
+    "config.environment.peft_commit",
+    "config.print_report",
+    "config.log_report",
+    "report.load_model.memory.unit",
+    "report.load_model.memory.max_ram",
+    "report.load_model.memory.max_global_vram",
+    "report.load_model.memory.max_process_vram",
+    "report.load_model.memory.max_reserved",
+    "report.load_model.memory.max_allocated",
+    "report.load_model.latency.unit",
+    "report.load_model.latency.values",
+    "report.load_model.latency.count",
+    "report.load_model.latency.total",
+    "report.load_model.latency.mean",
+    "report.load_model.latency.p50",
+    "report.load_model.latency.p90",
+    "report.load_model.latency.p95",
+    "report.load_model.latency.p99",
+    "report.load_model.latency.stdev",
+    "report.load_model.latency.stdev_",
+    "report.load_model.throughput",
+    "report.load_model.energy.unit",
+    "report.load_model.energy.cpu",
+    "report.load_model.energy.ram",
+    "report.load_model.energy.gpu",
+    "report.load_model.energy.total",
+    "report.load_model.efficiency",
+    "report.prefill.memory.unit",
+    "report.prefill.memory.max_ram",
+    "report.prefill.memory.max_global_vram",
+    "report.prefill.memory.max_process_vram",
+    "report.prefill.memory.max_reserved",
+    "report.prefill.memory.max_allocated",
+    "report.prefill.latency.unit",
+    "report.prefill.latency.values",
+    "report.prefill.latency.count",
+    "report.prefill.latency.total",
+    "report.prefill.latency.mean",
+    "report.prefill.latency.p50",
+    "report.prefill.latency.p90",
+    "report.prefill.latency.p95",
+    "report.prefill.latency.p99",
+    "report.prefill.latency.stdev",
+    "report.prefill.latency.stdev_",
+    "report.prefill.throughput.unit",
+    "report.prefill.throughput.value",
+    "report.prefill.energy.unit",
+    "report.prefill.energy.cpu",
+    "report.prefill.energy.ram",
+    "report.prefill.energy.gpu",
+    "report.prefill.energy.total",
+    "report.prefill.efficiency.unit",
+    "report.prefill.efficiency.value",
+    "report.decode.memory.unit",
+    "report.decode.memory.max_ram",
+    "report.decode.memory.max_global_vram",
+    "report.decode.memory.max_process_vram",
+    "report.decode.memory.max_reserved",
+    "report.decode.memory.max_allocated",
+    "report.decode.latency.unit",
+    "report.decode.latency.values",
+    "report.decode.latency.count",
+    "report.decode.latency.total",
+    "report.decode.latency.mean",
+    "report.decode.latency.p50",
+    "report.decode.latency.p90",
+    "report.decode.latency.p95",
+    "report.decode.latency.p99",
+    "report.decode.latency.stdev",
+    "report.decode.latency.stdev_",
+    "report.decode.throughput.unit",
+    "report.decode.throughput.value",
+    "report.decode.energy.unit",
+    "report.decode.energy.cpu",
+    "report.decode.energy.ram",
+    "report.decode.energy.gpu",
+    "report.decode.energy.total",
+    "report.decode.efficiency.unit",
+    "report.decode.efficiency.value",
+    "report.per_token.memory",
+    "report.per_token.latency.unit",
+    "report.per_token.latency.values",
+    "report.per_token.latency.count",
+    "report.per_token.latency.total",
+    "report.per_token.latency.mean",
+    "report.per_token.latency.p50",
+    "report.per_token.latency.p90",
+    "report.per_token.latency.p95",
+    "report.per_token.latency.p99",
+    "report.per_token.latency.stdev",
+    "report.per_token.latency.stdev_",
+    "report.per_token.throughput",
+    "report.per_token.energy",
+    "report.per_token.efficiency",
+    "report.traceback"
+  ],
+  "columns": [
+    {
+      "aurelius_signal_category": "metadata_only",
+      "dtypes": [
+        "str"
+      ],
+      "field_quality": "real",
+      "missing_rate": 0.0,
+      "normalized_field": "config.name",
+      "notes": "raw 'config.name' \u2192 'config.name'",
+      "presence_rate": 1.0,
+      "raw_column_name": "config.name",
+      "usable_for": []
+    },
+    {
+      "aurelius_signal_category": "metadata_only",
+      "dtypes": [
+        "str"
+      ],
+      "field_quality": "real",
+      "missing_rate": 0.0,
+      "normalized_field": "backend_name",
+      "notes": "raw 'config.backend.name' \u2192 'backend_name'",
+      "presence_rate": 1.0,
+      "raw_column_name": "config.backend.name",
+      "usable_for": [
+        "latency_prior"
+      ]
+    },
+    {
+      "aurelius_signal_category": "metadata_only",
+      "dtypes": [
+        "str"
+      ],
+      "field_quality": "real",
+      "missing_rate": 0.0,
+      "normalized_field": "config.backend.version",
+      "notes": "raw 'config.backend.version' \u2192 'config.backend.version'",
+      "presence_rate": 1.0,
+      "raw_column_name": "config.backend.version",
+      "usable_for": []
+    },
+    {
+      "aurelius_signal_category": "metadata_only",
+      "dtypes": [
+        "str"
+      ],
+      "field_quality": "real",
+      "missing_rate": 0.0,
+      "normalized_field": "config.backend._target_",
+      "notes": "raw 'config.backend._target_' \u2192 'config.backend._target_'",
+      "presence_rate": 1.0,
+      "raw_column_name": "config.backend._target_",
+      "usable_for": []
+    },
+    {
+      "aurelius_signal_category": "metadata_only",
+      "dtypes": [
+        "str"
+      ],
+      "field_quality": "real",
+      "missing_rate": 0.0,
+      "normalized_field": "config.backend.task",
+      "notes": "raw 'config.backend.task' \u2192 'config.backend.task'",
+      "presence_rate": 1.0,
+      "raw_column_name": "config.backend.task",
+      "usable_for": []
+    },
+    {
+      "aurelius_signal_category": "metadata_only",
+      "dtypes": [
+        "str"
+      ],
+      "field_quality": "real",
+      "missing_rate": 0.0,
+      "normalized_field": "config.backend.library",
+      "notes": "raw 'config.backend.library' \u2192 'config.backend.library'",
+      "presence_rate": 1.0,
+      "raw_column_name": "config.backend.library",
+      "usable_for": []
+    },
+    {
+      "aurelius_signal_category": "metadata_only",
+      "dtypes": [
+        "str"
+      ],
+      "field_quality": "real",
+      "missing_rate": 0.0,
+      "normalized_field": "config.backend.model_type",
+      "notes": "raw 'config.backend.model_type' \u2192 'config.backend.model_type'",
+      "presence_rate": 1.0,
+      "raw_column_name": "config.backend.model_type",
+      "usable_for": []
+    },
+    {
+      "aurelius_signal_category": "metadata_only",
+      "dtypes": [
+        "str"
+      ],
+      "field_quality": "real",
+      "missing_rate": 0.0,
+      "normalized_field": "model",
+      "notes": "raw 'config.backend.model' \u2192 'model'",
+      "presence_rate": 1.0,
+      "raw_column_name": "config.backend.model",
+      "usable_for": [
+        "latency_prior"
+      ]
+    },
+    {
+      "aurelius_signal_category": "metadata_only",
+      "dtypes": [
+        "str"
+      ],
+      "field_quality": "real",
+      "missing_rate": 0.0,
+      "normalized_field": "config.backend.processor",
+      "notes": "raw 'config.backend.processor' \u2192 'config.backend.processor'",
+      "presence_rate": 1.0,
+      "raw_column_name": "config.backend.processor",
+      "usable_for": []
+    },
+    {
+      "aurelius_signal_category": "metadata_only",
+      "dtypes": [
+        "str"
+      ],
+      "field_quality": "real",
+      "missing_rate": 0.0,
+      "normalized_field": "config.backend.device",
+      "notes": "raw 'config.backend.device' \u2192 'config.backend.device'",
+      "presence_rate": 1.0,
+      "raw_column_name": "config.backend.device",
+      "usable_for": []
+    },
+    {
+      "aurelius_signal_category": "metadata_only",
+      "dtypes": [
+        "str"
+      ],
+      "field_quality": "real",
+      "missing_rate": 0.0,
+      "normalized_field": "config.backend.device_ids",
+      "notes": "raw 'config.backend.device_ids' \u2192 'config.backend.device_ids'",
+      "presence_rate": 1.0,
+      "raw_column_name": "config.backend.device_ids",
+      "usable_for": []
+    },
+    {
+      "aurelius_signal_category": "metadata_only",
+      "dtypes": [
+        "str"
+      ],
+      "field_quality": "real",
+      "missing_rate": 0.0,
+      "normalized_field": "config.backend.seed",
+      "notes": "raw 'config.backend.seed' \u2192 'config.backend.seed'",
+      "presence_rate": 1.0,
+      "raw_column_name": "config.backend.seed",
+      "usable_for": []
+    },
+    {
+      "aurelius_signal_category": "metadata_only",
+      "dtypes": [
+        "str"
+      ],
+      "field_quality": "real",
+      "missing_rate": 1.0,
+      "normalized_field": "config.backend.inter_op_num_threads",
+      "notes": "raw 'config.backend.inter_op_num_threads' \u2192 'config.backend.inter_op_num_threads'",
+      "presence_rate": 0.0,
+      "raw_column_name": "config.backend.inter_op_num_threads",
+      "usable_for": []
+    },
+    {
+      "aurelius_signal_category": "metadata_only",
+      "dtypes": [
+        "str"
+      ],
+      "field_quality": "real",
+      "missing_rate": 1.0,
+      "normalized_field": "config.backend.intra_op_num_threads",
+      "notes": "raw 'config.backend.intra_op_num_threads' \u2192 'config.backend.intra_op_num_threads'",
+      "presence_rate": 0.0,
+      "raw_column_name": "config.backend.intra_op_num_threads",
+      "usable_for": []
+    },
+    {
+      "aurelius_signal_category": "metadata_only",
+      "dtypes": [
+        "str"
+      ],
+      "field_quality": "real",
+      "missing_rate": 0.0,
+      "normalized_field": "config.backend.model_kwargs.trust_remote_code",
+      "notes": "raw 'config.backend.model_kwargs.trust_remote_code' \u2192 'config.backend.model_kwargs.trust_remote_code'",
+      "presence_rate": 1.0,
+      "raw_column_name": "config.backend.model_kwargs.trust_remote_code",
+      "usable_for": []
+    },
+    {
+      "aurelius_signal_category": "metadata_only",
+      "dtypes": [
+        "str"
+      ],
+      "field_quality": "real",
+      "missing_rate": 0.0,
+      "normalized_field": "config.backend.no_weights",
+      "notes": "raw 'config.backend.no_weights' \u2192 'config.backend.no_weights'",
+      "presence_rate": 1.0,
+      "raw_column_name": "config.backend.no_weights",
+      "usable_for": []
+    },
+    {
+      "aurelius_signal_category": "metadata_only",
+      "dtypes": [
+        "str"
+      ],
+      "field_quality": "real",
+      "missing_rate": 1.0,
+      "normalized_field": "config.backend.device_map",
+      "notes": "raw 'config.backend.device_map' \u2192 'config.backend.device_map'",
+      "presence_rate": 0.0,
+      "raw_column_name": "config.backend.device_map",
+      "usable_for": []
+    },
+    {
+      "aurelius_signal_category": "metadata_only",
+      "dtypes": [
+        "str"
+      ],
+      "field_quality": "real",
+      "missing_rate": 0.0,
+      "normalized_field": "dtype",
+      "notes": "raw 'config.backend.torch_dtype' \u2192 'dtype'",
+      "presence_rate": 1.0,
+      "raw_column_name": "config.backend.torch_dtype",
+      "usable_for": [
+        "latency_prior"
+      ]
+    },
+    {
+      "aurelius_signal_category": "metadata_only",
+      "dtypes": [
+        "str"
+      ],
+      "field_quality": "real",
+      "missing_rate": 0.0,
+      "normalized_field": "config.backend.eval_mode",
+      "notes": "raw 'config.backend.eval_mode' \u2192 'config.backend.eval_mode'",
+      "presence_rate": 1.0,
+      "raw_column_name": "config.backend.eval_mode",
+      "usable_for": []
+    },
+    {
+      "aurelius_signal_category": "metadata_only",
+      "dtypes": [
+        "str"
+      ],
+      "field_quality": "real",
+      "missing_rate": 0.0,
+      "normalized_field": "config.backend.to_bettertransformer",
+      "notes": "raw 'config.backend.to_bettertransformer' \u2192 'config.backend.to_bettertransformer'",
+      "presence_rate": 1.0,
+      "raw_column_name": "config.backend.to_bettertransformer",
+      "usable_for": []
+    },
+    {
+      "aurelius_signal_category": "metadata_only",
+      "dtypes": [
+        "str"
+      ],
+      "field_quality": "real",
+      "missing_rate": 1.0,
+      "normalized_field": "config.backend.low_cpu_mem_usage",
+      "notes": "raw 'config.backend.low_cpu_mem_usage' \u2192 'config.backend.low_cpu_mem_usage'",
+      "presence_rate": 0.0,
+      "raw_column_name": "config.backend.low_cpu_mem_usage",
+      "usable_for": []
+    },
+    {
+      "aurelius_signal_category": "metadata_only",
+      "dtypes": [
+        "str"
+      ],
+      "field_quality": "real",
+      "missing_rate": 0.0,
+      "normalized_field": "config.backend.attn_implementation",
+      "notes": "raw 'config.backend.attn_implementation' \u2192 'config.backend.attn_implementation'",
+      "presence_rate": 1.0,
+      "raw_column_name": "config.backend.attn_implementation",
+      "usable_for": []
+    },
+    {
+      "aurelius_signal_category": "metadata_only",
+      "dtypes": [
+        "str"
+      ],
+      "field_quality": "real",
+      "missing_rate": 1.0,
+      "normalized_field": "config.backend.cache_implementation",
+      "notes": "raw 'config.backend.cache_implementation' \u2192 'config.backend.cache_implementation'",
+      "presence_rate": 0.0,
+      "raw_column_name": "config.backend.cache_implementation",
+      "usable_for": []
+    },
+    {
+      "aurelius_signal_category": "metadata_only",
+      "dtypes": [
+        "str"
+      ],
+      "field_quality": "real",
+      "missing_rate": 0.0,
+      "normalized_field": "config.backend.autocast_enabled",
+      "notes": "raw 'config.backend.autocast_enabled' \u2192 'config.backend.autocast_enabled'",
+      "presence_rate": 1.0,
+      "raw_column_name": "config.backend.autocast_enabled",
+      "usable_for": []
+    },
+    {
+      "aurelius_signal_category": "metadata_only",
+      "dtypes": [
+        "str"
+      ],
+      "field_quality": "real",
+      "missing_rate": 1.0,
+      "normalized_field": "config.backend.autocast_dtype",
+      "notes": "raw 'config.backend.autocast_dtype' \u2192 'config.backend.autocast_dtype'",
+      "presence_rate": 0.0,
+      "raw_column_name": "config.backend.autocast_dtype",
+      "usable_for": []
+    },
+    {
+      "aurelius_signal_category": "metadata_only",
+      "dtypes": [
+        "str"
+      ],
+      "field_quality": "real",
+      "missing_rate": 0.0,
+      "normalized_field": "config.backend.torch_compile",
+      "notes": "raw 'config.backend.torch_compile' \u2192 'config.backend.torch_compile'",
+      "presence_rate": 1.0,
+      "raw_column_name": "config.backend.torch_compile",
+      "usable_for": []
+    },
+    {
+      "aurelius_signal_category": "metadata_only",
+      "dtypes": [
+        "str"
+      ],
+      "field_quality": "real",
+      "missing_rate": 0.0,
+      "normalized_field": "config.backend.torch_compile_target",
+      "notes": "raw 'config.backend.torch_compile_target' \u2192 'config.backend.torch_compile_target'",
+      "presence_rate": 1.0,
+      "raw_column_name": "config.backend.torch_compile_target",
+      "usable_for": []
+    },
+    {
+      "aurelius_signal_category": "metadata_only",
+      "dtypes": [
+        "str"
+      ],
+      "field_quality": "real",
+      "missing_rate": 0.0,
+      "normalized_field": "quantization_scheme",
+      "notes": "raw 'config.backend.quantization_scheme' \u2192 'quantization_scheme'",
+      "presence_rate": 1.0,
+      "raw_column_name": "config.backend.quantization_scheme",
+      "usable_for": [
+        "latency_prior",
+        "constraint_aware_backtest"
+      ]
+    },
+    {
+      "aurelius_signal_category": "metadata_only",
+      "dtypes": [
+        "str"
+      ],
+      "field_quality": "real",
+      "missing_rate": 0.0,
+      "normalized_field": "config.backend.quantization_config.quant_type",
+      "notes": "raw 'config.backend.quantization_config.quant_type' \u2192 'config.backend.quantization_config.quant_type'",
+      "presence_rate": 1.0,
+      "raw_column_name": "config.backend.quantization_config.quant_type",
+      "usable_for": []
+    },
+    {
+      "aurelius_signal_category": "metadata_only",
+      "dtypes": [
+        "str"
+      ],
+      "field_quality": "real",
+      "missing_rate": 0.0,
+      "normalized_field": "config.backend.quantization_config.group_size",
+      "notes": "raw 'config.backend.quantization_config.group_size' \u2192 'config.backend.quantization_config.group_size'",
+      "presence_rate": 1.0,
+      "raw_column_name": "config.backend.quantization_config.group_size",
+      "usable_for": []
+    },
+    {
+      "aurelius_signal_category": "metadata_only",
+      "dtypes": [
+        "str"
+      ],
+      "field_quality": "real",
+      "missing_rate": 0.0,
+      "normalized_field": "config.backend.deepspeed_inference",
+      "notes": "raw 'config.backend.deepspeed_inference' \u2192 'config.backend.deepspeed_inference'",
+      "presence_rate": 1.0,
+      "raw_column_name": "config.backend.deepspeed_inference",
+      "usable_for": []
+    },
+    {
+      "aurelius_signal_category": "metadata_only",
+      "dtypes": [
+        "str"
+      ],
+      "field_quality": "real",
+      "missing_rate": 1.0,
+      "normalized_field": "config.backend.peft_type",
+      "notes": "raw 'config.backend.peft_type' \u2192 'config.backend.peft_type'",
+      "presence_rate": 0.0,
+      "raw_column_name": "config.backend.peft_type",
+      "usable_for": []
+    },
+    {
+      "aurelius_signal_category": "metadata_only",
+      "dtypes": [
+        "str"
+      ],
+      "field_quality": "real",
+      "missing_rate": 0.0,
+      "normalized_field": "config.scenario.name",
+      "notes": "raw 'config.scenario.name' \u2192 'config.scenario.name'",
+      "presence_rate": 1.0,
+      "raw_column_name": "config.scenario.name",
+      "usable_for": []
+    },
+    {
+      "aurelius_signal_category": "metadata_only",
+      "dtypes": [
+        "str"
+      ],
+      "field_quality": "real",
+      "missing_rate": 0.0,
+      "normalized_field": "config.scenario._target_",
+      "notes": "raw 'config.scenario._target_' \u2192 'config.scenario._target_'",
+      "presence_rate": 1.0,
+      "raw_column_name": "config.scenario._target_",
+      "usable_for": []
+    },
+    {
+      "aurelius_signal_category": "metadata_only",
+      "dtypes": [
+        "str"
+      ],
+      "field_quality": "real",
+      "missing_rate": 0.0,
+      "normalized_field": "config.scenario.iterations",
+      "notes": "raw 'config.scenario.iterations' \u2192 'config.scenario.iterations'",
+      "presence_rate": 1.0,
+      "raw_column_name": "config.scenario.iterations",
+      "usable_for": []
+    },
+    {
+      "aurelius_signal_category": "metadata_only",
+      "dtypes": [
+        "str"
+      ],
+      "field_quality": "real",
+      "missing_rate": 0.0,
+      "normalized_field": "config.scenario.duration",
+      "notes": "raw 'config.scenario.duration' \u2192 'config.scenario.duration'",
+      "presence_rate": 1.0,
+      "raw_column_name": "config.scenario.duration",
+      "usable_for": []
+    },
+    {
+      "aurelius_signal_category": "metadata_only",
+      "dtypes": [
+        "str"
+      ],
+      "field_quality": "real",
+      "missing_rate": 0.0,
+      "normalized_field": "config.scenario.warmup_runs",
+      "notes": "raw 'config.scenario.warmup_runs' \u2192 'config.scenario.warmup_runs'",
+      "presence_rate": 1.0,
+      "raw_column_name": "config.scenario.warmup_runs",
+      "usable_for": []
+    },
+    {
+      "aurelius_signal_category": "request_arrival",
+      "dtypes": [
+        "str"
+      ],
+      "field_quality": "real",
+      "missing_rate": 0.0,
+      "normalized_field": "batch_size",
+      "notes": "raw 'config.scenario.input_shapes.batch_size' \u2192 'batch_size'",
+      "presence_rate": 1.0,
+      "raw_column_name": "config.scenario.input_shapes.batch_size",
+      "usable_for": [
+        "latency_prior",
+        "constraint_aware_backtest"
+      ]
+    },
+    {
+      "aurelius_signal_category": "tokens",
+      "dtypes": [
+        "str"
+      ],
+      "field_quality": "real",
+      "missing_rate": 0.0,
+      "normalized_field": "sequence_length",
+      "notes": "raw 'config.scenario.input_shapes.sequence_length' \u2192 'sequence_length'",
+      "presence_rate": 1.0,
+      "raw_column_name": "config.scenario.input_shapes.sequence_length",
+      "usable_for": [
+        "latency_prior"
+      ]
+    },
+    {
+      "aurelius_signal_category": "metadata_only",
+      "dtypes": [
+        "str"
+      ],
+      "field_quality": "real",
+      "missing_rate": 1.0,
+      "normalized_field": "config.scenario.new_tokens",
+      "notes": "raw 'config.scenario.new_tokens' \u2192 'config.scenario.new_tokens'",
+      "presence_rate": 0.0,
+      "raw_column_name": "config.scenario.new_tokens",
+      "usable_for": []
+    },
+    {
+      "aurelius_signal_category": "metadata_only",
+      "dtypes": [
+        "str"
+      ],
+      "field_quality": "real",
+      "missing_rate": 0.0,
+      "normalized_field": "config.scenario.memory",
+      "notes": "raw 'config.scenario.memory' \u2192 'config.scenario.memory'",
+      "presence_rate": 1.0,
+      "raw_column_name": "config.scenario.memory",
+      "usable_for": []
+    },
+    {
+      "aurelius_signal_category": "metadata_only",
+      "dtypes": [
+        "str"
+      ],
+      "field_quality": "real",
+      "missing_rate": 0.0,
+      "normalized_field": "config.scenario.latency",
+      "notes": "raw 'config.scenario.latency' \u2192 'config.scenario.latency'",
+      "presence_rate": 1.0,
+      "raw_column_name": "config.scenario.latency",
+      "usable_for": []
+    },
+    {
+      "aurelius_signal_category": "metadata_only",
+      "dtypes": [
+        "str"
+      ],
+      "field_quality": "real",
+      "missing_rate": 0.0,
+      "normalized_field": "config.scenario.energy",
+      "notes": "raw 'config.scenario.energy' \u2192 'config.scenario.energy'",
+      "presence_rate": 1.0,
+      "raw_column_name": "config.scenario.energy",
+      "usable_for": []
+    },
+    {
+      "aurelius_signal_category": "tokens",
+      "dtypes": [
+        "str"
+      ],
+      "field_quality": "real",
+      "missing_rate": 0.0,
+      "normalized_field": "new_tokens",
+      "notes": "raw 'config.scenario.generate_kwargs.max_new_tokens' \u2192 'new_tokens'",
+      "presence_rate": 1.0,
+      "raw_column_name": "config.scenario.generate_kwargs.max_new_tokens",
+      "usable_for": [
+        "latency_prior"
+      ]
+    },
+    {
+      "aurelius_signal_category": "metadata_only",
+      "dtypes": [
+        "str"
+      ],
+      "field_quality": "real",
+      "missing_rate": 0.0,
+      "normalized_field": "config.scenario.generate_kwargs.min_new_tokens",
+      "notes": "raw 'config.scenario.generate_kwargs.min_new_tokens' \u2192 'config.scenario.generate_kwargs.min_new_tokens'",
+      "presence_rate": 1.0,
+      "raw_column_name": "config.scenario.generate_kwargs.min_new_tokens",
+      "usable_for": []
+    },
+    {
+      "aurelius_signal_category": "metadata_only",
+      "dtypes": [
+        "str"
+      ],
+      "field_quality": "real",
+      "missing_rate": 0.0,
+      "normalized_field": "config.launcher.name",
+      "notes": "raw 'config.launcher.name' \u2192 'config.launcher.name'",
+      "presence_rate": 1.0,
+      "raw_column_name": "config.launcher.name",
+      "usable_for": []
+    },
+    {
+      "aurelius_signal_category": "metadata_only",
+      "dtypes": [
+        "str"
+      ],
+      "field_quality": "real",
+      "missing_rate": 0.0,
+      "normalized_field": "config.launcher._target_",
+      "notes": "raw 'config.launcher._target_' \u2192 'config.launcher._target_'",
+      "presence_rate": 1.0,
+      "raw_column_name": "config.launcher._target_",
+      "usable_for": []
+    },
+    {
+      "aurelius_signal_category": "metadata_only",
+      "dtypes": [
+        "str"
+      ],
+      "field_quality": "real",
+      "missing_rate": 0.0,
+      "normalized_field": "config.launcher.device_isolation",
+      "notes": "raw 'config.launcher.device_isolation' \u2192 'config.launcher.device_isolation'",
+      "presence_rate": 1.0,
+      "raw_column_name": "config.launcher.device_isolation",
+      "usable_for": []
+    },
+    {
+      "aurelius_signal_category": "metadata_only",
+      "dtypes": [
+        "str"
+      ],
+      "field_quality": "real",
+      "missing_rate": 0.0,
+      "normalized_field": "config.launcher.device_isolation_action",
+      "notes": "raw 'config.launcher.device_isolation_action' \u2192 'config.launcher.device_isolation_action'",
+      "presence_rate": 1.0,
+      "raw_column_name": "config.launcher.device_isolation_action",
+      "usable_for": []
+    },
+    {
+      "aurelius_signal_category": "metadata_only",
+      "dtypes": [
+        "str"
+      ],
+      "field_quality": "real",
+      "missing_rate": 0.0,
+      "normalized_field": "config.launcher.numactl",
+      "notes": "raw 'config.launcher.numactl' \u2192 'config.launcher.numactl'",
+      "presence_rate": 1.0,
+      "raw_column_name": "config.launcher.numactl",
+      "usable_for": []
+    },
+    {
+      "aurelius_signal_category": "metadata_only",
+      "dtypes": [
+        "str"
+      ],
+      "field_quality": "real",
+      "missing_rate": 0.0,
+      "normalized_field": "config.launcher.start_method",
+      "notes": "raw 'config.launcher.start_method' \u2192 'config.launcher.start_method'",
+      "presence_rate": 1.0,
+      "raw_column_name": "config.launcher.start_method",
+      "usable_for": []
+    },
+    {
+      "aurelius_signal_category": "metadata_only",
+      "dtypes": [
+        "str"
+      ],
+      "field_quality": "real",
+      "missing_rate": 0.0,
+      "normalized_field": "config.environment.cpu",
+      "notes": "raw 'config.environment.cpu' \u2192 'config.environment.cpu'",
+      "presence_rate": 1.0,
+      "raw_column_name": "config.environment.cpu",
+      "usable_for": []
+    },
+    {
+      "aurelius_signal_category": "metadata_only",
+      "dtypes": [
+        "str"
+      ],
+      "field_quality": "real",
+      "missing_rate": 0.0,
+      "normalized_field": "config.environment.cpu_count",
+      "notes": "raw 'config.environment.cpu_count' \u2192 'config.environment.cpu_count'",
+      "presence_rate": 1.0,
+      "raw_column_name": "config.environment.cpu_count",
+      "usable_for": []
+    },
+    {
+      "aurelius_signal_category": "metadata_only",
+      "dtypes": [
+        "str"
+      ],
+      "field_quality": "real",
+      "missing_rate": 0.0,
+      "normalized_field": "config.environment.cpu_ram_mb",
+      "notes": "raw 'config.environment.cpu_ram_mb' \u2192 'config.environment.cpu_ram_mb'",
+      "presence_rate": 1.0,
+      "raw_column_name": "config.environment.cpu_ram_mb",
+      "usable_for": []
+    },
+    {
+      "aurelius_signal_category": "metadata_only",
+      "dtypes": [
+        "str"
+      ],
+      "field_quality": "real",
+      "missing_rate": 0.0,
+      "normalized_field": "config.environment.system",
+      "notes": "raw 'config.environment.system' \u2192 'config.environment.system'",
+      "presence_rate": 1.0,
+      "raw_column_name": "config.environment.system",
+      "usable_for": []
+    },
+    {
+      "aurelius_signal_category": "metadata_only",
+      "dtypes": [
+        "str"
+      ],
+      "field_quality": "real",
+      "missing_rate": 0.0,
+      "normalized_field": "config.environment.machine",
+      "notes": "raw 'config.environment.machine' \u2192 'config.environment.machine'",
+      "presence_rate": 1.0,
+      "raw_column_name": "config.environment.machine",
+      "usable_for": []
+    },
+    {
+      "aurelius_signal_category": "metadata_only",
+      "dtypes": [
+        "str"
+      ],
+      "field_quality": "real",
+      "missing_rate": 0.0,
+      "normalized_field": "config.environment.platform",
+      "notes": "raw 'config.environment.platform' \u2192 'config.environment.platform'",
+      "presence_rate": 1.0,
+      "raw_column_name": "config.environment.platform",
+      "usable_for": []
+    },
+    {
+      "aurelius_signal_category": "metadata_only",
+      "dtypes": [
+        "str"
+      ],
+      "field_quality": "real",
+      "missing_rate": 0.0,
+      "normalized_field": "config.environment.processor",
+      "notes": "raw 'config.environment.processor' \u2192 'config.environment.processor'",
+      "presence_rate": 1.0,
+      "raw_column_name": "config.environment.processor",
+      "usable_for": []
+    },
+    {
+      "aurelius_signal_category": "metadata_only",
+      "dtypes": [
+        "str"
+      ],
+      "field_quality": "real",
+      "missing_rate": 0.0,
+      "normalized_field": "config.environment.python_version",
+      "notes": "raw 'config.environment.python_version' \u2192 'config.environment.python_version'",
+      "presence_rate": 1.0,
+      "raw_column_name": "config.environment.python_version",
+      "usable_for": []
+    },
+    {
+      "aurelius_signal_category": "gpu_resource",
+      "dtypes": [
+        "str"
+      ],
+      "field_quality": "real",
+      "missing_rate": 0.0,
+      "normalized_field": "gpu",
+      "notes": "raw 'config.environment.gpu' \u2192 'gpu'",
+      "presence_rate": 1.0,
+      "raw_column_name": "config.environment.gpu",
+      "usable_for": [
+        "latency_prior",
+        "constraint_aware_backtest"
+      ]
+    },
+    {
+      "aurelius_signal_category": "gpu_resource",
+      "dtypes": [
+        "str"
+      ],
+      "field_quality": "real",
+      "missing_rate": 0.0,
+      "normalized_field": "gpu_count",
+      "notes": "raw 'config.environment.gpu_count' \u2192 'gpu_count'",
+      "presence_rate": 1.0,
+      "raw_column_name": "config.environment.gpu_count",
+      "usable_for": [
+        "latency_prior"
+      ]
+    },
+    {
+      "aurelius_signal_category": "gpu_resource",
+      "dtypes": [
+        "str"
+      ],
+      "field_quality": "real",
+      "missing_rate": 0.0,
+      "normalized_field": "gpu_vram_mb",
+      "notes": "raw 'config.environment.gpu_vram_mb' \u2192 'gpu_vram_mb'",
+      "presence_rate": 1.0,
+      "raw_column_name": "config.environment.gpu_vram_mb",
+      "usable_for": [
+        "latency_prior"
+      ]
+    },
+    {
+      "aurelius_signal_category": "metadata_only",
+      "dtypes": [
+        "str"
+      ],
+      "field_quality": "real",
+      "missing_rate": 0.0,
+      "normalized_field": "config.environment.optimum_benchmark_version",
+      "notes": "raw 'config.environment.optimum_benchmark_version' \u2192 'config.environment.optimum_benchmark_version'",
+      "presence_rate": 1.0,
+      "raw_column_name": "config.environment.optimum_benchmark_version",
+      "usable_for": []
+    },
+    {
+      "aurelius_signal_category": "metadata_only",
+      "dtypes": [
+        "str"
+      ],
+      "field_quality": "real",
+      "missing_rate": 1.0,
+      "normalized_field": "config.environment.optimum_benchmark_commit",
+      "notes": "raw 'config.environment.optimum_benchmark_commit' \u2192 'config.environment.optimum_benchmark_commit'",
+      "presence_rate": 0.0,
+      "raw_column_name": "config.environment.optimum_benchmark_commit",
+      "usable_for": []
+    },
+    {
+      "aurelius_signal_category": "metadata_only",
+      "dtypes": [
+        "str"
+      ],
+      "field_quality": "real",
+      "missing_rate": 0.0,
+      "normalized_field": "config.environment.transformers_version",
+      "notes": "raw 'config.environment.transformers_version' \u2192 'config.environment.transformers_version'",
+      "presence_rate": 1.0,
+      "raw_column_name": "config.environment.transformers_version",
+      "usable_for": []
+    },
+    {
+      "aurelius_signal_category": "metadata_only",
+      "dtypes": [
+        "str"
+      ],
+      "field_quality": "real",
+      "missing_rate": 1.0,
+      "normalized_field": "config.environment.transformers_commit",
+      "notes": "raw 'config.environment.transformers_commit' \u2192 'config.environment.transformers_commit'",
+      "presence_rate": 0.0,
+      "raw_column_name": "config.environment.transformers_commit",
+      "usable_for": []
+    },
+    {
+      "aurelius_signal_category": "metadata_only",
+      "dtypes": [
+        "str"
+      ],
+      "field_quality": "real",
+      "missing_rate": 0.0,
+      "normalized_field": "config.environment.accelerate_version",
+      "notes": "raw 'config.environment.accelerate_version' \u2192 'config.environment.accelerate_version'",
+      "presence_rate": 1.0,
+      "raw_column_name": "config.environment.accelerate_version",
+      "usable_for": []
+    },
+    {
+      "aurelius_signal_category": "metadata_only",
+      "dtypes": [
+        "str"
+      ],
+      "field_quality": "real",
+      "missing_rate": 1.0,
+      "normalized_field": "config.environment.accelerate_commit",
+      "notes": "raw 'config.environment.accelerate_commit' \u2192 'config.environment.accelerate_commit'",
+      "presence_rate": 0.0,
+      "raw_column_name": "config.environment.accelerate_commit",
+      "usable_for": []
+    },
+    {
+      "aurelius_signal_category": "metadata_only",
+      "dtypes": [
+        "str"
+      ],
+      "field_quality": "real",
+      "missing_rate": 1.0,
+      "normalized_field": "config.environment.diffusers_version",
+      "notes": "raw 'config.environment.diffusers_version' \u2192 'config.environment.diffusers_version'",
+      "presence_rate": 0.0,
+      "raw_column_name": "config.environment.diffusers_version",
+      "usable_for": []
+    },
+    {
+      "aurelius_signal_category": "metadata_only",
+      "dtypes": [
+        "str"
+      ],
+      "field_quality": "real",
+      "missing_rate": 1.0,
+      "normalized_field": "config.environment.diffusers_commit",
+      "notes": "raw 'config.environment.diffusers_commit' \u2192 'config.environment.diffusers_commit'",
+      "presence_rate": 0.0,
+      "raw_column_name": "config.environment.diffusers_commit",
+      "usable_for": []
+    },
+    {
+      "aurelius_signal_category": "metadata_only",
+      "dtypes": [
+        "str"
+      ],
+      "field_quality": "real",
+      "missing_rate": 0.0,
+      "normalized_field": "config.environment.optimum_version",
+      "notes": "raw 'config.environment.optimum_version' \u2192 'config.environment.optimum_version'",
+      "presence_rate": 1.0,
+      "raw_column_name": "config.environment.optimum_version",
+      "usable_for": []
+    },
+    {
+      "aurelius_signal_category": "metadata_only",
+      "dtypes": [
+        "str"
+      ],
+      "field_quality": "real",
+      "missing_rate": 1.0,
+      "normalized_field": "config.environment.optimum_commit",
+      "notes": "raw 'config.environment.optimum_commit' \u2192 'config.environment.optimum_commit'",
+      "presence_rate": 0.0,
+      "raw_column_name": "config.environment.optimum_commit",
+      "usable_for": []
+    },
+    {
+      "aurelius_signal_category": "metadata_only",
+      "dtypes": [
+        "str"
+      ],
+      "field_quality": "real",
+      "missing_rate": 1.0,
+      "normalized_field": "config.environment.timm_version",
+      "notes": "raw 'config.environment.timm_version' \u2192 'config.environment.timm_version'",
+      "presence_rate": 0.0,
+      "raw_column_name": "config.environment.timm_version",
+      "usable_for": []
+    },
+    {
+      "aurelius_signal_category": "metadata_only",
+      "dtypes": [
+        "str"
+      ],
+      "field_quality": "real",
+      "missing_rate": 1.0,
+      "normalized_field": "config.environment.timm_commit",
+      "notes": "raw 'config.environment.timm_commit' \u2192 'config.environment.timm_commit'",
+      "presence_rate": 0.0,
+      "raw_column_name": "config.environment.timm_commit",
+      "usable_for": []
+    },
+    {
+      "aurelius_signal_category": "metadata_only",
+      "dtypes": [
+        "str"
+      ],
+      "field_quality": "real",
+      "missing_rate": 0.0,
+      "normalized_field": "config.environment.peft_version",
+      "notes": "raw 'config.environment.peft_version' \u2192 'config.environment.peft_version'",
+      "presence_rate": 1.0,
+      "raw_column_name": "config.environment.peft_version",
+      "usable_for": []
+    },
+    {
+      "aurelius_signal_category": "metadata_only",
+      "dtypes": [
+        "str"
+      ],
+      "field_quality": "real",
+      "missing_rate": 1.0,
+      "normalized_field": "config.environment.peft_commit",
+      "notes": "raw 'config.environment.peft_commit' \u2192 'config.environment.peft_commit'",
+      "presence_rate": 0.0,
+      "raw_column_name": "config.environment.peft_commit",
+      "usable_for": []
+    },
+    {
+      "aurelius_signal_category": "metadata_only",
+      "dtypes": [
+        "str"
+      ],
+      "field_quality": "real",
+      "missing_rate": 0.0,
+      "normalized_field": "config.print_report",
+      "notes": "raw 'config.print_report' \u2192 'config.print_report'",
+      "presence_rate": 1.0,
+      "raw_column_name": "config.print_report",
+      "usable_for": []
+    },
+    {
+      "aurelius_signal_category": "metadata_only",
+      "dtypes": [
+        "str"
+      ],
+      "field_quality": "real",
+      "missing_rate": 0.0,
+      "normalized_field": "config.log_report",
+      "notes": "raw 'config.log_report' \u2192 'config.log_report'",
+      "presence_rate": 1.0,
+      "raw_column_name": "config.log_report",
+      "usable_for": []
+    },
+    {
+      "aurelius_signal_category": "metadata_only",
+      "dtypes": [
+        "str"
+      ],
+      "field_quality": "real",
+      "missing_rate": 0.2,
+      "normalized_field": "report.load_model.memory.unit",
+      "notes": "raw 'report.load_model.memory.unit' \u2192 'report.load_model.memory.unit'",
+      "presence_rate": 0.8,
+      "raw_column_name": "report.load_model.memory.unit",
+      "usable_for": []
+    },
+    {
+      "aurelius_signal_category": "metadata_only",
+      "dtypes": [
+        "str"
+      ],
+      "field_quality": "real",
+      "missing_rate": 0.2,
+      "normalized_field": "report.load_model.memory.max_ram",
+      "notes": "raw 'report.load_model.memory.max_ram' \u2192 'report.load_model.memory.max_ram'",
+      "presence_rate": 0.8,
+      "raw_column_name": "report.load_model.memory.max_ram",
+      "usable_for": []
+    },
+    {
+      "aurelius_signal_category": "metadata_only",
+      "dtypes": [
+        "str"
+      ],
+      "field_quality": "real",
+      "missing_rate": 0.2,
+      "normalized_field": "report.load_model.memory.max_global_vram",
+      "notes": "raw 'report.load_model.memory.max_global_vram' \u2192 'report.load_model.memory.max_global_vram'",
+      "presence_rate": 0.8,
+      "raw_column_name": "report.load_model.memory.max_global_vram",
+      "usable_for": []
+    },
+    {
+      "aurelius_signal_category": "metadata_only",
+      "dtypes": [
+        "str"
+      ],
+      "field_quality": "real",
+      "missing_rate": 0.2,
+      "normalized_field": "report.load_model.memory.max_process_vram",
+      "notes": "raw 'report.load_model.memory.max_process_vram' \u2192 'report.load_model.memory.max_process_vram'",
+      "presence_rate": 0.8,
+      "raw_column_name": "report.load_model.memory.max_process_vram",
+      "usable_for": []
+    },
+    {
+      "aurelius_signal_category": "metadata_only",
+      "dtypes": [
+        "str"
+      ],
+      "field_quality": "real",
+      "missing_rate": 0.2,
+      "normalized_field": "report.load_model.memory.max_reserved",
+      "notes": "raw 'report.load_model.memory.max_reserved' \u2192 'report.load_model.memory.max_reserved'",
+      "presence_rate": 0.8,
+      "raw_column_name": "report.load_model.memory.max_reserved",
+      "usable_for": []
+    },
+    {
+      "aurelius_signal_category": "metadata_only",
+      "dtypes": [
+        "str"
+      ],
+      "field_quality": "real",
+      "missing_rate": 0.2,
+      "normalized_field": "report.load_model.memory.max_allocated",
+      "notes": "raw 'report.load_model.memory.max_allocated' \u2192 'report.load_model.memory.max_allocated'",
+      "presence_rate": 0.8,
+      "raw_column_name": "report.load_model.memory.max_allocated",
+      "usable_for": []
+    },
+    {
+      "aurelius_signal_category": "metadata_only",
+      "dtypes": [
+        "str"
+      ],
+      "field_quality": "real",
+      "missing_rate": 0.2,
+      "normalized_field": "report.load_model.latency.unit",
+      "notes": "raw 'report.load_model.latency.unit' \u2192 'report.load_model.latency.unit'",
+      "presence_rate": 0.8,
+      "raw_column_name": "report.load_model.latency.unit",
+      "usable_for": []
+    },
+    {
+      "aurelius_signal_category": "metadata_only",
+      "dtypes": [
+        "str"
+      ],
+      "field_quality": "real",
+      "missing_rate": 0.2,
+      "normalized_field": "report.load_model.latency.values",
+      "notes": "raw 'report.load_model.latency.values' \u2192 'report.load_model.latency.values'",
+      "presence_rate": 0.8,
+      "raw_column_name": "report.load_model.latency.values",
+      "usable_for": []
+    },
+    {
+      "aurelius_signal_category": "metadata_only",
+      "dtypes": [
+        "str"
+      ],
+      "field_quality": "real",
+      "missing_rate": 0.2,
+      "normalized_field": "report.load_model.latency.count",
+      "notes": "raw 'report.load_model.latency.count' \u2192 'report.load_model.latency.count'",
+      "presence_rate": 0.8,
+      "raw_column_name": "report.load_model.latency.count",
+      "usable_for": []
+    },
+    {
+      "aurelius_signal_category": "metadata_only",
+      "dtypes": [
+        "str"
+      ],
+      "field_quality": "real",
+      "missing_rate": 0.2,
+      "normalized_field": "report.load_model.latency.total",
+      "notes": "raw 'report.load_model.latency.total' \u2192 'report.load_model.latency.total'",
+      "presence_rate": 0.8,
+      "raw_column_name": "report.load_model.latency.total",
+      "usable_for": []
+    },
+    {
+      "aurelius_signal_category": "metadata_only",
+      "dtypes": [
+        "str"
+      ],
+      "field_quality": "real",
+      "missing_rate": 0.2,
+      "normalized_field": "report.load_model.latency.mean",
+      "notes": "raw 'report.load_model.latency.mean' \u2192 'report.load_model.latency.mean'",
+      "presence_rate": 0.8,
+      "raw_column_name": "report.load_model.latency.mean",
+      "usable_for": []
+    },
+    {
+      "aurelius_signal_category": "metadata_only",
+      "dtypes": [
+        "str"
+      ],
+      "field_quality": "real",
+      "missing_rate": 0.2,
+      "normalized_field": "report.load_model.latency.p50",
+      "notes": "raw 'report.load_model.latency.p50' \u2192 'report.load_model.latency.p50'",
+      "presence_rate": 0.8,
+      "raw_column_name": "report.load_model.latency.p50",
+      "usable_for": []
+    },
+    {
+      "aurelius_signal_category": "metadata_only",
+      "dtypes": [
+        "str"
+      ],
+      "field_quality": "real",
+      "missing_rate": 0.2,
+      "normalized_field": "report.load_model.latency.p90",
+      "notes": "raw 'report.load_model.latency.p90' \u2192 'report.load_model.latency.p90'",
+      "presence_rate": 0.8,
+      "raw_column_name": "report.load_model.latency.p90",
+      "usable_for": []
+    },
+    {
+      "aurelius_signal_category": "metadata_only",
+      "dtypes": [
+        "str"
+      ],
+      "field_quality": "real",
+      "missing_rate": 0.2,
+      "normalized_field": "report.load_model.latency.p95",
+      "notes": "raw 'report.load_model.latency.p95' \u2192 'report.load_model.latency.p95'",
+      "presence_rate": 0.8,
+      "raw_column_name": "report.load_model.latency.p95",
+      "usable_for": []
+    },
+    {
+      "aurelius_signal_category": "metadata_only",
+      "dtypes": [
+        "str"
+      ],
+      "field_quality": "real",
+      "missing_rate": 0.2,
+      "normalized_field": "report.load_model.latency.p99",
+      "notes": "raw 'report.load_model.latency.p99' \u2192 'report.load_model.latency.p99'",
+      "presence_rate": 0.8,
+      "raw_column_name": "report.load_model.latency.p99",
+      "usable_for": []
+    },
+    {
+      "aurelius_signal_category": "metadata_only",
+      "dtypes": [
+        "str"
+      ],
+      "field_quality": "real",
+      "missing_rate": 0.2,
+      "normalized_field": "report.load_model.latency.stdev",
+      "notes": "raw 'report.load_model.latency.stdev' \u2192 'report.load_model.latency.stdev'",
+      "presence_rate": 0.8,
+      "raw_column_name": "report.load_model.latency.stdev",
+      "usable_for": []
+    },
+    {
+      "aurelius_signal_category": "metadata_only",
+      "dtypes": [
+        "str"
+      ],
+      "field_quality": "real",
+      "missing_rate": 0.2,
+      "normalized_field": "report.load_model.latency.stdev_",
+      "notes": "raw 'report.load_model.latency.stdev_' \u2192 'report.load_model.latency.stdev_'",
+      "presence_rate": 0.8,
+      "raw_column_name": "report.load_model.latency.stdev_",
+      "usable_for": []
+    },
+    {
+      "aurelius_signal_category": "metadata_only",
+      "dtypes": [
+        "str"
+      ],
+      "field_quality": "real",
+      "missing_rate": 1.0,
+      "normalized_field": "report.load_model.throughput",
+      "notes": "raw 'report.load_model.throughput' \u2192 'report.load_model.throughput'",
+      "presence_rate": 0.0,
+      "raw_column_name": "report.load_model.throughput",
+      "usable_for": []
+    },
+    {
+      "aurelius_signal_category": "metadata_only",
+      "dtypes": [
+        "str"
+      ],
+      "field_quality": "real",
+      "missing_rate": 0.2,
+      "normalized_field": "report.load_model.energy.unit",
+      "notes": "raw 'report.load_model.energy.unit' \u2192 'report.load_model.energy.unit'",
+      "presence_rate": 0.8,
+      "raw_column_name": "report.load_model.energy.unit",
+      "usable_for": []
+    },
+    {
+      "aurelius_signal_category": "metadata_only",
+      "dtypes": [
+        "str"
+      ],
+      "field_quality": "real",
+      "missing_rate": 0.2,
+      "normalized_field": "report.load_model.energy.cpu",
+      "notes": "raw 'report.load_model.energy.cpu' \u2192 'report.load_model.energy.cpu'",
+      "presence_rate": 0.8,
+      "raw_column_name": "report.load_model.energy.cpu",
+      "usable_for": []
+    },
+    {
+      "aurelius_signal_category": "metadata_only",
+      "dtypes": [
+        "str"
+      ],
+      "field_quality": "real",
+      "missing_rate": 0.2,
+      "normalized_field": "report.load_model.energy.ram",
+      "notes": "raw 'report.load_model.energy.ram' \u2192 'report.load_model.energy.ram'",
+      "presence_rate": 0.8,
+      "raw_column_name": "report.load_model.energy.ram",
+      "usable_for": []
+    },
+    {
+      "aurelius_signal_category": "metadata_only",
+      "dtypes": [
+        "str"
+      ],
+      "field_quality": "real",
+      "missing_rate": 0.2,
+      "normalized_field": "report.load_model.energy.gpu",
+      "notes": "raw 'report.load_model.energy.gpu' \u2192 'report.load_model.energy.gpu'",
+      "presence_rate": 0.8,
+      "raw_column_name": "report.load_model.energy.gpu",
+      "usable_for": []
+    },
+    {
+      "aurelius_signal_category": "metadata_only",
+      "dtypes": [
+        "str"
+      ],
+      "field_quality": "real",
+      "missing_rate": 0.2,
+      "normalized_field": "report.load_model.energy.total",
+      "notes": "raw 'report.load_model.energy.total' \u2192 'report.load_model.energy.total'",
+      "presence_rate": 0.8,
+      "raw_column_name": "report.load_model.energy.total",
+      "usable_for": []
+    },
+    {
+      "aurelius_signal_category": "metadata_only",
+      "dtypes": [
+        "str"
+      ],
+      "field_quality": "real",
+      "missing_rate": 1.0,
+      "normalized_field": "report.load_model.efficiency",
+      "notes": "raw 'report.load_model.efficiency' \u2192 'report.load_model.efficiency'",
+      "presence_rate": 0.0,
+      "raw_column_name": "report.load_model.efficiency",
+      "usable_for": []
+    },
+    {
+      "aurelius_signal_category": "metadata_only",
+      "dtypes": [
+        "str"
+      ],
+      "field_quality": "real",
+      "missing_rate": 0.2,
+      "normalized_field": "report.prefill.memory.unit",
+      "notes": "raw 'report.prefill.memory.unit' \u2192 'report.prefill.memory.unit'",
+      "presence_rate": 0.8,
+      "raw_column_name": "report.prefill.memory.unit",
+      "usable_for": []
+    },
+    {
+      "aurelius_signal_category": "memory",
+      "dtypes": [
+        "str"
+      ],
+      "field_quality": "real",
+      "missing_rate": 0.2,
+      "normalized_field": "prefill_max_ram_mb",
+      "notes": "raw 'report.prefill.memory.max_ram' \u2192 'prefill_max_ram_mb'",
+      "presence_rate": 0.8,
+      "raw_column_name": "report.prefill.memory.max_ram",
+      "usable_for": [
+        "latency_prior"
+      ]
+    },
+    {
+      "aurelius_signal_category": "memory",
+      "dtypes": [
+        "str"
+      ],
+      "field_quality": "real",
+      "missing_rate": 0.2,
+      "normalized_field": "prefill_max_vram_mb",
+      "notes": "raw 'report.prefill.memory.max_global_vram' \u2192 'prefill_max_vram_mb'",
+      "presence_rate": 0.8,
+      "raw_column_name": "report.prefill.memory.max_global_vram",
+      "usable_for": [
+        "latency_prior",
+        "constraint_aware_backtest"
+      ]
+    },
+    {
+      "aurelius_signal_category": "memory",
+      "dtypes": [
+        "str"
+      ],
+      "field_quality": "real",
+      "missing_rate": 0.2,
+      "normalized_field": "prefill_max_process_vram_mb",
+      "notes": "raw 'report.prefill.memory.max_process_vram' \u2192 'prefill_max_process_vram_mb'",
+      "presence_rate": 0.8,
+      "raw_column_name": "report.prefill.memory.max_process_vram",
+      "usable_for": [
+        "latency_prior"
+      ]
+    },
+    {
+      "aurelius_signal_category": "memory",
+      "dtypes": [
+        "str"
+      ],
+      "field_quality": "real",
+      "missing_rate": 0.2,
+      "normalized_field": "prefill_max_reserved_mb",
+      "notes": "raw 'report.prefill.memory.max_reserved' \u2192 'prefill_max_reserved_mb'",
+      "presence_rate": 0.8,
+      "raw_column_name": "report.prefill.memory.max_reserved",
+      "usable_for": [
+        "latency_prior"
+      ]
+    },
+    {
+      "aurelius_signal_category": "memory",
+      "dtypes": [
+        "str"
+      ],
+      "field_quality": "real",
+      "missing_rate": 0.2,
+      "normalized_field": "prefill_max_allocated_mb",
+      "notes": "raw 'report.prefill.memory.max_allocated' \u2192 'prefill_max_allocated_mb'",
+      "presence_rate": 0.8,
+      "raw_column_name": "report.prefill.memory.max_allocated",
+      "usable_for": [
+        "latency_prior"
+      ]
+    },
+    {
+      "aurelius_signal_category": "metadata_only",
+      "dtypes": [
+        "str"
+      ],
+      "field_quality": "real",
+      "missing_rate": 0.2,
+      "normalized_field": "report.prefill.latency.unit",
+      "notes": "raw 'report.prefill.latency.unit' \u2192 'report.prefill.latency.unit'",
+      "presence_rate": 0.8,
+      "raw_column_name": "report.prefill.latency.unit",
+      "usable_for": []
+    },
+    {
+      "aurelius_signal_category": "irrelevant",
+      "dtypes": [
+        "str"
+      ],
+      "field_quality": "real",
+      "missing_rate": 0.2,
+      "normalized_field": "ttft_values_list_skipped",
+      "notes": "raw 'report.prefill.latency.values' \u2192 'ttft_values_list_skipped'",
+      "presence_rate": 0.8,
+      "raw_column_name": "report.prefill.latency.values",
+      "usable_for": []
+    },
+    {
+      "aurelius_signal_category": "metadata_only",
+      "dtypes": [
+        "str"
+      ],
+      "field_quality": "real",
+      "missing_rate": 0.2,
+      "normalized_field": "ttft_count",
+      "notes": "raw 'report.prefill.latency.count' \u2192 'ttft_count'",
+      "presence_rate": 0.8,
+      "raw_column_name": "report.prefill.latency.count",
+      "usable_for": [
+        "latency_prior"
+      ]
+    },
+    {
+      "aurelius_signal_category": "latency",
+      "dtypes": [
+        "str"
+      ],
+      "field_quality": "real",
+      "missing_rate": 0.2,
+      "normalized_field": "ttft_total_s",
+      "notes": "raw 'report.prefill.latency.total' \u2192 'ttft_total_s'",
+      "presence_rate": 0.8,
+      "raw_column_name": "report.prefill.latency.total",
+      "usable_for": [
+        "latency_prior"
+      ]
+    },
+    {
+      "aurelius_signal_category": "latency",
+      "dtypes": [
+        "str"
+      ],
+      "field_quality": "real",
+      "missing_rate": 0.2,
+      "normalized_field": "mean_ttft_ms",
+      "notes": "raw 'report.prefill.latency.mean' \u2192 'mean_ttft_ms'",
+      "presence_rate": 0.8,
+      "raw_column_name": "report.prefill.latency.mean",
+      "usable_for": [
+        "latency_prior"
+      ]
+    },
+    {
+      "aurelius_signal_category": "latency",
+      "dtypes": [
+        "str"
+      ],
+      "field_quality": "real",
+      "missing_rate": 0.2,
+      "normalized_field": "p50_ttft_ms",
+      "notes": "raw 'report.prefill.latency.p50' \u2192 'p50_ttft_ms'",
+      "presence_rate": 0.8,
+      "raw_column_name": "report.prefill.latency.p50",
+      "usable_for": [
+        "latency_prior"
+      ]
+    },
+    {
+      "aurelius_signal_category": "latency",
+      "dtypes": [
+        "str"
+      ],
+      "field_quality": "real",
+      "missing_rate": 0.2,
+      "normalized_field": "p90_ttft_ms",
+      "notes": "raw 'report.prefill.latency.p90' \u2192 'p90_ttft_ms'",
+      "presence_rate": 0.8,
+      "raw_column_name": "report.prefill.latency.p90",
+      "usable_for": [
+        "latency_prior"
+      ]
+    },
+    {
+      "aurelius_signal_category": "latency",
+      "dtypes": [
+        "str"
+      ],
+      "field_quality": "real",
+      "missing_rate": 0.2,
+      "normalized_field": "p95_ttft_ms",
+      "notes": "raw 'report.prefill.latency.p95' \u2192 'p95_ttft_ms'",
+      "presence_rate": 0.8,
+      "raw_column_name": "report.prefill.latency.p95",
+      "usable_for": [
+        "latency_prior"
+      ]
+    },
+    {
+      "aurelius_signal_category": "latency",
+      "dtypes": [
+        "str"
+      ],
+      "field_quality": "real",
+      "missing_rate": 0.2,
+      "normalized_field": "p99_ttft_ms",
+      "notes": "raw 'report.prefill.latency.p99' \u2192 'p99_ttft_ms'",
+      "presence_rate": 0.8,
+      "raw_column_name": "report.prefill.latency.p99",
+      "usable_for": [
+        "latency_prior"
+      ]
+    },
+    {
+      "aurelius_signal_category": "metadata_only",
+      "dtypes": [
+        "str"
+      ],
+      "field_quality": "real",
+      "missing_rate": 0.2,
+      "normalized_field": "report.prefill.latency.stdev",
+      "notes": "raw 'report.prefill.latency.stdev' \u2192 'report.prefill.latency.stdev'",
+      "presence_rate": 0.8,
+      "raw_column_name": "report.prefill.latency.stdev",
+      "usable_for": []
+    },
+    {
+      "aurelius_signal_category": "metadata_only",
+      "dtypes": [
+        "str"
+      ],
+      "field_quality": "real",
+      "missing_rate": 0.2,
+      "normalized_field": "report.prefill.latency.stdev_",
+      "notes": "raw 'report.prefill.latency.stdev_' \u2192 'report.prefill.latency.stdev_'",
+      "presence_rate": 0.8,
+      "raw_column_name": "report.prefill.latency.stdev_",
+      "usable_for": []
+    },
+    {
+      "aurelius_signal_category": "metadata_only",
+      "dtypes": [
+        "str"
+      ],
+      "field_quality": "real",
+      "missing_rate": 0.2,
+      "normalized_field": "report.prefill.throughput.unit",
+      "notes": "raw 'report.prefill.throughput.unit' \u2192 'report.prefill.throughput.unit'",
+      "presence_rate": 0.8,
+      "raw_column_name": "report.prefill.throughput.unit",
+      "usable_for": []
+    },
+    {
+      "aurelius_signal_category": "throughput",
+      "dtypes": [
+        "str"
+      ],
+      "field_quality": "real",
+      "missing_rate": 0.2,
+      "normalized_field": "prefill_throughput_tok_s",
+      "notes": "raw 'report.prefill.throughput.value' \u2192 'prefill_throughput_tok_s'",
+      "presence_rate": 0.8,
+      "raw_column_name": "report.prefill.throughput.value",
+      "usable_for": [
+        "throughput_prior"
+      ]
+    },
+    {
+      "aurelius_signal_category": "metadata_only",
+      "dtypes": [
+        "str"
+      ],
+      "field_quality": "real",
+      "missing_rate": 0.2,
+      "normalized_field": "report.prefill.energy.unit",
+      "notes": "raw 'report.prefill.energy.unit' \u2192 'report.prefill.energy.unit'",
+      "presence_rate": 0.8,
+      "raw_column_name": "report.prefill.energy.unit",
+      "usable_for": []
+    },
+    {
+      "aurelius_signal_category": "cost_energy_carbon",
+      "dtypes": [
+        "str"
+      ],
+      "field_quality": "real",
+      "missing_rate": 0.2,
+      "normalized_field": "prefill_energy_cpu_kwh",
+      "notes": "raw 'report.prefill.energy.cpu' \u2192 'prefill_energy_cpu_kwh'",
+      "presence_rate": 0.8,
+      "raw_column_name": "report.prefill.energy.cpu",
+      "usable_for": [
+        "latency_prior"
+      ]
+    },
+    {
+      "aurelius_signal_category": "cost_energy_carbon",
+      "dtypes": [
+        "str"
+      ],
+      "field_quality": "real",
+      "missing_rate": 0.2,
+      "normalized_field": "prefill_energy_ram_kwh",
+      "notes": "raw 'report.prefill.energy.ram' \u2192 'prefill_energy_ram_kwh'",
+      "presence_rate": 0.8,
+      "raw_column_name": "report.prefill.energy.ram",
+      "usable_for": [
+        "latency_prior"
+      ]
+    },
+    {
+      "aurelius_signal_category": "cost_energy_carbon",
+      "dtypes": [
+        "str"
+      ],
+      "field_quality": "real",
+      "missing_rate": 0.2,
+      "normalized_field": "prefill_energy_gpu_kwh",
+      "notes": "raw 'report.prefill.energy.gpu' \u2192 'prefill_energy_gpu_kwh'",
+      "presence_rate": 0.8,
+      "raw_column_name": "report.prefill.energy.gpu",
+      "usable_for": [
+        "latency_prior",
+        "constraint_aware_backtest"
+      ]
+    },
+    {
+      "aurelius_signal_category": "cost_energy_carbon",
+      "dtypes": [
+        "str"
+      ],
+      "field_quality": "real",
+      "missing_rate": 0.2,
+      "normalized_field": "prefill_energy_total_kwh",
+      "notes": "raw 'report.prefill.energy.total' \u2192 'prefill_energy_total_kwh'",
+      "presence_rate": 0.8,
+      "raw_column_name": "report.prefill.energy.total",
+      "usable_for": [
+        "latency_prior",
+        "constraint_aware_backtest"
+      ]
+    },
+    {
+      "aurelius_signal_category": "metadata_only",
+      "dtypes": [
+        "str"
+      ],
+      "field_quality": "real",
+      "missing_rate": 0.2,
+      "normalized_field": "report.prefill.efficiency.unit",
+      "notes": "raw 'report.prefill.efficiency.unit' \u2192 'report.prefill.efficiency.unit'",
+      "presence_rate": 0.8,
+      "raw_column_name": "report.prefill.efficiency.unit",
+      "usable_for": []
+    },
+    {
+      "aurelius_signal_category": "metadata_only",
+      "dtypes": [
+        "str"
+      ],
+      "field_quality": "real",
+      "missing_rate": 0.2,
+      "normalized_field": "report.prefill.efficiency.value",
+      "notes": "raw 'report.prefill.efficiency.value' \u2192 'report.prefill.efficiency.value'",
+      "presence_rate": 0.8,
+      "raw_column_name": "report.prefill.efficiency.value",
+      "usable_for": []
+    },
+    {
+      "aurelius_signal_category": "metadata_only",
+      "dtypes": [
+        "str"
+      ],
+      "field_quality": "real",
+      "missing_rate": 0.2,
+      "normalized_field": "report.decode.memory.unit",
+      "notes": "raw 'report.decode.memory.unit' \u2192 'report.decode.memory.unit'",
+      "presence_rate": 0.8,
+      "raw_column_name": "report.decode.memory.unit",
+      "usable_for": []
+    },
+    {
+      "aurelius_signal_category": "metadata_only",
+      "dtypes": [
+        "str"
+      ],
+      "field_quality": "real",
+      "missing_rate": 0.2,
+      "normalized_field": "report.decode.memory.max_ram",
+      "notes": "raw 'report.decode.memory.max_ram' \u2192 'report.decode.memory.max_ram'",
+      "presence_rate": 0.8,
+      "raw_column_name": "report.decode.memory.max_ram",
+      "usable_for": []
+    },
+    {
+      "aurelius_signal_category": "memory",
+      "dtypes": [
+        "str"
+      ],
+      "field_quality": "real",
+      "missing_rate": 0.2,
+      "normalized_field": "decode_max_vram_mb",
+      "notes": "raw 'report.decode.memory.max_global_vram' \u2192 'decode_max_vram_mb'",
+      "presence_rate": 0.8,
+      "raw_column_name": "report.decode.memory.max_global_vram",
+      "usable_for": [
+        "latency_prior",
+        "constraint_aware_backtest"
+      ]
+    },
+    {
+      "aurelius_signal_category": "metadata_only",
+      "dtypes": [
+        "str"
+      ],
+      "field_quality": "real",
+      "missing_rate": 0.2,
+      "normalized_field": "report.decode.memory.max_process_vram",
+      "notes": "raw 'report.decode.memory.max_process_vram' \u2192 'report.decode.memory.max_process_vram'",
+      "presence_rate": 0.8,
+      "raw_column_name": "report.decode.memory.max_process_vram",
+      "usable_for": []
+    },
+    {
+      "aurelius_signal_category": "metadata_only",
+      "dtypes": [
+        "str"
+      ],
+      "field_quality": "real",
+      "missing_rate": 0.2,
+      "normalized_field": "report.decode.memory.max_reserved",
+      "notes": "raw 'report.decode.memory.max_reserved' \u2192 'report.decode.memory.max_reserved'",
+      "presence_rate": 0.8,
+      "raw_column_name": "report.decode.memory.max_reserved",
+      "usable_for": []
+    },
+    {
+      "aurelius_signal_category": "memory",
+      "dtypes": [
+        "str"
+      ],
+      "field_quality": "real",
+      "missing_rate": 0.2,
+      "normalized_field": "decode_max_allocated_mb",
+      "notes": "raw 'report.decode.memory.max_allocated' \u2192 'decode_max_allocated_mb'",
+      "presence_rate": 0.8,
+      "raw_column_name": "report.decode.memory.max_allocated",
+      "usable_for": [
+        "latency_prior"
+      ]
+    },
+    {
+      "aurelius_signal_category": "metadata_only",
+      "dtypes": [
+        "str"
+      ],
+      "field_quality": "real",
+      "missing_rate": 0.2,
+      "normalized_field": "report.decode.latency.unit",
+      "notes": "raw 'report.decode.latency.unit' \u2192 'report.decode.latency.unit'",
+      "presence_rate": 0.8,
+      "raw_column_name": "report.decode.latency.unit",
+      "usable_for": []
+    },
+    {
+      "aurelius_signal_category": "metadata_only",
+      "dtypes": [
+        "str"
+      ],
+      "field_quality": "real",
+      "missing_rate": 0.2,
+      "normalized_field": "report.decode.latency.values",
+      "notes": "raw 'report.decode.latency.values' \u2192 'report.decode.latency.values'",
+      "presence_rate": 0.8,
+      "raw_column_name": "report.decode.latency.values",
+      "usable_for": []
+    },
+    {
+      "aurelius_signal_category": "metadata_only",
+      "dtypes": [
+        "str"
+      ],
+      "field_quality": "real",
+      "missing_rate": 0.2,
+      "normalized_field": "tpot_count",
+      "notes": "raw 'report.decode.latency.count' \u2192 'tpot_count'",
+      "presence_rate": 0.8,
+      "raw_column_name": "report.decode.latency.count",
+      "usable_for": [
+        "latency_prior"
+      ]
+    },
+    {
+      "aurelius_signal_category": "metadata_only",
+      "dtypes": [
+        "str"
+      ],
+      "field_quality": "real",
+      "missing_rate": 0.2,
+      "normalized_field": "report.decode.latency.total",
+      "notes": "raw 'report.decode.latency.total' \u2192 'report.decode.latency.total'",
+      "presence_rate": 0.8,
+      "raw_column_name": "report.decode.latency.total",
+      "usable_for": []
+    },
+    {
+      "aurelius_signal_category": "latency",
+      "dtypes": [
+        "str"
+      ],
+      "field_quality": "real",
+      "missing_rate": 0.2,
+      "normalized_field": "mean_tpot_ms",
+      "notes": "raw 'report.decode.latency.mean' \u2192 'mean_tpot_ms'",
+      "presence_rate": 0.8,
+      "raw_column_name": "report.decode.latency.mean",
+      "usable_for": [
+        "latency_prior"
+      ]
+    },
+    {
+      "aurelius_signal_category": "latency",
+      "dtypes": [
+        "str"
+      ],
+      "field_quality": "real",
+      "missing_rate": 0.2,
+      "normalized_field": "p50_tpot_ms",
+      "notes": "raw 'report.decode.latency.p50' \u2192 'p50_tpot_ms'",
+      "presence_rate": 0.8,
+      "raw_column_name": "report.decode.latency.p50",
+      "usable_for": [
+        "latency_prior"
+      ]
+    },
+    {
+      "aurelius_signal_category": "latency",
+      "dtypes": [
+        "str"
+      ],
+      "field_quality": "real",
+      "missing_rate": 0.2,
+      "normalized_field": "p90_tpot_ms",
+      "notes": "raw 'report.decode.latency.p90' \u2192 'p90_tpot_ms'",
+      "presence_rate": 0.8,
+      "raw_column_name": "report.decode.latency.p90",
+      "usable_for": [
+        "latency_prior"
+      ]
+    },
+    {
+      "aurelius_signal_category": "latency",
+      "dtypes": [
+        "str"
+      ],
+      "field_quality": "real",
+      "missing_rate": 0.2,
+      "normalized_field": "p95_tpot_ms",
+      "notes": "raw 'report.decode.latency.p95' \u2192 'p95_tpot_ms'",
+      "presence_rate": 0.8,
+      "raw_column_name": "report.decode.latency.p95",
+      "usable_for": [
+        "latency_prior"
+      ]
+    },
+    {
+      "aurelius_signal_category": "latency",
+      "dtypes": [
+        "str"
+      ],
+      "field_quality": "real",
+      "missing_rate": 0.2,
+      "normalized_field": "p99_tpot_ms",
+      "notes": "raw 'report.decode.latency.p99' \u2192 'p99_tpot_ms'",
+      "presence_rate": 0.8,
+      "raw_column_name": "report.decode.latency.p99",
+      "usable_for": [
+        "latency_prior"
+      ]
+    },
+    {
+      "aurelius_signal_category": "metadata_only",
+      "dtypes": [
+        "str"
+      ],
+      "field_quality": "real",
+      "missing_rate": 0.2,
+      "normalized_field": "report.decode.latency.stdev",
+      "notes": "raw 'report.decode.latency.stdev' \u2192 'report.decode.latency.stdev'",
+      "presence_rate": 0.8,
+      "raw_column_name": "report.decode.latency.stdev",
+      "usable_for": []
+    },
+    {
+      "aurelius_signal_category": "metadata_only",
+      "dtypes": [
+        "str"
+      ],
+      "field_quality": "real",
+      "missing_rate": 0.2,
+      "normalized_field": "report.decode.latency.stdev_",
+      "notes": "raw 'report.decode.latency.stdev_' \u2192 'report.decode.latency.stdev_'",
+      "presence_rate": 0.8,
+      "raw_column_name": "report.decode.latency.stdev_",
+      "usable_for": []
+    },
+    {
+      "aurelius_signal_category": "metadata_only",
+      "dtypes": [
+        "str"
+      ],
+      "field_quality": "real",
+      "missing_rate": 0.2,
+      "normalized_field": "report.decode.throughput.unit",
+      "notes": "raw 'report.decode.throughput.unit' \u2192 'report.decode.throughput.unit'",
+      "presence_rate": 0.8,
+      "raw_column_name": "report.decode.throughput.unit",
+      "usable_for": []
+    },
+    {
+      "aurelius_signal_category": "throughput",
+      "dtypes": [
+        "str"
+      ],
+      "field_quality": "real",
+      "missing_rate": 0.2,
+      "normalized_field": "decode_throughput_tok_s",
+      "notes": "raw 'report.decode.throughput.value' \u2192 'decode_throughput_tok_s'",
+      "presence_rate": 0.8,
+      "raw_column_name": "report.decode.throughput.value",
+      "usable_for": [
+        "throughput_prior"
+      ]
+    },
+    {
+      "aurelius_signal_category": "metadata_only",
+      "dtypes": [
+        "str"
+      ],
+      "field_quality": "real",
+      "missing_rate": 0.2,
+      "normalized_field": "report.decode.energy.unit",
+      "notes": "raw 'report.decode.energy.unit' \u2192 'report.decode.energy.unit'",
+      "presence_rate": 0.8,
+      "raw_column_name": "report.decode.energy.unit",
+      "usable_for": []
+    },
+    {
+      "aurelius_signal_category": "metadata_only",
+      "dtypes": [
+        "str"
+      ],
+      "field_quality": "real",
+      "missing_rate": 0.2,
+      "normalized_field": "report.decode.energy.cpu",
+      "notes": "raw 'report.decode.energy.cpu' \u2192 'report.decode.energy.cpu'",
+      "presence_rate": 0.8,
+      "raw_column_name": "report.decode.energy.cpu",
+      "usable_for": []
+    },
+    {
+      "aurelius_signal_category": "metadata_only",
+      "dtypes": [
+        "str"
+      ],
+      "field_quality": "real",
+      "missing_rate": 0.2,
+      "normalized_field": "report.decode.energy.ram",
+      "notes": "raw 'report.decode.energy.ram' \u2192 'report.decode.energy.ram'",
+      "presence_rate": 0.8,
+      "raw_column_name": "report.decode.energy.ram",
+      "usable_for": []
+    },
+    {
+      "aurelius_signal_category": "cost_energy_carbon",
+      "dtypes": [
+        "str"
+      ],
+      "field_quality": "real",
+      "missing_rate": 0.2,
+      "normalized_field": "decode_energy_gpu_kwh",
+      "notes": "raw 'report.decode.energy.gpu' \u2192 'decode_energy_gpu_kwh'",
+      "presence_rate": 0.8,
+      "raw_column_name": "report.decode.energy.gpu",
+      "usable_for": [
+        "latency_prior",
+        "constraint_aware_backtest"
+      ]
+    },
+    {
+      "aurelius_signal_category": "cost_energy_carbon",
+      "dtypes": [
+        "str"
+      ],
+      "field_quality": "real",
+      "missing_rate": 0.2,
+      "normalized_field": "decode_energy_total_kwh",
+      "notes": "raw 'report.decode.energy.total' \u2192 'decode_energy_total_kwh'",
+      "presence_rate": 0.8,
+      "raw_column_name": "report.decode.energy.total",
+      "usable_for": [
+        "latency_prior",
+        "constraint_aware_backtest"
+      ]
+    },
+    {
+      "aurelius_signal_category": "metadata_only",
+      "dtypes": [
+        "str"
+      ],
+      "field_quality": "real",
+      "missing_rate": 0.2,
+      "normalized_field": "report.decode.efficiency.unit",
+      "notes": "raw 'report.decode.efficiency.unit' \u2192 'report.decode.efficiency.unit'",
+      "presence_rate": 0.8,
+      "raw_column_name": "report.decode.efficiency.unit",
+      "usable_for": []
+    },
+    {
+      "aurelius_signal_category": "metadata_only",
+      "dtypes": [
+        "str"
+      ],
+      "field_quality": "real",
+      "missing_rate": 0.2,
+      "normalized_field": "report.decode.efficiency.value",
+      "notes": "raw 'report.decode.efficiency.value' \u2192 'report.decode.efficiency.value'",
+      "presence_rate": 0.8,
+      "raw_column_name": "report.decode.efficiency.value",
+      "usable_for": []
+    },
+    {
+      "aurelius_signal_category": "metadata_only",
+      "dtypes": [
+        "str"
+      ],
+      "field_quality": "real",
+      "missing_rate": 1.0,
+      "normalized_field": "report.per_token.memory",
+      "notes": "raw 'report.per_token.memory' \u2192 'report.per_token.memory'",
+      "presence_rate": 0.0,
+      "raw_column_name": "report.per_token.memory",
+      "usable_for": []
+    },
+    {
+      "aurelius_signal_category": "metadata_only",
+      "dtypes": [
+        "str"
+      ],
+      "field_quality": "real",
+      "missing_rate": 0.2,
+      "normalized_field": "report.per_token.latency.unit",
+      "notes": "raw 'report.per_token.latency.unit' \u2192 'report.per_token.latency.unit'",
+      "presence_rate": 0.8,
+      "raw_column_name": "report.per_token.latency.unit",
+      "usable_for": []
+    },
+    {
+      "aurelius_signal_category": "metadata_only",
+      "dtypes": [
+        "str"
+      ],
+      "field_quality": "real",
+      "missing_rate": 0.2,
+      "normalized_field": "report.per_token.latency.values",
+      "notes": "raw 'report.per_token.latency.values' \u2192 'report.per_token.latency.values'",
+      "presence_rate": 0.8,
+      "raw_column_name": "report.per_token.latency.values",
+      "usable_for": []
+    },
+    {
+      "aurelius_signal_category": "metadata_only",
+      "dtypes": [
+        "str"
+      ],
+      "field_quality": "real",
+      "missing_rate": 0.2,
+      "normalized_field": "report.per_token.latency.count",
+      "notes": "raw 'report.per_token.latency.count' \u2192 'report.per_token.latency.count'",
+      "presence_rate": 0.8,
+      "raw_column_name": "report.per_token.latency.count",
+      "usable_for": []
+    },
+    {
+      "aurelius_signal_category": "metadata_only",
+      "dtypes": [
+        "str"
+      ],
+      "field_quality": "real",
+      "missing_rate": 0.2,
+      "normalized_field": "report.per_token.latency.total",
+      "notes": "raw 'report.per_token.latency.total' \u2192 'report.per_token.latency.total'",
+      "presence_rate": 0.8,
+      "raw_column_name": "report.per_token.latency.total",
+      "usable_for": []
+    },
+    {
+      "aurelius_signal_category": "metadata_only",
+      "dtypes": [
+        "str"
+      ],
+      "field_quality": "real",
+      "missing_rate": 0.2,
+      "normalized_field": "report.per_token.latency.mean",
+      "notes": "raw 'report.per_token.latency.mean' \u2192 'report.per_token.latency.mean'",
+      "presence_rate": 0.8,
+      "raw_column_name": "report.per_token.latency.mean",
+      "usable_for": []
+    },
+    {
+      "aurelius_signal_category": "metadata_only",
+      "dtypes": [
+        "str"
+      ],
+      "field_quality": "real",
+      "missing_rate": 0.2,
+      "normalized_field": "report.per_token.latency.p50",
+      "notes": "raw 'report.per_token.latency.p50' \u2192 'report.per_token.latency.p50'",
+      "presence_rate": 0.8,
+      "raw_column_name": "report.per_token.latency.p50",
+      "usable_for": []
+    },
+    {
+      "aurelius_signal_category": "metadata_only",
+      "dtypes": [
+        "str"
+      ],
+      "field_quality": "real",
+      "missing_rate": 0.2,
+      "normalized_field": "report.per_token.latency.p90",
+      "notes": "raw 'report.per_token.latency.p90' \u2192 'report.per_token.latency.p90'",
+      "presence_rate": 0.8,
+      "raw_column_name": "report.per_token.latency.p90",
+      "usable_for": []
+    },
+    {
+      "aurelius_signal_category": "metadata_only",
+      "dtypes": [
+        "str"
+      ],
+      "field_quality": "real",
+      "missing_rate": 0.2,
+      "normalized_field": "report.per_token.latency.p95",
+      "notes": "raw 'report.per_token.latency.p95' \u2192 'report.per_token.latency.p95'",
+      "presence_rate": 0.8,
+      "raw_column_name": "report.per_token.latency.p95",
+      "usable_for": []
+    },
+    {
+      "aurelius_signal_category": "metadata_only",
+      "dtypes": [
+        "str"
+      ],
+      "field_quality": "real",
+      "missing_rate": 0.2,
+      "normalized_field": "report.per_token.latency.p99",
+      "notes": "raw 'report.per_token.latency.p99' \u2192 'report.per_token.latency.p99'",
+      "presence_rate": 0.8,
+      "raw_column_name": "report.per_token.latency.p99",
+      "usable_for": []
+    },
+    {
+      "aurelius_signal_category": "metadata_only",
+      "dtypes": [
+        "str"
+      ],
+      "field_quality": "real",
+      "missing_rate": 0.2,
+      "normalized_field": "report.per_token.latency.stdev",
+      "notes": "raw 'report.per_token.latency.stdev' \u2192 'report.per_token.latency.stdev'",
+      "presence_rate": 0.8,
+      "raw_column_name": "report.per_token.latency.stdev",
+      "usable_for": []
+    },
+    {
+      "aurelius_signal_category": "metadata_only",
+      "dtypes": [
+        "str"
+      ],
+      "field_quality": "real",
+      "missing_rate": 0.2,
+      "normalized_field": "report.per_token.latency.stdev_",
+      "notes": "raw 'report.per_token.latency.stdev_' \u2192 'report.per_token.latency.stdev_'",
+      "presence_rate": 0.8,
+      "raw_column_name": "report.per_token.latency.stdev_",
+      "usable_for": []
+    },
+    {
+      "aurelius_signal_category": "metadata_only",
+      "dtypes": [
+        "str"
+      ],
+      "field_quality": "real",
+      "missing_rate": 1.0,
+      "normalized_field": "report.per_token.throughput",
+      "notes": "raw 'report.per_token.throughput' \u2192 'report.per_token.throughput'",
+      "presence_rate": 0.0,
+      "raw_column_name": "report.per_token.throughput",
+      "usable_for": []
+    },
+    {
+      "aurelius_signal_category": "metadata_only",
+      "dtypes": [
+        "str"
+      ],
+      "field_quality": "real",
+      "missing_rate": 1.0,
+      "normalized_field": "report.per_token.energy",
+      "notes": "raw 'report.per_token.energy' \u2192 'report.per_token.energy'",
+      "presence_rate": 0.0,
+      "raw_column_name": "report.per_token.energy",
+      "usable_for": []
+    },
+    {
+      "aurelius_signal_category": "metadata_only",
+      "dtypes": [
+        "str"
+      ],
+      "field_quality": "real",
+      "missing_rate": 1.0,
+      "normalized_field": "report.per_token.efficiency",
+      "notes": "raw 'report.per_token.efficiency' \u2192 'report.per_token.efficiency'",
+      "presence_rate": 0.0,
+      "raw_column_name": "report.per_token.efficiency",
+      "usable_for": []
+    },
+    {
+      "aurelius_signal_category": "metadata_only",
+      "dtypes": [
+        "str"
+      ],
+      "field_quality": "real",
+      "missing_rate": 0.8,
+      "normalized_field": "report.traceback",
+      "notes": "raw 'report.traceback' \u2192 'report.traceback'",
+      "presence_rate": 0.19999999999999996,
+      "raw_column_name": "report.traceback",
+      "usable_for": []
+    }
+  ],
+  "config_name": "pytorch_cuda_torchao_1xA10",
+  "dataset_id": "optimum-benchmark/llm-perf-leaderboard",
+  "rejected_columns": [],
+  "unknown_columns": []
+}

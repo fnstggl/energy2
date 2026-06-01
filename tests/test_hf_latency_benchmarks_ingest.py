@@ -237,19 +237,19 @@ def _audit() -> dict:
 
 
 def test_audit_summary_records_all_ingested():
+    """Audit must record at least every round-1 config (it is a running log
+    of broadened discovery; later rounds append entries here)."""
     a = _audit()
     seen = {(x["dataset_id"], x["config_name"]) for x in a["ingested"]}
-    assert seen == set(NEW_CONFIGS), (
-        f"audit ingested set mismatch: {seen ^ set(NEW_CONFIGS)}"
-    )
+    missing = set(NEW_CONFIGS) - seen
+    assert not missing, f"audit ingested set missing: {missing}"
 
 
 def test_audit_summary_records_all_discovery_only_ids():
     a = _audit()
     seen = {r["dataset_id"] for r in a["discovery_only_records"]}
-    assert seen == set(DISCOVERY_ONLY_IDS), (
-        f"discovery-only set mismatch: {seen ^ set(DISCOVERY_ONLY_IDS)}"
-    )
+    missing = set(DISCOVERY_ONLY_IDS) - seen
+    assert not missing, f"discovery-only set missing: {missing}"
 
 
 def test_audit_summary_no_production_claim():
