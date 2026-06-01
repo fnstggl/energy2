@@ -1,0 +1,1272 @@
+{
+  "config": "train_flat",
+  "dataset": "asdwb/cara_latency_prediction",
+  "doc_version": "cara_ttft_tail_with_queue_features_v1",
+  "evaluated_at_s": 1780278096.0453155,
+  "final_decision_table": [
+    {
+      "final_decision": "diagnostic_only",
+      "new_coverage": 0.9529450048812236,
+      "new_fallback_rate": 0.8861698665798894,
+      "new_status": "diagnostic_only",
+      "new_time_alpha_pct": 19.39553453325387,
+      "prior_coverage": 0.9537260006508298,
+      "prior_status": "diagnostic_only",
+      "prior_time_alpha_pct": 19.518188939092127,
+      "quantile": "p95",
+      "reason": "at least one major subgroup below coverage threshold",
+      "target": "actual_ttft_s",
+      "time_alpha_delta_pct": -0.12265440583825793
+    },
+    {
+      "final_decision": "baseline_fallback",
+      "new_coverage": 0.9839245037422714,
+      "new_fallback_rate": 0.6344939798242759,
+      "new_status": "baseline_fallback",
+      "new_time_alpha_pct": 9.725156906282416,
+      "prior_coverage": 0.984249918646274,
+      "prior_status": "baseline_fallback",
+      "prior_time_alpha_pct": 10.919302732655604,
+      "quantile": "p99",
+      "reason": "baseline fallback fired on >25% of time-holdout rows",
+      "target": "actual_ttft_s",
+      "time_alpha_delta_pct": -1.1941458263731874
+    }
+  ],
+  "holdouts": [
+    "holdout_by_instance_type",
+    "random_holdout",
+    "time_holdout"
+  ],
+  "modifies_controllers_or_defaults": false,
+  "modifies_robust_energy_engine": false,
+  "no_production_claim": true,
+  "per_quantile": {
+    "p95": {
+      "new_status_with_queue_features": "diagnostic_only",
+      "per_holdout": [
+        {
+          "calibrated_with_queue_metrics": {
+            "alpha_pct_vs_baseline": 18.802577757174465,
+            "pinball_loss": 0.007538777011707642
+          },
+          "fallback_rate": 0.8685323787829483,
+          "has_subgroup_regression": false,
+          "has_subgroup_undercoverage": false,
+          "holdout": "random_holdout",
+          "n_test": 15365,
+          "n_train": 61460,
+          "quantile": 0.95,
+          "raw_with_queue_metrics": {
+            "alpha_pct_vs_baseline": 46.00341527820042,
+            "pinball_loss": 0.005013314466979826
+          },
+          "subgroup_audit": {
+            "gpu_type": {
+              "a100": {
+                "baseline_loss": 0.004586478443637476,
+                "empirical_coverage": 0.9801204819277108,
+                "improvement_pct": 15.151277434195535,
+                "model_loss": 0.003891568370182389,
+                "row_count": 1660,
+                "status": "PASS"
+              },
+              "a30": {
+                "baseline_loss": 0.0033109630360484785,
+                "empirical_coverage": 0.9853651397629153,
+                "improvement_pct": 15.382600228867515,
+                "model_loss": 0.0028016508284875665,
+                "row_count": 6833,
+                "status": "PASS"
+              },
+              "p100": {
+                "baseline_loss": 0.023644237868849848,
+                "empirical_coverage": 0.9806931844615027,
+                "improvement_pct": 19.900885746600682,
+                "model_loss": 0.018938825104915548,
+                "row_count": 4299,
+                "status": "PASS"
+              },
+              "v100": {
+                "baseline_loss": 0.004186725070934149,
+                "empirical_coverage": 0.9813447337738049,
+                "improvement_pct": 18.202254062840854,
+                "model_loss": 0.003424646736610061,
+                "row_count": 2573,
+                "status": "PASS"
+              }
+            },
+            "instance_type": {
+              "qwen2.5-14b_v100": {
+                "baseline_loss": 0.004186725070934149,
+                "empirical_coverage": 0.9813447337738049,
+                "improvement_pct": 18.202254062840854,
+                "model_loss": 0.003424646736610061,
+                "row_count": 2573,
+                "status": "PASS"
+              },
+              "qwen2.5-3b_a30": {
+                "baseline_loss": 0.002301647692214331,
+                "empirical_coverage": 0.9885871704053523,
+                "improvement_pct": 10.0195543318708,
+                "model_loss": 0.0020710328511646657,
+                "row_count": 2541,
+                "status": "PASS"
+              },
+              "qwen2.5-3b_p100": {
+                "baseline_loss": 0.023644237868849848,
+                "empirical_coverage": 0.9806931844615027,
+                "improvement_pct": 19.900885746600682,
+                "model_loss": 0.018938825104915548,
+                "row_count": 4299,
+                "status": "PASS"
+              },
+              "qwen2.5-72b_a100": {
+                "baseline_loss": 0.004586478443637476,
+                "empirical_coverage": 0.9801204819277108,
+                "improvement_pct": 15.151277434195535,
+                "model_loss": 0.003891568370182389,
+                "row_count": 1660,
+                "status": "PASS"
+              },
+              "qwen2.5-7b_a30": {
+                "baseline_loss": 0.003908509701631556,
+                "empirical_coverage": 0.9834575955265611,
+                "improvement_pct": 17.25235271383158,
+                "model_loss": 0.0032341998220517536,
+                "row_count": 4292,
+                "status": "PASS"
+              }
+            },
+            "kv_util_bin": {
+              "[0.0,0.1)": {
+                "baseline_loss": 0.009538841776101502,
+                "empirical_coverage": 0.9825633280702959,
+                "improvement_pct": 18.89915054428105,
+                "model_loss": 0.007736081708655307,
+                "row_count": 14567,
+                "status": "PASS"
+              },
+              "[0.1,0.4)": {
+                "baseline_loss": 0.004641702625295675,
+                "empirical_coverage": 0.9874686716791979,
+                "improvement_pct": 15.179811401982386,
+                "model_loss": 0.003937100920934926,
+                "row_count": 798,
+                "status": "PASS"
+              }
+            },
+            "model_size": {
+              "14b": {
+                "baseline_loss": 0.004186725070934149,
+                "empirical_coverage": 0.9813447337738049,
+                "improvement_pct": 18.202254062840854,
+                "model_loss": 0.003424646736610061,
+                "row_count": 2573,
+                "status": "PASS"
+              },
+              "3b": {
+                "baseline_loss": 0.015715652833933058,
+                "empirical_coverage": 0.9836257309941521,
+                "improvement_pct": 19.363271894282807,
+                "model_loss": 0.012672588245737039,
+                "row_count": 6840,
+                "status": "PASS"
+              },
+              "72b": {
+                "baseline_loss": 0.004586478443637476,
+                "empirical_coverage": 0.9801204819277108,
+                "improvement_pct": 15.151277434195535,
+                "model_loss": 0.003891568370182389,
+                "row_count": 1660,
+                "status": "PASS"
+              },
+              "7b": {
+                "baseline_loss": 0.003908509701631556,
+                "empirical_coverage": 0.9834575955265611,
+                "improvement_pct": 17.25235271383158,
+                "model_loss": 0.0032341998220517536,
+                "row_count": 4292,
+                "status": "PASS"
+              }
+            },
+            "prompt_token_bin": {
+              "[0,50)": {
+                "baseline_loss": 0.008217485039808448,
+                "empirical_coverage": 0.987975752757627,
+                "improvement_pct": -0.02299150448349969,
+                "model_loss": 0.008219374363249807,
+                "row_count": 10063,
+                "status": "PASS"
+              },
+              "[200,800)": {
+                "baseline_loss": 0.01422168387181013,
+                "empirical_coverage": 0.9572060993605509,
+                "improvement_pct": 69.90865373882792,
+                "model_loss": 0.00427949613803565,
+                "row_count": 2033,
+                "status": "PASS"
+              },
+              "[50,200)": {
+                "baseline_loss": 0.007564747845781063,
+                "empirical_coverage": 0.9842105263157894,
+                "improvement_pct": 0.6919387727116586,
+                "model_loss": 0.007512404422378234,
+                "row_count": 3230,
+                "status": "PASS"
+              },
+              "[800,3200)": {
+                "baseline_loss": 0.1696670779128535,
+                "empirical_coverage": 0.8717948717948718,
+                "improvement_pct": 97.63545027419904,
+                "model_loss": 0.004011862425562874,
+                "row_count": 39,
+                "status": "INSUFFICIENT_SAMPLE"
+              }
+            },
+            "queue_depth_bin": {
+              "[0,1)": {
+                "baseline_loss": 0.0026004668548220517,
+                "empirical_coverage": 0.9910569105691057,
+                "improvement_pct": 10.526343572994643,
+                "model_loss": 0.0023267327791816348,
+                "row_count": 1230,
+                "status": "PASS"
+              },
+              "[1,5)": {
+                "baseline_loss": 0.0036280168570330803,
+                "empirical_coverage": 0.9842361708225853,
+                "improvement_pct": 16.16320840482493,
+                "model_loss": 0.0030416129314686444,
+                "row_count": 6978,
+                "status": "PASS"
+              },
+              "[20,100)": {
+                "baseline_loss": 0.025421628362956136,
+                "empirical_coverage": 0.9588014981273408,
+                "improvement_pct": 8.239379938590435,
+                "model_loss": 0.023327043815555712,
+                "row_count": 267,
+                "status": "PASS"
+              },
+              "[5,20)": {
+                "baseline_loss": 0.015581122817814121,
+                "empirical_coverage": 0.9808417997097243,
+                "improvement_pct": 20.33945400856989,
+                "model_loss": 0.01241200750826603,
+                "row_count": 6890,
+                "status": "PASS"
+              }
+            }
+          },
+          "tail_safety_metrics": {
+            "coverage_error": 0.03281809306866257,
+            "empirical_coverage": 0.9828180930686625,
+            "mean_conservatism": 0.12762294435069807,
+            "overprediction_ratio": 2.493540957156605,
+            "p95_residual": -0.017277131162651158,
+            "p99_residual": 0.022965257987380028,
+            "target_coverage": 0.95,
+            "undercoverage_rate": 0.0
+          }
+        },
+        {
+          "calibrated_with_queue_metrics": {
+            "alpha_pct_vs_baseline": 0.0,
+            "pinball_loss": 0.01623576200088237
+          },
+          "fallback_rate": 1.0,
+          "has_subgroup_regression": false,
+          "has_subgroup_undercoverage": false,
+          "holdout": "holdout_by_instance_type",
+          "n_test": 21384,
+          "n_train": 55441,
+          "quantile": 0.95,
+          "raw_with_queue_metrics": {
+            "alpha_pct_vs_baseline": 78.26022382157026,
+            "pinball_loss": 0.0035296183198543717
+          },
+          "subgroup_audit": {
+            "gpu_type": {
+              "a30": {
+                "baseline_loss": 0.01623576200088237,
+                "empirical_coverage": 1.0,
+                "improvement_pct": 0.0,
+                "model_loss": 0.01623576200088237,
+                "row_count": 21384,
+                "status": "PASS"
+              }
+            },
+            "instance_type": {
+              "qwen2.5-7b_a30": {
+                "baseline_loss": 0.01623576200088237,
+                "empirical_coverage": 1.0,
+                "improvement_pct": 0.0,
+                "model_loss": 0.01623576200088237,
+                "row_count": 21384,
+                "status": "PASS"
+              }
+            },
+            "kv_util_bin": {
+              "[0.0,0.1)": {
+                "baseline_loss": 0.01623576200088237,
+                "empirical_coverage": 1.0,
+                "improvement_pct": 0.0,
+                "model_loss": 0.01623576200088237,
+                "row_count": 21384,
+                "status": "PASS"
+              }
+            },
+            "model_size": {
+              "7b": {
+                "baseline_loss": 0.01623576200088237,
+                "empirical_coverage": 1.0,
+                "improvement_pct": 0.0,
+                "model_loss": 0.01623576200088237,
+                "row_count": 21384,
+                "status": "PASS"
+              }
+            },
+            "prompt_token_bin": {
+              "[0,50)": {
+                "baseline_loss": 0.01660443867060651,
+                "empirical_coverage": 1.0,
+                "improvement_pct": 0.0,
+                "model_loss": 0.01660443867060651,
+                "row_count": 13917,
+                "status": "PASS"
+              },
+              "[200,800)": {
+                "baseline_loss": 0.014497202724942308,
+                "empirical_coverage": 1.0,
+                "improvement_pct": 0.0,
+                "model_loss": 0.014497202724942308,
+                "row_count": 2911,
+                "status": "PASS"
+              },
+              "[50,200)": {
+                "baseline_loss": 0.016282582713743804,
+                "empirical_coverage": 1.0,
+                "improvement_pct": 0.0,
+                "model_loss": 0.016282582713743804,
+                "row_count": 4506,
+                "status": "PASS"
+              },
+              "[800,3200)": {
+                "baseline_loss": 0.010617736152024016,
+                "empirical_coverage": 1.0,
+                "improvement_pct": 0.0,
+                "model_loss": 0.010617736152024016,
+                "row_count": 50,
+                "status": "INSUFFICIENT_SAMPLE"
+              }
+            },
+            "queue_depth_bin": {
+              "[0,1)": {
+                "baseline_loss": 0.01666728664844546,
+                "empirical_coverage": 1.0,
+                "improvement_pct": 0.0,
+                "model_loss": 0.01666728664844546,
+                "row_count": 666,
+                "status": "PASS"
+              },
+              "[1,5)": {
+                "baseline_loss": 0.016287756733910256,
+                "empirical_coverage": 1.0,
+                "improvement_pct": 0.0,
+                "model_loss": 0.016287756733910256,
+                "row_count": 13642,
+                "status": "PASS"
+              },
+              "[20,100)": {
+                "baseline_loss": 0.015136277579586035,
+                "empirical_coverage": 1.0,
+                "improvement_pct": 0.0,
+                "model_loss": 0.015136277579586035,
+                "row_count": 2,
+                "status": "INSUFFICIENT_SAMPLE"
+              },
+              "[5,20)": {
+                "baseline_loss": 0.01609517554422407,
+                "empirical_coverage": 1.0,
+                "improvement_pct": 0.0,
+                "model_loss": 0.01609517554422407,
+                "row_count": 7074,
+                "status": "PASS"
+              }
+            }
+          },
+          "tail_safety_metrics": {
+            "coverage_error": 0.050000000000000044,
+            "empirical_coverage": 1.0,
+            "mean_conservatism": 0.3247152400176471,
+            "overprediction_ratio": 8.725515058529941,
+            "p95_residual": -0.27967221301514655,
+            "p99_residual": -0.22176966804545373,
+            "target_coverage": 0.95,
+            "undercoverage_rate": 0.0
+          }
+        },
+        {
+          "calibrated_with_queue_metrics": {
+            "alpha_pct_vs_baseline": 19.39553453325387,
+            "pinball_loss": 0.009456705339227454
+          },
+          "fallback_rate": 0.8861698665798894,
+          "has_subgroup_regression": false,
+          "has_subgroup_undercoverage": true,
+          "holdout": "time_holdout",
+          "n_test": 15365,
+          "n_train": 61460,
+          "quantile": 0.95,
+          "raw_with_queue_metrics": {
+            "alpha_pct_vs_baseline": 4.102128780671759,
+            "pinball_loss": 0.01125096364734912
+          },
+          "subgroup_audit": {
+            "gpu_type": {
+              "a100": {
+                "baseline_loss": 0.0062859190719495965,
+                "empirical_coverage": 0.9552772808586762,
+                "improvement_pct": 14.221373596323563,
+                "model_loss": 0.0053919750367650895,
+                "row_count": 1677,
+                "status": "PASS"
+              },
+              "a30": {
+                "baseline_loss": 0.004777481397955973,
+                "empirical_coverage": 0.951048951048951,
+                "improvement_pct": 17.32666974654886,
+                "model_loss": 0.003949702973929336,
+                "row_count": 6864,
+                "status": "PASS"
+              },
+              "p100": {
+                "baseline_loss": 0.02798423582805953,
+                "empirical_coverage": 0.9620458227262207,
+                "improvement_pct": 20.821778346237927,
+                "model_loss": 0.022157420272052475,
+                "row_count": 4321,
+                "status": "PASS"
+              },
+              "v100": {
+                "baseline_loss": 0.006397039447833413,
+                "empirical_coverage": 0.9408709548541749,
+                "improvement_pct": 16.268191055319317,
+                "model_loss": 0.005356356848575729,
+                "row_count": 2503,
+                "status": "PASS"
+              }
+            },
+            "instance_type": {
+              "qwen2.5-14b_v100": {
+                "baseline_loss": 0.006397039447833413,
+                "empirical_coverage": 0.9408709548541749,
+                "improvement_pct": 16.268191055319317,
+                "model_loss": 0.005356356848575729,
+                "row_count": 2503,
+                "status": "PASS"
+              },
+              "qwen2.5-3b_a30": {
+                "baseline_loss": 0.003211778025852343,
+                "empirical_coverage": 0.9551696284329564,
+                "improvement_pct": 17.195940156934235,
+                "model_loss": 0.0026594825985532104,
+                "row_count": 2476,
+                "status": "PASS"
+              },
+              "qwen2.5-3b_p100": {
+                "baseline_loss": 0.02798423582805953,
+                "empirical_coverage": 0.9620458227262207,
+                "improvement_pct": 20.821778346237927,
+                "model_loss": 0.022157420272052475,
+                "row_count": 4321,
+                "status": "PASS"
+              },
+              "qwen2.5-72b_a100": {
+                "baseline_loss": 0.0062859190719495965,
+                "empirical_coverage": 0.9552772808586762,
+                "improvement_pct": 14.221373596323563,
+                "model_loss": 0.0053919750367650895,
+                "row_count": 1677,
+                "status": "PASS"
+              },
+              "qwen2.5-7b_a30": {
+                "baseline_loss": 0.005660954859516727,
+                "empirical_coverage": 0.9487237921604376,
+                "improvement_pct": 17.36852150883539,
+                "model_loss": 0.004677730697136102,
+                "row_count": 4388,
+                "status": "PASS"
+              }
+            },
+            "kv_util_bin": {
+              "[0.0,0.1)": {
+                "baseline_loss": 0.012074792253826232,
+                "empirical_coverage": 0.9534607870499582,
+                "improvement_pct": 19.629702689712214,
+                "model_loss": 0.009704546433999742,
+                "row_count": 14332,
+                "status": "PASS"
+              },
+              "[0.1,0.4)": {
+                "baseline_loss": 0.006987189181590732,
+                "empirical_coverage": 0.9456838021338506,
+                "improvement_pct": 13.786499066690652,
+                "model_loss": 0.006023900410282815,
+                "row_count": 1031,
+                "status": "PASS"
+              },
+              "[0.4,0.7)": {
+                "baseline_loss": 0.003038361071958209,
+                "empirical_coverage": 1.0,
+                "improvement_pct": 0.0,
+                "model_loss": 0.003038361071958209,
+                "row_count": 2,
+                "status": "INSUFFICIENT_SAMPLE"
+              }
+            },
+            "model_size": {
+              "14b": {
+                "baseline_loss": 0.006397039447833413,
+                "empirical_coverage": 0.9408709548541749,
+                "improvement_pct": 16.268191055319317,
+                "model_loss": 0.005356356848575729,
+                "row_count": 2503,
+                "status": "PASS"
+              },
+              "3b": {
+                "baseline_loss": 0.018960165573790738,
+                "empirical_coverage": 0.9595409739590997,
+                "improvement_pct": 20.59803754645978,
+                "model_loss": 0.015054743550030381,
+                "row_count": 6797,
+                "status": "PASS"
+              },
+              "72b": {
+                "baseline_loss": 0.0062859190719495965,
+                "empirical_coverage": 0.9552772808586762,
+                "improvement_pct": 14.221373596323563,
+                "model_loss": 0.0053919750367650895,
+                "row_count": 1677,
+                "status": "PASS"
+              },
+              "7b": {
+                "baseline_loss": 0.005660954859516727,
+                "empirical_coverage": 0.9487237921604376,
+                "improvement_pct": 17.36852150883539,
+                "model_loss": 0.004677730697136102,
+                "row_count": 4388,
+                "status": "PASS"
+              }
+            },
+            "prompt_token_bin": {
+              "[0,50)": {
+                "baseline_loss": 0.00951000781378444,
+                "empirical_coverage": 0.9656268627061395,
+                "improvement_pct": 0.04694813392753062,
+                "model_loss": 0.009505543042579506,
+                "row_count": 10066,
+                "status": "PASS"
+              },
+              "[200,800)": {
+                "baseline_loss": 0.023657683294659292,
+                "empirical_coverage": 0.888354186717998,
+                "improvement_pct": 57.047896383799596,
+                "model_loss": 0.010161472641914592,
+                "row_count": 2078,
+                "status": "UNDERCOVERED"
+              },
+              "[50,200)": {
+                "baseline_loss": 0.008847957487078477,
+                "empirical_coverage": 0.9569453174104336,
+                "improvement_pct": 0.10060844482677316,
+                "model_loss": 0.008839055694651793,
+                "row_count": 3182,
+                "status": "PASS"
+              },
+              "[800,3200)": {
+                "baseline_loss": 0.18520989965286275,
+                "empirical_coverage": 0.7948717948717948,
+                "improvement_pct": 94.76593990770102,
+                "model_loss": 0.009693997444717464,
+                "row_count": 39,
+                "status": "INSUFFICIENT_SAMPLE"
+              }
+            },
+            "queue_depth_bin": {
+              "[0,1)": {
+                "baseline_loss": 0.0027578840496529367,
+                "empirical_coverage": 0.9863387978142076,
+                "improvement_pct": 16.788072160869813,
+                "model_loss": 0.002294888485284083,
+                "row_count": 732,
+                "status": "PASS"
+              },
+              "[1,5)": {
+                "baseline_loss": 0.004531716569667266,
+                "empirical_coverage": 0.9589307842095947,
+                "improvement_pct": 19.383248526663394,
+                "model_loss": 0.003653322684444675,
+                "row_count": 5649,
+                "status": "PASS"
+              },
+              "[20,100)": {
+                "baseline_loss": 0.030093200727756418,
+                "empirical_coverage": 0.9488188976377953,
+                "improvement_pct": 15.364278533899581,
+                "model_loss": 0.025469597548178426,
+                "row_count": 1270,
+                "status": "PASS"
+              },
+              "[5,20)": {
+                "baseline_loss": 0.014833936790193746,
+                "empirical_coverage": 0.9460720767435831,
+                "improvement_pct": 20.79069149951506,
+                "model_loss": 0.011749858754911498,
+                "row_count": 7714,
+                "status": "PASS"
+              }
+            }
+          },
+          "tail_safety_metrics": {
+            "coverage_error": 0.002945004881223623,
+            "empirical_coverage": 0.9529450048812236,
+            "mean_conservatism": 0.112337222626598,
+            "overprediction_ratio": 2.259765056586988,
+            "p95_residual": -0.0015278553453275112,
+            "p99_residual": 0.1302396800601855,
+            "target_coverage": 0.95,
+            "undercoverage_rate": 0.0
+          }
+        }
+      ],
+      "prior_calibrated_without_queue": {
+        "calibrated_alpha_pct": 19.518188939092127,
+        "empirical_coverage": 0.9537260006508298,
+        "final_status": "diagnostic_only"
+      },
+      "reason": "at least one major subgroup below coverage threshold"
+    },
+    "p99": {
+      "new_status_with_queue_features": "baseline_fallback",
+      "per_holdout": [
+        {
+          "calibrated_with_queue_metrics": {
+            "alpha_pct_vs_baseline": 10.64276493016218,
+            "pinball_loss": 0.0025768697125989506
+          },
+          "fallback_rate": 0.7902375528799219,
+          "has_subgroup_regression": false,
+          "has_subgroup_undercoverage": false,
+          "holdout": "random_holdout",
+          "n_test": 15365,
+          "n_train": 61460,
+          "quantile": 0.99,
+          "raw_with_queue_metrics": {
+            "alpha_pct_vs_baseline": 21.73484357342304,
+            "pinball_loss": 0.002256998115371872
+          },
+          "subgroup_audit": {
+            "gpu_type": {
+              "a100": {
+                "baseline_loss": 0.001483571596247992,
+                "empirical_coverage": 0.9975903614457832,
+                "improvement_pct": 12.800655130838205,
+                "model_loss": 0.0012936647125932153,
+                "row_count": 1660,
+                "status": "PASS"
+              },
+              "a30": {
+                "baseline_loss": 0.0013177703616833103,
+                "empirical_coverage": 0.995170496121762,
+                "improvement_pct": 3.2549463540938417,
+                "model_loss": 0.0012748776433403701,
+                "row_count": 6833,
+                "status": "PASS"
+              },
+              "p100": {
+                "baseline_loss": 0.006792544463189476,
+                "empirical_coverage": 0.9974412654105606,
+                "improvement_pct": 13.451010626812302,
+                "model_loss": 0.005878878585614909,
+                "row_count": 4299,
+                "status": "PASS"
+              },
+              "v100": {
+                "baseline_loss": 0.0014151340443251852,
+                "empirical_coverage": 0.9937815779246016,
+                "improvement_pct": 4.931372221338099,
+                "model_loss": 0.0013453485171686346,
+                "row_count": 2573,
+                "status": "PASS"
+              }
+            },
+            "instance_type": {
+              "qwen2.5-14b_v100": {
+                "baseline_loss": 0.0014151340443251852,
+                "empirical_coverage": 0.9937815779246016,
+                "improvement_pct": 4.931372221338099,
+                "model_loss": 0.0013453485171686346,
+                "row_count": 2573,
+                "status": "PASS"
+              },
+              "qwen2.5-3b_a30": {
+                "baseline_loss": 0.0011440463444433004,
+                "empirical_coverage": 0.9937032664305392,
+                "improvement_pct": -0.2494865113313658,
+                "model_loss": 0.001146900585756066,
+                "row_count": 2541,
+                "status": "PASS"
+              },
+              "qwen2.5-3b_p100": {
+                "baseline_loss": 0.006792544463189476,
+                "empirical_coverage": 0.9974412654105606,
+                "improvement_pct": 13.451010626812302,
+                "model_loss": 0.005878878585614909,
+                "row_count": 4299,
+                "status": "PASS"
+              },
+              "qwen2.5-72b_a100": {
+                "baseline_loss": 0.001483571596247992,
+                "empirical_coverage": 0.9975903614457832,
+                "improvement_pct": 12.800655130838205,
+                "model_loss": 0.0012936647125932153,
+                "row_count": 1660,
+                "status": "PASS"
+              },
+              "qwen2.5-7b_a30": {
+                "baseline_loss": 0.0014206204846578824,
+                "empirical_coverage": 0.9960391425908667,
+                "improvement_pct": 4.925760876483634,
+                "model_loss": 0.0013506441166212923,
+                "row_count": 4292,
+                "status": "PASS"
+              }
+            },
+            "kv_util_bin": {
+              "[0.0,0.1)": {
+                "baseline_loss": 0.002957282341431977,
+                "empirical_coverage": 0.9958124528042837,
+                "improvement_pct": 10.617547279895355,
+                "model_loss": 0.0026432914906304407,
+                "row_count": 14567,
+                "status": "PASS"
+              },
+              "[0.1,0.4)": {
+                "baseline_loss": 0.0015421183042786672,
+                "empirical_coverage": 0.9962406015037594,
+                "improvement_pct": 11.525533666848265,
+                "model_loss": 0.0013643809399363999,
+                "row_count": 798,
+                "status": "PASS"
+              }
+            },
+            "model_size": {
+              "14b": {
+                "baseline_loss": 0.0014151340443251852,
+                "empirical_coverage": 0.9937815779246016,
+                "improvement_pct": 4.931372221338099,
+                "model_loss": 0.0013453485171686346,
+                "row_count": 2573,
+                "status": "PASS"
+              },
+              "3b": {
+                "baseline_loss": 0.004694176960304384,
+                "empirical_coverage": 0.9960526315789474,
+                "improvement_pct": 12.210589798918061,
+                "model_loss": 0.004120990267246295,
+                "row_count": 6840,
+                "status": "PASS"
+              },
+              "72b": {
+                "baseline_loss": 0.001483571596247992,
+                "empirical_coverage": 0.9975903614457832,
+                "improvement_pct": 12.800655130838205,
+                "model_loss": 0.0012936647125932153,
+                "row_count": 1660,
+                "status": "PASS"
+              },
+              "7b": {
+                "baseline_loss": 0.0014206204846578824,
+                "empirical_coverage": 0.9960391425908667,
+                "improvement_pct": 4.925760876483634,
+                "model_loss": 0.0013506441166212923,
+                "row_count": 4292,
+                "status": "PASS"
+              }
+            },
+            "prompt_token_bin": {
+              "[0,50)": {
+                "baseline_loss": 0.002770153001640839,
+                "empirical_coverage": 0.9965219119546855,
+                "improvement_pct": 1.26152712407815,
+                "model_loss": 0.0027352067701466747,
+                "row_count": 10063,
+                "status": "PASS"
+              },
+              "[200,800)": {
+                "baseline_loss": 0.0026859449897102556,
+                "empirical_coverage": 0.9940973930152484,
+                "improvement_pct": 32.70488020040284,
+                "model_loss": 0.001807509898576794,
+                "row_count": 2033,
+                "status": "PASS"
+              },
+              "[50,200)": {
+                "baseline_loss": 0.0026274255588283097,
+                "empirical_coverage": 0.9947368421052631,
+                "improvement_pct": 2.2889409825962663,
+                "model_loss": 0.0025672853384250795,
+                "row_count": 3230,
+                "status": "PASS"
+              },
+              "[800,3200)": {
+                "baseline_loss": 0.06374825384220084,
+                "empirical_coverage": 1.0,
+                "improvement_pct": 95.88854945876658,
+                "model_loss": 0.002620977927622034,
+                "row_count": 39,
+                "status": "INSUFFICIENT_SAMPLE"
+              }
+            },
+            "queue_depth_bin": {
+              "[0,1)": {
+                "baseline_loss": 0.0009151699933870817,
+                "empirical_coverage": 0.9983739837398374,
+                "improvement_pct": -4.965283209713027,
+                "model_loss": 0.0009606107754090622,
+                "row_count": 1230,
+                "status": "PASS"
+              },
+              "[1,5)": {
+                "baseline_loss": 0.001351944036938544,
+                "empirical_coverage": 0.9946976210948696,
+                "improvement_pct": 2.171029718649801,
+                "model_loss": 0.0013225929301170943,
+                "row_count": 6978,
+                "status": "PASS"
+              },
+              "[20,100)": {
+                "baseline_loss": 0.008090564497386385,
+                "empirical_coverage": 0.9887640449438202,
+                "improvement_pct": 11.372289399422822,
+                "model_loss": 0.007170482088696647,
+                "row_count": 267,
+                "status": "PASS"
+              },
+              "[5,20)": {
+                "baseline_loss": 0.004584852971266844,
+                "empirical_coverage": 0.9968069666182874,
+                "improvement_pct": 13.679034297115036,
+                "model_loss": 0.003957689360854955,
+                "row_count": 6890,
+                "status": "PASS"
+              }
+            }
+          },
+          "tail_safety_metrics": {
+            "coverage_error": 0.005834689228766732,
+            "empirical_coverage": 0.9958346892287667,
+            "mean_conservatism": 0.2334246371468609,
+            "overprediction_ratio": 3.906993024652636,
+            "p95_residual": -0.04818432789761573,
+            "p99_residual": -0.03225595992989838,
+            "target_coverage": 0.99,
+            "undercoverage_rate": 0.0
+          }
+        },
+        {
+          "calibrated_with_queue_metrics": {
+            "alpha_pct_vs_baseline": 0.0,
+            "pinball_loss": 0.005898064470124867
+          },
+          "fallback_rate": 1.0,
+          "has_subgroup_regression": false,
+          "has_subgroup_undercoverage": false,
+          "holdout": "holdout_by_instance_type",
+          "n_test": 21384,
+          "n_train": 55441,
+          "quantile": 0.99,
+          "raw_with_queue_metrics": {
+            "alpha_pct_vs_baseline": 78.03746311139386,
+            "pinball_loss": 0.0012953645849649465
+          },
+          "subgroup_audit": {
+            "gpu_type": {
+              "a30": {
+                "baseline_loss": 0.005898064470124867,
+                "empirical_coverage": 1.0,
+                "improvement_pct": 0.0,
+                "model_loss": 0.005898064470124867,
+                "row_count": 21384,
+                "status": "PASS"
+              }
+            },
+            "instance_type": {
+              "qwen2.5-7b_a30": {
+                "baseline_loss": 0.005898064470124867,
+                "empirical_coverage": 1.0,
+                "improvement_pct": 0.0,
+                "model_loss": 0.005898064470124867,
+                "row_count": 21384,
+                "status": "PASS"
+              }
+            },
+            "kv_util_bin": {
+              "[0.0,0.1)": {
+                "baseline_loss": 0.005898064470124867,
+                "empirical_coverage": 1.0,
+                "improvement_pct": 0.0,
+                "model_loss": 0.005898064470124867,
+                "row_count": 21384,
+                "status": "PASS"
+              }
+            },
+            "model_size": {
+              "7b": {
+                "baseline_loss": 0.005898064470124867,
+                "empirical_coverage": 1.0,
+                "improvement_pct": 0.0,
+                "model_loss": 0.005898064470124867,
+                "row_count": 21384,
+                "status": "PASS"
+              }
+            },
+            "prompt_token_bin": {
+              "[0,50)": {
+                "baseline_loss": 0.005971799804069694,
+                "empirical_coverage": 1.0,
+                "improvement_pct": 0.0,
+                "model_loss": 0.005971799804069694,
+                "row_count": 13917,
+                "status": "PASS"
+              },
+              "[200,800)": {
+                "baseline_loss": 0.005550352614936854,
+                "empirical_coverage": 1.0,
+                "improvement_pct": 0.0,
+                "model_loss": 0.005550352614936854,
+                "row_count": 2911,
+                "status": "PASS"
+              },
+              "[50,200)": {
+                "baseline_loss": 0.005907428612697154,
+                "empirical_coverage": 1.0,
+                "improvement_pct": 0.0,
+                "model_loss": 0.005907428612697154,
+                "row_count": 4506,
+                "status": "PASS"
+              },
+              "[800,3200)": {
+                "baseline_loss": 0.004774459300353196,
+                "empirical_coverage": 1.0,
+                "improvement_pct": 0.0,
+                "model_loss": 0.004774459300353196,
+                "row_count": 50,
+                "status": "INSUFFICIENT_SAMPLE"
+              }
+            },
+            "queue_depth_bin": {
+              "[0,1)": {
+                "baseline_loss": 0.005984369399637484,
+                "empirical_coverage": 1.0,
+                "improvement_pct": 0.0,
+                "model_loss": 0.005984369399637484,
+                "row_count": 666,
+                "status": "PASS"
+              },
+              "[1,5)": {
+                "baseline_loss": 0.0059084634167304445,
+                "empirical_coverage": 1.0,
+                "improvement_pct": 0.0,
+                "model_loss": 0.0059084634167304445,
+                "row_count": 13642,
+                "status": "PASS"
+              },
+              "[20,100)": {
+                "baseline_loss": 0.0056781675858655995,
+                "empirical_coverage": 1.0,
+                "improvement_pct": 0.0,
+                "model_loss": 0.0056781675858655995,
+                "row_count": 2,
+                "status": "INSUFFICIENT_SAMPLE"
+              },
+              "[5,20)": {
+                "baseline_loss": 0.005869947178793207,
+                "empirical_coverage": 1.0,
+                "improvement_pct": 0.0,
+                "model_loss": 0.005869947178793207,
+                "row_count": 7074,
+                "status": "PASS"
+              }
+            }
+          },
+          "tail_safety_metrics": {
+            "coverage_error": 0.010000000000000009,
+            "empirical_coverage": 1.0,
+            "mean_conservatism": 0.5898064470124862,
+            "overprediction_ratio": 14.920310500473555,
+            "p95_residual": -0.5447634200099856,
+            "p99_residual": -0.48686087504029274,
+            "target_coverage": 0.99,
+            "undercoverage_rate": 0.0
+          }
+        },
+        {
+          "calibrated_with_queue_metrics": {
+            "alpha_pct_vs_baseline": 9.725156906282416,
+            "pinball_loss": 0.0038360865481316033
+          },
+          "fallback_rate": 0.6344939798242759,
+          "has_subgroup_regression": false,
+          "has_subgroup_undercoverage": false,
+          "holdout": "time_holdout",
+          "n_test": 15365,
+          "n_train": 61460,
+          "quantile": 0.99,
+          "raw_with_queue_metrics": {
+            "alpha_pct_vs_baseline": -41.05049199489977,
+            "pinball_loss": 0.0059937173680519465
+          },
+          "subgroup_audit": {
+            "gpu_type": {
+              "a100": {
+                "baseline_loss": 0.0026616340032152527,
+                "empirical_coverage": 0.9785330948121646,
+                "improvement_pct": 15.842938351102607,
+                "model_loss": 0.002239952968953876,
+                "row_count": 1677,
+                "status": "PASS"
+              },
+              "a30": {
+                "baseline_loss": 0.0021164350060336387,
+                "empirical_coverage": 0.9858682983682984,
+                "improvement_pct": 6.9433165550623555,
+                "model_loss": 0.00196948422388257,
+                "row_count": 6864,
+                "status": "PASS"
+              },
+              "p100": {
+                "baseline_loss": 0.008966976563239639,
+                "empirical_coverage": 0.9870400370284657,
+                "improvement_pct": 9.112489497819935,
+                "model_loss": 0.008149861765642452,
+                "row_count": 4321,
+                "status": "PASS"
+              },
+              "v100": {
+                "baseline_loss": 0.00301800212418866,
+                "empirical_coverage": 0.9768278066320415,
+                "improvement_pct": 14.602520175465012,
+                "model_loss": 0.0025772977551080482,
+                "row_count": 2503,
+                "status": "PASS"
+              }
+            },
+            "instance_type": {
+              "qwen2.5-14b_v100": {
+                "baseline_loss": 0.00301800212418866,
+                "empirical_coverage": 0.9768278066320415,
+                "improvement_pct": 14.602520175465012,
+                "model_loss": 0.0025772977551080482,
+                "row_count": 2503,
+                "status": "PASS"
+              },
+              "qwen2.5-3b_a30": {
+                "baseline_loss": 0.0016507866681123309,
+                "empirical_coverage": 0.9915185783521809,
+                "improvement_pct": 6.42235831488107,
+                "model_loss": 0.0015447672332718704,
+                "row_count": 2476,
+                "status": "PASS"
+              },
+              "qwen2.5-3b_p100": {
+                "baseline_loss": 0.008966976563239639,
+                "empirical_coverage": 0.9870400370284657,
+                "improvement_pct": 9.112489497819935,
+                "model_loss": 0.008149861765642452,
+                "row_count": 4321,
+                "status": "PASS"
+              },
+              "qwen2.5-72b_a100": {
+                "baseline_loss": 0.0026616340032152527,
+                "empirical_coverage": 0.9785330948121646,
+                "improvement_pct": 15.842938351102607,
+                "model_loss": 0.002239952968953876,
+                "row_count": 1677,
+                "status": "PASS"
+              },
+              "qwen2.5-7b_a30": {
+                "baseline_loss": 0.00237918461512506,
+                "empirical_coverage": 0.9826800364630811,
+                "improvement_pct": 7.147278781116739,
+                "model_loss": 0.0022091376579646328,
+                "row_count": 4388,
+                "status": "PASS"
+              }
+            },
+            "kv_util_bin": {
+              "[0.0,0.1)": {
+                "baseline_loss": 0.0043241755818203345,
+                "empirical_coverage": 0.9846497348590566,
+                "improvement_pct": 9.52570810291989,
+                "model_loss": 0.003912267238038392,
+                "row_count": 14332,
+                "status": "PASS"
+              },
+              "[0.1,0.4)": {
+                "baseline_loss": 0.0032154235942097285,
+                "empirical_coverage": 0.973811833171678,
+                "improvement_pct": 13.459464994241134,
+                "model_loss": 0.0027826447811305,
+                "row_count": 1031,
+                "status": "PASS"
+              },
+              "[0.4,0.7)": {
+                "baseline_loss": 0.0009744935651542627,
+                "empirical_coverage": 1.0,
+                "improvement_pct": 0.0,
+                "model_loss": 0.0009744935651542627,
+                "row_count": 2,
+                "status": "INSUFFICIENT_SAMPLE"
+              }
+            },
+            "model_size": {
+              "14b": {
+                "baseline_loss": 0.00301800212418866,
+                "empirical_coverage": 0.9768278066320415,
+                "improvement_pct": 14.602520175465012,
+                "model_loss": 0.0025772977551080482,
+                "row_count": 2503,
+                "status": "PASS"
+              },
+              "3b": {
+                "baseline_loss": 0.006301846920700988,
+                "empirical_coverage": 0.9886714727085479,
+                "improvement_pct": 8.855787095795765,
+                "model_loss": 0.0057437687743007474,
+                "row_count": 6797,
+                "status": "PASS"
+              },
+              "72b": {
+                "baseline_loss": 0.0026616340032152527,
+                "empirical_coverage": 0.9785330948121646,
+                "improvement_pct": 15.842938351102607,
+                "model_loss": 0.002239952968953876,
+                "row_count": 1677,
+                "status": "PASS"
+              },
+              "7b": {
+                "baseline_loss": 0.00237918461512506,
+                "empirical_coverage": 0.9826800364630811,
+                "improvement_pct": 7.147278781116739,
+                "model_loss": 0.0022091376579646328,
+                "row_count": 4388,
+                "status": "PASS"
+              }
+            },
+            "prompt_token_bin": {
+              "[0,50)": {
+                "baseline_loss": 0.0036778247519484164,
+                "empirical_coverage": 0.9860917941585535,
+                "improvement_pct": 0.4388842922696661,
+                "model_loss": 0.003661683356814909,
+                "row_count": 10066,
+                "status": "PASS"
+              },
+              "[200,800)": {
+                "baseline_loss": 0.006751806194132891,
+                "empirical_coverage": 0.9725697786333013,
+                "improvement_pct": 20.82963219557982,
+                "model_loss": 0.005345429797336634,
+                "row_count": 2078,
+                "status": "PASS"
+              },
+              "[50,200)": {
+                "baseline_loss": 0.0034091521410677932,
+                "empirical_coverage": 0.9849151477058454,
+                "improvement_pct": 1.3766490408835315,
+                "model_loss": 0.003362220080815523,
+                "row_count": 3182,
+                "status": "PASS"
+              },
+              "[800,3200)": {
+                "baseline_loss": 0.08697373882079353,
+                "empirical_coverage": 0.9487179487179487,
+                "improvement_pct": 91.84611738149017,
+                "model_loss": 0.007091736572376818,
+                "row_count": 39,
+                "status": "INSUFFICIENT_SAMPLE"
+              }
+            },
+            "queue_depth_bin": {
+              "[0,1)": {
+                "baseline_loss": 0.00116878654112972,
+                "empirical_coverage": 0.9931693989071039,
+                "improvement_pct": 4.316309223922153,
+                "model_loss": 0.0011183380998469772,
+                "row_count": 732,
+                "status": "PASS"
+              },
+              "[1,5)": {
+                "baseline_loss": 0.001921358437581842,
+                "empirical_coverage": 0.9881394937157019,
+                "improvement_pct": 9.826341976011713,
+                "model_loss": 0.0017325591869200947,
+                "row_count": 5649,
+                "status": "PASS"
+              },
+              "[20,100)": {
+                "baseline_loss": 0.011047409363078162,
+                "empirical_coverage": 0.9803149606299213,
+                "improvement_pct": 5.934876785792681,
+                "model_loss": 0.01039175922935735,
+                "row_count": 1270,
+                "status": "PASS"
+              },
+              "[5,20)": {
+                "baseline_loss": 0.0051272517109532696,
+                "empirical_coverage": 0.9805548353642728,
+                "improvement_pct": 11.15892213062843,
+                "model_loss": 0.00455510568508668,
+                "row_count": 7714,
+                "status": "PASS"
+              }
+            }
+          },
+          "tail_safety_metrics": {
+            "coverage_error": -0.00607549625772863,
+            "empirical_coverage": 0.9839245037422714,
+            "mean_conservatism": 0.2105266717778237,
+            "overprediction_ratio": 3.4810192089542284,
+            "p95_residual": -0.05007402978007783,
+            "p99_residual": 0.06071102359025671,
+            "target_coverage": 0.99,
+            "undercoverage_rate": 0.00607549625772863
+          }
+        }
+      ],
+      "prior_calibrated_without_queue": {
+        "calibrated_alpha_pct": 10.919302732655604,
+        "empirical_coverage": 0.984249918646274,
+        "final_status": "baseline_fallback"
+      },
+      "reason": "baseline fallback fired on >25% of time-holdout rows"
+    }
+  },
+  "production_claim": false,
+  "queue_feature_names": [
+    "predicted_queue_p50",
+    "predicted_queue_p95",
+    "predicted_queue_p99",
+    "queue_forecast_uncertainty",
+    "queue_pressure_score"
+  ],
+  "queue_features_are_out_of_fold": true,
+  "queue_target_is_derived_proxy": true,
+  "row_count": 76825,
+  "shadow_only": true,
+  "target": "actual_ttft_s",
+  "uses_oracle_as_headline": false
+}

@@ -3016,3 +3016,57 @@ its own pre-registered gates). TTFT p95/p99 require: more recent CARA
 data to address time-drift, OR a subgroup-aware calibration variant.
 E2E forecasting blocked by the deliberate exclusion of
 actual_output_tokens — no obvious unblock without pilot telemetry.
+
+## 2026-06-01 — TTFT p50 shadow wiring + Queue-Wait Forecaster v1 (`feature/ttft-shadow-queue-forecaster`)
+
+Shadow/research forecasting PR. No scheduler decisions changed, no
+forecaster-driven routing enabled, no controller defaults touched, no
+production claim. Three deliverables (A/B/C):
+
+**A. TTFT p50 shadow wiring** — `aurelius/forecasting/ttft_shadow.py`:
+`TTFTp50ShadowPredictor` produces shadow records (ttft_p50_prediction_s,
+baseline, delta, model/feature version, shadow_only=True,
+executable_in_real_cluster=False). Enabled by default; disableable via
+ShadowConfig(enabled=False). No control-action method exists. Summary:
+`ttft_p50_shadow_summary.json` — +51%/+37%/+42% pinball improvement on
+random/by_instance/time holdouts, no_control_action_taken=True.
+
+**B. Queue-Wait Forecaster v1** — honest negative result. CARA has NO
+measured queue wait (num_waiting ~always 0). Defined explicit
+`derived_queue_wait_s` target (field_quality=derived):
+(completion - prediction) - e2e, clamped >=0; p50=0.07s, p95=0.21s.
+All three quantiles stay diagnostic_only (time improvement
++0.35%/-2.14%/-22.63% < threshold). Tail latency in CARA is
+GPU/model-driven, not queue-driven.
+
+**C. TTFT p95/p99 with queue features** — honest negative result. Used
+out-of-fold (2-fold cross-fit) queue predictions as TTFT features. p95
+new time-α=+19.40% vs prior +19.52% (Δ=-0.12%) -> stays diagnostic_only.
+p99 new time-α=+9.73% vs prior +10.92% (Δ=-1.19%), fallback 63%
+-> stays baseline_fallback. Queue features are redundant with the
+scheduler-state features the TTFT model already uses.
+
+**Final decision table:**
+
+  TTFT p50  shadow_ready (shadow-wired, logging only)
+  TTFT p95  diagnostic_only (queue features Δ=-0.12%)
+  TTFT p99  baseline_fallback (queue features Δ=-1.19%)
+  E2E       diagnostic_only (unchanged)
+  queue p50/p95/p99  diagnostic_only (derived proxy not forecastable
+                     beyond instance-type prior)
+
+**Tests:** 59 new across test_ttft_shadow.py, test_cara_queue_features.py,
+test_cara_queue_forecaster.py, test_cara_ttft_tail_with_queue_features.py.
+289 existing CARA + HF + frontier tests still pass.
+
+**Honesty invariants:** shadow mode takes no control action (no
+route/place/scale/admit method); derived_queue_wait_s never called
+measured; queue features out-of-fold; leakage fields excluded; raw +
+analysis samples gitignored; no controller/scheduler/executor imports in
+new forecasting modules.
+
+**Next (per leverage audit):** the real unlock for queue/SLA tail
+forecasting is pilot telemetry (measured queue wait, SLA labels, GPU
+utilisation), not more CARA feature engineering. TTFT p50 shadow records
+can be wired into dynamic_estimator.py priors path in a future PR with
+its own pre-registered gates.
