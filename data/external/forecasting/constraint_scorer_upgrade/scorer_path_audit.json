@@ -1,0 +1,384 @@
+{
+  "audit_only": true,
+  "counts_by_classification_existing": {
+    "derived": 2,
+    "derived_binary": 1,
+    "heuristic": 2,
+    "measured": 2,
+    "measured_or_proxy": 1,
+    "missing": 12,
+    "operator_supplied_via_ModelLoadProfile": 2,
+    "static_global_default": 1
+  },
+  "counts_by_classification_upgraded": {
+    "derived": 3,
+    "derived_from_optimum_benchmark": 2,
+    "derived_from_optimum_or_acmetrace": 1,
+    "derived_from_per_gpu_prior": 4,
+    "derived_iff_operator_carbon_price_supplied": 1,
+    "derived_iff_operator_energy_price_supplied": 1,
+    "derived_latency_margin_indicator": 1,
+    "forecasted_cache_prefix_reuse_v1_proxy": 2,
+    "level_3_prior": 1,
+    "measured": 2,
+    "measured_or_proxy": 1,
+    "missing": 1,
+    "operator_policy_or_operator_global_default": 1,
+    "operator_supplied_via_ModelLoadProfile": 2
+  },
+  "doc_version": "constraint_scorer_upgrade_audit_v1",
+  "dollar_coefficient_calibration_sources": [
+    {
+      "coefficient": "per_gpu_hour_price_usd",
+      "invented_constants_introduced": false,
+      "source": "OperatorPricingPolicy.gpu_hour_price_per_type or SafetyContext.gpu_hour_price (existing operator global default)",
+      "value_quality_when_missing": "operator_global_default (Level-1 operator policy)",
+      "value_quality_when_supplied": "level_1_operator_policy"
+    },
+    {
+      "coefficient": "energy_price_per_kwh_usd",
+      "invented_constants_introduced": false,
+      "source": "OperatorPricingPolicy.energy_price_per_kwh_usd (operator supplied; Aurelius already ingests real CAISO/PJM/ERCOT price data via aurelius.forecasting.price_model)",
+      "value_quality_when_missing": "term reported uncalibrated; excluded from headline SLA-safe goodput/$",
+      "value_quality_when_supplied": "level_1_operator_policy"
+    },
+    {
+      "coefficient": "carbon_price_per_kg_usd",
+      "invented_constants_introduced": false,
+      "source": "OperatorPricingPolicy.carbon_price_per_kg_usd",
+      "value_quality_when_missing": "term reported uncalibrated; excluded from headline SLA-safe goodput/$",
+      "value_quality_when_supplied": "level_1_operator_policy"
+    },
+    {
+      "coefficient": "cache_value_weight",
+      "invented_constants_introduced": false,
+      "note": "No CACHE_VALUE / CACHE_WEIGHT / MIGRATION_PENALTY scalars exist anywhere in this PR. Cache value is DERIVED at scoring time from predicted_reuse \u00d7 prefill_throughput \u00d7 operator_$/hr.",
+      "source": "DOES NOT EXIST IN THIS MODULE",
+      "value_quality_when_missing": "n/a",
+      "value_quality_when_supplied": "n/a"
+    },
+    {
+      "coefficient": "utility_weights_in_composite",
+      "invented_constants_introduced": false,
+      "note": "The shadow scorer's primary KPI is SLA-safe goodput/$ \u2014 a single quotient, not a weighted composite. No 0.4*latency + 0.3*cache + ... form anywhere.",
+      "source": "DOES NOT EXIST IN THIS MODULE",
+      "value_quality_when_missing": "n/a",
+      "value_quality_when_supplied": "n/a"
+    }
+  ],
+  "evaluated_at_s": 1780324973.6055207,
+  "level_counts_existing": {
+    "level_1_measured": 3,
+    "level_1_operator_policy": 3,
+    "level_2_derived": 3,
+    "level_3_prior": 0,
+    "level_4_prohibited_or_uncalibrated": 2,
+    "missing": 12
+  },
+  "level_counts_upgraded": {
+    "level_1_measured": 3,
+    "level_1_operator_policy": 3,
+    "level_2_derived": 10,
+    "level_3_prior": 5,
+    "level_4_prohibited_or_uncalibrated": 0,
+    "missing": 2
+  },
+  "modifies_controllers_or_defaults": false,
+  "modifies_robust_energy_engine": false,
+  "production_claim": false,
+  "scorer_signature_existing": {
+    "callable": "score_residency_candidate",
+    "module": "aurelius.residency.decision",
+    "parameters": [
+      {
+        "annotation": "ModelResidencyRequest",
+        "kind": "POSITIONAL_OR_KEYWORD",
+        "name": "request"
+      },
+      {
+        "annotation": "ModelLocationState",
+        "kind": "POSITIONAL_OR_KEYWORD",
+        "name": "candidate_location"
+      },
+      {
+        "annotation": "Optional[ModelLoadProfile]",
+        "kind": "POSITIONAL_OR_KEYWORD",
+        "name": "load_profile"
+      },
+      {
+        "annotation": "SafetyContext",
+        "kind": "POSITIONAL_OR_KEYWORD",
+        "name": "cost_config"
+      },
+      {
+        "annotation": "SafetyContext",
+        "kind": "POSITIONAL_OR_KEYWORD",
+        "name": "safety_context"
+      }
+    ]
+  },
+  "scoring_inputs_existing_vs_upgraded": [
+    {
+      "enters_at": "aurelius/residency/decision.py::_service_time_s -> service_s -> expected_latency",
+      "input": "TTFT",
+      "level_3_prior_used": "optimum-benchmark/llm-perf-leaderboard",
+      "production_classification": "heuristic",
+      "production_signal_level": "level_4_prohibited_or_uncalibrated",
+      "production_source": "SafetyContext.seconds_per_token * request.output_tokens OR SafetyContext.service_time_proxy_s (default 2.0s)",
+      "upgraded_classification": "derived_from_optimum_benchmark",
+      "upgraded_signal_level": "level_3_prior",
+      "upgraded_source": "Optimum-benchmark median p50_ttft_ms per (model_family, gpu) or CARA TTFT p50 shadow prior when the cell hits; max(production_value, refined) clamp is the safety floor"
+    },
+    {
+      "enters_at": "aurelius/residency/decision.py::_service_time_s -> service_s",
+      "input": "TPOT",
+      "level_3_prior_used": "optimum-benchmark/llm-perf-leaderboard",
+      "production_classification": "heuristic",
+      "production_signal_level": "level_4_prohibited_or_uncalibrated",
+      "production_source": "Collapsed into the same service_time_proxy_s",
+      "upgraded_classification": "derived_from_optimum_benchmark",
+      "upgraded_signal_level": "level_3_prior",
+      "upgraded_source": "decode_throughput_tok_s \u00d7 request.output_tokens or tpot_ms_p50 \u00d7 output_tokens; both from Optimum cell."
+    },
+    {
+      "enters_at": "score_residency_candidate -> expected_latency = queue_wait + model_penalty + adapter_penalty + service_s",
+      "input": "E2E latency",
+      "level_3_prior_used": "optimum-benchmark/llm-perf-leaderboard",
+      "production_classification": "derived",
+      "production_signal_level": "level_2_derived",
+      "production_source": "Sum of measured queue_wait + heuristic service_s",
+      "upgraded_classification": "derived_from_per_gpu_prior",
+      "upgraded_signal_level": "level_2_derived",
+      "upgraded_source": "Same sum; ``service_s`` refined from Optimum/CARA priors, ``migration_cache_loss_penalty_s`` added when current_route differs and Optimum prefill_throughput_tok_s is available."
+    },
+    {
+      "enters_at": "ModelLocationState.estimated_queue_wait_s",
+      "input": "queue wait",
+      "level_3_prior_used": null,
+      "production_classification": "measured_or_proxy",
+      "production_signal_level": "level_1_measured",
+      "production_source": "Measured when available; proxy = queue_depth \u00d7 service_s when not",
+      "upgraded_classification": "measured_or_proxy",
+      "upgraded_signal_level": "level_1_measured",
+      "upgraded_source": "Same; queue wait is Level-1 telemetry"
+    },
+    {
+      "enters_at": "ModelLocationState.queue_depth",
+      "input": "queue depth",
+      "level_3_prior_used": null,
+      "production_classification": "measured",
+      "production_signal_level": "level_1_measured",
+      "production_source": "Telemetry adapter when available; None otherwise (veto)",
+      "upgraded_classification": "measured",
+      "upgraded_signal_level": "level_1_measured",
+      "upgraded_source": "Same"
+    },
+    {
+      "enters_at": "(not used in production residency scorer)",
+      "input": "prefill cost",
+      "level_3_prior_used": "optimum-benchmark/llm-perf-leaderboard",
+      "production_classification": "missing",
+      "production_signal_level": null,
+      "production_source": null,
+      "upgraded_classification": "derived_from_per_gpu_prior",
+      "upgraded_signal_level": "level_2_derived",
+      "upgraded_source": "prompt_tokens / prefill_throughput_tok_s (from Optimum) \u00d7 per_gpu_hour_price / 3600  \u2192 $; USD form requires operator_per_gpu_hour_price; otherwise reported uncalibrated."
+    },
+    {
+      "enters_at": "(not used as a separate term)",
+      "input": "decode cost",
+      "level_3_prior_used": "optimum-benchmark/llm-perf-leaderboard",
+      "production_classification": "missing",
+      "production_signal_level": null,
+      "production_source": null,
+      "upgraded_classification": "derived_from_per_gpu_prior",
+      "upgraded_signal_level": "level_2_derived",
+      "upgraded_source": "output_tokens / decode_throughput_tok_s \u00d7 per_gpu_hour_price; subset of service_time_s computation."
+    },
+    {
+      "enters_at": "(not used in production residency scorer)",
+      "input": "cache-hit value",
+      "level_3_prior_used": "cache_prefix_reuse_v1 forecaster",
+      "production_classification": "missing",
+      "production_signal_level": null,
+      "production_source": null,
+      "upgraded_classification": "forecasted_cache_prefix_reuse_v1_proxy",
+      "upgraded_signal_level": "level_3_prior",
+      "upgraded_source": "predicted_reuse_pct \u00d7 prefill_time_s \u00d7 per_gpu_hour_price \u2192 savings_usd; USD form requires operator_per_gpu_hour_price; otherwise reported uncalibrated."
+    },
+    {
+      "enters_at": "(not used in production residency scorer)",
+      "input": "prefix reuse",
+      "level_3_prior_used": "cache_prefix_reuse_v1 forecaster",
+      "production_classification": "missing",
+      "production_signal_level": null,
+      "production_source": null,
+      "upgraded_classification": "forecasted_cache_prefix_reuse_v1_proxy",
+      "upgraded_signal_level": "level_3_prior",
+      "upgraded_source": "SwissAI bucket-reuse forecaster output, fed into cache-hit value above. Currently classified diagnostic_only by docs/CACHE_PREFIX_REUSE_FORECASTER_V1.md."
+    },
+    {
+      "enters_at": "score_residency_candidate -> model_penalty + adapter_penalty",
+      "input": "cold-start penalty",
+      "level_3_prior_used": null,
+      "production_classification": "operator_supplied_via_ModelLoadProfile",
+      "production_signal_level": "level_1_operator_policy",
+      "production_source": "ModelLoadProfile.model_load_penalty_s \u2014 operator-supplied calibrated profile; missing \u2192 veto.",
+      "upgraded_classification": "operator_supplied_via_ModelLoadProfile",
+      "upgraded_signal_level": "level_1_operator_policy",
+      "upgraded_source": "Same; the shadow scorer reuses the existing profile and never invents a cold-start coefficient."
+    },
+    {
+      "enters_at": "(not used in production residency scorer)",
+      "input": "migration cache-loss penalty",
+      "level_3_prior_used": "optimum-benchmark/llm-perf-leaderboard",
+      "production_classification": "missing",
+      "production_signal_level": null,
+      "production_source": null,
+      "upgraded_classification": "derived_from_per_gpu_prior",
+      "upgraded_signal_level": "level_2_derived",
+      "upgraded_source": "When request.current_route differs and a recompute is needed: prompt_tokens / prefill_throughput_tok_s (from Optimum). Reported in SECONDS; USD form requires operator policy."
+    },
+    {
+      "enters_at": "ModelLoadProfile",
+      "input": "model load / unload",
+      "level_3_prior_used": null,
+      "production_classification": "operator_supplied_via_ModelLoadProfile",
+      "production_signal_level": "level_1_operator_policy",
+      "production_source": "ModelLoadProfile.model_load_penalty_s",
+      "upgraded_classification": "operator_supplied_via_ModelLoadProfile",
+      "upgraded_signal_level": "level_1_operator_policy",
+      "upgraded_source": "Same"
+    },
+    {
+      "enters_at": "location_key (string only); not parsed",
+      "input": "GPU type",
+      "level_3_prior_used": null,
+      "production_classification": "missing",
+      "production_signal_level": null,
+      "production_source": "Encoded in location_key but never parsed by the scorer.",
+      "upgraded_classification": "derived",
+      "upgraded_signal_level": "level_2_derived",
+      "upgraded_source": "constraint_scorer_features.derive_gpu_type parses the trailing token of the location_key; used to look up Optimum / per-GPU operator price cells."
+    },
+    {
+      "enters_at": "request.model_id (string only)",
+      "input": "model size",
+      "level_3_prior_used": null,
+      "production_classification": "missing",
+      "production_signal_level": null,
+      "production_source": "Not parsed",
+      "upgraded_classification": "derived",
+      "upgraded_signal_level": "level_2_derived",
+      "upgraded_source": "constraint_scorer_features.derive_model_size_b regex-parses size tokens (``-7b``, ``-70b``, ``8x7b``); used for fallback family lookup."
+    },
+    {
+      "enters_at": "score_residency_candidate -> memory_pressure_cost",
+      "input": "VRAM / memory pressure",
+      "level_3_prior_used": null,
+      "production_classification": "derived",
+      "production_signal_level": "level_2_derived",
+      "production_source": "max(0, used_after / total - 0.9) \u00d7 incremental_gpu_cost",
+      "upgraded_classification": "derived",
+      "upgraded_signal_level": "level_2_derived",
+      "upgraded_source": "Same; carried through from production scorer"
+    },
+    {
+      "enters_at": "ModelLocationState.gpu_utilization",
+      "input": "GPU utilization",
+      "level_3_prior_used": "Qinghao/AcmeTrace",
+      "production_classification": "measured",
+      "production_signal_level": "level_1_measured",
+      "production_source": "Telemetry adapter; not used in score formula",
+      "upgraded_classification": "measured",
+      "upgraded_signal_level": "level_1_measured",
+      "upgraded_source": "Reported via AcmeTrace prior bundle; not yet folded into score"
+    },
+    {
+      "enters_at": "(not in production residency scorer)",
+      "input": "energy per request",
+      "level_3_prior_used": "optimum-benchmark/llm-perf-leaderboard, Qinghao/AcmeTrace",
+      "production_classification": "missing",
+      "production_signal_level": null,
+      "production_source": null,
+      "upgraded_classification": "derived_from_optimum_or_acmetrace",
+      "upgraded_signal_level": "level_3_prior",
+      "upgraded_source": "prefill_energy_total_kwh + decode_energy_total_kwh \u00d7 (output_tokens / 64)  [Optimum]; fallback to AcmeTrace mean_w \u00d7 service_s when Optimum cell is missing."
+    },
+    {
+      "enters_at": "(not in production residency scorer)",
+      "input": "power draw",
+      "level_3_prior_used": "Qinghao/AcmeTrace",
+      "production_classification": "missing",
+      "production_signal_level": null,
+      "production_source": null,
+      "upgraded_classification": "level_3_prior",
+      "upgraded_signal_level": null,
+      "upgraded_source": "AcmeTrace IPMI per-GPU mean_w / p95_w (Tier-2 cluster telemetry treated as prior at integration layer)"
+    },
+    {
+      "enters_at": "score_residency_candidate -> incremental_gpu_cost",
+      "input": "cloud cost",
+      "level_3_prior_used": null,
+      "production_classification": "static_global_default",
+      "production_signal_level": "level_1_operator_policy",
+      "production_source": "SafetyContext.gpu_hour_price (default 3.0); single global constant per scorer call. Operator-configurable.",
+      "upgraded_classification": "operator_policy_or_operator_global_default",
+      "upgraded_signal_level": "level_1_operator_policy",
+      "upgraded_source": "OperatorPricingPolicy.gpu_hour_price_per_type per GPU type; falls back to ctx.gpu_hour_price when the policy is empty. No invented $/hr values are stored anywhere in this module."
+    },
+    {
+      "enters_at": "(not in production residency scorer)",
+      "input": "energy cost ($)",
+      "level_3_prior_used": "optimum-benchmark/llm-perf-leaderboard, Qinghao/AcmeTrace",
+      "production_classification": "missing",
+      "production_signal_level": null,
+      "production_source": null,
+      "upgraded_classification": "derived_iff_operator_energy_price_supplied",
+      "upgraded_signal_level": "level_2_derived",
+      "upgraded_source": "energy_kwh_per_request \u00d7 operator_policy.energy_price_per_kwh_usd. If energy_price is None the term is reported uncalibrated and excluded from the headline cost."
+    },
+    {
+      "enters_at": "(not in production residency scorer)",
+      "input": "carbon cost ($)",
+      "level_3_prior_used": "operator + grid intensity feed",
+      "production_classification": "missing",
+      "production_signal_level": null,
+      "production_source": null,
+      "upgraded_classification": "derived_iff_operator_carbon_price_supplied",
+      "upgraded_signal_level": "level_2_derived",
+      "upgraded_source": "energy_kwh \u00d7 carbon_intensity_g_per_kwh \u00d7 operator_policy.carbon_price_per_kg_usd. Uncalibrated when carbon_price is None."
+    },
+    {
+      "enters_at": "score_residency_candidate -> sla_met (binary)",
+      "input": "SLA risk",
+      "level_3_prior_used": null,
+      "production_classification": "derived_binary",
+      "production_signal_level": "level_2_derived",
+      "production_source": "expected_latency_s <= ctx.sla_s(request)",
+      "upgraded_classification": "derived_latency_margin_indicator",
+      "upgraded_signal_level": "level_2_derived",
+      "upgraded_source": "Latency MARGIN in seconds (sla_s - expected_latency_s); a quantitative indicator without a fitted sigmoid coefficient. Binary sla_met still drives goodput/$ to preserve the production safety contract."
+    },
+    {
+      "enters_at": "(not in production residency scorer)",
+      "input": "timeout risk",
+      "level_3_prior_used": null,
+      "production_classification": "missing",
+      "production_signal_level": null,
+      "production_source": null,
+      "upgraded_classification": "missing",
+      "upgraded_signal_level": null,
+      "upgraded_source": "Pilot timeout labels required; deferred to a future PR per FORECAST_LEVERAGE_AUDIT engine #12."
+    }
+  ],
+  "shadow_only": true,
+  "shadow_scorer_version": "constraint_shadow_scorer_v1",
+  "signal_hierarchy": {
+    "level_1_measured": "Pilot telemetry / hardware measurement / per-request observation / explicit operator policy. Source + units recorded; no fitted coefficient allowed.",
+    "level_2_derived": "Transparent formula on Level-1 and Level-3 inputs; no learned utility coefficient.",
+    "level_3_prior": "Bounded benchmark / public-trace / forecasted values; tagged ``value_quality = prior``; never silently treated as production truth.",
+    "level_4_prohibited_or_uncalibrated": "Invented utility coefficient / reward / penalty / weight; or a $-denominated term whose operator coefficient is missing. Excluded from headline."
+  },
+  "uses_oracle_as_headline": false
+}
