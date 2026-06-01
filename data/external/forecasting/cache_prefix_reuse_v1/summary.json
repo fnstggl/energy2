@@ -1,0 +1,1449 @@
+{
+  "baselines_used": [
+    "global_reuse_rate",
+    "per_model_reuse_rate",
+    "per_session_history",
+    "recency_frequency_seen",
+    "prefix_group (PrefixBench only)"
+  ],
+  "best_cc_traces_economic_improvement_pct": -0.0889060688055663,
+  "best_swissai_economic_improvement_pct": -2.008422416585682,
+  "best_swissai_holdout": "time_holdout",
+  "best_swissai_subgroup_failures": [],
+  "binding_swissai_economic_improvement_pct": -2.008422416585682,
+  "binding_swissai_holdout": "time_holdout",
+  "cc_traces_reported_separately_because": "CC-traces uses KV-block-hash-derived intra_session_reuse labels, not reuse_percentage. Per mission spec, headline reporting only from SwissAI / PrefixBench / LMCache labels.",
+  "cc_traces_results": {
+    "dataset": "cc_traces",
+    "feature_count": 32,
+    "headline_eligible": false,
+    "leakage_features_excluded": [
+      "actual_e2e_latency_s",
+      "actual_output_tokens",
+      "actual_tpot_s",
+      "actual_ttft_s",
+      "api_time_s",
+      "cache_hit",
+      "completion_timestamp",
+      "completion_timestamp_s",
+      "output_tokens",
+      "prefix_hit",
+      "reuse_percentage",
+      "reused_bucket_count",
+      "reused_buckets",
+      "tpot_s",
+      "ttft_s"
+    ],
+    "per_holdout": [
+      {
+        "baseline_metrics": {
+          "global_reuse_rate": {
+            "auprc": 0.9362315434745776,
+            "auroc": 0.6127953995634348,
+            "baseline_auroc": 0.6639366300882894,
+            "baseline_brier": 0.04600321925547754,
+            "brier": 0.04726210808637203,
+            "expected_calibration_error": 0.00045089234535333755
+          },
+          "per_model_reuse_rate": {
+            "auprc": 0.967133369051228,
+            "auroc": 0.6639366300882894,
+            "baseline_auroc": 0.6639366300882894,
+            "baseline_brier": 0.04600321925547754,
+            "brier": 0.04600321925547754,
+            "expected_calibration_error": 0.0006276697838004655
+          },
+          "per_session_history": {
+            "auprc": 0.9722209638181754,
+            "auroc": 0.7716827233543013,
+            "baseline_auroc": 0.6639366300882894,
+            "baseline_brier": 0.04600321925547754,
+            "brier": 0.0428237410908417,
+            "expected_calibration_error": 0.0049598513009637794
+          },
+          "recency_frequency_seen": {
+            "auprc": 0.9378947512239566,
+            "auroc": 0.6452656419239705,
+            "baseline_auroc": 0.6639366300882894,
+            "baseline_brier": 0.04600321925547754,
+            "brier": 0.04656453465433179,
+            "expected_calibration_error": 0.0005005882987170302
+          }
+        },
+        "best_economic_improvement_pct": -0.0889060688055663,
+        "best_ml_model": "hist_gradient_boosting",
+        "economic_proxy_by_model": {
+          "hist_gradient_boosting": {
+            "decision_threshold": 0.5,
+            "migration_veto_fn_baseline": 0.0,
+            "migration_veto_fn_model": 23.0,
+            "migration_veto_fp_baseline": 1354.0,
+            "migration_veto_fp_model": 446.0,
+            "migration_veto_tn_model": 908.0,
+            "migration_veto_tp_model": 25847.0,
+            "n_test": 27224,
+            "prefill_savings_improvement_pct_vs_baseline": -0.0889060688055663,
+            "prefill_savings_proxy_baseline": 25870.0,
+            "prefill_savings_proxy_model": 25847.0,
+            "result_quality": "shadow_proxy"
+          }
+        },
+        "holdout": "random_holdout",
+        "ml_metrics": {
+          "hist_gradient_boosting": {
+            "auprc": 0.9989633556329454,
+            "auroc": 0.9821253752000544,
+            "baseline_auroc": 0.6639366300882894,
+            "baseline_brier": 0.04600321925547754,
+            "brier": 0.014244033601745315,
+            "expected_calibration_error": 0.0020202542141899544
+          }
+        },
+        "n_test": 27224,
+        "n_test_high_reuse_labelled": 27224,
+        "n_train": 108894,
+        "n_train_high_reuse_labelled": 108894,
+        "regression_metrics": {},
+        "strongest_baseline": "per_model_reuse_rate",
+        "subgroup_audit": {
+          "by_subgroup": {
+            "bucket_size_bin": {
+              "missing": {
+                "baseline_brier": 0.04600321925547754,
+                "improvement_pct": 69.03687647892316,
+                "model_brier": 0.014244033601745315,
+                "row_count": 27224,
+                "status": "PASS"
+              }
+            },
+            "hour_of_day": {
+              "missing": {
+                "baseline_brier": 0.04600321925547754,
+                "improvement_pct": 69.03687647892316,
+                "model_brier": 0.014244033601745315,
+                "row_count": 27224,
+                "status": "PASS"
+              }
+            },
+            "input_token_bin": {
+              "[0,256)": {
+                "baseline_brier": 0.824577917446566,
+                "improvement_pct": 99.99951219695244,
+                "model_brier": 4.022316210842502e-06,
+                "row_count": 2,
+                "status": "INSUFFICIENT_SAMPLE"
+              },
+              "[1024,4096)": {
+                "baseline_brier": 0.33666817429674817,
+                "improvement_pct": 67.5421582847581,
+                "model_brier": 0.10927522311883324,
+                "row_count": 38,
+                "status": "INSUFFICIENT_SAMPLE"
+              },
+              "[16384,65536)": {
+                "baseline_brier": 0.08543671051965507,
+                "improvement_pct": 82.28697023318063,
+                "model_brier": 0.015133429966137793,
+                "row_count": 5862,
+                "status": "PASS"
+              },
+              "[256,1024)": {
+                "baseline_brier": 0.2898814501806411,
+                "improvement_pct": 69.95098290411983,
+                "model_brier": 0.0871065265225662,
+                "row_count": 253,
+                "status": "PASS"
+              },
+              "[4096,16384)": {
+                "baseline_brier": 0.40165049271374026,
+                "improvement_pct": 95.32585868879359,
+                "model_brier": 0.018773711606597004,
+                "row_count": 111,
+                "status": "PASS"
+              },
+              "[65536,10000000)": {
+                "baseline_brier": 0.029544607591363937,
+                "improvement_pct": 56.266972898695386,
+                "model_brier": 0.01292075124490529,
+                "row_count": 20958,
+                "status": "PASS"
+              }
+            },
+            "model_id": {
+              "claude-opus-4-6": {
+                "baseline_brier": 0.08098992833961238,
+                "improvement_pct": 87.64537986669954,
+                "model_brier": 0.010005997992591362,
+                "row_count": 7752,
+                "status": "PASS"
+              },
+              "claude-opus-4-7": {
+                "baseline_brier": 0.028465940654979694,
+                "improvement_pct": 47.998984266579505,
+                "model_brier": 0.014802578278662132,
+                "row_count": 18995,
+                "status": "PASS"
+              },
+              "claude-sonnet-4-6": {
+                "baseline_brier": 0.17578023853481298,
+                "improvement_pct": 65.36782502894273,
+                "model_brier": 0.06087651977391825,
+                "row_count": 477,
+                "status": "PASS"
+              }
+            },
+            "request_type": {
+              "n": {
+                "baseline_brier": 0.2818886962859317,
+                "improvement_pct": 71.47084130515022,
+                "model_brier": 0.0804204735062566,
+                "row_count": 358,
+                "status": "PASS"
+              },
+              "s": {
+                "baseline_brier": 0.042859952644262525,
+                "improvement_pct": 68.82356202275517,
+                "model_brier": 0.013362206553215013,
+                "row_count": 26866,
+                "status": "PASS"
+              }
+            }
+          },
+          "has_subgroup_regression": false
+        }
+      },
+      {
+        "baseline_metrics": {
+          "global_reuse_rate": {
+            "auprc": 0.969422469166608,
+            "auroc": 0.4550246365306919,
+            "baseline_auroc": 0.6582846650086931,
+            "baseline_brier": 0.03531672419254163,
+            "brier": 0.03721750307022139,
+            "expected_calibration_error": 0.014817304515474028
+          },
+          "per_model_reuse_rate": {
+            "auprc": 0.9781042036580156,
+            "auroc": 0.6582846650086931,
+            "baseline_auroc": 0.6582846650086931,
+            "baseline_brier": 0.03531672419254163,
+            "brier": 0.03531672419254163,
+            "expected_calibration_error": 0.007509194113432632
+          },
+          "per_session_history": {
+            "auprc": 0.969422469166608,
+            "auroc": 0.4550246365306919,
+            "baseline_auroc": 0.6582846650086931,
+            "baseline_brier": 0.03531672419254163,
+            "brier": 0.03721750307022139,
+            "expected_calibration_error": 0.014817304515474028
+          },
+          "recency_frequency_seen": {
+            "auprc": 0.9708352566383507,
+            "auroc": 0.4897426261692646,
+            "baseline_auroc": 0.6582846650086931,
+            "baseline_brier": 0.03531672419254163,
+            "brier": 0.03678567793661384,
+            "expected_calibration_error": 0.014892269870846126
+          }
+        },
+        "best_economic_improvement_pct": -0.09553464015285543,
+        "best_ml_model": "hist_gradient_boosting",
+        "economic_proxy_by_model": {
+          "hist_gradient_boosting": {
+            "decision_threshold": 0.5,
+            "migration_veto_fn_baseline": 0.0,
+            "migration_veto_fn_model": 27.0,
+            "migration_veto_fp_baseline": 1131.0,
+            "migration_veto_fp_model": 506.0,
+            "migration_veto_tn_model": 625.0,
+            "migration_veto_tp_model": 28235.0,
+            "n_test": 29393,
+            "prefill_savings_improvement_pct_vs_baseline": -0.09553464015285543,
+            "prefill_savings_proxy_baseline": 28262.0,
+            "prefill_savings_proxy_model": 28235.0,
+            "result_quality": "shadow_proxy"
+          }
+        },
+        "holdout": "holdout_by_session",
+        "ml_metrics": {
+          "hist_gradient_boosting": {
+            "auprc": 0.9987409447520981,
+            "auroc": 0.9737065594571347,
+            "baseline_auroc": 0.6582846650086931,
+            "baseline_brier": 0.03531672419254163,
+            "brier": 0.015065980011262857,
+            "expected_calibration_error": 0.001887294700698378
+          }
+        },
+        "n_test": 29393,
+        "n_test_high_reuse_labelled": 29393,
+        "n_train": 106725,
+        "n_train_high_reuse_labelled": 106725,
+        "regression_metrics": {},
+        "strongest_baseline": "per_model_reuse_rate",
+        "subgroup_audit": {
+          "by_subgroup": {
+            "bucket_size_bin": {
+              "missing": {
+                "baseline_brier": 0.03531672419254163,
+                "improvement_pct": 57.34038092229242,
+                "model_brier": 0.015065980011262857,
+                "row_count": 29393,
+                "status": "PASS"
+              }
+            },
+            "hour_of_day": {
+              "missing": {
+                "baseline_brier": 0.03531672419254163,
+                "improvement_pct": 57.34038092229242,
+                "model_brier": 0.015065980011262857,
+                "row_count": 29393,
+                "status": "PASS"
+              }
+            },
+            "input_token_bin": {
+              "[16384,65536)": {
+                "baseline_brier": 0.09886415816016775,
+                "improvement_pct": 76.46668153507612,
+                "model_brier": 0.023266017187498312,
+                "row_count": 5712,
+                "status": "PASS"
+              },
+              "[4096,16384)": {
+                "baseline_brier": 0.38410655041124664,
+                "improvement_pct": 88.28251473913335,
+                "model_brier": 0.04500762843046117,
+                "row_count": 24,
+                "status": "INSUFFICIENT_SAMPLE"
+              },
+              "[65536,10000000)": {
+                "baseline_brier": 0.019619302767494948,
+                "improvement_pct": 33.45482555059041,
+                "model_brier": 0.013055699252387358,
+                "row_count": 23657,
+                "status": "PASS"
+              }
+            },
+            "model_id": {
+              "claude-opus-4-6": {
+                "baseline_brier": 0.0847447018630114,
+                "improvement_pct": 72.12459218416726,
+                "model_brier": 0.023622931246626035,
+                "row_count": 5028,
+                "status": "PASS"
+              },
+              "claude-opus-4-7": {
+                "baseline_brier": 0.02238185972174655,
+                "improvement_pct": 41.35672831695157,
+                "model_brier": 0.013125454804342617,
+                "row_count": 24153,
+                "status": "PASS"
+              },
+              "claude-sonnet-4-6": {
+                "baseline_brier": 0.33669365738118084,
+                "improvement_pct": 90.13836448556239,
+                "model_brier": 0.03320350129116142,
+                "row_count": 212,
+                "status": "PASS"
+              }
+            },
+            "request_type": {
+              "n": {
+                "baseline_brier": 0.5164988787519994,
+                "improvement_pct": 92.55983514317069,
+                "model_brier": 0.03842836806282366,
+                "row_count": 88,
+                "status": "INSUFFICIENT_SAMPLE"
+              },
+              "s": {
+                "baseline_brier": 0.033871782046108176,
+                "improvement_pct": 55.72767602421145,
+                "model_brier": 0.014995825083825992,
+                "row_count": 29305,
+                "status": "PASS"
+              }
+            }
+          },
+          "has_subgroup_regression": false
+        }
+      }
+    ],
+    "result_quality": "shadow_proxy_derived_label",
+    "row_count": 136118,
+    "source": "3000_mib_expanded",
+    "target": "intra_session_reuse (derived proxy)"
+  },
+  "data_readiness_audit_path": "data/external/forecasting/cache_prefix_reuse_v1/data_readiness_audit.json",
+  "datasets_used": {
+    "cc_traces_rows": 136118,
+    "cc_traces_source": "3000_mib_expanded",
+    "lmcache_rows": 4976,
+    "prefixbench_rows": 5,
+    "swissai_bucket_reuse_rows": 67190
+  },
+  "doc_version": "cache_prefix_reuse_forecaster_v1",
+  "evaluated_at_s": 1780282991.6388934,
+  "final_status": "diagnostic_only",
+  "final_status_reason": "shadow proxy improvement -2.01% < 2% and scorer does not yet express cache value",
+  "leakage_features_excluded": [
+    "actual_e2e_latency_s",
+    "actual_output_tokens",
+    "actual_tpot_s",
+    "actual_ttft_s",
+    "api_time_s",
+    "cache_hit",
+    "completion_timestamp",
+    "completion_timestamp_s",
+    "output_tokens",
+    "prefix_hit",
+    "reuse_percentage",
+    "reused_bucket_count",
+    "reused_buckets",
+    "tpot_s",
+    "ttft_s"
+  ],
+  "lmcache_results": {
+    "available_signal": "session continuity + pre_gap_s",
+    "dataset": "lmcache",
+    "headline_eligible": false,
+    "median_session_size": 19.0,
+    "result_quality": "structural_prior_only",
+    "row_count": 4976,
+    "session_count": 209,
+    "skipped_training": "lmcache has no reuse-percentage / cache-hit label; used as cross-dataset structural prior only"
+  },
+  "ml_candidates_used": [
+    "logistic_reuse_classifier",
+    "hist_gradient_boosting_reuse_classifier",
+    "random_forest_reuse_classifier (capped at 50k rows)",
+    "hist_gradient_boosting_reuse_regressor"
+  ],
+  "modifies_controllers_or_defaults": false,
+  "modifies_robust_energy_engine": false,
+  "phase0_cc_traces_decision": "use_for_training",
+  "phase0_cc_traces_decision_reason": "expanded sample passes all gates: 136118 requests, 949 sessions, unique-hash ratio 177.92x, repeated=912, intra_session_reuse=129299",
+  "pilot_only_remaining_items": [
+    "real measured cache_hit per request (no HF dataset provides this)",
+    "measured kv_evictions per second per replica (CARA proxy only)",
+    "measured cold-start latency per model (no HF dataset provides this)",
+    "scorer-side PR to expose cache_value / prefill_savings hooks"
+  ],
+  "prefixbench_results": {
+    "dataset": "prefixbench",
+    "headline_eligible": false,
+    "prefix_group_count": 1,
+    "result_quality": "synthetic",
+    "row_count": 5,
+    "skipped_training": "prefixbench is synthetic; used as priors / generalization check only, never as headline training source"
+  },
+  "production_claim": false,
+  "random_holdout_economic_improvement_pct": 9.142275963385693,
+  "scorer_limitation_note": "aurelius.residency.decision.score_residency_candidate does not today consume cache-reuse / prefill-savings / migration-cache-loss value (see docs/PLACEMENT_PRIOR_AUDIT.md::scoring_inputs). A future scorer-side PR is required before any shadow-ready cache forecast can drive a residency / routing / migration-veto decision.",
+  "scorer_supports_cache_value_today": false,
+  "shadow_integration_justified": false,
+  "shadow_only": true,
+  "swissai_economic_improvement_by_holdout_pct": {
+    "holdout_by_model_qwen3_32b": -9.69440311319675,
+    "random_holdout": 9.142275963385693,
+    "time_holdout": -2.008422416585682
+  },
+  "swissai_results": {
+    "dataset": "swissai_bucket_reuse",
+    "feature_count": 54,
+    "feature_names": [
+      "bucket_count",
+      "input_tokens",
+      "predicted_output_tokens",
+      "turn_index",
+      "session_turns_so_far",
+      "session_requests_total",
+      "request_arrival_delta_s",
+      "think_time_s",
+      "pre_gap_s",
+      "rolling_per_model_reuse_pct",
+      "rolling_per_hash_seen_count",
+      "rolling_per_session_mean_block_count",
+      "rolling_session_last_block_count",
+      "model_id=apertus_70b",
+      "model_id=llama3_70b",
+      "model_id=qwen380b_instruct",
+      "model_id=qwen380b_thinking",
+      "model_id=qwen3_32b",
+      "model_id=__UNSEEN__",
+      "request_type=missing",
+      "request_type=__UNSEEN__",
+      "bucket_size_bin=[0,2)",
+      "bucket_size_bin=[1024,10000000)",
+      "bucket_size_bin=[16,64)",
+      "bucket_size_bin=[2,16)",
+      "bucket_size_bin=[256,1024)",
+      "bucket_size_bin=[64,256)",
+      "bucket_size_bin=__UNSEEN__",
+      "input_token_bin=missing",
+      "input_token_bin=__UNSEEN__",
+      "hour_of_day=hour=0",
+      "hour_of_day=hour=1",
+      "hour_of_day=hour=10",
+      "hour_of_day=hour=11",
+      "hour_of_day=hour=12",
+      "hour_of_day=hour=13",
+      "hour_of_day=hour=14",
+      "hour_of_day=hour=15",
+      "hour_of_day=hour=16",
+      "hour_of_day=hour=17",
+      "hour_of_day=hour=18",
+      "hour_of_day=hour=19",
+      "hour_of_day=hour=2",
+      "hour_of_day=hour=20",
+      "hour_of_day=hour=21",
+      "hour_of_day=hour=22",
+      "hour_of_day=hour=23",
+      "hour_of_day=hour=3",
+      "hour_of_day=hour=5",
+      "hour_of_day=hour=6",
+      "hour_of_day=hour=7",
+      "hour_of_day=hour=8",
+      "hour_of_day=hour=9",
+      "hour_of_day=__UNSEEN__"
+    ],
+    "high_reuse_threshold_pct": 50.0,
+    "leakage_features_excluded": [
+      "actual_e2e_latency_s",
+      "actual_output_tokens",
+      "actual_tpot_s",
+      "actual_ttft_s",
+      "api_time_s",
+      "cache_hit",
+      "completion_timestamp",
+      "completion_timestamp_s",
+      "output_tokens",
+      "prefix_hit",
+      "reuse_percentage",
+      "reused_bucket_count",
+      "reused_buckets",
+      "tpot_s",
+      "ttft_s"
+    ],
+    "per_holdout": [
+      {
+        "baseline_metrics": {
+          "global_reuse_rate": {
+            "auprc": 0.6096407967253336,
+            "auroc": 0.757911825928586,
+            "baseline_auroc": 0.8256916236541754,
+            "baseline_brier": 0.14724645081979762,
+            "brier": 0.19923061049105786,
+            "expected_calibration_error": 0.0021766631939278414
+          },
+          "per_model_reuse_rate": {
+            "auprc": 0.8887255401588416,
+            "auroc": 0.8256916236541754,
+            "baseline_auroc": 0.8256916236541754,
+            "baseline_brier": 0.14724645081979762,
+            "brier": 0.14724645081979762,
+            "expected_calibration_error": 0.0064837040253705285
+          },
+          "per_session_history": {
+            "auprc": 0.9366304239410295,
+            "auroc": 0.8389809734369497,
+            "baseline_auroc": 0.8256916236541754,
+            "baseline_brier": 0.14724645081979762,
+            "brier": 4509.578978098145,
+            "expected_calibration_error": 0.0
+          },
+          "recency_frequency_seen": {
+            "auprc": 0.8679817513969008,
+            "auroc": 0.9436616347534648,
+            "baseline_auroc": 0.8256916236541754,
+            "baseline_brier": 0.14724645081979762,
+            "brier": 0.14824599789667045,
+            "expected_calibration_error": 0.0011533795780155913
+          }
+        },
+        "best_economic_improvement_pct": 9.142275963385693,
+        "best_ml_model": "hist_gradient_boosting",
+        "economic_proxy_by_model": {
+          "hist_gradient_boosting": {
+            "decision_threshold": 0.5,
+            "migration_veto_fn_baseline": 898.0,
+            "migration_veto_fn_model": 89.0,
+            "migration_veto_fp_baseline": 2268.0,
+            "migration_veto_fp_model": 76.0,
+            "migration_veto_tn_model": 3615.0,
+            "migration_veto_tp_model": 9658.0,
+            "n_test": 13438,
+            "prefill_savings_improvement_pct_vs_baseline": 9.142275963385693,
+            "prefill_savings_proxy_baseline": 8849.0,
+            "prefill_savings_proxy_model": 9658.0,
+            "result_quality": "shadow_proxy"
+          }
+        },
+        "holdout": "random_holdout",
+        "ml_metrics": {
+          "hist_gradient_boosting": {
+            "auprc": 0.9995805573232162,
+            "auroc": 0.9988194409872956,
+            "baseline_auroc": 0.8256916236541754,
+            "baseline_brier": 0.14724645081979762,
+            "brier": 0.009237084584946488,
+            "expected_calibration_error": 0.003378514544706971
+          }
+        },
+        "n_test": 13438,
+        "n_test_high_reuse_labelled": 13438,
+        "n_train": 53752,
+        "n_train_high_reuse_labelled": 53752,
+        "regression_metrics": {
+          "baseline_global_mean_mae": 32.59410025077328,
+          "hgb_regressor_mae": 2.828854159281595,
+          "hgb_regressor_rmse": 6.733128422266971
+        },
+        "strongest_baseline": "per_model_reuse_rate",
+        "subgroup_audit": {
+          "by_subgroup": {
+            "bucket_size_bin": {
+              "[0,2)": {
+                "baseline_brier": 0.2281117858730118,
+                "improvement_pct": 99.99634769405198,
+                "model_brier": 8.33134032357416e-06,
+                "row_count": 191,
+                "status": "PASS"
+              },
+              "[1024,10000000)": {
+                "baseline_brier": 0.06828130783744425,
+                "improvement_pct": 96.62513392150382,
+                "model_brier": 0.002304402696159464,
+                "row_count": 48,
+                "status": "INSUFFICIENT_SAMPLE"
+              },
+              "[16,64)": {
+                "baseline_brier": 0.1327502310971666,
+                "improvement_pct": 95.84513741671822,
+                "model_brier": 0.00551558968107626,
+                "row_count": 9361,
+                "status": "PASS"
+              },
+              "[2,16)": {
+                "baseline_brier": 0.15596268947849368,
+                "improvement_pct": 78.3459870639371,
+                "model_brier": 0.03377218095510463,
+                "row_count": 1250,
+                "status": "PASS"
+              },
+              "[256,1024)": {
+                "baseline_brier": 0.17688938585690847,
+                "improvement_pct": 87.32390137507679,
+                "model_brier": 0.022422673008242695,
+                "row_count": 258,
+                "status": "PASS"
+              },
+              "[64,256)": {
+                "baseline_brier": 0.1925258435788505,
+                "improvement_pct": 94.56423699268655,
+                "model_brier": 0.01046524858477733,
+                "row_count": 2330,
+                "status": "PASS"
+              }
+            },
+            "hour_of_day": {
+              "hour=0": {
+                "baseline_brier": 0.2019060150639235,
+                "improvement_pct": 93.93224295629024,
+                "model_brier": 0.012251166450714883,
+                "row_count": 212,
+                "status": "PASS"
+              },
+              "hour=1": {
+                "baseline_brier": 0.16610984576919843,
+                "improvement_pct": 87.76096953371147,
+                "model_brier": 0.020330234631197073,
+                "row_count": 133,
+                "status": "PASS"
+              },
+              "hour=10": {
+                "baseline_brier": 0.2964289193764707,
+                "improvement_pct": 97.83263477737098,
+                "model_brier": 0.006424697308380631,
+                "row_count": 473,
+                "status": "PASS"
+              },
+              "hour=11": {
+                "baseline_brier": 0.2866570607402351,
+                "improvement_pct": 97.96434465865127,
+                "model_brier": 0.0058353497683118405,
+                "row_count": 718,
+                "status": "PASS"
+              },
+              "hour=12": {
+                "baseline_brier": 0.23460992050564977,
+                "improvement_pct": 95.00090572534565,
+                "model_brier": 0.011728371103769075,
+                "row_count": 429,
+                "status": "PASS"
+              },
+              "hour=13": {
+                "baseline_brier": 0.1556960485994981,
+                "improvement_pct": 82.95840206183428,
+                "model_brier": 0.02653309460793756,
+                "row_count": 436,
+                "status": "PASS"
+              },
+              "hour=14": {
+                "baseline_brier": 0.12239347721008069,
+                "improvement_pct": 91.08920021044878,
+                "model_brier": 0.010906237709660292,
+                "row_count": 673,
+                "status": "PASS"
+              },
+              "hour=15": {
+                "baseline_brier": 0.12498799791789979,
+                "improvement_pct": 91.13238345158987,
+                "model_brier": 0.01108345638689419,
+                "row_count": 584,
+                "status": "PASS"
+              },
+              "hour=16": {
+                "baseline_brier": 0.1716025975794263,
+                "improvement_pct": 98.93407348688267,
+                "model_brier": 0.001829157584797116,
+                "row_count": 923,
+                "status": "PASS"
+              },
+              "hour=17": {
+                "baseline_brier": 0.21140336425652115,
+                "improvement_pct": 99.84226632761023,
+                "model_brier": 0.0003334542899973045,
+                "row_count": 1504,
+                "status": "PASS"
+              },
+              "hour=18": {
+                "baseline_brier": 0.1275626800528504,
+                "improvement_pct": 91.48364155369629,
+                "model_brier": 0.0108636950770123,
+                "row_count": 506,
+                "status": "PASS"
+              },
+              "hour=19": {
+                "baseline_brier": 0.38710765977733075,
+                "improvement_pct": 93.12060422137218,
+                "model_brier": 0.02663066800546668,
+                "row_count": 213,
+                "status": "PASS"
+              },
+              "hour=2": {
+                "baseline_brier": 0.091728479529086,
+                "improvement_pct": 75.71406799280373,
+                "model_brier": 0.022277116169668765,
+                "row_count": 71,
+                "status": "INSUFFICIENT_SAMPLE"
+              },
+              "hour=20": {
+                "baseline_brier": 0.13512809212944812,
+                "improvement_pct": 86.61922221404566,
+                "model_brier": 0.018081189734241117,
+                "row_count": 508,
+                "status": "PASS"
+              },
+              "hour=21": {
+                "baseline_brier": 0.2504568783589009,
+                "improvement_pct": 92.25735290552284,
+                "model_brier": 0.019391992215173664,
+                "row_count": 399,
+                "status": "PASS"
+              },
+              "hour=22": {
+                "baseline_brier": 0.26283067494341245,
+                "improvement_pct": 97.43679064408629,
+                "model_brier": 0.006736900450360688,
+                "row_count": 447,
+                "status": "PASS"
+              },
+              "hour=23": {
+                "baseline_brier": 0.19747939288106015,
+                "improvement_pct": 97.85531816378642,
+                "model_brier": 0.004235304669384943,
+                "row_count": 447,
+                "status": "PASS"
+              },
+              "hour=3": {
+                "baseline_brier": 0.11390890252719202,
+                "improvement_pct": 66.91171328003807,
+                "model_brier": 0.03769050426775926,
+                "row_count": 52,
+                "status": "INSUFFICIENT_SAMPLE"
+              },
+              "hour=5": {
+                "baseline_brier": 0.032091141002517,
+                "improvement_pct": 98.52770957392198,
+                "model_brier": 0.0004724747965992541,
+                "row_count": 200,
+                "status": "PASS"
+              },
+              "hour=6": {
+                "baseline_brier": 0.02246843008211143,
+                "improvement_pct": 99.8458822724106,
+                "model_brier": 3.462783386756031e-05,
+                "row_count": 1001,
+                "status": "PASS"
+              },
+              "hour=7": {
+                "baseline_brier": 0.03834120731684861,
+                "improvement_pct": 99.1068838430707,
+                "model_brier": 0.00034243151730853653,
+                "row_count": 938,
+                "status": "PASS"
+              },
+              "hour=8": {
+                "baseline_brier": 0.023005150490599695,
+                "improvement_pct": 85.64960826814192,
+                "model_brier": 0.003301329213904528,
+                "row_count": 890,
+                "status": "PASS"
+              },
+              "hour=9": {
+                "baseline_brier": 0.08828989899127716,
+                "improvement_pct": 73.67587330974327,
+                "model_brier": 0.023241544865163503,
+                "row_count": 1681,
+                "status": "PASS"
+              }
+            },
+            "input_token_bin": {
+              "missing": {
+                "baseline_brier": 0.14724645081979762,
+                "improvement_pct": 93.7267862596899,
+                "model_brier": 0.009237084584946488,
+                "row_count": 13438,
+                "status": "PASS"
+              }
+            },
+            "model_id": {
+              "apertus_70b": {
+                "baseline_brier": 0.11596136654164452,
+                "improvement_pct": 89.44295633494994,
+                "model_brier": 0.012242092100390144,
+                "row_count": 3044,
+                "status": "PASS"
+              },
+              "llama3_70b": {
+                "baseline_brier": 0.026378487919536012,
+                "improvement_pct": 68.82253967087634,
+                "model_brier": 0.008224142606536014,
+                "row_count": 4057,
+                "status": "PASS"
+              },
+              "qwen380b_instruct": {
+                "baseline_brier": 0.23723043808096553,
+                "improvement_pct": 97.3209821349915,
+                "model_brier": 0.006355445817426996,
+                "row_count": 2321,
+                "status": "PASS"
+              },
+              "qwen380b_thinking": {
+                "baseline_brier": 0.20217061391003194,
+                "improvement_pct": 93.97326853445627,
+                "model_brier": 0.012184280002598842,
+                "row_count": 683,
+                "status": "PASS"
+              },
+              "qwen3_32b": {
+                "baseline_brier": 0.24902475391168444,
+                "improvement_pct": 96.3343574803737,
+                "model_brier": 0.009128357263781467,
+                "row_count": 3333,
+                "status": "PASS"
+              }
+            },
+            "request_type": {
+              "None": {
+                "baseline_brier": 0.14724645081979762,
+                "improvement_pct": 93.7267862596899,
+                "model_brier": 0.009237084584946488,
+                "row_count": 13438,
+                "status": "PASS"
+              }
+            }
+          },
+          "has_subgroup_regression": false
+        }
+      },
+      {
+        "baseline_metrics": {
+          "global_reuse_rate": {
+            "auprc": 0.40466466298249604,
+            "auroc": 0.6290680355947708,
+            "baseline_auroc": 0.3870926189334555,
+            "baseline_brier": 0.37663221746629355,
+            "brier": 0.35737601478933595,
+            "expected_calibration_error": 0.3301830629557973
+          },
+          "per_model_reuse_rate": {
+            "auprc": 0.40466466298249604,
+            "auroc": 0.3870926189334555,
+            "baseline_auroc": 0.3870926189334555,
+            "baseline_brier": 0.37663221746629355,
+            "brier": 0.37663221746629355,
+            "expected_calibration_error": 0.4010984570613438
+          },
+          "per_session_history": {
+            "auprc": 0.6423668197689786,
+            "auroc": 0.6470939710581107,
+            "baseline_auroc": 0.3870926189334555,
+            "baseline_brier": 0.37663221746629355,
+            "brier": 2223.769782687167,
+            "expected_calibration_error": 5.8760710857630375e-05
+          },
+          "recency_frequency_seen": {
+            "auprc": 0.9090837374432047,
+            "auroc": 0.9949561558418207,
+            "baseline_auroc": 0.3870926189334555,
+            "baseline_brier": 0.37663221746629355,
+            "brier": 0.23499407359894023,
+            "expected_calibration_error": 0.3223036070268163
+          }
+        },
+        "best_economic_improvement_pct": -2.008422416585682,
+        "best_ml_model": "hist_gradient_boosting",
+        "economic_proxy_by_model": {
+          "hist_gradient_boosting": {
+            "decision_threshold": 0.5,
+            "migration_veto_fn_baseline": 0.0,
+            "migration_veto_fn_model": 124.0,
+            "migration_veto_fp_baseline": 7264.0,
+            "migration_veto_fp_model": 241.0,
+            "migration_veto_tn_model": 7023.0,
+            "migration_veto_tp_model": 6050.0,
+            "n_test": 13438,
+            "prefill_savings_improvement_pct_vs_baseline": -2.008422416585682,
+            "prefill_savings_proxy_baseline": 6174.0,
+            "prefill_savings_proxy_model": 6050.0,
+            "result_quality": "shadow_proxy"
+          }
+        },
+        "holdout": "time_holdout",
+        "ml_metrics": {
+          "hist_gradient_boosting": {
+            "auprc": 0.9938042752931339,
+            "auroc": 0.992524026077811,
+            "baseline_auroc": 0.3870926189334555,
+            "baseline_brier": 0.37663221746629355,
+            "brier": 0.02294600138912101,
+            "expected_calibration_error": 0.012112530336064017
+          }
+        },
+        "n_test": 13438,
+        "n_test_high_reuse_labelled": 13438,
+        "n_train": 53752,
+        "n_train_high_reuse_labelled": 53752,
+        "regression_metrics": {
+          "baseline_global_mean_mae": 47.49826863068947,
+          "hgb_regressor_mae": 11.493459228255608,
+          "hgb_regressor_rmse": 18.385587484862995
+        },
+        "strongest_baseline": "per_model_reuse_rate",
+        "subgroup_audit": {
+          "by_subgroup": {
+            "bucket_size_bin": {
+              "[0,2)": {
+                "baseline_brier": 0.4930860903442689,
+                "improvement_pct": 99.96816274692455,
+                "model_brier": 0.00015698506646270278,
+                "row_count": 3,
+                "status": "INSUFFICIENT_SAMPLE"
+              },
+              "[1024,10000000)": {
+                "baseline_brier": 0.23223846521217484,
+                "improvement_pct": 90.76437297665943,
+                "model_brier": 0.021448678451726995,
+                "row_count": 240,
+                "status": "PASS"
+              },
+              "[16,64)": {
+                "baseline_brier": 0.42352220765829696,
+                "improvement_pct": 95.36662928772013,
+                "model_brier": 0.019623353929640708,
+                "row_count": 6863,
+                "status": "PASS"
+              },
+              "[2,16)": {
+                "baseline_brier": 0.6235099029103158,
+                "improvement_pct": 93.16706523662914,
+                "model_brier": 0.04260402490901887,
+                "row_count": 12,
+                "status": "INSUFFICIENT_SAMPLE"
+              },
+              "[256,1024)": {
+                "baseline_brier": 0.3711165896350558,
+                "improvement_pct": 85.6112770584313,
+                "model_brier": 0.05339893787278667,
+                "row_count": 873,
+                "status": "PASS"
+              },
+              "[64,256)": {
+                "baseline_brier": 0.3241908271791589,
+                "improvement_pct": 93.12538351679349,
+                "model_brier": 0.022286876042302013,
+                "row_count": 5447,
+                "status": "PASS"
+              }
+            },
+            "hour_of_day": {
+              "hour=0": {
+                "baseline_brier": 0.5085374014211176,
+                "improvement_pct": 94.4043316667755,
+                "model_brier": 0.02845606633392424,
+                "row_count": 576,
+                "status": "PASS"
+              },
+              "hour=1": {
+                "baseline_brier": 0.23468951361344387,
+                "improvement_pct": 60.163232337638455,
+                "model_brier": 0.09349271626611401,
+                "row_count": 369,
+                "status": "PASS"
+              },
+              "hour=10": {
+                "baseline_brier": 0.32380950753574533,
+                "improvement_pct": 98.33364414343778,
+                "model_brier": 0.005395818692927172,
+                "row_count": 1840,
+                "status": "PASS"
+              },
+              "hour=11": {
+                "baseline_brier": 0.2904341677775877,
+                "improvement_pct": 98.85137082542725,
+                "model_brier": 0.003336011584020896,
+                "row_count": 2713,
+                "status": "PASS"
+              },
+              "hour=12": {
+                "baseline_brier": 0.29167393532915525,
+                "improvement_pct": 98.72070084692574,
+                "model_brier": 0.0037313821844042016,
+                "row_count": 1091,
+                "status": "PASS"
+              },
+              "hour=13": {
+                "baseline_brier": 0.438677079887286,
+                "improvement_pct": 93.85253195272092,
+                "model_brier": 0.02696753331680786,
+                "row_count": 351,
+                "status": "PASS"
+              },
+              "hour=14": {
+                "baseline_brier": 0.4891471249441543,
+                "improvement_pct": 94.54274343916634,
+                "model_brier": 0.026694013568144104,
+                "row_count": 194,
+                "status": "PASS"
+              },
+              "hour=15": {
+                "baseline_brier": 0.5281898111998632,
+                "improvement_pct": 89.53501898464036,
+                "model_brier": 0.055274963467129554,
+                "row_count": 79,
+                "status": "INSUFFICIENT_SAMPLE"
+              },
+              "hour=16": {
+                "baseline_brier": 0.20491060108144252,
+                "improvement_pct": 98.15556503938859,
+                "model_brier": 0.0037794427643451146,
+                "row_count": 1531,
+                "status": "PASS"
+              },
+              "hour=19": {
+                "baseline_brier": 0.044257037900641914,
+                "improvement_pct": 99.9999996557349,
+                "model_brier": 1.523615370274759e-10,
+                "row_count": 3,
+                "status": "INSUFFICIENT_SAMPLE"
+              },
+              "hour=2": {
+                "baseline_brier": 0.23511883737799738,
+                "improvement_pct": 46.45366311256841,
+                "model_brier": 0.1258975247482349,
+                "row_count": 314,
+                "status": "PASS"
+              },
+              "hour=21": {
+                "baseline_brier": 0.47489351128157126,
+                "improvement_pct": 98.04912971917008,
+                "model_brier": 0.009264556377181854,
+                "row_count": 1485,
+                "status": "PASS"
+              },
+              "hour=22": {
+                "baseline_brier": 0.5566484865250725,
+                "improvement_pct": 84.74233859400114,
+                "model_brier": 0.08493154129561278,
+                "row_count": 1418,
+                "status": "PASS"
+              },
+              "hour=23": {
+                "baseline_brier": 0.6088899437412292,
+                "improvement_pct": 99.69837118810291,
+                "model_brier": 0.0018365875030674713,
+                "row_count": 1149,
+                "status": "PASS"
+              },
+              "hour=3": {
+                "baseline_brier": 0.23494051724225426,
+                "improvement_pct": 40.64524572008136,
+                "model_brier": 0.1394483667131099,
+                "row_count": 241,
+                "status": "PASS"
+              },
+              "hour=9": {
+                "baseline_brier": 0.6028223005885417,
+                "improvement_pct": 99.66069407311579,
+                "model_brier": 0.002045411794476659,
+                "row_count": 84,
+                "status": "INSUFFICIENT_SAMPLE"
+              }
+            },
+            "input_token_bin": {
+              "missing": {
+                "baseline_brier": 0.37663221746629355,
+                "improvement_pct": 93.90758402361726,
+                "model_brier": 0.02294600138912101,
+                "row_count": 13438,
+                "status": "PASS"
+              }
+            },
+            "model_id": {
+              "qwen380b_instruct": {
+                "baseline_brier": 0.39723848124824973,
+                "improvement_pct": 96.05419181320214,
+                "model_brier": 0.0156742685142049,
+                "row_count": 11735,
+                "status": "PASS"
+              },
+              "qwen380b_thinking": {
+                "baseline_brier": 0.23463896703690093,
+                "improvement_pct": 68.86539313584206,
+                "model_brier": 0.07305391993706024,
+                "row_count": 1703,
+                "status": "PASS"
+              }
+            },
+            "request_type": {
+              "None": {
+                "baseline_brier": 0.37663221746629355,
+                "improvement_pct": 93.90758402361726,
+                "model_brier": 0.02294600138912101,
+                "row_count": 13438,
+                "status": "PASS"
+              }
+            }
+          },
+          "has_subgroup_regression": false
+        }
+      },
+      {
+        "baseline_metrics": {
+          "global_reuse_rate": {
+            "auprc": 0.5851112761072119,
+            "auroc": 0.42890735307178524,
+            "baseline_auroc": 0.42890735307178524,
+            "baseline_brier": 0.31776195206649643,
+            "brier": 0.31776195206649643,
+            "expected_calibration_error": 0.2616614478428
+          },
+          "per_model_reuse_rate": {
+            "auprc": 0.5851112761072119,
+            "auroc": 0.42890735307178524,
+            "baseline_auroc": 0.42890735307178524,
+            "baseline_brier": 0.31776195206649643,
+            "brier": 0.31776195206649643,
+            "expected_calibration_error": 0.2616614478428
+          },
+          "per_session_history": {
+            "auprc": 0.6042363948620098,
+            "auroc": 0.5730994253434897,
+            "baseline_auroc": 0.42890735307178524,
+            "baseline_brier": 0.31776195206649643,
+            "brier": 3727.222429703611,
+            "expected_calibration_error": 0.0001077688656109346
+          },
+          "recency_frequency_seen": {
+            "auprc": 0.9688982152576686,
+            "auroc": 0.9343683178289677,
+            "baseline_auroc": 0.42890735307178524,
+            "baseline_brier": 0.31776195206649643,
+            "brier": 0.21220470524179263,
+            "expected_calibration_error": 0.2906415368756143
+          }
+        },
+        "best_economic_improvement_pct": -9.69440311319675,
+        "best_ml_model": "hist_gradient_boosting",
+        "economic_proxy_by_model": {
+          "hist_gradient_boosting": {
+            "decision_threshold": 0.5,
+            "migration_veto_fn_baseline": 0.0,
+            "migration_veto_fn_model": 847.0,
+            "migration_veto_fp_baseline": 7856.0,
+            "migration_veto_fp_model": 2374.0,
+            "migration_veto_tn_model": 5482.0,
+            "migration_veto_tp_model": 7890.0,
+            "n_test": 16593,
+            "prefill_savings_improvement_pct_vs_baseline": -9.69440311319675,
+            "prefill_savings_proxy_baseline": 8737.0,
+            "prefill_savings_proxy_model": 7890.0,
+            "result_quality": "shadow_proxy"
+          }
+        },
+        "holdout": "holdout_by_model_qwen3_32b",
+        "ml_metrics": {
+          "hist_gradient_boosting": {
+            "auprc": 0.960387339944209,
+            "auroc": 0.9313914044421424,
+            "baseline_auroc": 0.42890735307178524,
+            "baseline_brier": 0.31776195206649643,
+            "brier": 0.13777328831946586,
+            "expected_calibration_error": 0.15715188734743665
+          }
+        },
+        "n_test": 16593,
+        "n_test_high_reuse_labelled": 16593,
+        "n_train": 50597,
+        "n_train_high_reuse_labelled": 50597,
+        "regression_metrics": {
+          "baseline_global_mean_mae": 42.425925348035825,
+          "hgb_regressor_mae": 15.933597252830033,
+          "hgb_regressor_rmse": 24.494330975079453
+        },
+        "strongest_baseline": "per_model_reuse_rate",
+        "subgroup_audit": {
+          "by_subgroup": {
+            "bucket_size_bin": {
+              "[0,2)": {
+                "baseline_brier": 0.09165865423295903,
+                "improvement_pct": 22.84539420529603,
+                "model_brier": 0.07071887335017028,
+                "row_count": 936,
+                "status": "PASS"
+              },
+              "[1024,10000000)": {
+                "baseline_brier": 0.6212730920336529,
+                "improvement_pct": -49.84398431162743,
+                "model_brier": 0.9309403545592695,
+                "row_count": 2,
+                "status": "INSUFFICIENT_SAMPLE"
+              },
+              "[16,64)": {
+                "baseline_brier": 0.3251667157640665,
+                "improvement_pct": 57.16947884420903,
+                "model_brier": 0.1392705989869192,
+                "row_count": 13539,
+                "status": "PASS"
+              },
+              "[2,16)": {
+                "baseline_brier": 0.3022415349988492,
+                "improvement_pct": 40.22250239915763,
+                "model_brier": 0.18067242633268624,
+                "row_count": 907,
+                "status": "PASS"
+              },
+              "[256,1024)": {
+                "baseline_brier": 0.5412720764022844,
+                "improvement_pct": 78.2698867483687,
+                "model_brier": 0.11761903520167269,
+                "row_count": 281,
+                "status": "PASS"
+              },
+              "[64,256)": {
+                "baseline_brier": 0.38461889402000493,
+                "improvement_pct": 62.03363694835373,
+                "model_brier": 0.14602580566886167,
+                "row_count": 928,
+                "status": "PASS"
+              }
+            },
+            "hour_of_day": {
+              "hour=0": {
+                "baseline_brier": 0.3000912657513284,
+                "improvement_pct": 57.062503718370124,
+                "model_brier": 0.12885167607347267,
+                "row_count": 472,
+                "status": "PASS"
+              },
+              "hour=1": {
+                "baseline_brier": 0.3277271051906327,
+                "improvement_pct": 40.6680411309821,
+                "model_brier": 0.19444691125432922,
+                "row_count": 324,
+                "status": "PASS"
+              },
+              "hour=10": {
+                "baseline_brier": 0.39373983907399135,
+                "improvement_pct": 78.95762475355954,
+                "model_brier": 0.08285221443268002,
+                "row_count": 114,
+                "status": "PASS"
+              },
+              "hour=11": {
+                "baseline_brier": 0.37287214847106104,
+                "improvement_pct": 78.96523863048925,
+                "model_brier": 0.07843276664425555,
+                "row_count": 543,
+                "status": "PASS"
+              },
+              "hour=12": {
+                "baseline_brier": 0.3448279289139552,
+                "improvement_pct": 74.04641894557867,
+                "model_brier": 0.08949519602896575,
+                "row_count": 490,
+                "status": "PASS"
+              },
+              "hour=13": {
+                "baseline_brier": 0.38036909067311964,
+                "improvement_pct": 55.414701290953616,
+                "model_brier": 0.16958869527349388,
+                "row_count": 658,
+                "status": "PASS"
+              },
+              "hour=14": {
+                "baseline_brier": 0.37908083398135206,
+                "improvement_pct": 40.07844300463921,
+                "model_brier": 0.22715113799262487,
+                "row_count": 833,
+                "status": "PASS"
+              },
+              "hour=15": {
+                "baseline_brier": 0.33882848069305965,
+                "improvement_pct": 31.437473926633434,
+                "model_brier": 0.23230936541917083,
+                "row_count": 1300,
+                "status": "PASS"
+              },
+              "hour=16": {
+                "baseline_brier": 0.15279888381758056,
+                "improvement_pct": 41.171167004355596,
+                "model_brier": 0.0898898001802532,
+                "row_count": 1602,
+                "status": "PASS"
+              },
+              "hour=17": {
+                "baseline_brier": 0.3825817685557265,
+                "improvement_pct": 70.68735763076396,
+                "model_brier": 0.11214482558663844,
+                "row_count": 5378,
+                "status": "PASS"
+              },
+              "hour=18": {
+                "baseline_brier": 0.22236159203240952,
+                "improvement_pct": 60.45831461308903,
+                "model_brier": 0.08792552114278186,
+                "row_count": 604,
+                "status": "PASS"
+              },
+              "hour=19": {
+                "baseline_brier": 0.3139448031056644,
+                "improvement_pct": 32.31789088732303,
+                "model_brier": 0.21248446419155467,
+                "row_count": 407,
+                "status": "PASS"
+              },
+              "hour=20": {
+                "baseline_brier": 0.3386714797973729,
+                "improvement_pct": 36.09051882077844,
+                "model_brier": 0.21644318564049317,
+                "row_count": 514,
+                "status": "PASS"
+              },
+              "hour=21": {
+                "baseline_brier": 0.35038157112803014,
+                "improvement_pct": 33.62336296185874,
+                "model_brier": 0.23257150371618934,
+                "row_count": 466,
+                "status": "PASS"
+              },
+              "hour=22": {
+                "baseline_brier": 0.3117619163409886,
+                "improvement_pct": 50.1654873970191,
+                "model_brier": 0.15536503149024472,
+                "row_count": 460,
+                "status": "PASS"
+              },
+              "hour=23": {
+                "baseline_brier": 0.315051255758775,
+                "improvement_pct": 91.20216303559411,
+                "model_brier": 0.027717695835970464,
+                "row_count": 320,
+                "status": "PASS"
+              },
+              "hour=5": {
+                "baseline_brier": 0.3213006809888746,
+                "improvement_pct": -39.23044739797241,
+                "model_brier": 0.4473483756335422,
+                "row_count": 98,
+                "status": "INSUFFICIENT_SAMPLE"
+              },
+              "hour=6": {
+                "baseline_brier": 0.3198437183880094,
+                "improvement_pct": 44.007446304997856,
+                "model_brier": 0.1790886657584976,
+                "row_count": 436,
+                "status": "PASS"
+              },
+              "hour=7": {
+                "baseline_brier": 0.3032048360194713,
+                "improvement_pct": 50.669899720477204,
+                "model_brier": 0.14957124966076785,
+                "row_count": 444,
+                "status": "PASS"
+              },
+              "hour=8": {
+                "baseline_brier": 0.3478864711442157,
+                "improvement_pct": 41.98195727616309,
+                "model_brier": 0.20183692145889967,
+                "row_count": 175,
+                "status": "PASS"
+              },
+              "hour=9": {
+                "baseline_brier": 0.0937453854161114,
+                "improvement_pct": 40.542923715831186,
+                "model_brier": 0.05573826531974542,
+                "row_count": 955,
+                "status": "PASS"
+              }
+            },
+            "input_token_bin": {
+              "missing": {
+                "baseline_brier": 0.31776195206649643,
+                "improvement_pct": 56.6426101603773,
+                "model_brier": 0.13777328831946586,
+                "row_count": 16593,
+                "status": "PASS"
+              }
+            },
+            "model_id": {
+              "qwen3_32b": {
+                "baseline_brier": 0.31776195206649643,
+                "improvement_pct": 56.6426101603773,
+                "model_brier": 0.13777328831946586,
+                "row_count": 16593,
+                "status": "PASS"
+              }
+            },
+            "request_type": {
+              "None": {
+                "baseline_brier": 0.31776195206649643,
+                "improvement_pct": 56.6426101603773,
+                "model_brier": 0.13777328831946586,
+                "row_count": 16593,
+                "status": "PASS"
+              }
+            }
+          },
+          "has_subgroup_regression": false
+        }
+      }
+    ],
+    "row_count": 67190
+  },
+  "time_holdout_economic_improvement_pct": -2.008422416585682,
+  "uses_oracle_as_headline": false,
+  "worst_by_model_economic_improvement_pct": -9.69440311319675
+}

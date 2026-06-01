@@ -1,0 +1,220 @@
+{
+  "datasets": {
+    "cc_traces": {
+      "analysis_sample_committed": false,
+      "available_cache_fields": [
+        "block_hashes_hash",
+        "block_hashes_count",
+        "block_size_tokens",
+        "session_id",
+        "turn_index",
+        "request_arrival_delta_s",
+        "think_time_s",
+        "api_time_s",
+        "ttft_s",
+        "request_type"
+      ],
+      "feature_candidates": [
+        "session_id",
+        "turn_index",
+        "session_turns_so_far",
+        "input_tokens",
+        "block_hashes_count (prior turn)",
+        "rolling_per_hash_seen_count",
+        "request_type",
+        "model_id",
+        "hour_of_day"
+      ],
+      "field_quality": {
+        "api_time_s": "real (label only at decision-time \u2014 leakage)",
+        "block_hashes_count": "real",
+        "block_hashes_hash": "real",
+        "input_tokens": "real",
+        "intra_session_reuse": "derived",
+        "session_id": "real",
+        "ttft_s": "real (label only at decision-time \u2014 leakage)",
+        "turn_index": "real"
+      },
+      "fixture_committed": true,
+      "license_redistribution_status": "permissive_apache_2_0",
+      "missing_cache_fields": [
+        "reuse_percentage (no label)",
+        "cache_hit (no label)",
+        "queue_state",
+        "kv_evictions_per_s",
+        "gpu_type"
+      ],
+      "phase0_decision": "use_for_training",
+      "phase0_decision_reason": "expanded sample passes all gates: 136118 requests, 949 sessions, unique-hash ratio 177.92x, repeated=912, intra_session_reuse=129299",
+      "raw_committed": false,
+      "rows": 136118,
+      "source": "3000_mib_expanded",
+      "suitable_for": [
+        "training",
+        "validation",
+        "diagnostic"
+      ],
+      "target_candidates": [
+        "intra_session_reuse (derived proxy)"
+      ]
+    },
+    "lmcache": {
+      "analysis_sample_committed": false,
+      "available_cache_fields": [
+        "session_id",
+        "pre_gap_s",
+        "model_id",
+        "output_tokens"
+      ],
+      "feature_candidates": [
+        "session_id",
+        "session_turns_so_far",
+        "model_id",
+        "pre_gap_s"
+      ],
+      "field_quality": {
+        "model_id": "real",
+        "output_tokens": "real (label only at decision-time)",
+        "pre_gap_s": "real",
+        "session_id": "real"
+      },
+      "fixture_committed": true,
+      "license_redistribution_status": "permissive_mit",
+      "missing_cache_fields": [
+        "reuse_percentage",
+        "block_hashes",
+        "request_arrival_delta_s",
+        "ttft_s"
+      ],
+      "normalized_sample_committed": true,
+      "raw_committed": false,
+      "rows": 4976,
+      "suitable_for": [
+        "cross_dataset_validation_proxy",
+        "diagnostic"
+      ],
+      "target_candidates": [
+        "intra_session_reuse (very weak proxy \u2014 session continuity only)"
+      ]
+    },
+    "prefixbench": {
+      "analysis_sample_committed": false,
+      "available_cache_fields": [
+        "prefix_group",
+        "scenario",
+        "expected_shared_prefix_tokens",
+        "request_order"
+      ],
+      "feature_candidates": [
+        "prefix_group",
+        "scenario",
+        "request_order",
+        "prompt_text_len"
+      ],
+      "field_quality": {
+        "max_tokens": "real",
+        "prefix_group": "real (synthetic-trace identifier)",
+        "prompt_text": "synthetic",
+        "prompt_text_len": "real",
+        "scenario": "real"
+      },
+      "fixture_committed": true,
+      "license_redistribution_status": "unspecified_no_committed_sample",
+      "missing_cache_fields": [
+        "real cache_hit",
+        "queue_state",
+        "ttft_s",
+        "session_id"
+      ],
+      "raw_committed": false,
+      "rows": 5,
+      "suitable_for": [
+        "priors_only",
+        "synthetic_generalization_check"
+      ],
+      "target_candidates": [
+        "synthetic_prefix_reuse (prefix_group identity)"
+      ]
+    },
+    "swissai_bucket_reuse": {
+      "analysis_sample_committed": false,
+      "available_cache_fields": [
+        "reuse_percentage",
+        "reused_bucket_count",
+        "bucket_count",
+        "bucket_ids_hash",
+        "bucket_ids_sample"
+      ],
+      "configs": {
+        "apertus_70b_bucket_reuse": 15362,
+        "llama3_70b_bucket_reuse": 20332,
+        "qwen380b_instruct_bucket_reuse": 11735,
+        "qwen380b_thinking_bucket_reuse": 3168,
+        "qwen3_32b_bucket_reuse": 16593
+      },
+      "feature_candidates": [
+        "model_id",
+        "bucket_count",
+        "bucket_ids_hash",
+        "rolling_per_hash_seen_count",
+        "rolling_per_model_reuse_pct",
+        "rolling_per_session_mean_block_count",
+        "hour_of_day",
+        "input_token_bin (when available)"
+      ],
+      "field_quality": {
+        "bucket_count": "real (decision-time observable)",
+        "bucket_ids_hash": "real (decision-time observable)",
+        "created_at_iso": "real",
+        "model_id": "real",
+        "reuse_percentage": "real (label only \u2014 leakage as feature)",
+        "reused_bucket_count": "real (label only \u2014 leakage as feature)"
+      },
+      "fixture_committed": true,
+      "license_redistribution_status": "other_swissai_research_license",
+      "missing_cache_fields": [
+        "actual_ttft_s",
+        "actual_e2e_latency_s",
+        "cache_hit",
+        "queue_state",
+        "model_residency_state"
+      ],
+      "raw_committed": false,
+      "rows": 67190,
+      "suitable_for": [
+        "training",
+        "validation",
+        "cross_model_holdout"
+      ],
+      "target_candidates": [
+        "reuse_percentage",
+        "high_reuse"
+      ]
+    }
+  },
+  "doc_version": "cache_prefix_reuse_data_readiness_audit_v1",
+  "production_claim": false,
+  "shadow_only": true,
+  "strict_leakage_rules": {
+    "future_requests_cannot_predict_current_request": true,
+    "post_decision_fields_excluded": [
+      "actual_e2e_latency_s",
+      "actual_output_tokens",
+      "actual_tpot_s",
+      "actual_ttft_s",
+      "api_time_s",
+      "cache_hit",
+      "completion_timestamp",
+      "completion_timestamp_s",
+      "output_tokens",
+      "prefix_hit",
+      "reuse_percentage",
+      "reused_bucket_count",
+      "reused_buckets",
+      "tpot_s",
+      "ttft_s"
+    ],
+    "reuse_percentage_cannot_be_feature_when_predicting_reuse": true,
+    "target_derived_bucket_overlap_excluded_unless_observable": true
+  }
+}

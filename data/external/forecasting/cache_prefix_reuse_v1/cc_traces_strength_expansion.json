@@ -1,0 +1,90 @@
+{
+  "analysis_sample_committed": false,
+  "decision": "use_for_training",
+  "decision_reason": "expanded sample passes all gates: 136118 requests, 949 sessions, unique-hash ratio 177.92x, repeated=912, intra_session_reuse=129299",
+  "deltas": {
+    "cache_loss_proxy_examples_delta": 1145,
+    "intra_session_reuse_examples_delta": 128559,
+    "repeated_kv_block_hashes_delta": 909,
+    "request_count_delta": 135357,
+    "session_count_delta": 942,
+    "unique_kv_block_hashes_delta": 134104,
+    "unique_kv_block_hashes_ratio": 177.91820580474933
+  },
+  "doc_version": "cc_traces_strength_expansion_v1",
+  "evaluated_at_s": 1780282525.0641098,
+  "modifies_controllers_or_defaults": false,
+  "modifies_robust_energy_engine": false,
+  "new_sample_stats_3000_mib_cap": {
+    "api_time_coverage_pct": 100.0,
+    "api_time_coverage_rows": 136118,
+    "cache_loss_proxy_examples": 1145,
+    "intra_session_reuse_examples": 129299,
+    "label": "3000_MiB_cap",
+    "model_distribution": {
+      "claude-haiku-4-5-20251001": 1,
+      "claude-opus-4-6": 39317,
+      "claude-opus-4-7": 94482,
+      "claude-sonnet-4-6": 2318
+    },
+    "repeated_kv_block_hashes": 912,
+    "request_count": 136118,
+    "request_type_distribution": {
+      "n": 1663,
+      "s": 134455
+    },
+    "session_count": 949,
+    "think_time_coverage_pct": 99.66352723372368,
+    "think_time_coverage_rows": 135660,
+    "ttft_coverage_pct": 98.76210346904891,
+    "ttft_coverage_rows": 134433,
+    "unique_kv_block_hashes": 134862
+  },
+  "no_raw_prompt_completion_text_committed": true,
+  "normalized_sample_bytes": 2511946,
+  "normalized_sample_caps": {
+    "max_bytes": 8388608,
+    "max_rows": 5000
+  },
+  "normalized_sample_committed": true,
+  "normalized_sample_path": "data/external/hf/semianalysisai__cc-traces-weka-no-subagents-051226/traces_3000mib/processed/normalized_sample.jsonl",
+  "normalized_sample_rows": 5000,
+  "normalized_sample_sha256": "a6f868002106c8838da4f69ef6b1c6cad9584803107bfd3c648f53df50103b5d",
+  "old_sample_stats_80_mib_committed": {
+    "api_time_coverage_pct": 100.0,
+    "api_time_coverage_rows": 761,
+    "cache_loss_proxy_examples": 0,
+    "intra_session_reuse_examples": 740,
+    "label": "80_MiB_committed",
+    "model_distribution": {
+      "claude-opus-4-6": 120,
+      "claude-opus-4-7": 638,
+      "claude-sonnet-4-6": 3
+    },
+    "repeated_kv_block_hashes": 3,
+    "request_count": 761,
+    "request_type_distribution": {
+      "s": 761
+    },
+    "session_count": 7,
+    "think_time_coverage_pct": 99.60578186596584,
+    "think_time_coverage_rows": 758,
+    "ttft_coverage_pct": 100.0,
+    "ttft_coverage_rows": 761,
+    "unique_kv_block_hashes": 758
+  },
+  "production_claim": false,
+  "raw_committed": false,
+  "raw_download_manifest": {
+    "dest": "/home/user/energy2/data/external/hf/semianalysisai__cc-traces-weka-no-subagents-051226/raw/traces_3000mib.jsonl",
+    "downloaded_bytes": 2769297121,
+    "error": null,
+    "max_bytes": 3145728000,
+    "status": 206,
+    "truncated": false,
+    "url": "https://huggingface.co/datasets/semianalysisai/cc-traces-weka-no-subagents-051226/resolve/main/traces.jsonl"
+  },
+  "raw_url": "https://huggingface.co/datasets/semianalysisai/cc-traces-weka-no-subagents-051226/resolve/main/traces.jsonl",
+  "shadow_only": true,
+  "uses_oracle_as_headline": false
+}
