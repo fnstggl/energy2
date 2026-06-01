@@ -1,0 +1,111 @@
+{
+  "answers": {
+    "q10_rows_with_cold_start_cost": 0,
+    "q11_rows_with_migration_cost": 0,
+    "q12_rows_with_real_cache_hit": 0,
+    "q13_dominant_datasets_per_group": {
+      "all_four": {},
+      "cache_reuse": {
+        "swissai-serving-trace": 60000
+      },
+      "cache_value": {
+        "swissai-serving-trace": 60000
+      },
+      "energy_carbon": {
+        "AcmeTrace": 40000,
+        "llm-perf-leaderboard": 2598
+      },
+      "gpu_cost": {
+        "AcmeTrace": 59907,
+        "cara_latency_prediction": 60000,
+        "cc-traces-weka-no-subagents-051226": 5000,
+        "swissai-serving-trace": 60000
+      },
+      "latency_ttft_tpot_e2e": {
+        "cara_latency_prediction": 60000,
+        "cc-traces-weka-no-subagents-051226": 5000,
+        "llm-perf-leaderboard": 2598,
+        "swissai-serving-trace": 60000
+      }
+    },
+    "q1_rows_with_gpu_cost": 187505,
+    "q2_rows_with_prefill_or_decode_cost": 127598,
+    "q3_rows_with_cache_value": 60000,
+    "q4_rows_with_energy_or_carbon_physical": 42598,
+    "q5_rows_with_all_four": 0,
+    "q6_rows_with_all_four_plus_latency": 0,
+    "q7_rows_with_all_four_plus_queue": 0,
+    "q8_rows_with_all_four_plus_cache_reuse": 0,
+    "q9_rows_with_all_four_plus_energy_kwh": 0
+  },
+  "field_presence_counts": {
+    "cache_reuse_pct": 60000,
+    "e2e_latency_s": 187505,
+    "energy_kwh": 42598,
+    "estimated_cache_value_usd": 60000,
+    "estimated_carbon_cost_usd": 0,
+    "estimated_carbon_kg": 42598,
+    "estimated_cold_start_cost_usd": 0,
+    "estimated_decode_cost_usd": 127598,
+    "estimated_energy_cost_usd": 42598,
+    "estimated_gpu_cost_usd": 187505,
+    "estimated_migration_cost_usd": 0,
+    "estimated_prefill_cost_usd": 127598,
+    "gpu_power_w": 40000,
+    "gpu_price_usd_per_hour": 187505,
+    "gpu_type": 187505,
+    "kv_utilization": 60000,
+    "model_id": 187505,
+    "output_tokens": 127598,
+    "prompt_tokens": 127598,
+    "queue_wait_s": 19907,
+    "sla_safe_goodput_per_dollar": 187505,
+    "source_dataset_id": 187505,
+    "tpot_s": 127598,
+    "ttft_s": 127598
+  },
+  "notes": [
+    "Economic cost / goodput targets are DETERMINISTIC transforms of operational inputs x a prior GPU price (see docs/ECONOMIC_OVERLAY_LAYER_V1.md). The deterministic overlay formula is the ground truth; ML over a derived cost target is diagnostic_only and can only yield alpha by forecasting upstream inputs (latency / reuse / energy).",
+    "SwissAI ttft/tpot/e2e and AcmeTrace-power e2e are INJECTED CONSTANTS (single value per dataset), not trainable measured latency; excluded from latency target training.",
+    "No measured per-request cache_hit exists in any source (q12=0)."
+  ],
+  "signal_variability_by_dataset": {
+    "cache_reuse_pct": {
+      "swissai-serving-trac": "variable"
+    },
+    "e2e_latency_s": {
+      "AcmeTrace": "variable",
+      "cara_latency_predict": "variable",
+      "cc-traces-weka-no-su": "variable",
+      "llm-perf-leaderboard": "variable",
+      "swissai-serving-trac": "constant"
+    },
+    "estimated_gpu_cost_usd": {
+      "AcmeTrace": "variable",
+      "cara_latency_predict": "variable",
+      "cc-traces-weka-no-su": "variable",
+      "llm-perf-leaderboard": "variable",
+      "swissai-serving-trac": "constant"
+    },
+    "sla_safe_goodput_per_dollar": {
+      "AcmeTrace": "variable",
+      "cara_latency_predict": "variable",
+      "cc-traces-weka-no-su": "variable",
+      "llm-perf-leaderboard": "variable",
+      "swissai-serving-trac": "variable"
+    },
+    "tpot_s": {
+      "cara_latency_predict": "variable",
+      "cc-traces-weka-no-su": "constant",
+      "llm-perf-leaderboard": "variable",
+      "swissai-serving-trac": "constant"
+    },
+    "ttft_s": {
+      "cara_latency_predict": "variable",
+      "cc-traces-weka-no-su": "variable",
+      "llm-perf-leaderboard": "variable",
+      "swissai-serving-trac": "constant"
+    }
+  },
+  "total_rows": 187505
+}

@@ -1,0 +1,102 @@
+{
+  "binding_holdout_policy": "time > by_dataset > high_cost_tail; random holdout decorative only",
+  "cold_start_migration_verdict": {
+    "binding_rule": "These targets are excluded from headline goodput/$; Phase 7 provides transparent sourced sensitivity sweeps only.",
+    "cold_start": "blocked_by_missing_labels \u2014 simulator_prior sweep only",
+    "migration": "blocked_by_missing_labels \u2014 a real cache-loss PROXY exists in CC-traces but is not realized in the overlay rows; simulator_prior sweep only"
+  },
+  "doc_version": "economic_ml_alpha_v1",
+  "economic_alpha": {
+    "cache_classifier_beats_baseline_binding": false,
+    "cost_targets_are_deterministic": true,
+    "ml_alpha_channel": "forecasting upstream latency/reuse, not re-predicting deterministic cost",
+    "ttft_ml_improvement_pct_binding": 2.43
+  },
+  "overlap_answers": {
+    "q10_rows_with_cold_start_cost": 0,
+    "q11_rows_with_migration_cost": 0,
+    "q12_rows_with_real_cache_hit": 0,
+    "q13_dominant_datasets_per_group": {
+      "all_four": {},
+      "cache_reuse": {
+        "swissai-serving-trace": 60000
+      },
+      "cache_value": {
+        "swissai-serving-trace": 60000
+      },
+      "energy_carbon": {
+        "AcmeTrace": 40000,
+        "llm-perf-leaderboard": 2598
+      },
+      "gpu_cost": {
+        "AcmeTrace": 59907,
+        "cara_latency_prediction": 60000,
+        "cc-traces-weka-no-subagents-051226": 5000,
+        "swissai-serving-trace": 60000
+      },
+      "latency_ttft_tpot_e2e": {
+        "cara_latency_prediction": 60000,
+        "cc-traces-weka-no-subagents-051226": 5000,
+        "llm-perf-leaderboard": 2598,
+        "swissai-serving-trace": 60000
+      }
+    },
+    "q1_rows_with_gpu_cost": 187505,
+    "q2_rows_with_prefill_or_decode_cost": 127598,
+    "q3_rows_with_cache_value": 60000,
+    "q4_rows_with_energy_or_carbon_physical": 42598,
+    "q5_rows_with_all_four": 0,
+    "q6_rows_with_all_four_plus_latency": 0,
+    "q7_rows_with_all_four_plus_queue": 0,
+    "q8_rows_with_all_four_plus_cache_reuse": 0,
+    "q9_rows_with_all_four_plus_energy_kwh": 0
+  },
+  "per_target_final_status": {
+    "cache_reuse_pct": "shadow_ready_for_integration_review",
+    "e2e_latency_s": "diagnostic_only",
+    "energy_kwh": "diagnostic_only",
+    "estimated_gpu_cost_usd_DETERMINISTIC": "diagnostic_only_deterministic_formula",
+    "high_reuse": "diagnostic_only",
+    "peak_vram_gb": "shadow_ready_for_integration_review",
+    "tpot_s": "diagnostic_only",
+    "ttft_s": "promising_needs_validation"
+  },
+  "pilot_telemetry_needed": [
+    "model_load_duration_s (server-class vLLM/TGI)",
+    "reroute_delay_s",
+    "warmup_delay_s",
+    "tail_latency_uplift_after_migration",
+    "migration_veto_label",
+    "operator per-GPU $/hr",
+    "operator energy tariff",
+    "operator carbon price",
+    "real per-request cache_hit",
+    "measured model_load + migration seconds"
+  ],
+  "production_claim": false,
+  "real_execution": false,
+  "shadow_only": true,
+  "shadow_ready_caveats": {
+    "cache_reuse_pct": "single-dataset target (['swissai-serving-trace']); binding holdout was 'time' (temporal/tail) \u2014 NO cross-dataset generalization evidence. Needs a second dataset or pilot telemetry before integration.",
+    "peak_vram_gb": "single-dataset target (['llm-perf-leaderboard']); binding holdout was 'high_tail' (temporal/tail) \u2014 NO cross-dataset generalization evidence. Needs a second dataset or pilot telemetry before integration."
+  },
+  "targets_blocked_by_missing_labels": [
+    "cold_start_cost_usd",
+    "migration_cost_usd",
+    "migration_veto_label",
+    "timeout_or_failure_risk"
+  ],
+  "targets_trainable_now": [
+    "ttft_s",
+    "e2e_latency_s",
+    "tpot_s",
+    "cache_reuse_pct",
+    "high_reuse",
+    "peak_vram_gb",
+    "energy_kwh",
+    "estimated_gpu_cost_usd_DETERMINISTIC"
+  ],
+  "total_rows": 187505,
+  "uses_fifo_as_headline": false,
+  "uses_oracle_as_headline": false
+}

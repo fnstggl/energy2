@@ -1,0 +1,73 @@
+{
+  "economic_alpha_finding": {
+    "cache_classifier_beats_baseline_binding": false,
+    "cost_targets_are_deterministic": true,
+    "ml_alpha_channel": "forecasting upstream latency/reuse, not re-predicting deterministic cost",
+    "ttft_ml_improvement_pct_binding": 2.43
+  },
+  "overlay_class_counts": {
+    "cross_dataset_joined": 144907,
+    "scenario_prior": 42598
+  },
+  "per_overlay_class_goodput_per_dollar": {
+    "cross_dataset_joined": {
+      "mean": 29699.420174491326,
+      "n": 144907
+    },
+    "measured_same_record": {
+      "mean": null,
+      "n": 0
+    },
+    "scenario_prior": {
+      "mean": 98.71305152803552,
+      "n": 42598
+    }
+  },
+  "primary_baseline": "B_overlay_deterministic_formula",
+  "primary_kpi": "sla_safe_goodput_per_dollar + economic_regret_vs_strongest_baseline",
+  "production_claim": false,
+  "uses_fifo_as_headline": false,
+  "uses_oracle_as_headline": false,
+  "variants": {
+    "A_existing_scorer_baseline": {
+      "description": "production constraint scorer w/o overlay \u2014 0 economic terms computable",
+      "goodput_per_dollar_rows": 0
+    },
+    "B_overlay_deterministic_formula": {
+      "description": "economic overlay deterministic formula (STRONGEST baseline; ground truth for cost targets)",
+      "goodput_per_dollar_rows": 187505,
+      "mean_goodput_per_dollar": 22974.634584645777
+    },
+    "C_overlay_plus_deterministic_priors": {
+      "description": "overlay + per-(model,gpu) median latency/reuse priors",
+      "goodput_per_dollar_rows": 187505,
+      "note": "deterministic priors do not change the realised goodput/$ ground truth; they would change FORECASTED decisions only"
+    },
+    "D_overlay_plus_ml_latency": {
+      "description": "overlay + ML latency forecasters",
+      "note": "ML latency improvement is the only channel to economic alpha here; see below",
+      "ttft_ml_mae_improvement_pct_binding_holdout": 2.43
+    },
+    "E_overlay_plus_ml_cache": {
+      "cache_classifier_beats_baseline_binding_holdout": false,
+      "description": "overlay + ML cache forecasters"
+    },
+    "F_overlay_plus_ml_cost_energy": {
+      "description": "overlay + ML cost/energy forecasters",
+      "note": "cost targets are deterministic; ML cannot beat the formula \u2192 diagnostic_only"
+    },
+    "G_overlay_plus_ml_goodput": {
+      "description": "overlay + ML SLA-safe goodput/$ forecaster",
+      "note": "goodput/$ is deterministic given inputs \u2192 diagnostic_only"
+    },
+    "H_overlay_plus_all_eligible_ml": {
+      "cache_beats_baseline": false,
+      "description": "overlay + all eligible ML modules (latency + cache)",
+      "ttft_ml_mae_improvement_pct": 2.43
+    },
+    "I_simulator_prior_migration_cold_start_only": {
+      "description": "simulator-prior sensitivity ONLY (no measured labels)",
+      "status": "proxy_promising_only \u2014 never headline"
+    }
+  }
+}
