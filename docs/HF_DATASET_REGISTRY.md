@@ -112,6 +112,15 @@ scripts/ingest_hf_optimum_benchmark.py
      at p50/p90/p95/p99, per-request GPU/CPU/RAM energy (kWh) and peak
      VRAM/RAM memory.
 
+scripts/ingest_hf_llm_energy_consumption.py
+  -> 4 ejhusom/llm-inference-energy-consumption configs (Round 4) covering
+     cross-hardware-tier (laptop2 vs workstation) × workload (alpaca vs
+     codefeedback) × model-size (gemma:7b, codellama:7b, codellama:70b).
+     Real per-request Ollama timing (total / load / prompt / response
+     duration ns) + per-request CodeCarbon energy (kWh split CPU / GPU /
+     total). First Ollama-engine entry + first consumer/laptop-tier prior
+     in the federated corpus. License: cc-by-sa-4.0.
+
 scripts/run_hf_corpus_evaluations.py
   -> data/external/hf_discovery/hf_corpus_evaluation_summary.json
 ```
@@ -238,6 +247,10 @@ Rules (binding):
 | `optimum-benchmark/llm-perf-leaderboard` | **`pytorch_cpu_unquantized_32vCPU_C7i`** | `latency_benchmark_trace` | Tier 4 | `promoted_for_performance_priors` (+ `constraint_aware_evaluation`, `training_priors`) | 5 | **1,128** | strong | 2026-06-01 |
 | `Exgentic/agent-llm-traces` | **`swebench_claude_code_shard12`** | `request_shape_trace` | Tier 5 | `promoted_for_training_priors` | 5 | **2,294** | moderate | 2026-06-01 |
 | `ssong1/llmperf-bedrock` | **`bedrock_claude_instant_v1`** | `latency_benchmark_trace` | Tier 4 | `promoted_for_performance_priors` (+ `constraint_aware_evaluation`, `training_priors`) | 5 | **350** | moderate | 2026-06-01 |
+| `ejhusom/llm-inference-energy-consumption` | **`alpaca_gemma_7b_laptop2`** | `latency_benchmark_trace` | Tier 4 | `promoted_for_performance_priors` (+ `constraint_aware_evaluation`, `training_priors`) | 5 | **5,099** | strong | 2026-06-01 |
+| `ejhusom/llm-inference-energy-consumption` | **`alpaca_gemma_7b_workstation`** | `latency_benchmark_trace` | Tier 4 | `promoted_for_performance_priors` (+ `constraint_aware_evaluation`, `training_priors`) | 5 | **8,735** | strong | 2026-06-01 |
+| `ejhusom/llm-inference-energy-consumption` | **`codefeedback_codellama_7b_workstation`** | `latency_benchmark_trace` | Tier 4 | `promoted_for_performance_priors` (+ `constraint_aware_evaluation`, `training_priors`) | 5 | **3,109** | moderate | 2026-06-01 |
+| `ejhusom/llm-inference-energy-consumption` | **`codefeedback_codellama_70b_workstation`** | `latency_benchmark_trace` | Tier 4 | `promoted_for_training_priors` | 5 | 161 | weak | 2026-06-01 |
 
 > **CARA** is the first Tier 2 (public telemetry trace) entry in the
 > federated corpus. CARA **train_flat** + **train_queue_details** are
@@ -842,6 +855,158 @@ Rules (binding):
   that the closed-API caveat + `concurrency=1` caveat are pinned in
   the `limitations` list.
 
+> **Round-4 broadened discovery 2026-06-01.** One new candidate from
+> Round-4 keyword-expansion has been bounded-ingested as Tier-4
+> `latency_benchmark_trace`. 7 negative-result records (4 license-
+> unspecified or duplicate forks of the canonical SINTEF dataset; 2
+> low-information-density code/tool benchmarks; 1 gated companion
+> dataset re-confirmed) are recorded for completeness.
+>
+> Ingested: **`ejhusom/llm-inference-energy-consumption`** — the
+> SINTEF Digital + Singapore Management University LLM inference
+> energy datasheet (Husom et al. 2024, arxiv:2407.16893
+> *The Price of Prompting*). 4 of 16 CSV files were bounded-ingested
+> covering 3 independent comparison axes:
+>
+> - Cross-hardware-tier: `alpaca_gemma_7b_laptop2` (5,099 rows, strong)
+>   vs `alpaca_gemma_7b_workstation` (8,735 rows, strong) — first
+>   public laptop-tier prior in the Aurelius federated corpus.
+> - Cross-workload: `alpaca_gemma_7b_workstation` (instruction) vs
+>   `codefeedback_codellama_7b_workstation` (code, 3,109 rows
+>   moderate) — same workstation tier, different prompt distributions.
+> - Cross-model-size: `codefeedback_codellama_7b_workstation` vs
+>   `codefeedback_codellama_70b_workstation` (161 rows, weak; only
+>   promoted_for_training_priors) — code workload on the same
+>   workstation under a 10× model size jump.
+>
+> License: **cc-by-sa-4.0** (committed normalised sample is
+> redistribution-safe under attribution + share-alike). Engine:
+> **Ollama** — first Ollama engine entry in the corpus (existing
+> entries are vLLM / SGLang / Triton / Ray Serve / llama.cpp /
+> Bedrock).
+>
+> Ingest script: `scripts/ingest_hf_llm_energy_consumption.py`.
+> Rollup at `data/external/hf_discovery/round4_broadened_discovery_audit_summary.json`.
+> Tests: `tests/test_hf_llm_energy_consumption_ingest.py` (122 tests,
+> all green).
+
+#### ejhusom/llm-inference-energy-consumption — Tier-4 cross-hardware-tier energy + timing (Round 4)
+
+- **Provenance.** [`ejhusom/llm-inference-energy-consumption`](https://huggingface.co/datasets/ejhusom/llm-inference-energy-consumption)
+  — cc-by-sa-4.0 datasheet (Husom et al. 2024, arxiv:2407.16893
+  *The Price of Prompting: Profiling Energy Use in Large Language
+  Model Inference*) by the SINTEF Digital Trustworthy Green IoT
+  Software group + Singapore Management University. The full dataset
+  spans 16 CSV files = 4 (Alpaca + Code-Feedback) × 5 model
+  configurations × 4 hardware classes (laptop1 / laptop2 / workstation
+  / server). Engine: **Ollama** (HTTP API; Ollama internally uses
+  llama.cpp). Energy measurement: **CodeCarbon** (per-request, kWh).
+- **Why it fills a gap.** Every existing Tier-4 latency benchmark in
+  the Aurelius federated corpus (AgentPerfBench, Odyn, Memoriant,
+  Intellistream, optimum-benchmark, ssong1/llmperf-bedrock) measures
+  server-class hardware only — A100 / A10 / T4 / DGX Spark / 32vCPU
+  Sapphire-Rapids / Bedrock-closed-API. The Aurelius placement /
+  routing / deferral engine previously had **NO public prior** for
+  consumer / laptop tier hardware. This is also the first Ollama-engine
+  entry in the corpus.
+- **Configs ingested (4 of 16 available).** Picked to cover three
+  independent comparison axes simultaneously:
+  - **`alpaca_gemma_7b_laptop2`** (5,099 rows, strong) —
+    laptop2 + gemma:7b + alpaca instruction prompts.
+  - **`alpaca_gemma_7b_workstation`** (8,735 rows, strong) —
+    workstation + gemma:7b + alpaca instruction prompts. Matches the
+    laptop2 model + workload for direct cross-tier comparison.
+  - **`codefeedback_codellama_7b_workstation`** (3,109 rows,
+    moderate) — workstation + codellama:7b + Code-Feedback prompts.
+    Cross-workload pair with the alpaca / gemma:7b workstation config.
+  - **`codefeedback_codellama_70b_workstation`** (161 rows, weak) —
+    workstation + codellama:70b + Code-Feedback. Cross-model-size pair
+    with codellama:7b; capped at training_priors only due to weak
+    sample strength.
+- **Available signals (all configs, per-request real values).**
+  Ollama-reported `total_duration_ns`, `load_duration_ns`,
+  `prompt_duration_ns`, `response_duration_ns`; `prompt_token_length`
+  + `response_token_length`; per-request CodeCarbon energy in kWh
+  split into `energy_kwh_llm_cpu` / `energy_kwh_llm_gpu` /
+  `energy_kwh_llm_total` (CPU+GPU) plus a separate
+  `energy_kwh_monitoring` (framework overhead). Wall-clock
+  `start_time`, `end_time`, `created_at`.
+- **Derived signals (labelled DERIVED in field_quality).**
+  `e2e_latency_ms = total_duration_ns / 1e6`,
+  `ttft_proxy_ms = prompt_duration_ns / 1e6`,
+  `tpot_proxy_ms_per_token = response_duration_ns / (1e6 ×
+  response_token_length)`,
+  `request_output_throughput_tps = response_token_length /
+  (response_duration_ns / 1e9)`.
+- **Missing signals.** `ttft_measured` (only an Ollama prompt_eval
+  PROXY is available — schema_mapping labels it `derived`); `itl` (no
+  per-token streaming timestamps); `queue_state` / `queue_wait` /
+  `queue_depth` (concurrency = 1, no contention); `memory_pressure` /
+  `gpu_utilization` / `gpu_type` (CodeCarbon reports kWh aggregates,
+  not raw nvidia-smi); `batch_size` / `concurrency` (single-stream);
+  `timeout_label` / `sla_label` (type='unknown' across all rows);
+  `autoscaling` / `replica_count` (single host); `kv_cache_size` /
+  `cache_hit` (not instrumented); `kernel_duration` (high-level
+  serving, not kernel-level); `carbon_intensity` (energy is in kWh —
+  combine with regional g CO2/kWh before reporting carbon).
+- **Recommended Aurelius uses.**
+  - **Cross-hardware-tier placement priors** — first public dataset
+    that lets the placement engine reason about laptop vs workstation
+    energy + latency for the SAME (model, workload) pair. For example
+    gemma:7b alpaca: laptop2 p50 e2e ~2.0 s vs workstation p50 e2e
+    ~35.6 s — a counter-intuitive finding (the labelled "workstation"
+    is a slower or older GPU than this laptop's GPU) that the
+    placement engine MUST encode rather than naively prefer the
+    "workstation" tier.
+  - **Cross-workload energy priors** — codefeedback prompts on
+    codellama:7b workstation consume ~1.85× the energy per request
+    of alpaca prompts on gemma:7b workstation under the SAME
+    hardware. The energy term in the constraint-aware engine can now
+    differentiate code-completion vs instruction workloads.
+  - **Cross-model-size energy priors** — codellama:70b
+    energy/request ~ 0.0044 kWh vs codellama:7b ~ 0.00018 kWh on the
+    same workstation (24× more energy / request). Lets the deferral
+    engine reason about quality vs energy for the same code workload.
+  - **Cold-start / model residency proxy** — `load_duration_ns` is
+    effectively zero when the model is already resident and non-zero
+    on the first request after a model switch; this is the first
+    HF-corpus signal that captures residency in `latency_benchmark_trace`
+    rather than `cache_residency_trace`.
+- **Prohibited uses.**
+  - **TTFT calibration as if measured.** `ttft_proxy_ms` is Ollama's
+    `prompt_duration` — an approximation of TTFT under single-stream
+    serving but NOT a measured first-token wall-clock timestamp.
+    The field_quality map marks it `derived`; consumers MUST honour
+    that.
+  - **Concurrency / queue calibration.** All runs are concurrency = 1.
+    The Aurelius queue-risk module and batch-frontier MUST NOT
+    consume this dataset.
+  - **vLLM / SGLang generalisation.** Ollama wraps llama.cpp under an
+    HTTP API; do NOT generalise absolute throughput / latency
+    numbers to vLLM / SGLang / TGI without independent validation.
+  - **Cross-device generalisation within a tier.** "laptop2" is one
+    specific machine; "workstation" is one specific machine. Do NOT
+    treat absolute numbers as representative of "all laptops" or
+    "all workstations". Use the (model, hardware_tier) cell as the
+    join key.
+  - **Carbon claims without grid data.** Energy is in kWh —
+    combining with regional CO2 g/kWh is mandatory before reporting
+    carbon cost. The Aurelius carbon term should pair this with
+    ElectricityMaps / WattTime regional intensity.
+  - **Production dynamic-frontier calibration.** Tier 4 benchmark —
+    pilot telemetry remains the only Tier 1 calibration source.
+- **Bounded ingest layout.** Four raw CSVs (~30 MB total: 7.5 + 13.1
+  + 8.5 + 0.4 MB) live under
+  `data/external/hf/ejhusom__llm-inference-energy-consumption/raw/`
+  and are **gitignored**. Per-config processed `summary.json`,
+  `schema_profile.json`, `schema_mapping.json`,
+  `statistical_rollups.json`, 5-row fixture (≤ 7 KiB), and the
+  committed cc-by-sa-4.0 `committed_normalized_sample.jsonl` (≤ 100
+  KiB per config; ~ 400 KiB combined) ARE committed. Per-config
+  `analysis_sample.jsonl` (multi-MB across the 17,104 rows) is
+  gitignored — regenerable via
+  `scripts/ingest_hf_llm_energy_consumption.py`.
+
 ### 7.2 Datasets evaluated but rejected / blocked
 
 | dataset_id | trace_type | state | reason |
@@ -879,6 +1044,14 @@ Rules (binding):
 | `hlarcher/inference-benchmarker` (re-audit) | `request_shape_trace` | `duplicate_existing` (Round 3 re-confirm) | Re-confirmed in Round 3 — ShareGPT-derived prompt fixtures used to drive the huggingface/inference-benchmarker tool. Existing `sharegpt_aiperf` ingester covers this role. |
 | `Nathan-Maine/dgx-spark-kv-cache-benchmark` (re-audit) | `latency_benchmark_trace` | `duplicate_existing` (Round 3 re-confirm) | Re-confirmed in Round 3 — same KV cache benchmark as `memoriant/dgx-spark-kv-cache-benchmark` (already promoted_for_training_priors). |
 | `ssong1/llmperf-bedrock` | — | ~~candidate~~ → **ingested 2026-06-01** | see §7.1 (Tier-4 closed-managed-API LLMPerf priors, Round 3). |
+| `ohdoking/energy_consumption_by_model_and_gpu` | `latency_benchmark_trace` | `license_unspecified_low_priority` | Energy-by-model-and-GPU benchmark CSV. License unspecified on the dataset card; without redistribution clarity, committing a normalised sample is unsafe. Defer pending license clarification; `ejhusom/llm-inference-energy-consumption` (cc-by-sa-4.0) covers the same role with safe redistribution. |
+| `adityaupasani/llm-inference-energy-consumption` | `latency_benchmark_trace` | `duplicate_existing` | Near-identical fork of `ejhusom/llm-inference-energy-consumption`. License unspecified. Duplicate of the canonical SINTEF dataset already ingested in Round 4. |
+| `Nayan10767/llm-inference-energy-consumption` | `latency_benchmark_trace` | `duplicate_existing` | Near-identical fork. License unspecified. Duplicate of the canonical SINTEF dataset. |
+| `vgyhj/llm-inference-energy-consumption` | `latency_benchmark_trace` | `duplicate_existing` | Near-identical fork. License unspecified. Duplicate. |
+| `nishant-k/speculative-decoding-benchmark-results` | `request_shape_trace` | `reject_low_information_density` | Speculative-decoding benchmark output. Each file is a HumanEval task → completion → pass/fail trace. NO measured latency / throughput / energy / GPU / queue signal — code-completion correctness only. Out of scope for the Aurelius constraint-aware engine. |
+| `inference-optimization/speculators_benchmarks_tool_call` | `request_shape_trace` | `reject_low_information_density` | BFCL v4 tool-call evaluation tasks (function-call test cases). Workload-shape only — NO measured infrastructure signal. The existing `sharegpt_aiperf` ingester covers request-shape priors with comparable density. |
+| `kshitijthakkar/large-moe-inference-benchmark` | `latency_benchmark_trace` | `gated_blocked` | HF gated:manual (companion to `kshitijthakkar/moe-inference-benchmark`). 38 rows, MoE-specific schema (model_id, prompt, tokens_generated, time_seconds, tokens_per_second, total_params, active_params). HF_TOKEN is NOT authorised. Re-confirmed `gated_blocked` in Round 4. |
+| `ejhusom/llm-inference-energy-consumption` | — | ~~candidate~~ → **ingested 2026-06-01** | see §7.1 (Tier-4 cross-hardware-tier energy + timing, Round 4). |
 
 ### 7.3 Datasets known in repo (non-HF or other ingest paths)
 

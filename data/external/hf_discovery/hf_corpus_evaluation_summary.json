@@ -22,6 +22,10 @@
     ],
     "latency_benchmark_trace": [
       "agent-perf-bench/AgentPerfBench",
+      "ejhusom/llm-inference-energy-consumption",
+      "ejhusom/llm-inference-energy-consumption",
+      "ejhusom/llm-inference-energy-consumption",
+      "ejhusom/llm-inference-energy-consumption",
       "intellistream/vllm-hust-benchmark-results",
       "intellistream/vllm-hust-benchmark-results",
       "memoriant/dgx-spark-kv-cache-benchmark",
@@ -37,9 +41,11 @@
       "optimum-benchmark/llm-perf-leaderboard",
       "optimum-benchmark/llm-perf-leaderboard",
       "optimum-benchmark/llm-perf-leaderboard",
-      "optimum-benchmark/llm-perf-leaderboard"
+      "optimum-benchmark/llm-perf-leaderboard",
+      "ssong1/llmperf-bedrock"
     ],
     "request_shape_trace": [
+      "Exgentic/agent-llm-traces",
       "eth-easl/swissai-serving-trace",
       "eth-easl/swissai-serving-trace",
       "lzzmm/BurstGPT",
@@ -56,16 +62,35 @@
     ]
   },
   "doc_version": "hf_corpus_evaluation_summary_v1",
-  "evaluated_at_s": 1780302176.4604704,
-  "n_eligible": 41,
+  "evaluated_at_s": 1780323465.4831705,
+  "n_eligible": 47,
   "n_evaluated": 2,
-  "n_skipped": 39,
+  "n_skipped": 45,
   "per_dataset_results": [
+    {
+      "canonical_trace_type": "request_shape_trace",
+      "comparison_against_oracle_is_headline": false,
+      "dataset_id": "Exgentic/agent-llm-traces",
+      "evaluated_at_s": 1780323465.4786549,
+      "evaluator_id": "request_shape_prior_smoke_v1",
+      "informs": [],
+      "is_production_telemetry_substitute": false,
+      "kpi": null,
+      "primary_baseline": null,
+      "promotion_state": "promoted_for_training_priors",
+      "promotion_tags": [
+        "promoted_for_training_priors"
+      ],
+      "result": null,
+      "result_quality": null,
+      "skip_reason": "trace_type 'request_shape_trace' requires one of ['prompt_tokens', 'output_tokens']; available=['arrivals', 'cache_reuse', 'customer_traffic_mix', 'latency', 'prefix_reuse', 'request_timestamps', 'routing_proxy', 'sla_label', 'timeout_label', 'workload_shape']",
+      "trust_tier": "tier_5_request_shape_traces"
+    },
     {
       "canonical_trace_type": "telemetry_trace",
       "comparison_against_oracle_is_headline": false,
       "dataset_id": "Qinghao/AcmeTrace",
-      "evaluated_at_s": 1780302176.4565306,
+      "evaluated_at_s": 1780323465.4786634,
       "evaluator_id": "telemetry_calibration_smoke_v1",
       "informs": [
         "dynamic_frontier",
@@ -88,7 +113,7 @@
       "canonical_trace_type": "cluster_scheduler_trace",
       "comparison_against_oracle_is_headline": false,
       "dataset_id": "Qinghao/AcmeTrace",
-      "evaluated_at_s": 1780302176.4566028,
+      "evaluated_at_s": 1780323465.47889,
       "evaluator_id": "cluster_scheduler_prior_smoke_v1",
       "informs": [],
       "is_production_telemetry_substitute": false,
@@ -109,7 +134,7 @@
       "canonical_trace_type": "telemetry_trace",
       "comparison_against_oracle_is_headline": false,
       "dataset_id": "Qinghao/AcmeTrace",
-      "evaluated_at_s": 1780302176.4566095,
+      "evaluated_at_s": 1780323465.4788957,
       "evaluator_id": "telemetry_calibration_smoke_v1",
       "informs": [
         "dynamic_frontier",
@@ -133,7 +158,7 @@
       "canonical_trace_type": "cluster_scheduler_trace",
       "comparison_against_oracle_is_headline": false,
       "dataset_id": "Qinghao/AcmeTrace",
-      "evaluated_at_s": 1780302176.4566412,
+      "evaluated_at_s": 1780323465.478925,
       "evaluator_id": "cluster_scheduler_prior_smoke_v1",
       "informs": [],
       "is_production_telemetry_substitute": false,
@@ -154,7 +179,7 @@
       "canonical_trace_type": "kernel_profile_trace",
       "comparison_against_oracle_is_headline": false,
       "dataset_id": "agent-perf-bench/AgentPerfBench",
-      "evaluated_at_s": 1780302176.4566476,
+      "evaluated_at_s": 1780323465.4789305,
       "evaluator_id": "kernel_profile_prior_smoke_v1",
       "informs": [
         "performance_priors"
@@ -188,7 +213,7 @@
       "canonical_trace_type": "latency_benchmark_trace",
       "comparison_against_oracle_is_headline": false,
       "dataset_id": "agent-perf-bench/AgentPerfBench",
-      "evaluated_at_s": 1780302176.45767,
+      "evaluated_at_s": 1780323465.4796443,
       "evaluator_id": "latency_benchmark_prior_smoke_v1",
       "informs": [
         "performance_priors",
@@ -274,7 +299,7 @@
       "canonical_trace_type": "telemetry_trace",
       "comparison_against_oracle_is_headline": false,
       "dataset_id": "asdwb/cara_latency_prediction",
-      "evaluated_at_s": 1780302176.4595687,
+      "evaluated_at_s": 1780323465.481018,
       "evaluator_id": "telemetry_calibration_smoke_v1",
       "informs": [
         "dynamic_frontier",
@@ -297,7 +322,7 @@
       "canonical_trace_type": "telemetry_trace",
       "comparison_against_oracle_is_headline": false,
       "dataset_id": "asdwb/cara_latency_prediction",
-      "evaluated_at_s": 1780302176.4596305,
+      "evaluated_at_s": 1780323465.4810612,
       "evaluator_id": "telemetry_calibration_smoke_v1",
       "informs": [
         "dynamic_frontier",
@@ -320,7 +345,7 @@
       "canonical_trace_type": "telemetry_trace",
       "comparison_against_oracle_is_headline": false,
       "dataset_id": "asdwb/cara_latency_prediction",
-      "evaluated_at_s": 1780302176.4596646,
+      "evaluated_at_s": 1780323465.4810843,
       "evaluator_id": "telemetry_calibration_smoke_v1",
       "informs": [
         "dynamic_frontier",
@@ -344,7 +369,7 @@
       "canonical_trace_type": "telemetry_trace",
       "comparison_against_oracle_is_headline": false,
       "dataset_id": "asdwb/cara_latency_prediction",
-      "evaluated_at_s": 1780302176.4596932,
+      "evaluated_at_s": 1780323465.4811049,
       "evaluator_id": "telemetry_calibration_smoke_v1",
       "informs": [
         "dynamic_frontier",
@@ -368,7 +393,7 @@
       "canonical_trace_type": "cache_residency_trace",
       "comparison_against_oracle_is_headline": false,
       "dataset_id": "eth-easl/swissai-serving-trace",
-      "evaluated_at_s": 1780302176.4597232,
+      "evaluated_at_s": 1780323465.4811285,
       "evaluator_id": "cache_residency_prior_smoke_v1",
       "informs": [
         "cache_residency_evaluation",
@@ -391,7 +416,7 @@
       "canonical_trace_type": "cache_residency_trace",
       "comparison_against_oracle_is_headline": false,
       "dataset_id": "eth-easl/swissai-serving-trace",
-      "evaluated_at_s": 1780302176.4597533,
+      "evaluated_at_s": 1780323465.4811504,
       "evaluator_id": "cache_residency_prior_smoke_v1",
       "informs": [
         "cache_residency_evaluation",
@@ -414,7 +439,7 @@
       "canonical_trace_type": "cache_residency_trace",
       "comparison_against_oracle_is_headline": false,
       "dataset_id": "eth-easl/swissai-serving-trace",
-      "evaluated_at_s": 1780302176.4597793,
+      "evaluated_at_s": 1780323465.4811683,
       "evaluator_id": "cache_residency_prior_smoke_v1",
       "informs": [
         "cache_residency_evaluation",
@@ -437,7 +462,7 @@
       "canonical_trace_type": "cache_residency_trace",
       "comparison_against_oracle_is_headline": false,
       "dataset_id": "eth-easl/swissai-serving-trace",
-      "evaluated_at_s": 1780302176.4598038,
+      "evaluated_at_s": 1780323465.4811866,
       "evaluator_id": "cache_residency_prior_smoke_v1",
       "informs": [
         "cache_residency_evaluation",
@@ -460,7 +485,7 @@
       "canonical_trace_type": "cache_residency_trace",
       "comparison_against_oracle_is_headline": false,
       "dataset_id": "eth-easl/swissai-serving-trace",
-      "evaluated_at_s": 1780302176.45983,
+      "evaluated_at_s": 1780323465.4812047,
       "evaluator_id": "cache_residency_prior_smoke_v1",
       "informs": [
         "cache_residency_evaluation",
@@ -483,7 +508,7 @@
       "canonical_trace_type": "cache_residency_trace",
       "comparison_against_oracle_is_headline": false,
       "dataset_id": "eth-easl/swissai-serving-trace",
-      "evaluated_at_s": 1780302176.4598548,
+      "evaluated_at_s": 1780323465.4812229,
       "evaluator_id": "cache_residency_prior_smoke_v1",
       "informs": [
         "cache_residency_evaluation",
@@ -506,7 +531,7 @@
       "canonical_trace_type": "cache_residency_trace",
       "comparison_against_oracle_is_headline": false,
       "dataset_id": "eth-easl/swissai-serving-trace",
-      "evaluated_at_s": 1780302176.4598796,
+      "evaluated_at_s": 1780323465.4814036,
       "evaluator_id": "cache_residency_prior_smoke_v1",
       "informs": [
         "cache_residency_evaluation",
@@ -529,7 +554,7 @@
       "canonical_trace_type": "cache_residency_trace",
       "comparison_against_oracle_is_headline": false,
       "dataset_id": "eth-easl/swissai-serving-trace",
-      "evaluated_at_s": 1780302176.4599037,
+      "evaluated_at_s": 1780323465.4814374,
       "evaluator_id": "cache_residency_prior_smoke_v1",
       "informs": [
         "cache_residency_evaluation",
@@ -552,7 +577,7 @@
       "canonical_trace_type": "request_shape_trace",
       "comparison_against_oracle_is_headline": false,
       "dataset_id": "eth-easl/swissai-serving-trace",
-      "evaluated_at_s": 1780302176.459928,
+      "evaluated_at_s": 1780323465.4814575,
       "evaluator_id": "request_shape_prior_smoke_v1",
       "informs": [
         "workload_modelling"
@@ -573,7 +598,7 @@
       "canonical_trace_type": "request_shape_trace",
       "comparison_against_oracle_is_headline": false,
       "dataset_id": "eth-easl/swissai-serving-trace",
-      "evaluated_at_s": 1780302176.4599543,
+      "evaluated_at_s": 1780323465.481573,
       "evaluator_id": "request_shape_prior_smoke_v1",
       "informs": [
         "workload_modelling"
@@ -594,7 +619,7 @@
       "canonical_trace_type": "latency_benchmark_trace",
       "comparison_against_oracle_is_headline": false,
       "dataset_id": "intellistream/vllm-hust-benchmark-results",
-      "evaluated_at_s": 1780302176.4599793,
+      "evaluated_at_s": 1780323465.4816086,
       "evaluator_id": "latency_benchmark_prior_smoke_v1",
       "informs": [
         "performance_priors",
@@ -616,7 +641,7 @@
       "canonical_trace_type": "latency_benchmark_trace",
       "comparison_against_oracle_is_headline": false,
       "dataset_id": "intellistream/vllm-hust-benchmark-results",
-      "evaluated_at_s": 1780302176.4600084,
+      "evaluated_at_s": 1780323465.4825847,
       "evaluator_id": "latency_benchmark_prior_smoke_v1",
       "informs": [
         "performance_priors",
@@ -640,7 +665,7 @@
       "canonical_trace_type": "cache_residency_trace",
       "comparison_against_oracle_is_headline": false,
       "dataset_id": "jaytonde05/prefixbench",
-      "evaluated_at_s": 1780302176.4600372,
+      "evaluated_at_s": 1780323465.4826658,
       "evaluator_id": "cache_residency_prior_smoke_v1",
       "informs": [],
       "is_production_telemetry_substitute": false,
@@ -660,7 +685,7 @@
       "canonical_trace_type": "cluster_scheduler_trace",
       "comparison_against_oracle_is_headline": false,
       "dataset_id": "lsliwko/google-cluster-data-2019-sorted-by-timestamp",
-      "evaluated_at_s": 1780302176.460053,
+      "evaluated_at_s": 1780323465.4826727,
       "evaluator_id": "cluster_scheduler_prior_smoke_v1",
       "informs": [],
       "is_production_telemetry_substitute": false,
@@ -681,7 +706,7 @@
       "canonical_trace_type": "request_shape_trace",
       "comparison_against_oracle_is_headline": false,
       "dataset_id": "lzzmm/BurstGPT",
-      "evaluated_at_s": 1780302176.4600596,
+      "evaluated_at_s": 1780323465.4826777,
       "evaluator_id": "request_shape_prior_smoke_v1",
       "informs": [],
       "is_production_telemetry_substitute": false,
@@ -700,7 +725,7 @@
       "canonical_trace_type": "latency_benchmark_trace",
       "comparison_against_oracle_is_headline": false,
       "dataset_id": "memoriant/dgx-spark-kv-cache-benchmark",
-      "evaluated_at_s": 1780302176.4600654,
+      "evaluated_at_s": 1780323465.4826818,
       "evaluator_id": "latency_benchmark_prior_smoke_v1",
       "informs": [],
       "is_production_telemetry_substitute": false,
@@ -719,7 +744,7 @@
       "canonical_trace_type": "latency_benchmark_trace",
       "comparison_against_oracle_is_headline": false,
       "dataset_id": "odyn-network/odyn-benchmarks",
-      "evaluated_at_s": 1780302176.4600692,
+      "evaluated_at_s": 1780323465.4826858,
       "evaluator_id": "latency_benchmark_prior_smoke_v1",
       "informs": [
         "performance_priors",
@@ -741,7 +766,7 @@
       "canonical_trace_type": "latency_benchmark_trace",
       "comparison_against_oracle_is_headline": false,
       "dataset_id": "odyn-network/odyn-benchmarks",
-      "evaluated_at_s": 1780302176.4601364,
+      "evaluated_at_s": 1780323465.4827144,
       "evaluator_id": "latency_benchmark_prior_smoke_v1",
       "informs": [
         "performance_priors",
@@ -765,7 +790,7 @@
       "canonical_trace_type": "latency_benchmark_trace",
       "comparison_against_oracle_is_headline": false,
       "dataset_id": "odyn-network/odyn-benchmarks",
-      "evaluated_at_s": 1780302176.460166,
+      "evaluated_at_s": 1780323465.4827359,
       "evaluator_id": "latency_benchmark_prior_smoke_v1",
       "informs": [
         "performance_priors",
@@ -789,7 +814,7 @@
       "canonical_trace_type": "latency_benchmark_trace",
       "comparison_against_oracle_is_headline": false,
       "dataset_id": "odyn-network/odyn-benchmarks",
-      "evaluated_at_s": 1780302176.4601915,
+      "evaluated_at_s": 1780323465.4828181,
       "evaluator_id": "latency_benchmark_prior_smoke_v1",
       "informs": [
         "performance_priors",
@@ -813,7 +838,7 @@
       "canonical_trace_type": "latency_benchmark_trace",
       "comparison_against_oracle_is_headline": false,
       "dataset_id": "optimum-benchmark/llm-perf-leaderboard",
-      "evaluated_at_s": 1780302176.460217,
+      "evaluated_at_s": 1780323465.482847,
       "evaluator_id": "latency_benchmark_prior_smoke_v1",
       "informs": [
         "performance_priors",
@@ -837,7 +862,7 @@
       "canonical_trace_type": "latency_benchmark_trace",
       "comparison_against_oracle_is_headline": false,
       "dataset_id": "optimum-benchmark/llm-perf-leaderboard",
-      "evaluated_at_s": 1780302176.4602504,
+      "evaluated_at_s": 1780323465.482879,
       "evaluator_id": "latency_benchmark_prior_smoke_v1",
       "informs": [
         "performance_priors",
@@ -861,7 +886,7 @@
       "canonical_trace_type": "latency_benchmark_trace",
       "comparison_against_oracle_is_headline": false,
       "dataset_id": "optimum-benchmark/llm-perf-leaderboard",
-      "evaluated_at_s": 1780302176.4602792,
+      "evaluated_at_s": 1780323465.4829004,
       "evaluator_id": "latency_benchmark_prior_smoke_v1",
       "informs": [
         "performance_priors",
@@ -885,7 +910,7 @@
       "canonical_trace_type": "latency_benchmark_trace",
       "comparison_against_oracle_is_headline": false,
       "dataset_id": "optimum-benchmark/llm-perf-leaderboard",
-      "evaluated_at_s": 1780302176.460306,
+      "evaluated_at_s": 1780323465.482921,
       "evaluator_id": "latency_benchmark_prior_smoke_v1",
       "informs": [
         "performance_priors",
@@ -909,7 +934,7 @@
       "canonical_trace_type": "latency_benchmark_trace",
       "comparison_against_oracle_is_headline": false,
       "dataset_id": "optimum-benchmark/llm-perf-leaderboard",
-      "evaluated_at_s": 1780302176.460331,
+      "evaluated_at_s": 1780323465.482941,
       "evaluator_id": "latency_benchmark_prior_smoke_v1",
       "informs": [
         "performance_priors",
@@ -933,7 +958,7 @@
       "canonical_trace_type": "latency_benchmark_trace",
       "comparison_against_oracle_is_headline": false,
       "dataset_id": "optimum-benchmark/llm-perf-leaderboard",
-      "evaluated_at_s": 1780302176.4603567,
+      "evaluated_at_s": 1780323465.4829721,
       "evaluator_id": "latency_benchmark_prior_smoke_v1",
       "informs": [
         "performance_priors",
@@ -955,7 +980,7 @@
       "canonical_trace_type": "latency_benchmark_trace",
       "comparison_against_oracle_is_headline": false,
       "dataset_id": "optimum-benchmark/llm-perf-leaderboard",
-      "evaluated_at_s": 1780302176.4603822,
+      "evaluated_at_s": 1780323465.482993,
       "evaluator_id": "latency_benchmark_prior_smoke_v1",
       "informs": [
         "performance_priors",
@@ -979,7 +1004,7 @@
       "canonical_trace_type": "latency_benchmark_trace",
       "comparison_against_oracle_is_headline": false,
       "dataset_id": "optimum-benchmark/llm-perf-leaderboard",
-      "evaluated_at_s": 1780302176.4604075,
+      "evaluated_at_s": 1780323465.4830122,
       "evaluator_id": "latency_benchmark_prior_smoke_v1",
       "informs": [
         "performance_priors",
@@ -1003,7 +1028,7 @@
       "canonical_trace_type": "latency_benchmark_trace",
       "comparison_against_oracle_is_headline": false,
       "dataset_id": "optimum-benchmark/llm-perf-leaderboard",
-      "evaluated_at_s": 1780302176.4604332,
+      "evaluated_at_s": 1780323465.4830317,
       "evaluator_id": "latency_benchmark_prior_smoke_v1",
       "informs": [
         "performance_priors",
@@ -1027,7 +1052,7 @@
       "canonical_trace_type": "request_shape_trace",
       "comparison_against_oracle_is_headline": false,
       "dataset_id": "sammshen/lmcache-agentic-traces",
-      "evaluated_at_s": 1780302176.4604614,
+      "evaluated_at_s": 1780323465.4830544,
       "evaluator_id": "request_shape_prior_smoke_v1",
       "informs": [],
       "is_production_telemetry_substitute": false,
@@ -1046,7 +1071,7 @@
       "canonical_trace_type": "request_shape_trace",
       "comparison_against_oracle_is_headline": false,
       "dataset_id": "semianalysisai/cc-traces-weka-no-subagents-051226",
-      "evaluated_at_s": 1780302176.460469,
+      "evaluated_at_s": 1780323465.48306,
       "evaluator_id": "request_shape_prior_smoke_v1",
       "informs": [],
       "is_production_telemetry_substitute": false,
@@ -1060,6 +1085,124 @@
       "result_quality": null,
       "skip_reason": "trace_type 'request_shape_trace' requires one of ['prompt_tokens', 'output_tokens']; available=['arrivals', 'cache_reuse', 'kv_block_hashes', 'latency', 'migration_or_cache_loss_proxy', 'prefix_reuse', 'request_timestamps', 'ttft', 'workload_shape']",
       "trust_tier": "tier_5_request_shape_traces"
+    },
+    {
+      "canonical_trace_type": "latency_benchmark_trace",
+      "comparison_against_oracle_is_headline": false,
+      "dataset_id": "ssong1/llmperf-bedrock",
+      "evaluated_at_s": 1780323465.4830637,
+      "evaluator_id": "latency_benchmark_prior_smoke_v1",
+      "informs": [
+        "performance_priors",
+        "constraint_aware_engine"
+      ],
+      "is_production_telemetry_substitute": false,
+      "kpi": "p99_ttft_ms_ratio_vs_baseline_prior",
+      "primary_baseline": "sla_aware_serving_frontier_static",
+      "promotion_state": "promoted_for_performance_priors",
+      "promotion_tags": [
+        "promoted_for_performance_priors",
+        "promoted_for_constraint_aware_evaluation",
+        "promoted_for_training_priors"
+      ],
+      "result": null,
+      "result_quality": "prior_only",
+      "skip_reason": "sample file empty or missing: /home/user/energy2/data/external/hf/ssong1__llmperf-bedrock/bedrock_claude_instant_v1/processed/sample.jsonl",
+      "trust_tier": "tier_4_latency_benchmark_traces"
+    },
+    {
+      "canonical_trace_type": "latency_benchmark_trace",
+      "comparison_against_oracle_is_headline": false,
+      "dataset_id": "ejhusom/llm-inference-energy-consumption",
+      "evaluated_at_s": 1780323465.483087,
+      "evaluator_id": "latency_benchmark_prior_smoke_v1",
+      "informs": [
+        "performance_priors",
+        "constraint_aware_engine"
+      ],
+      "is_production_telemetry_substitute": false,
+      "kpi": "p99_ttft_ms_ratio_vs_baseline_prior",
+      "primary_baseline": "sla_aware_serving_frontier_static",
+      "promotion_state": "promoted_for_performance_priors",
+      "promotion_tags": [
+        "promoted_for_performance_priors",
+        "promoted_for_constraint_aware_evaluation",
+        "promoted_for_training_priors"
+      ],
+      "result": null,
+      "result_quality": "prior_only",
+      "skip_reason": "sample file empty or missing: /home/user/energy2/data/external/hf/ejhusom__llm-inference-energy-consumption/alpaca_gemma_7b_laptop2/processed/sample.jsonl",
+      "trust_tier": "tier_4_latency_benchmark_traces"
+    },
+    {
+      "canonical_trace_type": "latency_benchmark_trace",
+      "comparison_against_oracle_is_headline": false,
+      "dataset_id": "ejhusom/llm-inference-energy-consumption",
+      "evaluated_at_s": 1780323465.4831102,
+      "evaluator_id": "latency_benchmark_prior_smoke_v1",
+      "informs": [
+        "performance_priors",
+        "constraint_aware_engine"
+      ],
+      "is_production_telemetry_substitute": false,
+      "kpi": "p99_ttft_ms_ratio_vs_baseline_prior",
+      "primary_baseline": "sla_aware_serving_frontier_static",
+      "promotion_state": "promoted_for_performance_priors",
+      "promotion_tags": [
+        "promoted_for_performance_priors",
+        "promoted_for_constraint_aware_evaluation",
+        "promoted_for_training_priors"
+      ],
+      "result": null,
+      "result_quality": "prior_only",
+      "skip_reason": "sample file empty or missing: /home/user/energy2/data/external/hf/ejhusom__llm-inference-energy-consumption/alpaca_gemma_7b_workstation/processed/sample.jsonl",
+      "trust_tier": "tier_4_latency_benchmark_traces"
+    },
+    {
+      "canonical_trace_type": "latency_benchmark_trace",
+      "comparison_against_oracle_is_headline": false,
+      "dataset_id": "ejhusom/llm-inference-energy-consumption",
+      "evaluated_at_s": 1780323465.4831297,
+      "evaluator_id": "latency_benchmark_prior_smoke_v1",
+      "informs": [
+        "performance_priors",
+        "constraint_aware_engine"
+      ],
+      "is_production_telemetry_substitute": false,
+      "kpi": "p99_ttft_ms_ratio_vs_baseline_prior",
+      "primary_baseline": "sla_aware_serving_frontier_static",
+      "promotion_state": "promoted_for_performance_priors",
+      "promotion_tags": [
+        "promoted_for_performance_priors",
+        "promoted_for_constraint_aware_evaluation",
+        "promoted_for_training_priors"
+      ],
+      "result": null,
+      "result_quality": "prior_only",
+      "skip_reason": "sample file empty or missing: /home/user/energy2/data/external/hf/ejhusom__llm-inference-energy-consumption/codefeedback_codellama_7b_workstation/processed/sample.jsonl",
+      "trust_tier": "tier_4_latency_benchmark_traces"
+    },
+    {
+      "canonical_trace_type": "latency_benchmark_trace",
+      "comparison_against_oracle_is_headline": false,
+      "dataset_id": "ejhusom/llm-inference-energy-consumption",
+      "evaluated_at_s": 1780323465.4831512,
+      "evaluator_id": "latency_benchmark_prior_smoke_v1",
+      "informs": [
+        "performance_priors",
+        "constraint_aware_engine"
+      ],
+      "is_production_telemetry_substitute": false,
+      "kpi": "p99_ttft_ms_ratio_vs_baseline_prior",
+      "primary_baseline": "sla_aware_serving_frontier_static",
+      "promotion_state": "promoted_for_training_priors",
+      "promotion_tags": [
+        "promoted_for_training_priors"
+      ],
+      "result": null,
+      "result_quality": "prior_only",
+      "skip_reason": "sample file empty or missing: /home/user/energy2/data/external/hf/ejhusom__llm-inference-energy-consumption/codefeedback_codellama_70b_workstation/processed/sample.jsonl",
+      "trust_tier": "tier_4_latency_benchmark_traces"
     }
   ],
   "production_claim": false,

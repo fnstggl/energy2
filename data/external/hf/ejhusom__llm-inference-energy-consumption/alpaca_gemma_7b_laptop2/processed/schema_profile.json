@@ -1,0 +1,343 @@
+{
+  "accepted_columns": [
+    "index",
+    "model_name",
+    "type",
+    "created_at",
+    "start_time",
+    "end_time",
+    "clock_duration",
+    "total_duration",
+    "load_duration",
+    "prompt_duration",
+    "response_duration",
+    "prompt_token_length",
+    "response_token_length",
+    "energy_consumption_monitoring",
+    "energy_consumption_llm_cpu",
+    "energy_consumption_llm_gpu",
+    "energy_consumption_llm_total",
+    "energy_consumption_llm"
+  ],
+  "config_name": "alpaca_gemma_7b_laptop2",
+  "dataset_id": "ejhusom/llm-inference-energy-consumption",
+  "dtypes": {
+    "clock_duration": [
+      "str"
+    ],
+    "created_at": [
+      "str"
+    ],
+    "end_time": [
+      "str"
+    ],
+    "energy_consumption_llm": [
+      "str"
+    ],
+    "energy_consumption_llm_cpu": [
+      "str"
+    ],
+    "energy_consumption_llm_gpu": [
+      "str"
+    ],
+    "energy_consumption_llm_total": [
+      "str"
+    ],
+    "energy_consumption_monitoring": [
+      "str"
+    ],
+    "index": [
+      "str"
+    ],
+    "load_duration": [
+      "str"
+    ],
+    "model_name": [
+      "str"
+    ],
+    "prompt_duration": [
+      "str"
+    ],
+    "prompt_token_length": [
+      "str"
+    ],
+    "response_duration": [
+      "str"
+    ],
+    "response_token_length": [
+      "str"
+    ],
+    "start_time": [
+      "str"
+    ],
+    "total_duration": [
+      "str"
+    ],
+    "type": [
+      "str"
+    ]
+  },
+  "example_values": {
+    "clock_duration": [
+      "'0 days 00:00:08.440494'",
+      "'0 days 00:00:01.040874'",
+      "'0 days 00:00:07.928276'"
+    ],
+    "created_at": [
+      "'2024-05-24 18:49:20.406937826+00:00'",
+      "'2024-05-24 18:49:24.745719687+00:00'",
+      "'2024-05-24 18:49:35.798835900+00:00'"
+    ],
+    "end_time": [
+      "'2024-05-24 18:49:20.407550+00:00'",
+      "'2024-05-24 18:49:24.746336+00:00'",
+      "'2024-05-24 18:49:35.799326+00:00'"
+    ],
+    "energy_consumption_llm": [
+      "'8.144794941236252e-05'",
+      "'2.9467931095241846e-05'",
+      "'0.00018528527732208065'"
+    ],
+    "energy_consumption_llm_cpu": [
+      "'1.554627309471447e-06'",
+      "'2.467697025795897e-07'",
+      "'2.659091276780648e-06'"
+    ],
+    "energy_consumption_llm_gpu": [
+      "'7.989332210289107e-05'",
+      "'2.9221161392662256e-05'",
+      "'0.0001826261860453'"
+    ],
+    "energy_consumption_llm_total": [
+      "'8.144794941236252e-05'",
+      "'2.946793109524185e-05'",
+      "'0.0001852852773221'"
+    ],
+    "energy_consumption_monitoring": [
+      "'5.386943858459745e-07'",
+      "'7.215016814643101e-08'",
+      "'5.543581352147572e-07'"
+    ],
+    "index": [
+      "'0'",
+      "'0'",
+      "'0'"
+    ],
+    "load_duration": [
+      "'7590291703'",
+      "'791212'",
+      "'785372'"
+    ],
+    "model_name": [
+      "'gemma:7b'",
+      "'gemma:7b'",
+      "'gemma:7b'"
+    ],
+    "prompt_duration": [
+      "'136339000'",
+      "'231722000'",
+      "'210861000'"
+    ],
+    "prompt_token_length": [
+      "'17'",
+      "'13'",
+      "'13'"
+    ],
+    "response_duration": [
+      "'706471000'",
+      "'801448000'",
+      "'7708981000'"
+    ],
+    "response_token_length": [
+      "'33'",
+      "'36'",
+      "'336'"
+    ],
+    "start_time": [
+      "'2024-05-24 18:49:11.967056+00:00'",
+      "'2024-05-24 18:49:23.705462+00:00'",
+      "'2024-05-24 18:49:27.871050+00:00'"
+    ],
+    "total_duration": [
+      "'8434039717'",
+      "'1035403848'",
+      "'7922041614'"
+    ],
+    "type": [
+      "'unknown'",
+      "'unknown'",
+      "'unknown'"
+    ]
+  },
+  "file_size_bytes": 7496716,
+  "inspected_row_count": 5099,
+  "list_length_summaries": {},
+  "missing_rates": {
+    "clock_duration": 0.0,
+    "created_at": 0.0,
+    "end_time": 0.0,
+    "energy_consumption_llm": 0.0,
+    "energy_consumption_llm_cpu": 0.0,
+    "energy_consumption_llm_gpu": 0.0,
+    "energy_consumption_llm_total": 0.0,
+    "energy_consumption_monitoring": 0.0,
+    "index": 0.0,
+    "load_duration": 0.0,
+    "model_name": 0.0,
+    "prompt_duration": 0.0,
+    "prompt_token_length": 0.0,
+    "response_duration": 0.0,
+    "response_token_length": 0.0,
+    "start_time": 0.0,
+    "total_duration": 0.0,
+    "type": 0.0
+  },
+  "nested_keys": [],
+  "raw_columns": [
+    "",
+    "index",
+    "model_name",
+    "created_at",
+    "total_duration",
+    "load_duration",
+    "prompt_token_length",
+    "prompt_duration",
+    "response_token_length",
+    "response_duration",
+    "prompt",
+    "response",
+    "energy_consumption_monitoring",
+    "energy_consumption_llm_cpu",
+    "energy_consumption_llm_gpu",
+    "type",
+    "clock_duration",
+    "start_time",
+    "end_time",
+    "energy_consumption_llm_total",
+    "energy_consumption_llm",
+    "word_count",
+    "sentence_count",
+    "avg_word_length",
+    "word_diversity",
+    "unique_word_count",
+    "avg_sentence_length",
+    "punctuation_count",
+    "stop_word_count",
+    "long_word_count",
+    "named_entity_count",
+    "noun_count",
+    "verb_count",
+    "adj_count",
+    "adverb_count",
+    "pronoun_count",
+    "prop_adverbs",
+    "prop_pronouns",
+    "sentiment_polarity",
+    "sentiment_subjectivity",
+    "flesch_reading_ease",
+    "flesch_kincaid_grade",
+    "gunning_fog",
+    "smog_index",
+    "automated_readability_index",
+    "coleman_liau_index",
+    "linsear_write_formula",
+    "dale_chall_readability_score",
+    "text_standard",
+    "spache_readability",
+    "mcalpine_eflaw",
+    "reading_time",
+    "fernandez_huerta",
+    "szigriszt_pazos",
+    "gutierrez_polini",
+    "crawford",
+    "osman",
+    "gulpease_index",
+    "wiener_sachtextformel",
+    "syllable_count",
+    "lexicon_count",
+    "char_count",
+    "letter_count",
+    "polysyllabcount",
+    "monosyllabcount",
+    "question_marks",
+    "exclamation_marks",
+    "sentence_embedding_variance",
+    "personal_pronouns",
+    "named_entities",
+    "adjectives",
+    "adverbs",
+    "length_x_complexity",
+    "questions_about_entities",
+    "desc_complexity_ratio",
+    "word_count_squared",
+    "avg_sentence_length_cubed",
+    "lexical_diversity"
+  ],
+  "raw_file_truncated": false,
+  "rejected_columns": [
+    "",
+    "prompt",
+    "response",
+    "word_count",
+    "sentence_count",
+    "avg_word_length",
+    "word_diversity",
+    "unique_word_count",
+    "avg_sentence_length",
+    "punctuation_count",
+    "stop_word_count",
+    "long_word_count",
+    "named_entity_count",
+    "noun_count",
+    "verb_count",
+    "adj_count",
+    "adverb_count",
+    "pronoun_count",
+    "prop_adverbs",
+    "prop_pronouns",
+    "sentiment_polarity",
+    "sentiment_subjectivity",
+    "flesch_reading_ease",
+    "flesch_kincaid_grade",
+    "gunning_fog",
+    "smog_index",
+    "automated_readability_index",
+    "coleman_liau_index",
+    "linsear_write_formula",
+    "dale_chall_readability_score",
+    "text_standard",
+    "spache_readability",
+    "mcalpine_eflaw",
+    "reading_time",
+    "fernandez_huerta",
+    "szigriszt_pazos",
+    "gutierrez_polini",
+    "crawford",
+    "osman",
+    "gulpease_index",
+    "wiener_sachtextformel",
+    "syllable_count",
+    "lexicon_count",
+    "char_count",
+    "letter_count",
+    "polysyllabcount",
+    "monosyllabcount",
+    "question_marks",
+    "exclamation_marks",
+    "sentence_embedding_variance",
+    "personal_pronouns",
+    "named_entities",
+    "adjectives",
+    "adverbs",
+    "length_x_complexity",
+    "questions_about_entities",
+    "desc_complexity_ratio",
+    "word_count_squared",
+    "avg_sentence_length_cubed",
+    "lexical_diversity"
+  ],
+  "source_files": [
+    "data/alpaca_gemma_7b_laptop2.csv"
+  ],
+  "unknown_columns": []
+}
