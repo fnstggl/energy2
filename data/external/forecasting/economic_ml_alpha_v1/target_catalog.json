@@ -1,0 +1,600 @@
+{
+  "targets": {
+    "cache_reuse_pct": {
+      "classification": false,
+      "holdouts_required": [
+        "by_dataset",
+        "by_gpu",
+        "high_tail",
+        "time_if_available"
+      ],
+      "invalid_leaky_features": [
+        "estimated_cache_value_usd",
+        "estimated_carbon_cost_usd",
+        "estimated_carbon_kg",
+        "estimated_cold_start_cost_usd",
+        "estimated_decode_cost_usd",
+        "estimated_decode_seconds",
+        "estimated_energy_cost_usd",
+        "estimated_gpu_cost_usd",
+        "estimated_gpu_seconds",
+        "estimated_memory_pressure_cost_usd",
+        "estimated_migration_cost_usd",
+        "estimated_prefill_cost_usd",
+        "estimated_prefill_seconds",
+        "formula_by_field",
+        "limitations",
+        "overlay_class",
+        "sla_met",
+        "sla_safe_goodput",
+        "sla_safe_goodput_per_dollar",
+        "source_trace_id",
+        "value_quality_by_field"
+      ],
+      "missingness_rate": 0.68,
+      "reason_if_not_trainable": null,
+      "recommended_model_family": "HGB vs PerModelMean",
+      "row_count": 60000,
+      "source_datasets": {
+        "swissai-serving-trace": 60000
+      },
+      "strongest_baseline": "PerModelMeanReuse",
+      "target": "cache_reuse_pct",
+      "trainable_now": true,
+      "valid_features": [
+        "prompt_tokens",
+        "output_tokens",
+        "gpu_count",
+        "kv_utilization",
+        "gpu_price_usd_per_hour",
+        "gpu_type",
+        "model_id",
+        "source_dataset_id"
+      ],
+      "value_quality_distribution": {
+        "measured": 60000
+      }
+    },
+    "cold_start_cost_usd": {
+      "reason_if_not_trainable": "0 measured labels \u2014 simulator_prior_only",
+      "recommended_model_family": "simulator_prior_sensitivity",
+      "row_count": 0,
+      "strongest_baseline": "n/a",
+      "target": "cold_start_cost_usd",
+      "trainable_now": false
+    },
+    "e2e_latency_s": {
+      "classification": false,
+      "holdouts_required": [
+        "by_dataset",
+        "by_gpu",
+        "high_tail",
+        "time_if_available"
+      ],
+      "invalid_leaky_features": [
+        "estimated_cache_value_usd",
+        "estimated_carbon_cost_usd",
+        "estimated_carbon_kg",
+        "estimated_cold_start_cost_usd",
+        "estimated_decode_cost_usd",
+        "estimated_decode_seconds",
+        "estimated_energy_cost_usd",
+        "estimated_gpu_cost_usd",
+        "estimated_gpu_seconds",
+        "estimated_memory_pressure_cost_usd",
+        "estimated_migration_cost_usd",
+        "estimated_prefill_cost_usd",
+        "estimated_prefill_seconds",
+        "formula_by_field",
+        "limitations",
+        "output_tokens",
+        "overlay_class",
+        "sla_met",
+        "sla_safe_goodput",
+        "sla_safe_goodput_per_dollar",
+        "source_trace_id",
+        "throughput_tok_s",
+        "tpot_s",
+        "ttft_s",
+        "value_quality_by_field"
+      ],
+      "missingness_rate": 0.32,
+      "reason_if_not_trainable": null,
+      "recommended_model_family": "HGB vs GroupMedian",
+      "row_count": 127505,
+      "source_datasets": {
+        "AcmeTrace": 59907,
+        "cara_latency_prediction": 60000,
+        "cc-traces-weka-no-subagents-051226": 5000,
+        "llm-perf-leaderboard": 2598
+      },
+      "strongest_baseline": "GroupMedian(model,gpu)",
+      "target": "e2e_latency_s",
+      "trainable_now": true,
+      "valid_features": [
+        "prompt_tokens",
+        "gpu_count",
+        "kv_utilization",
+        "gpu_price_usd_per_hour",
+        "gpu_type",
+        "model_id",
+        "source_dataset_id"
+      ],
+      "value_quality_distribution": {
+        "measured": 127505
+      }
+    },
+    "energy_kwh": {
+      "classification": false,
+      "holdouts_required": [
+        "by_dataset",
+        "by_gpu",
+        "high_tail",
+        "time_if_available"
+      ],
+      "invalid_leaky_features": [
+        "estimated_cache_value_usd",
+        "estimated_carbon_cost_usd",
+        "estimated_carbon_kg",
+        "estimated_cold_start_cost_usd",
+        "estimated_decode_cost_usd",
+        "estimated_decode_seconds",
+        "estimated_energy_cost_usd",
+        "estimated_gpu_cost_usd",
+        "estimated_gpu_seconds",
+        "estimated_memory_pressure_cost_usd",
+        "estimated_migration_cost_usd",
+        "estimated_prefill_cost_usd",
+        "estimated_prefill_seconds",
+        "formula_by_field",
+        "gpu_power_w",
+        "limitations",
+        "overlay_class",
+        "sla_met",
+        "sla_safe_goodput",
+        "sla_safe_goodput_per_dollar",
+        "source_trace_id",
+        "value_quality_by_field"
+      ],
+      "missingness_rate": 0.7728,
+      "reason_if_not_trainable": null,
+      "recommended_model_family": "HGB vs GroupMedian",
+      "row_count": 42598,
+      "source_datasets": {
+        "AcmeTrace": 40000,
+        "llm-perf-leaderboard": 2598
+      },
+      "strongest_baseline": "GroupMedian(model,gpu)",
+      "target": "energy_kwh",
+      "trainable_now": true,
+      "valid_features": [
+        "prompt_tokens",
+        "output_tokens",
+        "gpu_count",
+        "kv_utilization",
+        "gpu_price_usd_per_hour",
+        "gpu_type",
+        "model_id",
+        "source_dataset_id"
+      ],
+      "value_quality_distribution": {
+        "derived_from_power_prior": 40000,
+        "measured": 2598
+      }
+    },
+    "estimated_gpu_cost_usd": {
+      "classification": false,
+      "deterministic_ground_truth": true,
+      "holdouts_required": [
+        "by_dataset",
+        "by_gpu",
+        "high_tail",
+        "time_if_available"
+      ],
+      "invalid_leaky_features": [
+        "estimated_cache_value_usd",
+        "estimated_carbon_cost_usd",
+        "estimated_carbon_kg",
+        "estimated_cold_start_cost_usd",
+        "estimated_decode_cost_usd",
+        "estimated_decode_seconds",
+        "estimated_energy_cost_usd",
+        "estimated_gpu_seconds",
+        "estimated_memory_pressure_cost_usd",
+        "estimated_migration_cost_usd",
+        "estimated_prefill_cost_usd",
+        "estimated_prefill_seconds",
+        "formula_by_field",
+        "limitations",
+        "overlay_class",
+        "sla_met",
+        "sla_safe_goodput",
+        "sla_safe_goodput_per_dollar",
+        "source_trace_id",
+        "value_quality_by_field"
+      ],
+      "missingness_rate": 0.0,
+      "ml_status": "diagnostic_only \u2014 formula is exact; alpha must come from forecasting upstream inputs, not re-predicting it",
+      "reason_if_not_trainable": null,
+      "recommended_model_family": "deterministic_formula",
+      "row_count": 187505,
+      "source_datasets": {
+        "AcmeTrace": 59907,
+        "cara_latency_prediction": 60000,
+        "cc-traces-weka-no-subagents-051226": 5000,
+        "llm-perf-leaderboard": 2598,
+        "swissai-serving-trace": 60000
+      },
+      "strongest_baseline": "OverlayFormula(gpu_price*seconds)",
+      "target": "estimated_gpu_cost_usd",
+      "trainable_now": true,
+      "valid_features": [
+        "prompt_tokens",
+        "output_tokens",
+        "gpu_count",
+        "kv_utilization",
+        "gpu_price_usd_per_hour",
+        "gpu_type",
+        "model_id",
+        "source_dataset_id"
+      ],
+      "value_quality_distribution": {
+        "derived": 187505
+      }
+    },
+    "high_reuse": {
+      "classification": true,
+      "holdouts_required": [
+        "by_dataset",
+        "by_gpu",
+        "high_tail",
+        "time_if_available"
+      ],
+      "invalid_leaky_features": [
+        "estimated_cache_value_usd",
+        "estimated_carbon_cost_usd",
+        "estimated_carbon_kg",
+        "estimated_cold_start_cost_usd",
+        "estimated_decode_cost_usd",
+        "estimated_decode_seconds",
+        "estimated_energy_cost_usd",
+        "estimated_gpu_cost_usd",
+        "estimated_gpu_seconds",
+        "estimated_memory_pressure_cost_usd",
+        "estimated_migration_cost_usd",
+        "estimated_prefill_cost_usd",
+        "estimated_prefill_seconds",
+        "formula_by_field",
+        "limitations",
+        "overlay_class",
+        "sla_met",
+        "sla_safe_goodput",
+        "sla_safe_goodput_per_dollar",
+        "source_trace_id",
+        "value_quality_by_field"
+      ],
+      "missingness_rate": 0.68,
+      "reason_if_not_trainable": null,
+      "recommended_model_family": "HGB/Logistic vs GlobalRate",
+      "row_count": 60000,
+      "source_datasets": {
+        "swissai-serving-trace": 60000
+      },
+      "strongest_baseline": "GlobalReuseRate",
+      "target": "cache_reuse_pct",
+      "trainable_now": true,
+      "valid_features": [
+        "prompt_tokens",
+        "output_tokens",
+        "gpu_count",
+        "kv_utilization",
+        "gpu_price_usd_per_hour",
+        "gpu_type",
+        "model_id",
+        "source_dataset_id"
+      ],
+      "value_quality_distribution": {
+        "measured": 60000
+      }
+    },
+    "migration_cost_usd": {
+      "reason_if_not_trainable": "0 measured labels \u2014 simulator_prior_only",
+      "recommended_model_family": "simulator_prior_sensitivity",
+      "row_count": 0,
+      "strongest_baseline": "n/a",
+      "target": "migration_cost_usd",
+      "trainable_now": false
+    },
+    "peak_vram_gb": {
+      "classification": false,
+      "holdouts_required": [
+        "by_dataset",
+        "by_gpu",
+        "high_tail",
+        "time_if_available"
+      ],
+      "invalid_leaky_features": [
+        "estimated_cache_value_usd",
+        "estimated_carbon_cost_usd",
+        "estimated_carbon_kg",
+        "estimated_cold_start_cost_usd",
+        "estimated_decode_cost_usd",
+        "estimated_decode_seconds",
+        "estimated_energy_cost_usd",
+        "estimated_gpu_cost_usd",
+        "estimated_gpu_seconds",
+        "estimated_memory_pressure_cost_usd",
+        "estimated_migration_cost_usd",
+        "estimated_prefill_cost_usd",
+        "estimated_prefill_seconds",
+        "formula_by_field",
+        "limitations",
+        "overlay_class",
+        "sla_met",
+        "sla_safe_goodput",
+        "sla_safe_goodput_per_dollar",
+        "source_trace_id",
+        "value_quality_by_field"
+      ],
+      "missingness_rate": 0.9881,
+      "reason_if_not_trainable": null,
+      "recommended_model_family": "HGB vs GroupMedian",
+      "row_count": 2227,
+      "source_datasets": {
+        "llm-perf-leaderboard": 2227
+      },
+      "strongest_baseline": "GroupMedian(model,gpu)",
+      "target": "peak_vram_gb",
+      "trainable_now": true,
+      "valid_features": [
+        "prompt_tokens",
+        "output_tokens",
+        "gpu_count",
+        "kv_utilization",
+        "gpu_price_usd_per_hour",
+        "gpu_type",
+        "model_id",
+        "source_dataset_id"
+      ],
+      "value_quality_distribution": {
+        "measured": 2227
+      }
+    },
+    "queue_wait_s": {
+      "classification": false,
+      "holdouts_required": [
+        "by_dataset",
+        "by_gpu",
+        "high_tail",
+        "time_if_available"
+      ],
+      "invalid_leaky_features": [
+        "e2e_latency_s",
+        "estimated_cache_value_usd",
+        "estimated_carbon_cost_usd",
+        "estimated_carbon_kg",
+        "estimated_cold_start_cost_usd",
+        "estimated_decode_cost_usd",
+        "estimated_decode_seconds",
+        "estimated_energy_cost_usd",
+        "estimated_gpu_cost_usd",
+        "estimated_gpu_seconds",
+        "estimated_memory_pressure_cost_usd",
+        "estimated_migration_cost_usd",
+        "estimated_prefill_cost_usd",
+        "estimated_prefill_seconds",
+        "formula_by_field",
+        "limitations",
+        "overlay_class",
+        "sla_met",
+        "sla_safe_goodput",
+        "sla_safe_goodput_per_dollar",
+        "source_trace_id",
+        "value_quality_by_field"
+      ],
+      "missingness_rate": 0.8938,
+      "reason_if_not_trainable": null,
+      "recommended_model_family": "HGB vs GlobalMedian",
+      "row_count": 19907,
+      "source_datasets": {
+        "AcmeTrace": 19907
+      },
+      "strongest_baseline": "GlobalMedian",
+      "target": "queue_wait_s",
+      "trainable_now": true,
+      "valid_features": [
+        "prompt_tokens",
+        "output_tokens",
+        "gpu_count",
+        "kv_utilization",
+        "gpu_price_usd_per_hour",
+        "gpu_type",
+        "model_id",
+        "source_dataset_id"
+      ],
+      "value_quality_distribution": {
+        "measured": 19907
+      }
+    },
+    "sla_safe_goodput_per_dollar": {
+      "classification": false,
+      "deterministic_ground_truth": true,
+      "holdouts_required": [
+        "by_dataset",
+        "by_gpu",
+        "high_tail",
+        "time_if_available"
+      ],
+      "invalid_leaky_features": [
+        "estimated_cache_value_usd",
+        "estimated_carbon_cost_usd",
+        "estimated_carbon_kg",
+        "estimated_cold_start_cost_usd",
+        "estimated_decode_cost_usd",
+        "estimated_decode_seconds",
+        "estimated_energy_cost_usd",
+        "estimated_gpu_cost_usd",
+        "estimated_gpu_seconds",
+        "estimated_memory_pressure_cost_usd",
+        "estimated_migration_cost_usd",
+        "estimated_prefill_cost_usd",
+        "estimated_prefill_seconds",
+        "formula_by_field",
+        "limitations",
+        "overlay_class",
+        "sla_met",
+        "sla_safe_goodput",
+        "source_trace_id",
+        "value_quality_by_field"
+      ],
+      "missingness_rate": 0.0,
+      "ml_status": "diagnostic_only \u2014 formula is exact; alpha must come from forecasting upstream inputs, not re-predicting it",
+      "reason_if_not_trainable": null,
+      "recommended_model_family": "deterministic_formula",
+      "row_count": 187505,
+      "source_datasets": {
+        "AcmeTrace": 59907,
+        "cara_latency_prediction": 60000,
+        "cc-traces-weka-no-subagents-051226": 5000,
+        "llm-perf-leaderboard": 2598,
+        "swissai-serving-trace": 60000
+      },
+      "strongest_baseline": "OverlayFormula(goodput/cost)",
+      "target": "sla_safe_goodput_per_dollar",
+      "trainable_now": true,
+      "valid_features": [
+        "prompt_tokens",
+        "output_tokens",
+        "gpu_count",
+        "kv_utilization",
+        "gpu_price_usd_per_hour",
+        "gpu_type",
+        "model_id",
+        "source_dataset_id"
+      ],
+      "value_quality_distribution": {
+        "derived": 187505
+      }
+    },
+    "tpot_s": {
+      "classification": false,
+      "holdouts_required": [
+        "by_dataset",
+        "by_gpu",
+        "high_tail",
+        "time_if_available"
+      ],
+      "invalid_leaky_features": [
+        "e2e_latency_s",
+        "estimated_cache_value_usd",
+        "estimated_carbon_cost_usd",
+        "estimated_carbon_kg",
+        "estimated_cold_start_cost_usd",
+        "estimated_decode_cost_usd",
+        "estimated_decode_seconds",
+        "estimated_energy_cost_usd",
+        "estimated_gpu_cost_usd",
+        "estimated_gpu_seconds",
+        "estimated_memory_pressure_cost_usd",
+        "estimated_migration_cost_usd",
+        "estimated_prefill_cost_usd",
+        "estimated_prefill_seconds",
+        "formula_by_field",
+        "limitations",
+        "output_tokens",
+        "overlay_class",
+        "sla_met",
+        "sla_safe_goodput",
+        "sla_safe_goodput_per_dollar",
+        "source_trace_id",
+        "throughput_tok_s",
+        "ttft_s",
+        "value_quality_by_field"
+      ],
+      "missingness_rate": 0.6395,
+      "reason_if_not_trainable": null,
+      "recommended_model_family": "HGB vs GroupMedian",
+      "row_count": 67598,
+      "source_datasets": {
+        "cara_latency_prediction": 60000,
+        "cc-traces-weka-no-subagents-051226": 5000,
+        "llm-perf-leaderboard": 2598
+      },
+      "strongest_baseline": "GroupMedian(model,gpu)",
+      "target": "tpot_s",
+      "trainable_now": true,
+      "valid_features": [
+        "prompt_tokens",
+        "gpu_count",
+        "kv_utilization",
+        "gpu_price_usd_per_hour",
+        "gpu_type",
+        "model_id",
+        "source_dataset_id"
+      ],
+      "value_quality_distribution": {
+        "measured": 67598
+      }
+    },
+    "ttft_s": {
+      "classification": false,
+      "holdouts_required": [
+        "by_dataset",
+        "by_gpu",
+        "high_tail",
+        "time_if_available"
+      ],
+      "invalid_leaky_features": [
+        "e2e_latency_s",
+        "estimated_cache_value_usd",
+        "estimated_carbon_cost_usd",
+        "estimated_carbon_kg",
+        "estimated_cold_start_cost_usd",
+        "estimated_decode_cost_usd",
+        "estimated_decode_seconds",
+        "estimated_energy_cost_usd",
+        "estimated_gpu_cost_usd",
+        "estimated_gpu_seconds",
+        "estimated_memory_pressure_cost_usd",
+        "estimated_migration_cost_usd",
+        "estimated_prefill_cost_usd",
+        "estimated_prefill_seconds",
+        "formula_by_field",
+        "limitations",
+        "output_tokens",
+        "overlay_class",
+        "sla_met",
+        "sla_safe_goodput",
+        "sla_safe_goodput_per_dollar",
+        "source_trace_id",
+        "throughput_tok_s",
+        "tpot_s",
+        "value_quality_by_field"
+      ],
+      "missingness_rate": 0.6395,
+      "reason_if_not_trainable": null,
+      "recommended_model_family": "HGB+RF vs GroupMedian",
+      "row_count": 67598,
+      "source_datasets": {
+        "cara_latency_prediction": 60000,
+        "cc-traces-weka-no-subagents-051226": 5000,
+        "llm-perf-leaderboard": 2598
+      },
+      "strongest_baseline": "GroupMedian(model,gpu)",
+      "target": "ttft_s",
+      "trainable_now": true,
+      "valid_features": [
+        "prompt_tokens",
+        "gpu_count",
+        "kv_utilization",
+        "gpu_price_usd_per_hour",
+        "gpu_type",
+        "model_id",
+        "source_dataset_id"
+      ],
+      "value_quality_distribution": {
+        "measured": 67598
+      }
+    }
+  }
+}

@@ -1,0 +1,471 @@
+{
+  "cold_start_cost_sweep": [
+    {
+      "cold_start_cost_usd": 0.001389,
+      "gpu_price_usd_per_hour": 1.0,
+      "model_load_duration_s": 5
+    },
+    {
+      "cold_start_cost_usd": 0.003472,
+      "gpu_price_usd_per_hour": 2.5,
+      "model_load_duration_s": 5
+    },
+    {
+      "cold_start_cost_usd": 0.005556,
+      "gpu_price_usd_per_hour": 4.0,
+      "model_load_duration_s": 5
+    },
+    {
+      "cold_start_cost_usd": 0.004167,
+      "gpu_price_usd_per_hour": 1.0,
+      "model_load_duration_s": 15
+    },
+    {
+      "cold_start_cost_usd": 0.010417,
+      "gpu_price_usd_per_hour": 2.5,
+      "model_load_duration_s": 15
+    },
+    {
+      "cold_start_cost_usd": 0.016667,
+      "gpu_price_usd_per_hour": 4.0,
+      "model_load_duration_s": 15
+    },
+    {
+      "cold_start_cost_usd": 0.008333,
+      "gpu_price_usd_per_hour": 1.0,
+      "model_load_duration_s": 30
+    },
+    {
+      "cold_start_cost_usd": 0.020833,
+      "gpu_price_usd_per_hour": 2.5,
+      "model_load_duration_s": 30
+    },
+    {
+      "cold_start_cost_usd": 0.033333,
+      "gpu_price_usd_per_hour": 4.0,
+      "model_load_duration_s": 30
+    },
+    {
+      "cold_start_cost_usd": 0.016667,
+      "gpu_price_usd_per_hour": 1.0,
+      "model_load_duration_s": 60
+    },
+    {
+      "cold_start_cost_usd": 0.041667,
+      "gpu_price_usd_per_hour": 2.5,
+      "model_load_duration_s": 60
+    },
+    {
+      "cold_start_cost_usd": 0.066667,
+      "gpu_price_usd_per_hour": 4.0,
+      "model_load_duration_s": 60
+    }
+  ],
+  "findings": [
+    "Naive migration loses badly when cache_loss_pct -> 1 at low prefill throughput (penalty grows ~linearly).",
+    "Cache-aware routing matters most at high cache_loss_pct x low prefill throughput x high GPU price.",
+    "Warm pools become economically meaningful only when model_load_duration_s x price dominates per-request cost; needs pilot telemetry to calibrate model_load_duration_s.",
+    "reroute_delay_s and warmup_delay_s have NO measured source and would require pilot telemetry."
+  ],
+  "formulas": {
+    "cache_loss_prefill_penalty_s": "prompt_tokens / prefill_throughput_tok_s * cache_loss_pct",
+    "cold_start_cost_usd": "model_load_duration_s * gpu_price/3600 * gpu_count",
+    "migration_cost_usd": "cache_loss_prefill_penalty_s * gpu_price/3600*gpu_count + reroute_delay_s*gpu_price/3600*gpu_count + warmup_delay_s*gpu_price/3600*gpu_count"
+  },
+  "migration_cost_sweep": [
+    {
+      "cache_loss_pct": 0.0,
+      "cache_loss_prefill_penalty_s": 0.0,
+      "gpu_price_usd_per_hour": 1.0,
+      "migration_cost_usd_excl_reroute_warmup": 0.0,
+      "prefill_throughput_tok_s": 2000
+    },
+    {
+      "cache_loss_pct": 0.0,
+      "cache_loss_prefill_penalty_s": 0.0,
+      "gpu_price_usd_per_hour": 2.5,
+      "migration_cost_usd_excl_reroute_warmup": 0.0,
+      "prefill_throughput_tok_s": 2000
+    },
+    {
+      "cache_loss_pct": 0.0,
+      "cache_loss_prefill_penalty_s": 0.0,
+      "gpu_price_usd_per_hour": 4.0,
+      "migration_cost_usd_excl_reroute_warmup": 0.0,
+      "prefill_throughput_tok_s": 2000
+    },
+    {
+      "cache_loss_pct": 0.0,
+      "cache_loss_prefill_penalty_s": 0.0,
+      "gpu_price_usd_per_hour": 1.0,
+      "migration_cost_usd_excl_reroute_warmup": 0.0,
+      "prefill_throughput_tok_s": 5000
+    },
+    {
+      "cache_loss_pct": 0.0,
+      "cache_loss_prefill_penalty_s": 0.0,
+      "gpu_price_usd_per_hour": 2.5,
+      "migration_cost_usd_excl_reroute_warmup": 0.0,
+      "prefill_throughput_tok_s": 5000
+    },
+    {
+      "cache_loss_pct": 0.0,
+      "cache_loss_prefill_penalty_s": 0.0,
+      "gpu_price_usd_per_hour": 4.0,
+      "migration_cost_usd_excl_reroute_warmup": 0.0,
+      "prefill_throughput_tok_s": 5000
+    },
+    {
+      "cache_loss_pct": 0.0,
+      "cache_loss_prefill_penalty_s": 0.0,
+      "gpu_price_usd_per_hour": 1.0,
+      "migration_cost_usd_excl_reroute_warmup": 0.0,
+      "prefill_throughput_tok_s": 10000
+    },
+    {
+      "cache_loss_pct": 0.0,
+      "cache_loss_prefill_penalty_s": 0.0,
+      "gpu_price_usd_per_hour": 2.5,
+      "migration_cost_usd_excl_reroute_warmup": 0.0,
+      "prefill_throughput_tok_s": 10000
+    },
+    {
+      "cache_loss_pct": 0.0,
+      "cache_loss_prefill_penalty_s": 0.0,
+      "gpu_price_usd_per_hour": 4.0,
+      "migration_cost_usd_excl_reroute_warmup": 0.0,
+      "prefill_throughput_tok_s": 10000
+    },
+    {
+      "cache_loss_pct": 0.25,
+      "cache_loss_prefill_penalty_s": 0.256,
+      "gpu_price_usd_per_hour": 1.0,
+      "migration_cost_usd_excl_reroute_warmup": 7.1e-05,
+      "prefill_throughput_tok_s": 2000
+    },
+    {
+      "cache_loss_pct": 0.25,
+      "cache_loss_prefill_penalty_s": 0.256,
+      "gpu_price_usd_per_hour": 2.5,
+      "migration_cost_usd_excl_reroute_warmup": 0.000178,
+      "prefill_throughput_tok_s": 2000
+    },
+    {
+      "cache_loss_pct": 0.25,
+      "cache_loss_prefill_penalty_s": 0.256,
+      "gpu_price_usd_per_hour": 4.0,
+      "migration_cost_usd_excl_reroute_warmup": 0.000284,
+      "prefill_throughput_tok_s": 2000
+    },
+    {
+      "cache_loss_pct": 0.25,
+      "cache_loss_prefill_penalty_s": 0.1024,
+      "gpu_price_usd_per_hour": 1.0,
+      "migration_cost_usd_excl_reroute_warmup": 2.8e-05,
+      "prefill_throughput_tok_s": 5000
+    },
+    {
+      "cache_loss_pct": 0.25,
+      "cache_loss_prefill_penalty_s": 0.1024,
+      "gpu_price_usd_per_hour": 2.5,
+      "migration_cost_usd_excl_reroute_warmup": 7.1e-05,
+      "prefill_throughput_tok_s": 5000
+    },
+    {
+      "cache_loss_pct": 0.25,
+      "cache_loss_prefill_penalty_s": 0.1024,
+      "gpu_price_usd_per_hour": 4.0,
+      "migration_cost_usd_excl_reroute_warmup": 0.000114,
+      "prefill_throughput_tok_s": 5000
+    },
+    {
+      "cache_loss_pct": 0.25,
+      "cache_loss_prefill_penalty_s": 0.0512,
+      "gpu_price_usd_per_hour": 1.0,
+      "migration_cost_usd_excl_reroute_warmup": 1.4e-05,
+      "prefill_throughput_tok_s": 10000
+    },
+    {
+      "cache_loss_pct": 0.25,
+      "cache_loss_prefill_penalty_s": 0.0512,
+      "gpu_price_usd_per_hour": 2.5,
+      "migration_cost_usd_excl_reroute_warmup": 3.6e-05,
+      "prefill_throughput_tok_s": 10000
+    },
+    {
+      "cache_loss_pct": 0.25,
+      "cache_loss_prefill_penalty_s": 0.0512,
+      "gpu_price_usd_per_hour": 4.0,
+      "migration_cost_usd_excl_reroute_warmup": 5.7e-05,
+      "prefill_throughput_tok_s": 10000
+    },
+    {
+      "cache_loss_pct": 0.5,
+      "cache_loss_prefill_penalty_s": 0.512,
+      "gpu_price_usd_per_hour": 1.0,
+      "migration_cost_usd_excl_reroute_warmup": 0.000142,
+      "prefill_throughput_tok_s": 2000
+    },
+    {
+      "cache_loss_pct": 0.5,
+      "cache_loss_prefill_penalty_s": 0.512,
+      "gpu_price_usd_per_hour": 2.5,
+      "migration_cost_usd_excl_reroute_warmup": 0.000356,
+      "prefill_throughput_tok_s": 2000
+    },
+    {
+      "cache_loss_pct": 0.5,
+      "cache_loss_prefill_penalty_s": 0.512,
+      "gpu_price_usd_per_hour": 4.0,
+      "migration_cost_usd_excl_reroute_warmup": 0.000569,
+      "prefill_throughput_tok_s": 2000
+    },
+    {
+      "cache_loss_pct": 0.5,
+      "cache_loss_prefill_penalty_s": 0.2048,
+      "gpu_price_usd_per_hour": 1.0,
+      "migration_cost_usd_excl_reroute_warmup": 5.7e-05,
+      "prefill_throughput_tok_s": 5000
+    },
+    {
+      "cache_loss_pct": 0.5,
+      "cache_loss_prefill_penalty_s": 0.2048,
+      "gpu_price_usd_per_hour": 2.5,
+      "migration_cost_usd_excl_reroute_warmup": 0.000142,
+      "prefill_throughput_tok_s": 5000
+    },
+    {
+      "cache_loss_pct": 0.5,
+      "cache_loss_prefill_penalty_s": 0.2048,
+      "gpu_price_usd_per_hour": 4.0,
+      "migration_cost_usd_excl_reroute_warmup": 0.000228,
+      "prefill_throughput_tok_s": 5000
+    },
+    {
+      "cache_loss_pct": 0.5,
+      "cache_loss_prefill_penalty_s": 0.1024,
+      "gpu_price_usd_per_hour": 1.0,
+      "migration_cost_usd_excl_reroute_warmup": 2.8e-05,
+      "prefill_throughput_tok_s": 10000
+    },
+    {
+      "cache_loss_pct": 0.5,
+      "cache_loss_prefill_penalty_s": 0.1024,
+      "gpu_price_usd_per_hour": 2.5,
+      "migration_cost_usd_excl_reroute_warmup": 7.1e-05,
+      "prefill_throughput_tok_s": 10000
+    },
+    {
+      "cache_loss_pct": 0.5,
+      "cache_loss_prefill_penalty_s": 0.1024,
+      "gpu_price_usd_per_hour": 4.0,
+      "migration_cost_usd_excl_reroute_warmup": 0.000114,
+      "prefill_throughput_tok_s": 10000
+    },
+    {
+      "cache_loss_pct": 0.75,
+      "cache_loss_prefill_penalty_s": 0.768,
+      "gpu_price_usd_per_hour": 1.0,
+      "migration_cost_usd_excl_reroute_warmup": 0.000213,
+      "prefill_throughput_tok_s": 2000
+    },
+    {
+      "cache_loss_pct": 0.75,
+      "cache_loss_prefill_penalty_s": 0.768,
+      "gpu_price_usd_per_hour": 2.5,
+      "migration_cost_usd_excl_reroute_warmup": 0.000533,
+      "prefill_throughput_tok_s": 2000
+    },
+    {
+      "cache_loss_pct": 0.75,
+      "cache_loss_prefill_penalty_s": 0.768,
+      "gpu_price_usd_per_hour": 4.0,
+      "migration_cost_usd_excl_reroute_warmup": 0.000853,
+      "prefill_throughput_tok_s": 2000
+    },
+    {
+      "cache_loss_pct": 0.75,
+      "cache_loss_prefill_penalty_s": 0.3072,
+      "gpu_price_usd_per_hour": 1.0,
+      "migration_cost_usd_excl_reroute_warmup": 8.5e-05,
+      "prefill_throughput_tok_s": 5000
+    },
+    {
+      "cache_loss_pct": 0.75,
+      "cache_loss_prefill_penalty_s": 0.3072,
+      "gpu_price_usd_per_hour": 2.5,
+      "migration_cost_usd_excl_reroute_warmup": 0.000213,
+      "prefill_throughput_tok_s": 5000
+    },
+    {
+      "cache_loss_pct": 0.75,
+      "cache_loss_prefill_penalty_s": 0.3072,
+      "gpu_price_usd_per_hour": 4.0,
+      "migration_cost_usd_excl_reroute_warmup": 0.000341,
+      "prefill_throughput_tok_s": 5000
+    },
+    {
+      "cache_loss_pct": 0.75,
+      "cache_loss_prefill_penalty_s": 0.1536,
+      "gpu_price_usd_per_hour": 1.0,
+      "migration_cost_usd_excl_reroute_warmup": 4.3e-05,
+      "prefill_throughput_tok_s": 10000
+    },
+    {
+      "cache_loss_pct": 0.75,
+      "cache_loss_prefill_penalty_s": 0.1536,
+      "gpu_price_usd_per_hour": 2.5,
+      "migration_cost_usd_excl_reroute_warmup": 0.000107,
+      "prefill_throughput_tok_s": 10000
+    },
+    {
+      "cache_loss_pct": 0.75,
+      "cache_loss_prefill_penalty_s": 0.1536,
+      "gpu_price_usd_per_hour": 4.0,
+      "migration_cost_usd_excl_reroute_warmup": 0.000171,
+      "prefill_throughput_tok_s": 10000
+    },
+    {
+      "cache_loss_pct": 1.0,
+      "cache_loss_prefill_penalty_s": 1.024,
+      "gpu_price_usd_per_hour": 1.0,
+      "migration_cost_usd_excl_reroute_warmup": 0.000284,
+      "prefill_throughput_tok_s": 2000
+    },
+    {
+      "cache_loss_pct": 1.0,
+      "cache_loss_prefill_penalty_s": 1.024,
+      "gpu_price_usd_per_hour": 2.5,
+      "migration_cost_usd_excl_reroute_warmup": 0.000711,
+      "prefill_throughput_tok_s": 2000
+    },
+    {
+      "cache_loss_pct": 1.0,
+      "cache_loss_prefill_penalty_s": 1.024,
+      "gpu_price_usd_per_hour": 4.0,
+      "migration_cost_usd_excl_reroute_warmup": 0.001138,
+      "prefill_throughput_tok_s": 2000
+    },
+    {
+      "cache_loss_pct": 1.0,
+      "cache_loss_prefill_penalty_s": 0.4096,
+      "gpu_price_usd_per_hour": 1.0,
+      "migration_cost_usd_excl_reroute_warmup": 0.000114,
+      "prefill_throughput_tok_s": 5000
+    },
+    {
+      "cache_loss_pct": 1.0,
+      "cache_loss_prefill_penalty_s": 0.4096,
+      "gpu_price_usd_per_hour": 2.5,
+      "migration_cost_usd_excl_reroute_warmup": 0.000284,
+      "prefill_throughput_tok_s": 5000
+    },
+    {
+      "cache_loss_pct": 1.0,
+      "cache_loss_prefill_penalty_s": 0.4096,
+      "gpu_price_usd_per_hour": 4.0,
+      "migration_cost_usd_excl_reroute_warmup": 0.000455,
+      "prefill_throughput_tok_s": 5000
+    },
+    {
+      "cache_loss_pct": 1.0,
+      "cache_loss_prefill_penalty_s": 0.2048,
+      "gpu_price_usd_per_hour": 1.0,
+      "migration_cost_usd_excl_reroute_warmup": 5.7e-05,
+      "prefill_throughput_tok_s": 10000
+    },
+    {
+      "cache_loss_pct": 1.0,
+      "cache_loss_prefill_penalty_s": 0.2048,
+      "gpu_price_usd_per_hour": 2.5,
+      "migration_cost_usd_excl_reroute_warmup": 0.000142,
+      "prefill_throughput_tok_s": 10000
+    },
+    {
+      "cache_loss_pct": 1.0,
+      "cache_loss_prefill_penalty_s": 0.2048,
+      "gpu_price_usd_per_hour": 4.0,
+      "migration_cost_usd_excl_reroute_warmup": 0.000228,
+      "prefill_throughput_tok_s": 10000
+    }
+  ],
+  "parameters": {
+    "cache_loss_pct": {
+      "confidence": "medium",
+      "production_ready": false,
+      "source": "CC-traces migration_or_cache_loss_proxy range",
+      "source_type": "proxy",
+      "value": [
+        0.0,
+        0.25,
+        0.5,
+        0.75,
+        1.0
+      ]
+    },
+    "gpu_price_usd_per_hour": {
+      "confidence": "medium",
+      "production_ready": false,
+      "source": "afhubbard/gpu-prices public list (A10/A100/H100 medians)",
+      "source_type": "prior",
+      "value": [
+        1.0,
+        2.5,
+        4.0
+      ]
+    },
+    "model_load_duration_s": {
+      "confidence": "low",
+      "production_ready": false,
+      "source": "vLLM/TGI public load-time discussions + ejhusom load_duration_ns order-of-magnitude (consumer)",
+      "source_type": "simulator_prior",
+      "value": [
+        5,
+        15,
+        30,
+        60
+      ]
+    },
+    "prefill_throughput_tok_s": {
+      "confidence": "medium",
+      "production_ready": false,
+      "source": "Optimum prefill throughput across A100/A10/T4",
+      "source_type": "prior",
+      "value": [
+        2000,
+        5000,
+        10000
+      ]
+    },
+    "reroute_delay_s": {
+      "confidence": "low",
+      "production_ready": false,
+      "source": "no measured source \u2014 pure simulator_prior",
+      "source_type": "simulator_prior",
+      "value": [
+        0,
+        1,
+        5
+      ]
+    },
+    "warmup_delay_s": {
+      "confidence": "low",
+      "production_ready": false,
+      "source": "no measured source \u2014 pure simulator_prior",
+      "source_type": "simulator_prior",
+      "value": [
+        0,
+        2,
+        10
+      ]
+    }
+  },
+  "parameters_needing_pilot_telemetry": [
+    "model_load_duration_s (server-class vLLM/TGI)",
+    "reroute_delay_s",
+    "warmup_delay_s",
+    "tail_latency_uplift_after_migration",
+    "migration_veto_label"
+  ],
+  "status": "simulator_prior_only \u2014 NEVER headline; no measured labels"
+}

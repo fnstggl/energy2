@@ -1,0 +1,164 @@
+{
+  "cold_start_terms": {
+    "cold_start_cost_usd": {
+      "calibration_notes": "0 rows in corpus carry it (0); only a simulator_prior sweep is honest (Phase 7).",
+      "confidence": "low",
+      "formula": "model_load_duration_s * gpu_price_usd_per_hour / 3600 * gpu_count",
+      "production_ready": false,
+      "source": "derivable IF model_load_duration_s measured + GPU price prior",
+      "source_type": "simulator_prior",
+      "value": null
+    },
+    "cold_start_energy_kwh": {
+      "calibration_notes": "No cold-start energy telemetry.",
+      "confidence": "low",
+      "formula": "n/a",
+      "production_ready": false,
+      "source": "none",
+      "source_type": "missing",
+      "value": null
+    },
+    "first_compile_duration_s": {
+      "calibration_notes": "No first-compile telemetry.",
+      "confidence": "low",
+      "formula": "n/a",
+      "production_ready": false,
+      "source": "none",
+      "source_type": "missing",
+      "value": null
+    },
+    "gpu_transfer_duration_s": {
+      "calibration_notes": "KV memory size known; transfer seconds not measured.",
+      "confidence": "low",
+      "formula": "n/a",
+      "production_ready": false,
+      "source": "Memoriant KV-cache memory curves (indirect)",
+      "source_type": "prior",
+      "value": null
+    },
+    "graph_capture_duration_s": {
+      "calibration_notes": "No CUDA-graph capture telemetry.",
+      "confidence": "low",
+      "formula": "n/a",
+      "production_ready": false,
+      "source": "none",
+      "source_type": "missing",
+      "value": null
+    },
+    "image_pull_duration_s": {
+      "calibration_notes": "No image-pull telemetry in any ingested source.",
+      "confidence": "low",
+      "formula": "n/a",
+      "production_ready": false,
+      "source": "none",
+      "source_type": "missing",
+      "value": null
+    },
+    "model_load_duration_s": {
+      "calibration_notes": "Only a single-machine Ollama proxy exists; no server-class vLLM model-load curve. Needs pilot telemetry.",
+      "confidence": "low",
+      "formula": "n/a (no measured per-(model,gpu,cluster) load seconds)",
+      "production_ready": false,
+      "source": "ejhusom load_duration_ns (consumer Ollama) \u2014 NOT in analysis corpus; AcmeTrace/Google-Cluster give job SCHEDULE events not model-load seconds",
+      "source_type": "simulator_prior",
+      "value": null
+    },
+    "warmup_duration_s": {
+      "calibration_notes": "No warmup telemetry.",
+      "confidence": "low",
+      "formula": "n/a",
+      "production_ready": false,
+      "source": "none",
+      "source_type": "missing",
+      "value": null
+    }
+  },
+  "migration_terms": {
+    "batching_disruption_factor": {
+      "calibration_notes": "No batching-disruption telemetry.",
+      "confidence": "low",
+      "formula": "n/a",
+      "production_ready": false,
+      "source": "none",
+      "source_type": "missing",
+      "value": null
+    },
+    "cache_loss_pct": {
+      "calibration_notes": "A genuine PROXY exists in CC-traces; not realized in the analysis overlay rows (cache_loss_pct not populated).",
+      "confidence": "medium",
+      "formula": "fraction of KV blocks lost",
+      "production_ready": false,
+      "source": "CC-traces migration_or_cache_loss_proxy (KV block-hash loss)",
+      "source_type": "proxy",
+      "value": null
+    },
+    "drain_duration_s": {
+      "calibration_notes": "No drain telemetry.",
+      "confidence": "low",
+      "formula": "n/a",
+      "production_ready": false,
+      "source": "none",
+      "source_type": "missing",
+      "value": null
+    },
+    "migration_cache_loss_penalty_s": {
+      "calibration_notes": "Derivable once cache_loss_pct + prefill throughput are joined.",
+      "confidence": "medium",
+      "formula": "prompt_tokens / prefill_throughput_tok_s * cache_loss_pct",
+      "production_ready": false,
+      "source": "derivable from cache_loss_pct + prefill throughput",
+      "source_type": "derived",
+      "value": null
+    },
+    "migration_cost_usd": {
+      "calibration_notes": "0 rows in corpus carry it (0); simulator_prior sweep only (Phase 7).",
+      "confidence": "low",
+      "formula": "cache_loss_prefill_penalty_s * gpu_price/3600 * gpu_count + reroute/warmup terms",
+      "production_ready": false,
+      "source": "derivable IF cache_loss_pct proxy + GPU price prior",
+      "source_type": "simulator_prior",
+      "value": null
+    },
+    "migration_duration_s": {
+      "calibration_notes": "Job-level evict events, not LLM-serving migration seconds.",
+      "confidence": "low",
+      "formula": "n/a",
+      "production_ready": false,
+      "source": "Google Cluster evict + AcmeTrace state (job-level proxy)",
+      "source_type": "prior",
+      "value": null
+    },
+    "migration_veto_label": {
+      "calibration_notes": "No labelled migration-veto outcomes.",
+      "confidence": "low",
+      "formula": "n/a",
+      "production_ready": false,
+      "source": "none",
+      "source_type": "missing",
+      "value": null
+    },
+    "route_shift_duration_s": {
+      "calibration_notes": "No routing-shift telemetry.",
+      "confidence": "low",
+      "formula": "n/a",
+      "production_ready": false,
+      "source": "none",
+      "source_type": "missing",
+      "value": null
+    },
+    "tail_latency_uplift_after_migration": {
+      "calibration_notes": "No post-migration tail-latency telemetry.",
+      "confidence": "low",
+      "formula": "n/a",
+      "production_ready": false,
+      "source": "none",
+      "source_type": "missing",
+      "value": null
+    }
+  },
+  "verdict": {
+    "binding_rule": "These targets are excluded from headline goodput/$; Phase 7 provides transparent sourced sensitivity sweeps only.",
+    "cold_start": "blocked_by_missing_labels \u2014 simulator_prior sweep only",
+    "migration": "blocked_by_missing_labels \u2014 a real cache-loss PROXY exists in CC-traces but is not realized in the overlay rows; simulator_prior sweep only"
+  }
+}
