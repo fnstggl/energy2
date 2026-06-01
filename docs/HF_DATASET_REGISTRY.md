@@ -92,6 +92,19 @@ scripts/ingest_hf_aurelius_dataset.py --dataset-id ... --from-hf-file ...
   -> data/external/hf_discovery/canonical_corpus_registry.json (with promotion gates)
   -> tests/fixtures/hf/<safe>__<config>_sample.jsonl (5-row deterministic fixture)
 
+scripts/ingest_hf_acmetrace.py
+  -> Qinghao/AcmeTrace 4 configs (kalos_jobs, seren_jobs_head,
+     kalos_gpu_util_head, seren_ipmi_gpu_power_head).
+
+scripts/ingest_hf_gap_datasets.py
+  -> 5 telemetry-gap datasets (cc-traces, lmcache-agentic-traces,
+     BurstGPT, google-cluster-data-2019, prefixbench).
+
+scripts/ingest_hf_latency_benchmarks.py
+  -> 3 broadened-discovery latency benchmarks (odyn-network/odyn-benchmarks,
+     memoriant/dgx-spark-kv-cache-benchmark,
+     intellistream/vllm-hust-benchmark-results).
+
 scripts/run_hf_corpus_evaluations.py
   -> data/external/hf_discovery/hf_corpus_evaluation_summary.json
 ```
@@ -200,6 +213,13 @@ Rules (binding):
 | `Qinghao/AcmeTrace` | **`seren_jobs_head`** | `cluster_scheduler_trace` | **Tier 3** | `promoted_for_backtest` (+ `promoted_for_constraint_aware_evaluation`, `promoted_for_training_priors`) | 5 | **79,999** | strong | 2026-06-01 |
 | `Qinghao/AcmeTrace` | **`kalos_gpu_util_head`** | `telemetry_trace` | **Tier 2** | `promoted_for_constraint_aware_evaluation` (+ `promoted_for_backtest`; `dynamic_calibration` downgraded — needs `strong` strength) | 5 | 6,680 | moderate | 2026-06-01 |
 | `Qinghao/AcmeTrace` | **`seren_ipmi_gpu_power_head`** | `telemetry_trace` | **Tier 2** | **`promoted_for_dynamic_calibration`** (+ `constraint_aware_evaluation`, `backtest`) | 5 | **79,999** | strong | 2026-06-01 |
+| `odyn-network/odyn-benchmarks` | **`qwen_chat_streaming`** | `latency_benchmark_trace` | Tier 4 | `promoted_for_performance_priors` (+ `constraint_aware_evaluation`, `training_priors`) | 5 | 64 | moderate | 2026-06-01 |
+| `odyn-network/odyn-benchmarks` | **`facebook_chat_streaming`** | `latency_benchmark_trace` | Tier 4 | `promoted_for_performance_priors` (+ `constraint_aware_evaluation`, `training_priors`) | 5 | 48 | moderate | 2026-06-01 |
+| `odyn-network/odyn-benchmarks` | **`qwen_batch`** | `latency_benchmark_trace` | Tier 4 | `promoted_for_performance_priors` (+ `constraint_aware_evaluation`, `training_priors`) | 5 | 28 | moderate | 2026-06-01 |
+| `odyn-network/odyn-benchmarks` | **`facebook_batch`** | `latency_benchmark_trace` | Tier 4 | `promoted_for_training_priors` | 4 | 4 | weak | 2026-06-01 |
+| `memoriant/dgx-spark-kv-cache-benchmark` | **`v3_corrected`** | `latency_benchmark_trace` | Tier 4 | `promoted_for_training_priors` | 5 | 18 | weak | 2026-06-01 |
+| `intellistream/vllm-hust-benchmark-results` | **`single_gpu`** | `latency_benchmark_trace` | Tier 4 | `promoted_for_performance_priors` (+ `constraint_aware_evaluation`, `training_priors`) | 5 | 42 | moderate | 2026-06-01 |
+| `intellistream/vllm-hust-benchmark-results` | **`multi_gpu`** | `latency_benchmark_trace` | Tier 4 | `promoted_for_training_priors` | 3 | 3 | weak | 2026-06-01 |
 
 > **CARA** is the first Tier 2 (public telemetry trace) entry in the
 > federated corpus. CARA **train_flat** + **train_queue_details** are
@@ -292,6 +312,170 @@ Rules (binding):
 > `scripts/update_hf_candidates_acmetrace.py`. Rollup at
 > `data/external/hf_discovery/acmetrace_audit_summary.json`. Tests:
 > `tests/test_hf_acmetrace_ingest.py` (46 tests, all green).
+
+> **Broadened-discovery latency-benchmark ingest 2026-06-01.** Eleven
+> candidates from the INGEST_LATER / MONITOR groups of
+> `data/external/hf_discovery/aurelius_gap_closure_audit.json` were
+> follow-on-audited. Three were bounded-ingested as Tier-4
+> `latency_benchmark_trace`; eight were classified discovery-only.
+>
+> - **`odyn-network/odyn-benchmarks`** — vLLM + Ray Serve benchmark with
+>   measured TTFT_avg/p95, TPOT_avg/p95, e2e_avg/p95, throughput_tok_s,
+>   throughput_req_s, and failure counts across 4 prompt profiles
+>   (A short→long, B long→short, C long→long, D short→short) × 2 models
+>   (Qwen2.5-7B on DGX Spark Blackwell, OPT-125m on RTX 3090) × 6-8
+>   concurrency levels. Apache-2.0. Split into 4 configs
+>   (`qwen_chat_streaming`, `facebook_chat_streaming`, `qwen_batch`,
+>   `facebook_batch`).
+> - **`memoriant/dgx-spark-kv-cache-benchmark`** — corrected v3 KV-cache
+>   quantization benchmark (llama.cpp f16 / q8_0 / q4_0 on DGX Spark
+>   GB10 Grace Blackwell unified memory). 18 rows, real
+>   `kv_buffer_mib` + `gpu_mem_mib` + `prompt_tps` + `gen_tps` per
+>   `(cache_type, context_tokens)` cell from 0 to 110K tokens.
+>   Apache-2.0.
+> - **`intellistream/vllm-hust-benchmark-results`** — vLLM-HUST
+>   submissions-driven leaderboard with measured TTFT_ms, TBT_ms
+>   (=TPOT), throughput_tps, peak_mem_mb, error_rate across Huawei
+>   910B3 hardware × multiple Qwen / DeepSeek models × workloads
+>   (prefix-repetition-online, sonnet-throughput). No declared license
+>   → `license=None`, no committed normalised sample under the
+>   conservative redistribution policy.
+>
+> Eight rejection / deferral records (audited but not ingested):
+> `tarekmasryo/llm-system-ops-production-telemetry-sft-data`
+> (self-declared SYNTHETIC despite the "production-telemetry" name —
+> rejected to enforce the anti-dataset-spam rule);
+> `spiritbuun/turboquant-tcq-kv-cache` (codebooks, not a dataset);
+> `hlarcher/inference-benchmarker` (ShareGPT-derived workload fixtures
+> only — duplicate of the existing `sharegpt_aiperf` ingester);
+> `Boxoffice1280/Neurips2026_evaluating_accuracy_KV-cache_reuse_techniques`
+> (cc-by-nc-nd-4.0 — No-Derivatives clause blocks committing normalised
+> samples); `Alexsssu/BurstGPT_LMSYSChat_withPrompt_2Days-SVLSGPU_EvalData`
+> (duplicate of `lzzmm/BurstGPT`, license=None);
+> `MCP-1st-Birthday/smoltrace-cloud-cost-tasks` (synthetic MCP agent-eval
+> tasks, no infrastructure signals); `rbgo/llm-inference-benchmark`
+> (license=None — deferred); `project-vajra/dev-staging-h100-dgx`
+> (license=None — NCCL collective traces deferred).
+>
+> Audit script: `scripts/ingest_hf_latency_benchmarks.py`. Rollup at
+> `data/external/hf_discovery/broadened_discovery_audit_summary.json`.
+> Tests: `tests/test_hf_latency_benchmarks_ingest.py` (78 tests, all green).
+
+#### Odyn Network — Tier-4 vLLM + Ray Serve latency benchmark
+
+- **Provenance.** [`odyn-network/odyn-benchmarks`](https://huggingface.co/datasets/odyn-network/odyn-benchmarks)
+  — inference benchmark results from the Odyn Network distributed,
+  OpenAI-compatible serving platform (Apache-2.0, built on vLLM + Ray
+  Serve + FastAPI). 4 prompt profiles A/B/C/D (short/long × short/long
+  input/output tokens) × 2 model + hardware combinations
+  (Qwen2.5-7B-Instruct on DGX Spark Blackwell at concurrencies 4-250;
+  facebook/opt-125m on RTX 3090 at concurrencies 1-32).
+- **Available signals (`*_chat_streaming`):** TTFT_avg + TTFT_p95
+  (streaming only), TPOT_avg + TPOT_p95, e2e_avg + e2e_p95,
+  throughput_tok_s, throughput_req_s, concurrency,
+  successful/failed counts (failure_label proxy for SLA backpressure
+  at the highest concurrencies), wall_time_s, engine=vllm.
+- **Available signals (`*_batch`):** batch_size, num_prompts,
+  total_ms, avg_per_prompt_ms (e2e-derived), throughput_prompts_s.
+- **Missing signals:** ITL, p50/p90/p99 (only avg + p95 reported),
+  KV-cache instrumentation, GPU utilisation telemetry, real
+  arrival/queue trace, real timeout label, autoscaling / replica
+  signals.
+- **Recommended Aurelius uses:**
+  - Performance-surface priors (TTFT_avg + TPOT_avg + e2e_avg + p95
+    by model × hardware × concurrency × profile).
+  - Concurrency-saturation priors — `failed` counts at concurrencies
+    ≥ 192 calibrate the failure-rate prior under high backpressure on
+    a single replica.
+  - Profile-aware request-shape priors — A/B/C/D cover the full
+    short/long input/output quadrant for the eval / batch frontier.
+- **Prohibited uses:**
+  - Real arrival / queue scheduling (benchmark, no arrival trace).
+  - Production latency calibration (vLLM benchmark, not pilot).
+  - Cross-deployment generalisation — single model × single GPU per
+    config; only use within the same `(model, gpu, engine)` tuple.
+- **Bounded ingest layout:** all 4 raw CSVs
+  (`results/qwen_results/chat_benchmarks.csv`,
+  `results/qwen_results/batch_benchmarks.csv`,
+  `results/facebook_results/chat_benchmarks.csv`,
+  `results/facebook_results/batch_benchmarks.csv`; total ~11 KB raw)
+  live under `data/external/hf/odyn-network__odyn-benchmarks/raw/`
+  and are **gitignored**. Per-config schema_profile + schema_mapping +
+  summary + statistical_rollups + 5-row fixture ARE committed.
+  Apache-2.0 license permits redistribution → bounded normalised
+  sample committed per config (44 + 31 + 14 + 2 ≈ 91 KiB total,
+  100 KiB/file cap; well under the 300 MiB PR budget).
+
+#### Memoriant DGX Spark — Tier-4 KV-cache quantization benchmark
+
+- **Provenance.** [`memoriant/dgx-spark-kv-cache-benchmark`](https://huggingface.co/datasets/memoriant/dgx-spark-kv-cache-benchmark)
+  — corrected v3 KV-cache quantization benchmark (Apache-2.0) by
+  Nathan Maine / Memoriant Inc. Hardware: NVIDIA DGX Spark (GB10
+  Grace Blackwell unified memory architecture, 128 GB unified RAM,
+  compute 12.1). Engine: llama.cpp. Configurations: f16 / q8_0 / q4_0
+  KV cache quantisation, 6 context-length steps from 0 to 110,019
+  tokens.
+- **Available signals:** `kv_buffer_mib` (KV cache memory pressure,
+  real per `cache_type × context_tokens` cell), `gpu_mem_mib`
+  (`nvidia-smi`-measured total GPU memory — replaces the v1 wrong
+  RSS-on-unified-memory measurement per the CORRECTION-NOTICE),
+  `prompt_tps`, `gen_tps` (real prompt-processing and
+  generation-tokens-per-second). engine=llama.cpp, model_family=llama.
+- **Missing signals:** TTFT / TPOT / ITL / e2e (only throughput
+  reported), concurrency (single request at a time), batch_size,
+  failure / timeout labels.
+- **Recommended Aurelius uses:**
+  - KV-cache memory-pressure priors (216 / 408 / 768 MiB per 110K
+    context for q4_0 / q8_0 / f16 — a 72% memory saving with q4_0).
+  - Cache-quantization throughput trade-off priors (gen_tps degrades
+    from ~45 to ~24 at 110K context under q4_0 — a 37% gen-speed
+    hit at long context).
+  - GB10 Grace Blackwell unified-memory residency priors.
+- **Prohibited uses:**
+  - Latency frontier source on its own (no TTFT / TPOT — must be
+    combined with a TTFT-aware dataset).
+  - Generalisation beyond GB10 (single GPU class).
+- **Bounded ingest layout:** 1 raw CSV (846 B) at
+  `data/external/hf/memoriant__dgx-spark-kv-cache-benchmark/raw/`
+  (gitignored). Schema_profile + schema_mapping + summary +
+  statistical_rollups + 5-row fixture + 18-row Apache-2.0 committed
+  normalised sample (9 KiB) ARE committed.
+
+#### Intellistream vLLM-HUST — Tier-4 leaderboard (Huawei Ascend)
+
+- **Provenance.** [`intellistream/vllm-hust-benchmark-results`](https://huggingface.co/datasets/intellistream/vllm-hust-benchmark-results)
+  — submissions-driven leaderboard for the vLLM-HUST community
+  benchmark. Last updated 2026-06-01. Currently dominated by Huawei
+  910B3 (Ascend-class, 64 GB/chip) entries, with vLLM 0.11.0 and
+  vLLM-HUST 0.20.1rc1.dev314+ as the engines.
+- **Available signals:** TTFT_ms (mean), TBT_ms (=TPOT mean),
+  throughput_tps, peak_mem_mb, error_rate, concurrent_requests,
+  input_length, output_length, batch_size, model (parameters,
+  precision, quantization), hardware (vendor, chip_model, chip_count,
+  memory), workload (name, dataset), engine + engine_version,
+  constraints (scenario_source, scope).
+- **Missing signals:** p50 / p90 / p95 / p99 (only scalar means
+  reported), ITL, e2e_latency, KV-cache instrumentation, timeout
+  label, real arrival / queue trace, autoscaling, replica counts.
+- **Recommended Aurelius uses:**
+  - Performance-surface priors for Ascend-class hardware (the only
+    public leaderboard exposing TTFT + TBT + throughput at this
+    granularity for Huawei 910B3).
+  - Engine-version comparison priors (vLLM vs vLLM-HUST forks under
+    matched hardware + model + workload).
+- **Prohibited uses:**
+  - Cross-vendor generalisation (Ascend-class only; do NOT apply to
+    NVIDIA / AMD / TPU without independent validation).
+  - Production latency calibration (Tier 4 benchmark).
+  - Memory-pressure analysis when `peak_mem_mb` is zero (a large
+    fraction of entries do not report it).
+  - Treating `error_rate == 0` as truth — current snapshot reports 0
+    for all entries; treat as an upper-bound only.
+- **License:** no declared license on the HF card frontmatter →
+  `license=None`. The conservative redistribution policy applies — no
+  committed normalised sample is shipped for this dataset (raw
+  download is gitignored; only schema_profile + schema_mapping +
+  summary + statistical_rollups + 5-row fixture are committed).
 
 #### AcmeTrace — Tier-3 cluster jobs + Tier-2 GPU/IPMI telemetry
 
@@ -393,6 +577,14 @@ Rules (binding):
 | `jaytonde05/iris-prefix-cache-benchmark` | `request_shape_trace` | `reject_low_value` | 20 synthetic prompts only (single `prompt: string` column, 57 KB total); no measured TTFT / cache-hit / GPU / queue / SLA. Existing `jaytonde05/prefixbench` already covers the synthetic prefix-cache role. |
 | ~~`jaytonde05/prefixbench`~~ | ~~`candidate`~~ → **ingested 2026-06-01** | see §7.1 | — |
 | ~~`semianalysisai/cc-traces-weka-no-subagents-051226`~~ | ~~`candidate`~~ → **ingested 2026-06-01** | see §7.1 | — |
+| `tarekmasryo/llm-system-ops-production-telemetry-sft-data` | `telemetry_trace` (claimed) | `reject_low_value` | Self-declared SYNTHETIC despite the "production-telemetry" name — README: "Synthetic data… not real user data. cost_usd and token fields are synthetic estimates (not billing truth)". Tier-6; rejected to enforce the anti-dataset-spam rule. |
+| `spiritbuun/turboquant-tcq-kv-cache` | `kernel_profile_trace` (claimed) | `reject_not_a_dataset` | Repository contains quantization codebooks (`.bin` / `.pt` artefacts), not a benchmark dataset. No measured latency / throughput / cache telemetry. |
+| `hlarcher/inference-benchmarker` | `request_shape_trace` | `duplicate_existing` | ShareGPT-derived prompt fixtures used to drive the huggingface/inference-benchmarker tool. Workload-shape only; `aurelius/traces/sharegpt_aiperf.py` already covers this role. |
+| `Boxoffice1280/Neurips2026_evaluating_accuracy_KV-cache_reuse_techniques` | `cache_residency_trace` | `license_restricted_no_redistribution` | License is cc-by-nc-nd-4.0 — Non-Commercial + No-Derivatives. Normalised samples are derivatives; committing any excerpt violates the No-Derivatives clause. HF metadata reference retained but no ingest. |
+| `Alexsssu/BurstGPT_LMSYSChat_withPrompt_2Days-SVLSGPU_EvalData` | `request_shape_trace` | `duplicate_existing` | Combines BurstGPT + LMSYSChat prompt traces. The BurstGPT shape role is already covered by `lzzmm/BurstGPT/burstgpt_1_full`; LMSYSChat is request-shape only. license=None. |
+| `MCP-1st-Birthday/smoltrace-cloud-cost-tasks` | `mixed_or_unknown_trace` | `reject_synthetic_agent_eval` | Synthetic MCP agent-evaluation task set (smoltrace). No measured infrastructure signals (latency / queue / GPU / cache). Tier 6. |
+| `rbgo/llm-inference-benchmark` | `latency_benchmark_trace` | `license_unspecified_low_priority` | Single CSV with inference benchmark numbers, license=None. Without license clarity, committing a normalised sample is unsafe. Lower priority than `odyn-network/odyn-benchmarks` + `memoriant/dgx-spark-kv-cache-benchmark` (both Apache-2.0) which fill the same Tier-4 role. |
+| `project-vajra/dev-staging-h100-dgx` | `kernel_profile_trace` | `license_unspecified_low_priority` | NCCL `all_reduce` / `send_recv` CSV traces (compressed `.xz`). Potentially useful as inter-GPU communication priors; license=None. Revisit if licence clarified or if Aurelius adds a multi-GPU placement / collective evaluator. |
 
 ### 7.3 Datasets known in repo (non-HF or other ingest paths)
 
@@ -473,8 +665,29 @@ Re-running `scripts/discover_hf_aurelius_datasets.py` rebuilds
 - Add a synthetic `telemetry_trace` smoke fixture so the dynamic-
   calibration evaluator has a positive test path that does not require
   any real telemetry trace to be present in CI.
-- Look for Odyn benchmarks (the seed was searched but the corresponding
-  HF dataset namespace was not found in the May/June 2026 snapshot).
+- ~~Look for Odyn benchmarks (the seed was searched but the corresponding
+  HF dataset namespace was not found in the May/June 2026 snapshot).~~
+  **Done 2026-06-01** — `odyn-network/odyn-benchmarks` ingested as
+  Tier-4 latency_benchmark_trace (4 configs, Apache-2.0). See the
+  broadened-discovery audit above.
+- Cross-validate Odyn `qwen_chat_streaming` TTFT_avg / TPOT_avg / e2e_avg
+  surfaces against AgentPerfBench `trace_replay` for the overlapping
+  model class (Qwen) — currently AgentPerfBench only carries Llama /
+  Mistral, but a Qwen2.5-7B comparison would let the static frontier
+  cross-reference 2 independent measurement campaigns.
+- Use Memoriant `v3_corrected` `kv_buffer_mib` vs `cache_type` curve as
+  a memory-pressure prior input to the cache/residency forecaster
+  (`aurelius/forecasting/cache_prefix_reuse_forecaster.py`) — current
+  forecaster assumes f16 KV cost; q8_0 / q4_0 give 47% / 72%
+  memory savings that change the prewarming / eviction trade-off.
+- Revisit the Intellistream vLLM-HUST leaderboard licence — if the
+  dataset card adds a license, re-run ingest with
+  `commit_normalized=True` to ship a redistributable normalised
+  sample. Currently raw JSON is fetched on demand from HF; the
+  fixture + summary covers the schema test but the analysis sample
+  is regenerable-from-source only.
+- Look for `osteele/llm-calibration-db` access escalation — still
+  gated_blocked from PR #133.
 
 ## 11. License + auth
 

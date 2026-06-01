@@ -1,0 +1,104 @@
+{
+  "by_strata": {
+    "engine=vllm-hust|model_family=Qwen2.5-14B-Instruct|workload_name=random-online": {
+      "mean_tpot_ms": {
+        "count": 27,
+        "max": 131.80502134120985,
+        "mean": 116.95255728781159,
+        "min": 79.75843260041894,
+        "p50": 118.26485542999582,
+        "p90": 121.66260878222208,
+        "p95": 126.58228709438232,
+        "p99": 131.80502134120985
+      },
+      "mean_ttft_ms": {
+        "count": 28,
+        "max": 480.25025613605976,
+        "mean": 376.9278420490394,
+        "min": 0.0,
+        "p50": 388.58868120005354,
+        "p90": 400.2781147195492,
+        "p95": 434.1900033620186,
+        "p99": 480.25025613605976
+      },
+      "throughput_tps": {
+        "count": 28,
+        "max": 225.8131742912024,
+        "mean": 209.7777580977159,
+        "min": 0.0,
+        "p50": 224.08739245284414,
+        "p90": 225.30805722662924,
+        "p95": 225.75113262406495,
+        "p99": 225.8131742912024
+      }
+    }
+  },
+  "overall": {
+    "error_rate": {
+      "count": 42,
+      "max": 1.0,
+      "mean": 0.023809523809523808,
+      "min": 0.0,
+      "p50": 0.0,
+      "p90": 0.0,
+      "p95": 0.0,
+      "p99": 1.0
+    },
+    "mean_tpot_ms": {
+      "count": 35,
+      "max": 442.74043304755935,
+      "mean": 116.34096654533941,
+      "min": 45.722483952219285,
+      "p50": 117.08338557885429,
+      "p90": 122.16964923965232,
+      "p95": 126.58228709438232,
+      "p99": 442.74043304755935
+    },
+    "mean_ttft_ms": {
+      "count": 42,
+      "max": 9728.982931002975,
+      "mean": 893.1565686986187,
+      "min": 0.0,
+      "p50": 388.23215006734245,
+      "p90": 1916.74,
+      "p95": 1982.4178608250804,
+      "p99": 9728.982931002975
+    },
+    "peak_mem_mb": {
+      "count": 41,
+      "max": 0.0,
+      "mean": 0.0,
+      "min": 0.0,
+      "p50": 0.0,
+      "p90": 0.0,
+      "p95": 0.0,
+      "p99": 0.0
+    },
+    "throughput_tps": {
+      "count": 42,
+      "max": 4283.213291406166,
+      "mean": 368.6219911883299,
+      "min": 0.0,
+      "p50": 223.69679039810376,
+      "p90": 227.13757811857727,
+      "p95": 1383.0508114320564,
+      "p99": 4283.213291406166
+    }
+  },
+  "subgroup_counts": {
+    "engine=vllm-hust|model_family=Qwen2.5-0.5B-Instruct|workload_name=random-online": 1,
+    "engine=vllm-hust|model_family=Qwen2.5-14B-Instruct|workload_name=prefix-repetition-online": 1,
+    "engine=vllm-hust|model_family=Qwen2.5-14B-Instruct|workload_name=random-latency": 1,
+    "engine=vllm-hust|model_family=Qwen2.5-14B-Instruct|workload_name=random-online": 28,
+    "engine=vllm-hust|model_family=Qwen2.5-14B-Instruct|workload_name=sonnet-throughput": 1,
+    "engine=vllm-hust|model_family=Qwen2.5-7B-Instruct|workload_name=sharegpt-online": 2,
+    "engine=vllm|model_family=Qwen2.5-14B-Instruct|workload_name=prefix-repetition-online": 1,
+    "engine=vllm|model_family=Qwen2.5-14B-Instruct|workload_name=random-latency": 1,
+    "engine=vllm|model_family=Qwen2.5-14B-Instruct|workload_name=random-online": 1,
+    "engine=vllm|model_family=Qwen2.5-14B-Instruct|workload_name=sharegpt-online": 1,
+    "engine=vllm|model_family=Qwen2.5-14B-Instruct|workload_name=sharegpt-throughput": 1,
+    "engine=vllm|model_family=Qwen2.5-14B-Instruct|workload_name=sonnet-throughput": 1,
+    "engine=vllm|model_family=Qwen2.5-Coder-14B-Instruct|workload_name=instructcoder-online": 1,
+    "engine=vllm|model_family=Qwen2.5-VL-7B-Instruct|workload_name=visionarena-online": 1
+  }
+}

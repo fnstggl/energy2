@@ -1727,6 +1727,144 @@
       "trust_tier": "tier_5_request_shape_traces"
     },
     {
+      "analysis_sample_bytes": 2816,
+      "analysis_sample_rows": 3,
+      "available_signals": [
+        "ttft",
+        "tpot",
+        "throughput",
+        "concurrency",
+        "batch_size",
+        "input_tokens",
+        "output_tokens",
+        "gpu_type",
+        "model_id",
+        "engine",
+        "engine_version",
+        "memory_pressure",
+        "failure_label"
+      ],
+      "canonical_trace_type": "latency_benchmark_trace",
+      "committed_sample_bytes": 2816,
+      "committed_sample_rows": 3,
+      "config_name": "multi_gpu",
+      "dataset_id": "intellistream/vllm-hust-benchmark-results",
+      "derived_fields": [],
+      "fixture_sample_bytes": 2816,
+      "fixture_sample_rows": 3,
+      "gated": false,
+      "ingestion_timestamp_s": 1780294331.7930868,
+      "license": null,
+      "limitations": [
+        "vLLM-HUST benchmark leaderboard (intellistream). Submissions-driven leaderboard with per-entry hardware \u00d7 model \u00d7 workload \u00d7 engine \u00d7 engine_version metadata.",
+        "Single point measurement per entry \u2014 TTFT_ms / TBT_ms (=TPOT) are scalar means with NO p50/p90/p95/p99 breakdown.",
+        "Huawei 910B3 (Ascend-class) dominates the leaderboard \u2014 generalises POORLY to NVIDIA / AMD / TPU. Treat as Ascend-specific prior.",
+        "peak_mem_mb is 0 for many entries (not measured upstream).",
+        "error_rate is reported but always 0 for the present snapshot \u2014 treat as upper-bound only.",
+        "NO declared license on the HF card frontmatter \u2014 recorded license=None. Bounded normalised sample is NOT committed for this dataset (license_redistribution_status=unspecified).",
+        "Benchmark-only \u2014 Tier 4. Not pilot telemetry."
+      ],
+      "missing_signals": [
+        "itl",
+        "e2e_latency",
+        "kv_cache_size",
+        "timeout_label"
+      ],
+      "promotion_evaluated_at_s": 1780294331.7933705,
+      "promotion_reasons": [
+        "statistical_sample_strength='weak' insufficient for ['promoted_for_performance_priors', 'promoted_for_constraint_aware_evaluation']; downgraded to ['promoted_for_training_priors']"
+      ],
+      "promotion_state": "promoted_for_training_priors",
+      "promotion_tags": [
+        "promoted_for_training_priors"
+      ],
+      "provenance": "intellistream/vllm-hust-benchmark-results@multi_gpu#leaderboard_multi.json#git=2a76939",
+      "proxy_fields": [],
+      "sample_sha256": "c0644007949ad369030c969f65eb95c82391f643ba6f8b00160fd2a0051df539",
+      "sampling_method": "full_bounded",
+      "schema_mapping_path": "data/external/hf/intellistream__vllm-hust-benchmark-results/multi_gpu/processed/schema_mapping.json",
+      "schema_profile_path": "data/external/hf/intellistream__vllm-hust-benchmark-results/multi_gpu/processed/schema_profile.json",
+      "source_url": "https://huggingface.co/datasets/intellistream/vllm-hust-benchmark-results",
+      "statistical_sample_strength": "weak",
+      "stratification_keys": [
+        "engine",
+        "model_family",
+        "workload_name"
+      ],
+      "summary_path_relative": "data/external/hf/intellistream__vllm-hust-benchmark-results/multi_gpu/processed/summary.json",
+      "synthetic_fields": [],
+      "trust_tier": "tier_4_latency_benchmark_traces"
+    },
+    {
+      "analysis_sample_bytes": 39135,
+      "analysis_sample_rows": 42,
+      "available_signals": [
+        "ttft",
+        "tpot",
+        "throughput",
+        "concurrency",
+        "batch_size",
+        "input_tokens",
+        "output_tokens",
+        "gpu_type",
+        "model_id",
+        "engine",
+        "engine_version",
+        "memory_pressure",
+        "failure_label"
+      ],
+      "canonical_trace_type": "latency_benchmark_trace",
+      "committed_sample_bytes": 4574,
+      "committed_sample_rows": 5,
+      "config_name": "single_gpu",
+      "dataset_id": "intellistream/vllm-hust-benchmark-results",
+      "derived_fields": [],
+      "fixture_sample_bytes": 4574,
+      "fixture_sample_rows": 5,
+      "gated": false,
+      "ingestion_timestamp_s": 1780294331.7910469,
+      "license": null,
+      "limitations": [
+        "vLLM-HUST benchmark leaderboard (intellistream). Submissions-driven leaderboard with per-entry hardware \u00d7 model \u00d7 workload \u00d7 engine \u00d7 engine_version metadata.",
+        "Single point measurement per entry \u2014 TTFT_ms / TBT_ms (=TPOT) are scalar means with NO p50/p90/p95/p99 breakdown.",
+        "Huawei 910B3 (Ascend-class) dominates the leaderboard \u2014 generalises POORLY to NVIDIA / AMD / TPU. Treat as Ascend-specific prior.",
+        "peak_mem_mb is 0 for many entries (not measured upstream).",
+        "error_rate is reported but always 0 for the present snapshot \u2014 treat as upper-bound only.",
+        "NO declared license on the HF card frontmatter \u2014 recorded license=None. Bounded normalised sample is NOT committed for this dataset (license_redistribution_status=unspecified).",
+        "Benchmark-only \u2014 Tier 4. Not pilot telemetry."
+      ],
+      "missing_signals": [
+        "itl",
+        "e2e_latency",
+        "kv_cache_size",
+        "timeout_label"
+      ],
+      "promotion_evaluated_at_s": 1780294331.7913492,
+      "promotion_reasons": [],
+      "promotion_state": "promoted_for_performance_priors",
+      "promotion_tags": [
+        "promoted_for_performance_priors",
+        "promoted_for_constraint_aware_evaluation",
+        "promoted_for_training_priors"
+      ],
+      "provenance": "intellistream/vllm-hust-benchmark-results@single_gpu#leaderboard_single.json#git=2a76939",
+      "proxy_fields": [],
+      "sample_sha256": "296e2280289561997938480776067c02e14a70d078975dec39de5be4ce2eeb9f",
+      "sampling_method": "full_bounded",
+      "schema_mapping_path": "data/external/hf/intellistream__vllm-hust-benchmark-results/single_gpu/processed/schema_mapping.json",
+      "schema_profile_path": "data/external/hf/intellistream__vllm-hust-benchmark-results/single_gpu/processed/schema_profile.json",
+      "source_url": "https://huggingface.co/datasets/intellistream/vllm-hust-benchmark-results",
+      "statistical_sample_strength": "moderate",
+      "stratification_keys": [
+        "engine",
+        "model_family",
+        "workload_name"
+      ],
+      "summary_path_relative": "data/external/hf/intellistream__vllm-hust-benchmark-results/single_gpu/processed/summary.json",
+      "synthetic_fields": [],
+      "trust_tier": "tier_4_latency_benchmark_traces"
+    },
+    {
       "analysis_sample_bytes": 1800560,
       "analysis_sample_rows": 4000,
       "available_signals": [
@@ -1933,6 +2071,340 @@
       "trust_tier": "tier_5_request_shape_traces"
     },
     {
+      "analysis_sample_bytes": 9037,
+      "analysis_sample_rows": 18,
+      "available_signals": [
+        "throughput",
+        "kv_cache_size",
+        "memory_pressure",
+        "gpu_type",
+        "model_id",
+        "engine"
+      ],
+      "canonical_trace_type": "latency_benchmark_trace",
+      "committed_sample_bytes": 2508,
+      "committed_sample_rows": 5,
+      "config_name": "v3_corrected",
+      "dataset_id": "memoriant/dgx-spark-kv-cache-benchmark",
+      "derived_fields": [],
+      "fixture_sample_bytes": 2508,
+      "fixture_sample_rows": 5,
+      "gated": false,
+      "ingestion_timestamp_s": 1780294331.7802413,
+      "license": "apache-2.0",
+      "limitations": [
+        "Tiny corrected benchmark (18 rows total) \u2014 KV cache quantization ablation on a single GPU (DGX Spark GB10).",
+        "v3 fixes the v1 memory-measurement error (RSS was wrong on unified memory; v3 uses nvidia-smi + llama.cpp internals per the CORRECTION notice).",
+        "prompt_tps + gen_tps are real measured tokens/sec, but no TTFT / TPOT / e2e is reported \u2014 generation latency must be derived from gen_tps + output_token_count.",
+        "Single model context-length sweep (0 \u2192 110k tokens) under 3 cache quantizations (f16 / q8_0 / q4_0); not a model / GPU / engine sweep.",
+        "Useful for KV-cache memory-pressure priors and the cache-quantization throughput trade-off; NOT a latency frontier source on its own.",
+        "Benchmark-only \u2014 Tier 4. Author: Nathan Maine / Memoriant Inc."
+      ],
+      "missing_signals": [
+        "ttft",
+        "tpot",
+        "itl",
+        "e2e_latency",
+        "concurrency",
+        "batch_size",
+        "failure_label",
+        "timeout_label"
+      ],
+      "promotion_evaluated_at_s": 1780294331.7805343,
+      "promotion_reasons": [
+        "statistical_sample_strength='weak' insufficient for ['promoted_for_performance_priors', 'promoted_for_constraint_aware_evaluation']; downgraded to ['promoted_for_training_priors']"
+      ],
+      "promotion_state": "promoted_for_training_priors",
+      "promotion_tags": [
+        "promoted_for_training_priors"
+      ],
+      "provenance": "memoriant/dgx-spark-kv-cache-benchmark@v3_corrected#data/benchmark_results_v3_complete.csv#git=2a76939",
+      "proxy_fields": [],
+      "sample_sha256": "694290a06f19649716eaca30ccfce0f08e07d8372343cd59cc61c9f02f695a92",
+      "sampling_method": "full_bounded",
+      "schema_mapping_path": "data/external/hf/memoriant__dgx-spark-kv-cache-benchmark/v3_corrected/processed/schema_mapping.json",
+      "schema_profile_path": "data/external/hf/memoriant__dgx-spark-kv-cache-benchmark/v3_corrected/processed/schema_profile.json",
+      "source_url": "https://huggingface.co/datasets/memoriant/dgx-spark-kv-cache-benchmark",
+      "statistical_sample_strength": "weak",
+      "stratification_keys": [
+        "cache_type",
+        "context_tokens"
+      ],
+      "summary_path_relative": "data/external/hf/memoriant__dgx-spark-kv-cache-benchmark/v3_corrected/processed/summary.json",
+      "synthetic_fields": [],
+      "trust_tier": "tier_4_latency_benchmark_traces"
+    },
+    {
+      "analysis_sample_bytes": 1919,
+      "analysis_sample_rows": 4,
+      "available_signals": [
+        "e2e_latency",
+        "throughput",
+        "batch_size",
+        "engine",
+        "gpu_type",
+        "model_id"
+      ],
+      "canonical_trace_type": "latency_benchmark_trace",
+      "committed_sample_bytes": 1919,
+      "committed_sample_rows": 4,
+      "config_name": "facebook_batch",
+      "dataset_id": "odyn-network/odyn-benchmarks",
+      "derived_fields": [
+        "mean_e2el_ms",
+        "duration_s"
+      ],
+      "fixture_sample_bytes": 1919,
+      "fixture_sample_rows": 4,
+      "gated": false,
+      "ingestion_timestamp_s": 1780294331.7756991,
+      "license": "apache-2.0",
+      "limitations": [
+        "Odyn Network public benchmark (vLLM + Ray Serve based, Apache-2.0).",
+        "Single model \u00d7 single hardware target (facebook/opt-125m on RTX 3090); do NOT generalise these latency numbers to other deployments.",
+        "TTFT / TPOT / e2e are reported as avg + p95 only \u2014 no p50 / p90 / p99.",
+        "Failures (`failed`) reported at the highest concurrency levels \u2014 these encode timeout/SLA backpressure; treat as failure-rate prior, not as a real timeout label.",
+        "Prompt distributions A/B/C/D are partly drawn from ShareGPT (rows 251-500 of each profile per the README); the first 250 are original Odyn traffic.",
+        "Benchmark-only \u2014 not production / pilot telemetry. Tier 4."
+      ],
+      "missing_signals": [
+        "ttft",
+        "tpot",
+        "itl",
+        "concurrency",
+        "input_tokens",
+        "output_tokens",
+        "kv_cache_size",
+        "memory_pressure",
+        "timeout_label",
+        "failure_label"
+      ],
+      "promotion_evaluated_at_s": 1780294331.7759511,
+      "promotion_reasons": [
+        "statistical_sample_strength='weak' insufficient for ['promoted_for_performance_priors', 'promoted_for_constraint_aware_evaluation']; downgraded to ['promoted_for_training_priors']"
+      ],
+      "promotion_state": "promoted_for_training_priors",
+      "promotion_tags": [
+        "promoted_for_training_priors"
+      ],
+      "provenance": "odyn-network/odyn-benchmarks@facebook_batch#results/facebook_results/batch_benchmarks.csv#git=2a76939",
+      "proxy_fields": [],
+      "sample_sha256": "c0d919d5b83695facdc9aa4011a5bc37ea82c151dbb1c2b4845bf9d813e59281",
+      "sampling_method": "full_bounded",
+      "schema_mapping_path": "data/external/hf/odyn-network__odyn-benchmarks/facebook_batch/processed/schema_mapping.json",
+      "schema_profile_path": "data/external/hf/odyn-network__odyn-benchmarks/facebook_batch/processed/schema_profile.json",
+      "source_url": "https://huggingface.co/datasets/odyn-network/odyn-benchmarks",
+      "statistical_sample_strength": "weak",
+      "stratification_keys": [
+        "profile",
+        "batch_size"
+      ],
+      "summary_path_relative": "data/external/hf/odyn-network__odyn-benchmarks/facebook_batch/processed/summary.json",
+      "synthetic_fields": [],
+      "trust_tier": "tier_4_latency_benchmark_traces"
+    },
+    {
+      "analysis_sample_bytes": 30605,
+      "analysis_sample_rows": 48,
+      "available_signals": [
+        "ttft",
+        "tpot",
+        "e2e_latency",
+        "throughput",
+        "concurrency",
+        "engine",
+        "gpu_type",
+        "model_id",
+        "failure_label"
+      ],
+      "canonical_trace_type": "latency_benchmark_trace",
+      "committed_sample_bytes": 3185,
+      "committed_sample_rows": 5,
+      "config_name": "facebook_chat_streaming",
+      "dataset_id": "odyn-network/odyn-benchmarks",
+      "derived_fields": [],
+      "fixture_sample_bytes": 3185,
+      "fixture_sample_rows": 5,
+      "gated": false,
+      "ingestion_timestamp_s": 1780294331.7711,
+      "license": "apache-2.0",
+      "limitations": [
+        "Odyn Network public benchmark (vLLM + Ray Serve based, Apache-2.0).",
+        "Single model \u00d7 single hardware target (facebook/opt-125m on RTX 3090); do NOT generalise these latency numbers to other deployments.",
+        "TTFT / TPOT / e2e are reported as avg + p95 only \u2014 no p50 / p90 / p99.",
+        "Failures (`failed`) reported at the highest concurrency levels \u2014 these encode timeout/SLA backpressure; treat as failure-rate prior, not as a real timeout label.",
+        "Prompt distributions A/B/C/D are partly drawn from ShareGPT (rows 251-500 of each profile per the README); the first 250 are original Odyn traffic.",
+        "Benchmark-only \u2014 not production / pilot telemetry. Tier 4."
+      ],
+      "missing_signals": [
+        "itl",
+        "input_tokens",
+        "output_tokens",
+        "kv_cache_size",
+        "memory_pressure",
+        "timeout_label"
+      ],
+      "promotion_evaluated_at_s": 1780294331.7715304,
+      "promotion_reasons": [],
+      "promotion_state": "promoted_for_performance_priors",
+      "promotion_tags": [
+        "promoted_for_performance_priors",
+        "promoted_for_constraint_aware_evaluation",
+        "promoted_for_training_priors"
+      ],
+      "provenance": "odyn-network/odyn-benchmarks@facebook_chat_streaming#results/facebook_results/chat_benchmarks.csv#git=2a76939",
+      "proxy_fields": [],
+      "sample_sha256": "f57c5b50e8eb75e77b25b0c050ea5b4cdd4d8d5a6ff0f74f554ccc306bd54f7a",
+      "sampling_method": "full_bounded",
+      "schema_mapping_path": "data/external/hf/odyn-network__odyn-benchmarks/facebook_chat_streaming/processed/schema_mapping.json",
+      "schema_profile_path": "data/external/hf/odyn-network__odyn-benchmarks/facebook_chat_streaming/processed/schema_profile.json",
+      "source_url": "https://huggingface.co/datasets/odyn-network/odyn-benchmarks",
+      "statistical_sample_strength": "moderate",
+      "stratification_keys": [
+        "profile",
+        "concurrency",
+        "mode"
+      ],
+      "summary_path_relative": "data/external/hf/odyn-network__odyn-benchmarks/facebook_chat_streaming/processed/summary.json",
+      "synthetic_fields": [],
+      "trust_tier": "tier_4_latency_benchmark_traces"
+    },
+    {
+      "analysis_sample_bytes": 13819,
+      "analysis_sample_rows": 28,
+      "available_signals": [
+        "e2e_latency",
+        "throughput",
+        "batch_size",
+        "engine",
+        "gpu_type",
+        "model_id"
+      ],
+      "canonical_trace_type": "latency_benchmark_trace",
+      "committed_sample_bytes": 2464,
+      "committed_sample_rows": 5,
+      "config_name": "qwen_batch",
+      "dataset_id": "odyn-network/odyn-benchmarks",
+      "derived_fields": [
+        "mean_e2el_ms",
+        "duration_s"
+      ],
+      "fixture_sample_bytes": 2464,
+      "fixture_sample_rows": 5,
+      "gated": false,
+      "ingestion_timestamp_s": 1780294331.7739456,
+      "license": "apache-2.0",
+      "limitations": [
+        "Odyn Network public benchmark (vLLM + Ray Serve based, Apache-2.0).",
+        "Single model \u00d7 single hardware target (Qwen/Qwen2.5-7B-Instruct on DGX Spark (Blackwell)); do NOT generalise these latency numbers to other deployments.",
+        "TTFT / TPOT / e2e are reported as avg + p95 only \u2014 no p50 / p90 / p99.",
+        "Failures (`failed`) reported at the highest concurrency levels \u2014 these encode timeout/SLA backpressure; treat as failure-rate prior, not as a real timeout label.",
+        "Prompt distributions A/B/C/D are partly drawn from ShareGPT (rows 251-500 of each profile per the README); the first 250 are original Odyn traffic.",
+        "Benchmark-only \u2014 not production / pilot telemetry. Tier 4."
+      ],
+      "missing_signals": [
+        "ttft",
+        "tpot",
+        "itl",
+        "concurrency",
+        "input_tokens",
+        "output_tokens",
+        "kv_cache_size",
+        "memory_pressure",
+        "timeout_label",
+        "failure_label"
+      ],
+      "promotion_evaluated_at_s": 1780294331.774294,
+      "promotion_reasons": [],
+      "promotion_state": "promoted_for_performance_priors",
+      "promotion_tags": [
+        "promoted_for_performance_priors",
+        "promoted_for_constraint_aware_evaluation",
+        "promoted_for_training_priors"
+      ],
+      "provenance": "odyn-network/odyn-benchmarks@qwen_batch#results/qwen_results/batch_benchmarks.csv#git=2a76939",
+      "proxy_fields": [],
+      "sample_sha256": "4fd1e56d7c7c7ddaa3119f1eeefa1f3ebf443cfcb5baaf6f9740be9f28112a2d",
+      "sampling_method": "full_bounded",
+      "schema_mapping_path": "data/external/hf/odyn-network__odyn-benchmarks/qwen_batch/processed/schema_mapping.json",
+      "schema_profile_path": "data/external/hf/odyn-network__odyn-benchmarks/qwen_batch/processed/schema_profile.json",
+      "source_url": "https://huggingface.co/datasets/odyn-network/odyn-benchmarks",
+      "statistical_sample_strength": "moderate",
+      "stratification_keys": [
+        "profile",
+        "batch_size"
+      ],
+      "summary_path_relative": "data/external/hf/odyn-network__odyn-benchmarks/qwen_batch/processed/summary.json",
+      "synthetic_fields": [],
+      "trust_tier": "tier_4_latency_benchmark_traces"
+    },
+    {
+      "analysis_sample_bytes": 42353,
+      "analysis_sample_rows": 64,
+      "available_signals": [
+        "ttft",
+        "tpot",
+        "e2e_latency",
+        "throughput",
+        "concurrency",
+        "engine",
+        "gpu_type",
+        "model_id",
+        "failure_label"
+      ],
+      "canonical_trace_type": "latency_benchmark_trace",
+      "committed_sample_bytes": 3308,
+      "committed_sample_rows": 5,
+      "config_name": "qwen_chat_streaming",
+      "dataset_id": "odyn-network/odyn-benchmarks",
+      "derived_fields": [],
+      "fixture_sample_bytes": 3308,
+      "fixture_sample_rows": 5,
+      "gated": false,
+      "ingestion_timestamp_s": 1780294331.766237,
+      "license": "apache-2.0",
+      "limitations": [
+        "Odyn Network public benchmark (vLLM + Ray Serve based, Apache-2.0).",
+        "Single model \u00d7 single hardware target (Qwen/Qwen2.5-7B-Instruct on DGX Spark (Blackwell)); do NOT generalise these latency numbers to other deployments.",
+        "TTFT / TPOT / e2e are reported as avg + p95 only \u2014 no p50 / p90 / p99.",
+        "Failures (`failed`) reported at the highest concurrency levels \u2014 these encode timeout/SLA backpressure; treat as failure-rate prior, not as a real timeout label.",
+        "Prompt distributions A/B/C/D are partly drawn from ShareGPT (rows 251-500 of each profile per the README); the first 250 are original Odyn traffic.",
+        "Benchmark-only \u2014 not production / pilot telemetry. Tier 4."
+      ],
+      "missing_signals": [
+        "itl",
+        "input_tokens",
+        "output_tokens",
+        "kv_cache_size",
+        "memory_pressure",
+        "timeout_label"
+      ],
+      "promotion_evaluated_at_s": 1780294331.766717,
+      "promotion_reasons": [],
+      "promotion_state": "promoted_for_performance_priors",
+      "promotion_tags": [
+        "promoted_for_performance_priors",
+        "promoted_for_constraint_aware_evaluation",
+        "promoted_for_training_priors"
+      ],
+      "provenance": "odyn-network/odyn-benchmarks@qwen_chat_streaming#results/qwen_results/chat_benchmarks.csv#git=2a76939",
+      "proxy_fields": [],
+      "sample_sha256": "4f400c09a7b48ef450f4d2465c8df9208ddf289e97aeb119616cddeb888f53e8",
+      "sampling_method": "full_bounded",
+      "schema_mapping_path": "data/external/hf/odyn-network__odyn-benchmarks/qwen_chat_streaming/processed/schema_mapping.json",
+      "schema_profile_path": "data/external/hf/odyn-network__odyn-benchmarks/qwen_chat_streaming/processed/schema_profile.json",
+      "source_url": "https://huggingface.co/datasets/odyn-network/odyn-benchmarks",
+      "statistical_sample_strength": "moderate",
+      "stratification_keys": [
+        "profile",
+        "concurrency",
+        "mode"
+      ],
+      "summary_path_relative": "data/external/hf/odyn-network__odyn-benchmarks/qwen_chat_streaming/processed/summary.json",
+      "synthetic_fields": [],
+      "trust_tier": "tier_4_latency_benchmark_traces"
+    },
+    {
       "analysis_sample_bytes": 696538,
       "analysis_sample_rows": 4976,
       "available_signals": [
@@ -2067,12 +2539,12 @@
       "trust_tier": "tier_5_request_shape_traces"
     }
   ],
-  "entry_count": 25,
+  "entry_count": 32,
   "modifies_controllers_or_defaults": false,
   "modifies_robust_energy_engine": false,
   "production_claim": false,
   "stage": "federated_benchmark_corpus_v1",
   "trust_hierarchy_note": "Tier 1 (real pilot telemetry) remains the only production calibration source. Promotion here is research-class only.",
   "uses_oracle_as_headline": false,
-  "written_at_s": 1780287090.1745348
+  "written_at_s": 1780294331.7942214
 }

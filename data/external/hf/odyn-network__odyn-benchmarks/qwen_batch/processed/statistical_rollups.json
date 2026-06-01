@@ -1,0 +1,45 @@
+{
+  "by_strata": {},
+  "overall": {
+    "throughput_prompts_s": {
+      "count": 28,
+      "max": 10.6,
+      "mean": 2.452142857142857,
+      "min": 0.12,
+      "p50": 1.14,
+      "p90": 7.94,
+      "p95": 9.55,
+      "p99": 10.6
+    }
+  },
+  "subgroup_counts": {
+    "profile=A|batch_size=1": 1,
+    "profile=A|batch_size=128": 1,
+    "profile=A|batch_size=192": 1,
+    "profile=A|batch_size=250": 1,
+    "profile=A|batch_size=32": 1,
+    "profile=A|batch_size=64": 1,
+    "profile=A|batch_size=8": 1,
+    "profile=B|batch_size=1": 1,
+    "profile=B|batch_size=128": 1,
+    "profile=B|batch_size=192": 1,
+    "profile=B|batch_size=250": 1,
+    "profile=B|batch_size=32": 1,
+    "profile=B|batch_size=64": 1,
+    "profile=B|batch_size=8": 1,
+    "profile=C|batch_size=1": 1,
+    "profile=C|batch_size=128": 1,
+    "profile=C|batch_size=192": 1,
+    "profile=C|batch_size=250": 1,
+    "profile=C|batch_size=32": 1,
+    "profile=C|batch_size=64": 1,
+    "profile=C|batch_size=8": 1,
+    "profile=D|batch_size=1": 1,
+    "profile=D|batch_size=128": 1,
+    "profile=D|batch_size=192": 1,
+    "profile=D|batch_size=250": 1,
+    "profile=D|batch_size=32": 1,
+    "profile=D|batch_size=64": 1,
+    "profile=D|batch_size=8": 1
+  }
+}

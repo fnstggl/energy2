@@ -1,0 +1,254 @@
+{
+  "accepted_columns": [
+    "cluster",
+    "config_type",
+    "constraints",
+    "engine",
+    "engine_version",
+    "entry_id",
+    "environment",
+    "hardware",
+    "metadata",
+    "metrics",
+    "model",
+    "same_spec",
+    "versions",
+    "workload"
+  ],
+  "columns": [
+    {
+      "aurelius_signal_category": "metadata_only",
+      "dtypes": [
+        "unknown"
+      ],
+      "field_quality": "real",
+      "missing_rate": 0.0,
+      "normalized_field": "cluster",
+      "notes": "raw cluster (no explicit mapping)",
+      "presence_rate": 1.0,
+      "raw_column_name": "cluster",
+      "usable_for": []
+    },
+    {
+      "aurelius_signal_category": "metadata_only",
+      "dtypes": [
+        "str",
+        "int",
+        "float",
+        "dict",
+        "NoneType"
+      ],
+      "field_quality": "real",
+      "missing_rate": 0.0,
+      "normalized_field": "config_type",
+      "notes": "raw config_type \u2192 config_type",
+      "presence_rate": 1.0,
+      "raw_column_name": "config_type",
+      "usable_for": []
+    },
+    {
+      "aurelius_signal_category": "metadata_only",
+      "dtypes": [
+        "str",
+        "int",
+        "float",
+        "dict",
+        "NoneType"
+      ],
+      "field_quality": "real",
+      "missing_rate": 1.0,
+      "normalized_field": "constraints_json",
+      "notes": "raw constraints \u2192 constraints_json",
+      "presence_rate": 0.0,
+      "raw_column_name": "constraints",
+      "usable_for": []
+    },
+    {
+      "aurelius_signal_category": "metadata_only",
+      "dtypes": [
+        "str",
+        "int",
+        "float",
+        "dict",
+        "NoneType"
+      ],
+      "field_quality": "real",
+      "missing_rate": 0.0,
+      "normalized_field": "engine",
+      "notes": "raw engine \u2192 engine",
+      "presence_rate": 1.0,
+      "raw_column_name": "engine",
+      "usable_for": [
+        "latency_prior",
+        "throughput_prior"
+      ]
+    },
+    {
+      "aurelius_signal_category": "metadata_only",
+      "dtypes": [
+        "str",
+        "int",
+        "float",
+        "dict",
+        "NoneType"
+      ],
+      "field_quality": "real",
+      "missing_rate": 0.0,
+      "normalized_field": "engine_version",
+      "notes": "raw engine_version \u2192 engine_version",
+      "presence_rate": 1.0,
+      "raw_column_name": "engine_version",
+      "usable_for": []
+    },
+    {
+      "aurelius_signal_category": "metadata_only",
+      "dtypes": [
+        "str",
+        "int",
+        "float",
+        "dict",
+        "NoneType"
+      ],
+      "field_quality": "real",
+      "missing_rate": 0.0,
+      "normalized_field": "run_id",
+      "notes": "raw entry_id \u2192 run_id",
+      "presence_rate": 1.0,
+      "raw_column_name": "entry_id",
+      "usable_for": []
+    },
+    {
+      "aurelius_signal_category": "metadata_only",
+      "dtypes": [
+        "unknown"
+      ],
+      "field_quality": "real",
+      "missing_rate": 0.0,
+      "normalized_field": "environment",
+      "notes": "raw environment (no explicit mapping)",
+      "presence_rate": 1.0,
+      "raw_column_name": "environment",
+      "usable_for": []
+    },
+    {
+      "aurelius_signal_category": "gpu_resource",
+      "dtypes": [
+        "str",
+        "int",
+        "float",
+        "dict",
+        "NoneType"
+      ],
+      "field_quality": "real",
+      "missing_rate": 1.0,
+      "normalized_field": "gpu_spec_json",
+      "notes": "raw hardware \u2192 gpu_spec_json",
+      "presence_rate": 0.0,
+      "raw_column_name": "hardware",
+      "usable_for": [
+        "latency_prior"
+      ]
+    },
+    {
+      "aurelius_signal_category": "metadata_only",
+      "dtypes": [
+        "unknown"
+      ],
+      "field_quality": "real",
+      "missing_rate": 0.0,
+      "normalized_field": "metadata",
+      "notes": "raw metadata (no explicit mapping)",
+      "presence_rate": 1.0,
+      "raw_column_name": "metadata",
+      "usable_for": []
+    },
+    {
+      "aurelius_signal_category": "latency",
+      "dtypes": [
+        "str",
+        "int",
+        "float",
+        "dict",
+        "NoneType"
+      ],
+      "field_quality": "real",
+      "missing_rate": 1.0,
+      "normalized_field": "metrics_json",
+      "notes": "raw metrics \u2192 metrics_json",
+      "presence_rate": 0.0,
+      "raw_column_name": "metrics",
+      "usable_for": [
+        "latency_prior",
+        "throughput_prior"
+      ]
+    },
+    {
+      "aurelius_signal_category": "metadata_only",
+      "dtypes": [
+        "str",
+        "int",
+        "float",
+        "dict",
+        "NoneType"
+      ],
+      "field_quality": "real",
+      "missing_rate": 0.0,
+      "normalized_field": "model_spec_json",
+      "notes": "raw model \u2192 model_spec_json",
+      "presence_rate": 1.0,
+      "raw_column_name": "model",
+      "usable_for": [
+        "latency_prior"
+      ]
+    },
+    {
+      "aurelius_signal_category": "metadata_only",
+      "dtypes": [
+        "unknown"
+      ],
+      "field_quality": "real",
+      "missing_rate": 0.0,
+      "normalized_field": "same_spec",
+      "notes": "raw same_spec (no explicit mapping)",
+      "presence_rate": 1.0,
+      "raw_column_name": "same_spec",
+      "usable_for": []
+    },
+    {
+      "aurelius_signal_category": "metadata_only",
+      "dtypes": [
+        "unknown"
+      ],
+      "field_quality": "real",
+      "missing_rate": 0.0,
+      "normalized_field": "versions",
+      "notes": "raw versions (no explicit mapping)",
+      "presence_rate": 1.0,
+      "raw_column_name": "versions",
+      "usable_for": []
+    },
+    {
+      "aurelius_signal_category": "metadata_only",
+      "dtypes": [
+        "str",
+        "int",
+        "float",
+        "dict",
+        "NoneType"
+      ],
+      "field_quality": "real",
+      "missing_rate": 1.0,
+      "normalized_field": "workload_spec_json",
+      "notes": "raw workload \u2192 workload_spec_json",
+      "presence_rate": 0.0,
+      "raw_column_name": "workload",
+      "usable_for": [
+        "latency_prior"
+      ]
+    }
+  ],
+  "config_name": "single_gpu",
+  "dataset_id": "intellistream/vllm-hust-benchmark-results",
+  "rejected_columns": [],
+  "unknown_columns": []
+}

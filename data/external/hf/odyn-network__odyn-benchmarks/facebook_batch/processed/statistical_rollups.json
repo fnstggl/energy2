@@ -1,0 +1,21 @@
+{
+  "by_strata": {},
+  "overall": {
+    "throughput_prompts_s": {
+      "count": 4,
+      "max": 31.11,
+      "mean": 14.545,
+      "min": 3.03,
+      "p50": 20.42,
+      "p90": 31.11,
+      "p95": 31.11,
+      "p99": 31.11
+    }
+  },
+  "subgroup_counts": {
+    "profile=A|batch_size=None": 1,
+    "profile=B|batch_size=None": 1,
+    "profile=C|batch_size=None": 1,
+    "profile=D|batch_size=None": 1
+  }
+}

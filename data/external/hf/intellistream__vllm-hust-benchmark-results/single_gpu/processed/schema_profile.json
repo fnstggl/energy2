@@ -1,0 +1,156 @@
+{
+  "accepted_columns": [
+    "cluster",
+    "config_type",
+    "constraints",
+    "engine",
+    "engine_version",
+    "entry_id",
+    "environment",
+    "hardware",
+    "metadata",
+    "metrics",
+    "model",
+    "same_spec",
+    "versions",
+    "workload"
+  ],
+  "config_name": "single_gpu",
+  "dataset_id": "intellistream/vllm-hust-benchmark-results",
+  "dtypes": {
+    "cluster": [
+      "str"
+    ],
+    "config_type": [
+      "str"
+    ],
+    "constraints": [
+      "dict"
+    ],
+    "engine": [
+      "str"
+    ],
+    "engine_version": [
+      "str"
+    ],
+    "entry_id": [
+      "str"
+    ],
+    "environment": [
+      "dict"
+    ],
+    "hardware": [
+      "dict"
+    ],
+    "metadata": [
+      "dict"
+    ],
+    "metrics": [
+      "dict"
+    ],
+    "model": [
+      "dict"
+    ],
+    "same_spec": [
+      "dict"
+    ],
+    "versions": [
+      "dict"
+    ],
+    "workload": [
+      "dict"
+    ]
+  },
+  "example_values": {
+    "cluster": [],
+    "config_type": [
+      "'single_gpu'",
+      "'single_gpu'",
+      "'single_gpu'"
+    ],
+    "constraints": [
+      "{'scenario_source': 'vllm-benchmark', 'accountable_scope': {'domestic_chip_class': 'Ascend-class', 'representative_model",
+      "{'scenario_source': 'vllm-benchmark', 'accountable_scope': {'domestic_chip_class': 'Ascend-class', 'representative_model",
+      "{'scenario_source': 'vllm-benchmark', 'accountable_scope': {'domestic_chip_class': 'Ascend-class', 'representative_model"
+    ],
+    "engine": [
+      "'vllm'",
+      "'vllm'",
+      "'vllm'"
+    ],
+    "engine_version": [
+      "'0.11.0'",
+      "'0.11.0'",
+      "'0.11.0'"
+    ],
+    "entry_id": [
+      "'932148b6-8a2e-44bd-9ed0-b2a147580c1c'",
+      "'bc24beb2-5567-4bc1-b770-dffac41c35b2'",
+      "'8ec9c78c-e134-48f6-b38d-eefeb894a091'"
+    ],
+    "environment": [
+      "{'os': 'Linux-5.15.0-25-generic-aarch64-with-glibc2.38', 'python_version': '3.11.15', 'pytorch_version': None, 'cuda_ver",
+      "{'os': 'Linux-5.15.0-25-generic-aarch64-with-glibc2.38', 'python_version': '3.11.15', 'pytorch_version': None, 'cuda_ver",
+      "{'os': 'Linux-5.10.0-60.18.0.50.oe2203.aarch64-aarch64-with-glibc2.38', 'python_version': '3.11.15', 'pytorch_version': "
+    ],
+    "hardware": [
+      "{'vendor': 'Huawei', 'chip_model': '910B3', 'chip_count': 1, 'interconnect': 'unknown', 'memory_per_chip_gb': 64.0, 'tot",
+      "{'vendor': 'Huawei', 'chip_model': '910B3', 'chip_count': 1, 'interconnect': 'unknown', 'memory_per_chip_gb': 64.0, 'tot",
+      "{'vendor': 'Huawei', 'chip_model': '910B3', 'chip_count': 1, 'interconnect': 'unknown', 'memory_per_chip_gb': 64.0, 'tot"
+    ],
+    "metadata": [
+      "{'submitted_at': '2026-05-29T04:41:38Z', 'submitter': 'official-ascend-baseline', 'data_source': 'reference-vllm-ascend-",
+      "{'submitted_at': '2026-05-31T08:25:22Z', 'submitter': 'official-ascend-baseline', 'data_source': 'reference-vllm-ascend-",
+      "{'submitted_at': '2026-05-08T07:28:09Z', 'submitter': 'official-ascend-baseline', 'data_source': 'reference-vllm-ascend-"
+    ],
+    "metrics": [
+      "{'ttft_ms': 227.98438832061947, 'tbt_ms': 74.26259313020373, 'throughput_tps': 234.24579842217807, 'peak_mem_mb': 0.0, '",
+      "{'ttft_ms': 9671.391538994309, 'tbt_ms': None, 'throughput_tps': 0.0, 'peak_mem_mb': 0.0, 'error_rate': 0.0}",
+      "{'ttft_ms': 271.10288531985134, 'tbt_ms': 72.78132820638619, 'throughput_tps': 227.13757811857727, 'peak_mem_mb': 0.0, '"
+    ],
+    "model": [
+      "{'canonical_id': 'hf:Qwen/Qwen2.5-14B-Instruct', 'repo_id': 'Qwen/Qwen2.5-14B-Instruct', 'short_name': 'Qwen2.5-14B-Inst",
+      "{'canonical_id': 'hf:Qwen/Qwen2.5-14B-Instruct', 'repo_id': 'Qwen/Qwen2.5-14B-Instruct', 'short_name': 'Qwen2.5-14B-Inst",
+      "{'name': 'Qwen/Qwen2.5-14B-Instruct', 'parameters': '14B', 'precision': 'FP16', 'quantization': None, 'canonical_id': 'h"
+    ],
+    "same_spec": [
+      "{'schema_version': 'benchmark-same-spec/v1', 'spec_id': 'official-ascend-jan-2026-v0.11.0-prefix-repetition-online-qwen2",
+      "{'schema_version': 'benchmark-same-spec/v1', 'spec_id': 'official-ascend-jan-2026-v0.11.0-random-latency-qwen25-14b-910b",
+      "{'schema_version': 'benchmark-same-spec/v1', 'spec_id': 'official-ascend-jan-2026-v0.11.0-random-online-qwen25-14b-910b3"
+    ],
+    "versions": [
+      "{'protocol': 'N/A', 'backend': '0.11.0', 'core': '0.11.0', 'benchmark': '0.1.0'}",
+      "{'protocol': 'N/A', 'backend': 'N/A', 'core': 'N/A', 'benchmark': '0.1.0'}",
+      "{'protocol': 'N/A', 'backend': 'N/A', 'core': 'N/A', 'benchmark': '0.1.0'}"
+    ],
+    "workload": [
+      "{'name': 'prefix-repetition-online', 'input_length': 4096, 'output_length': 256, 'batch_size': None, 'concurrent_request",
+      "{'name': 'random-latency', 'input_length': 1024, 'output_length': 128, 'batch_size': 8, 'concurrent_requests': None, 'da",
+      "{'name': 'random-online', 'input_length': 1024, 'output_length': 256, 'batch_size': None, 'concurrent_requests': None, '"
+    ]
+  },
+  "file_size_bytes": 223783,
+  "inspected_row_count": 42,
+  "list_length_summaries": {},
+  "missing_rates": {},
+  "nested_keys": [],
+  "raw_columns": [
+    "cluster",
+    "config_type",
+    "constraints",
+    "engine",
+    "engine_version",
+    "entry_id",
+    "environment",
+    "hardware",
+    "metadata",
+    "metrics",
+    "model",
+    "same_spec",
+    "versions",
+    "workload"
+  ],
+  "rejected_columns": [],
+  "source_file": "leaderboard_single.json",
+  "unknown_columns": []
+}

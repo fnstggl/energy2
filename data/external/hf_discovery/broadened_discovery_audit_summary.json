@@ -1,0 +1,407 @@
+{
+  "audited_at_s": 1780294331.7990923,
+  "discovery_only_records": [
+    {
+      "candidate_trace_type": "telemetry_trace",
+      "dataset_id": "tarekmasryo/llm-system-ops-production-telemetry-sft-data",
+      "gated": false,
+      "kind": "reject_low_value",
+      "license_observed": "cc-by-4.0",
+      "reason": "Self-declared SYNTHETIC dataset (README: 'Synthetic data (safe for teaching, prototyping, and portfolio notebooks). Not real user data. cost_usd and token fields are synthetic estimates (not billing truth).'). Tagged as 'production-telemetry' but is in fact tabular synthetic data for SFT \u2014 not Aurelius-grade Tier-2 telemetry. Rejected to enforce the anti-dataset-spam rule and avoid pretending benchmark/synthetic data is production telemetry."
+    },
+    {
+      "candidate_trace_type": "kernel_profile_trace",
+      "dataset_id": "spiritbuun/turboquant-tcq-kv-cache",
+      "gated": false,
+      "kind": "reject_not_a_dataset",
+      "license_observed": "apache-2.0",
+      "reason": "Repository contains quantization codebooks (.bin / .pt artefacts), not a benchmark dataset. No measured latency / throughput / cache telemetry. Not ingestible into the federated benchmark corpus."
+    },
+    {
+      "candidate_trace_type": "request_shape_trace",
+      "dataset_id": "hlarcher/inference-benchmarker",
+      "gated": false,
+      "kind": "duplicate_existing",
+      "license_observed": "apache-2.0",
+      "reason": "Hosts ShareGPT-derived prompt fixtures used to drive the huggingface/inference-benchmarker tool. The fixtures are workload-shape only (no measured TTFT / TPOT / queue / GPU), and the existing `aurelius/traces/sharegpt_aiperf.py` ingester already covers the ShareGPT request-shape role. Rejected as duplicate-shape, low information density."
+    },
+    {
+      "candidate_trace_type": "cache_residency_trace",
+      "dataset_id": "Boxoffice1280/Neurips2026_evaluating_accuracy_KV-cache_reuse_techniques",
+      "gated": false,
+      "kind": "license_restricted_no_redistribution",
+      "license_observed": "cc-by-nc-nd-4.0",
+      "reason": "License is cc-by-nc-nd-4.0 \u2014 Non-Commercial + No-Derivatives. Aurelius normalised samples are derivatives, so committing any normalised excerpt would violate the No-Derivatives clause. Marked license_restricted; HF metadata reference retained but no normalised sample ingested."
+    },
+    {
+      "candidate_trace_type": "request_shape_trace",
+      "dataset_id": "Alexsssu/BurstGPT_LMSYSChat_withPrompt_2Days-SVLSGPU_EvalData",
+      "gated": false,
+      "kind": "duplicate_existing",
+      "license_observed": null,
+      "reason": "Combines BurstGPT + LMSYSChat prompt traces \u2014 the BurstGPT shape role is already covered by `lzzmm/BurstGPT/burstgpt_1_full` (promoted_for_training_priors); LMSYSChat is request-shape only. No declared license (license=None) \u2014 duplicate of an existing ingestion path."
+    },
+    {
+      "candidate_trace_type": "mixed_or_unknown_trace",
+      "dataset_id": "MCP-1st-Birthday/smoltrace-cloud-cost-tasks",
+      "gated": false,
+      "kind": "reject_synthetic_agent_eval",
+      "license_observed": "mit",
+      "reason": "Synthetic MCP agent-evaluation task set (smoltrace). No measured infrastructure signals (latency / queue / GPU / cache). The 'cloud-cost-tasks' name suggests cost intent but the content is agent-tool-use tasks, not cost telemetry. Tier 6 \u2014 rejected to preserve information density."
+    },
+    {
+      "candidate_trace_type": "latency_benchmark_trace",
+      "dataset_id": "rbgo/llm-inference-benchmark",
+      "gated": false,
+      "kind": "license_unspecified_low_priority",
+      "license_observed": null,
+      "reason": "Single CSV with inference benchmark numbers but no declared license. Without license clarity, committing a normalised sample is unsafe. Deferred \u2014 revisit if licence clarified upstream. Lower priority than odyn-network / memoriant (both Apache-2.0) which fill the same Tier-4 role."
+    },
+    {
+      "candidate_trace_type": "kernel_profile_trace",
+      "dataset_id": "project-vajra/dev-staging-h100-dgx",
+      "gated": false,
+      "kind": "license_unspecified_low_priority",
+      "license_observed": null,
+      "reason": "NCCL all_reduce / send_recv CSV traces (compressed .xz). Potentially useful as inter-GPU communication priors, but no declared license. Deferred \u2014 revisit if licence clarified or if Aurelius adds a multi-GPU placement / collective evaluator."
+    }
+  ],
+  "doc_version": "broadened_discovery_audit_summary_v1",
+  "failed": [],
+  "git_sha": "2a76939d70df38c1ce8f683e39cb8129dcdd71ef",
+  "ingested": [
+    {
+      "analysis_sample_rows": 64,
+      "available_signals": [
+        "ttft",
+        "tpot",
+        "e2e_latency",
+        "throughput",
+        "concurrency",
+        "engine",
+        "gpu_type",
+        "model_id",
+        "failure_label"
+      ],
+      "canonical_trace_type": "latency_benchmark_trace",
+      "committed_normalized_sample_bytes": 42353,
+      "committed_normalized_sample_rows": 64,
+      "config_name": "qwen_chat_streaming",
+      "dataset_id": "odyn-network/odyn-benchmarks",
+      "fixture_sample_rows": 5,
+      "gated": false,
+      "license": "apache-2.0",
+      "limitations": [
+        "Odyn Network public benchmark (vLLM + Ray Serve based, Apache-2.0).",
+        "Single model \u00d7 single hardware target (Qwen/Qwen2.5-7B-Instruct on DGX Spark (Blackwell)); do NOT generalise these latency numbers to other deployments.",
+        "TTFT / TPOT / e2e are reported as avg + p95 only \u2014 no p50 / p90 / p99.",
+        "Failures (`failed`) reported at the highest concurrency levels \u2014 these encode timeout/SLA backpressure; treat as failure-rate prior, not as a real timeout label.",
+        "Prompt distributions A/B/C/D are partly drawn from ShareGPT (rows 251-500 of each profile per the README); the first 250 are original Odyn traffic.",
+        "Benchmark-only \u2014 not production / pilot telemetry. Tier 4."
+      ],
+      "missing_signals": [
+        "itl",
+        "input_tokens",
+        "output_tokens",
+        "kv_cache_size",
+        "memory_pressure",
+        "timeout_label"
+      ],
+      "promotion_reasons": [],
+      "promotion_state": "promoted_for_performance_priors",
+      "promotion_tags": [
+        "promoted_for_performance_priors",
+        "promoted_for_constraint_aware_evaluation",
+        "promoted_for_training_priors"
+      ],
+      "statistical_sample_strength": "moderate"
+    },
+    {
+      "analysis_sample_rows": 48,
+      "available_signals": [
+        "ttft",
+        "tpot",
+        "e2e_latency",
+        "throughput",
+        "concurrency",
+        "engine",
+        "gpu_type",
+        "model_id",
+        "failure_label"
+      ],
+      "canonical_trace_type": "latency_benchmark_trace",
+      "committed_normalized_sample_bytes": 30605,
+      "committed_normalized_sample_rows": 48,
+      "config_name": "facebook_chat_streaming",
+      "dataset_id": "odyn-network/odyn-benchmarks",
+      "fixture_sample_rows": 5,
+      "gated": false,
+      "license": "apache-2.0",
+      "limitations": [
+        "Odyn Network public benchmark (vLLM + Ray Serve based, Apache-2.0).",
+        "Single model \u00d7 single hardware target (facebook/opt-125m on RTX 3090); do NOT generalise these latency numbers to other deployments.",
+        "TTFT / TPOT / e2e are reported as avg + p95 only \u2014 no p50 / p90 / p99.",
+        "Failures (`failed`) reported at the highest concurrency levels \u2014 these encode timeout/SLA backpressure; treat as failure-rate prior, not as a real timeout label.",
+        "Prompt distributions A/B/C/D are partly drawn from ShareGPT (rows 251-500 of each profile per the README); the first 250 are original Odyn traffic.",
+        "Benchmark-only \u2014 not production / pilot telemetry. Tier 4."
+      ],
+      "missing_signals": [
+        "itl",
+        "input_tokens",
+        "output_tokens",
+        "kv_cache_size",
+        "memory_pressure",
+        "timeout_label"
+      ],
+      "promotion_reasons": [],
+      "promotion_state": "promoted_for_performance_priors",
+      "promotion_tags": [
+        "promoted_for_performance_priors",
+        "promoted_for_constraint_aware_evaluation",
+        "promoted_for_training_priors"
+      ],
+      "statistical_sample_strength": "moderate"
+    },
+    {
+      "analysis_sample_rows": 28,
+      "available_signals": [
+        "e2e_latency",
+        "throughput",
+        "batch_size",
+        "engine",
+        "gpu_type",
+        "model_id"
+      ],
+      "canonical_trace_type": "latency_benchmark_trace",
+      "committed_normalized_sample_bytes": 13819,
+      "committed_normalized_sample_rows": 28,
+      "config_name": "qwen_batch",
+      "dataset_id": "odyn-network/odyn-benchmarks",
+      "fixture_sample_rows": 5,
+      "gated": false,
+      "license": "apache-2.0",
+      "limitations": [
+        "Odyn Network public benchmark (vLLM + Ray Serve based, Apache-2.0).",
+        "Single model \u00d7 single hardware target (Qwen/Qwen2.5-7B-Instruct on DGX Spark (Blackwell)); do NOT generalise these latency numbers to other deployments.",
+        "TTFT / TPOT / e2e are reported as avg + p95 only \u2014 no p50 / p90 / p99.",
+        "Failures (`failed`) reported at the highest concurrency levels \u2014 these encode timeout/SLA backpressure; treat as failure-rate prior, not as a real timeout label.",
+        "Prompt distributions A/B/C/D are partly drawn from ShareGPT (rows 251-500 of each profile per the README); the first 250 are original Odyn traffic.",
+        "Benchmark-only \u2014 not production / pilot telemetry. Tier 4."
+      ],
+      "missing_signals": [
+        "ttft",
+        "tpot",
+        "itl",
+        "concurrency",
+        "input_tokens",
+        "output_tokens",
+        "kv_cache_size",
+        "memory_pressure",
+        "timeout_label",
+        "failure_label"
+      ],
+      "promotion_reasons": [],
+      "promotion_state": "promoted_for_performance_priors",
+      "promotion_tags": [
+        "promoted_for_performance_priors",
+        "promoted_for_constraint_aware_evaluation",
+        "promoted_for_training_priors"
+      ],
+      "statistical_sample_strength": "moderate"
+    },
+    {
+      "analysis_sample_rows": 4,
+      "available_signals": [
+        "e2e_latency",
+        "throughput",
+        "batch_size",
+        "engine",
+        "gpu_type",
+        "model_id"
+      ],
+      "canonical_trace_type": "latency_benchmark_trace",
+      "committed_normalized_sample_bytes": 1919,
+      "committed_normalized_sample_rows": 4,
+      "config_name": "facebook_batch",
+      "dataset_id": "odyn-network/odyn-benchmarks",
+      "fixture_sample_rows": 4,
+      "gated": false,
+      "license": "apache-2.0",
+      "limitations": [
+        "Odyn Network public benchmark (vLLM + Ray Serve based, Apache-2.0).",
+        "Single model \u00d7 single hardware target (facebook/opt-125m on RTX 3090); do NOT generalise these latency numbers to other deployments.",
+        "TTFT / TPOT / e2e are reported as avg + p95 only \u2014 no p50 / p90 / p99.",
+        "Failures (`failed`) reported at the highest concurrency levels \u2014 these encode timeout/SLA backpressure; treat as failure-rate prior, not as a real timeout label.",
+        "Prompt distributions A/B/C/D are partly drawn from ShareGPT (rows 251-500 of each profile per the README); the first 250 are original Odyn traffic.",
+        "Benchmark-only \u2014 not production / pilot telemetry. Tier 4."
+      ],
+      "missing_signals": [
+        "ttft",
+        "tpot",
+        "itl",
+        "concurrency",
+        "input_tokens",
+        "output_tokens",
+        "kv_cache_size",
+        "memory_pressure",
+        "timeout_label",
+        "failure_label"
+      ],
+      "promotion_reasons": [
+        "statistical_sample_strength='weak' insufficient for ['promoted_for_performance_priors', 'promoted_for_constraint_aware_evaluation']; downgraded to ['promoted_for_training_priors']"
+      ],
+      "promotion_state": "promoted_for_training_priors",
+      "promotion_tags": [
+        "promoted_for_training_priors"
+      ],
+      "statistical_sample_strength": "weak"
+    },
+    {
+      "analysis_sample_rows": 18,
+      "available_signals": [
+        "throughput",
+        "kv_cache_size",
+        "memory_pressure",
+        "gpu_type",
+        "model_id",
+        "engine"
+      ],
+      "canonical_trace_type": "latency_benchmark_trace",
+      "committed_normalized_sample_bytes": 9037,
+      "committed_normalized_sample_rows": 18,
+      "config_name": "v3_corrected",
+      "dataset_id": "memoriant/dgx-spark-kv-cache-benchmark",
+      "fixture_sample_rows": 5,
+      "gated": false,
+      "license": "apache-2.0",
+      "limitations": [
+        "Tiny corrected benchmark (18 rows total) \u2014 KV cache quantization ablation on a single GPU (DGX Spark GB10).",
+        "v3 fixes the v1 memory-measurement error (RSS was wrong on unified memory; v3 uses nvidia-smi + llama.cpp internals per the CORRECTION notice).",
+        "prompt_tps + gen_tps are real measured tokens/sec, but no TTFT / TPOT / e2e is reported \u2014 generation latency must be derived from gen_tps + output_token_count.",
+        "Single model context-length sweep (0 \u2192 110k tokens) under 3 cache quantizations (f16 / q8_0 / q4_0); not a model / GPU / engine sweep.",
+        "Useful for KV-cache memory-pressure priors and the cache-quantization throughput trade-off; NOT a latency frontier source on its own.",
+        "Benchmark-only \u2014 Tier 4. Author: Nathan Maine / Memoriant Inc."
+      ],
+      "missing_signals": [
+        "ttft",
+        "tpot",
+        "itl",
+        "e2e_latency",
+        "concurrency",
+        "batch_size",
+        "failure_label",
+        "timeout_label"
+      ],
+      "promotion_reasons": [
+        "statistical_sample_strength='weak' insufficient for ['promoted_for_performance_priors', 'promoted_for_constraint_aware_evaluation']; downgraded to ['promoted_for_training_priors']"
+      ],
+      "promotion_state": "promoted_for_training_priors",
+      "promotion_tags": [
+        "promoted_for_training_priors"
+      ],
+      "statistical_sample_strength": "weak"
+    },
+    {
+      "analysis_sample_rows": 42,
+      "available_signals": [
+        "ttft",
+        "tpot",
+        "throughput",
+        "concurrency",
+        "batch_size",
+        "input_tokens",
+        "output_tokens",
+        "gpu_type",
+        "model_id",
+        "engine",
+        "engine_version",
+        "memory_pressure",
+        "failure_label"
+      ],
+      "canonical_trace_type": "latency_benchmark_trace",
+      "committed_normalized_sample_bytes": 0,
+      "committed_normalized_sample_rows": 0,
+      "config_name": "single_gpu",
+      "dataset_id": "intellistream/vllm-hust-benchmark-results",
+      "fixture_sample_rows": 5,
+      "gated": false,
+      "license": null,
+      "limitations": [
+        "vLLM-HUST benchmark leaderboard (intellistream). Submissions-driven leaderboard with per-entry hardware \u00d7 model \u00d7 workload \u00d7 engine \u00d7 engine_version metadata.",
+        "Single point measurement per entry \u2014 TTFT_ms / TBT_ms (=TPOT) are scalar means with NO p50/p90/p95/p99 breakdown.",
+        "Huawei 910B3 (Ascend-class) dominates the leaderboard \u2014 generalises POORLY to NVIDIA / AMD / TPU. Treat as Ascend-specific prior.",
+        "peak_mem_mb is 0 for many entries (not measured upstream).",
+        "error_rate is reported but always 0 for the present snapshot \u2014 treat as upper-bound only.",
+        "NO declared license on the HF card frontmatter \u2014 recorded license=None. Bounded normalised sample is NOT committed for this dataset (license_redistribution_status=unspecified).",
+        "Benchmark-only \u2014 Tier 4. Not pilot telemetry."
+      ],
+      "missing_signals": [
+        "itl",
+        "e2e_latency",
+        "kv_cache_size",
+        "timeout_label"
+      ],
+      "promotion_reasons": [],
+      "promotion_state": "promoted_for_performance_priors",
+      "promotion_tags": [
+        "promoted_for_performance_priors",
+        "promoted_for_constraint_aware_evaluation",
+        "promoted_for_training_priors"
+      ],
+      "statistical_sample_strength": "moderate"
+    },
+    {
+      "analysis_sample_rows": 3,
+      "available_signals": [
+        "ttft",
+        "tpot",
+        "throughput",
+        "concurrency",
+        "batch_size",
+        "input_tokens",
+        "output_tokens",
+        "gpu_type",
+        "model_id",
+        "engine",
+        "engine_version",
+        "memory_pressure",
+        "failure_label"
+      ],
+      "canonical_trace_type": "latency_benchmark_trace",
+      "committed_normalized_sample_bytes": 0,
+      "committed_normalized_sample_rows": 0,
+      "config_name": "multi_gpu",
+      "dataset_id": "intellistream/vllm-hust-benchmark-results",
+      "fixture_sample_rows": 3,
+      "gated": false,
+      "license": null,
+      "limitations": [
+        "vLLM-HUST benchmark leaderboard (intellistream). Submissions-driven leaderboard with per-entry hardware \u00d7 model \u00d7 workload \u00d7 engine \u00d7 engine_version metadata.",
+        "Single point measurement per entry \u2014 TTFT_ms / TBT_ms (=TPOT) are scalar means with NO p50/p90/p95/p99 breakdown.",
+        "Huawei 910B3 (Ascend-class) dominates the leaderboard \u2014 generalises POORLY to NVIDIA / AMD / TPU. Treat as Ascend-specific prior.",
+        "peak_mem_mb is 0 for many entries (not measured upstream).",
+        "error_rate is reported but always 0 for the present snapshot \u2014 treat as upper-bound only.",
+        "NO declared license on the HF card frontmatter \u2014 recorded license=None. Bounded normalised sample is NOT committed for this dataset (license_redistribution_status=unspecified).",
+        "Benchmark-only \u2014 Tier 4. Not pilot telemetry."
+      ],
+      "missing_signals": [
+        "itl",
+        "e2e_latency",
+        "kv_cache_size",
+        "timeout_label"
+      ],
+      "promotion_reasons": [
+        "statistical_sample_strength='weak' insufficient for ['promoted_for_performance_priors', 'promoted_for_constraint_aware_evaluation']; downgraded to ['promoted_for_training_priors']"
+      ],
+      "promotion_state": "promoted_for_training_priors",
+      "promotion_tags": [
+        "promoted_for_training_priors"
+      ],
+      "statistical_sample_strength": "weak"
+    }
+  ],
+  "modifies_controllers_or_defaults": false,
+  "modifies_robust_energy_engine": false,
+  "production_claim": false,
+  "scope": "Broadened HF discovery follow-on to PR #133 \u2014 bounded ingest of 3 new Tier-4 latency_benchmark_trace candidates (odyn-network/odyn-benchmarks, memoriant/dgx-spark-kv-cache-benchmark, intellistream/vllm-hust-benchmark-results) plus 8 rejection / deferral records from the same INGEST_LATER / MONITOR pool."
+}

@@ -1,0 +1,308 @@
+{
+  "accepted_columns": [
+    "profile",
+    "mode",
+    "concurrency",
+    "total_requests",
+    "successful",
+    "failed",
+    "wall_time_s",
+    "e2e_avg",
+    "e2e_p95",
+    "tpot_avg",
+    "tpot_p95",
+    "throughput_tok_s",
+    "throughput_req_s",
+    "ttft_avg",
+    "ttft_p95"
+  ],
+  "columns": [
+    {
+      "aurelius_signal_category": "metadata_only",
+      "dtypes": [
+        "str",
+        "int",
+        "float",
+        "dict",
+        "NoneType"
+      ],
+      "field_quality": "real",
+      "missing_rate": 0.0,
+      "normalized_field": "profile",
+      "notes": "raw profile \u2192 profile",
+      "presence_rate": 1.0,
+      "raw_column_name": "profile",
+      "usable_for": []
+    },
+    {
+      "aurelius_signal_category": "metadata_only",
+      "dtypes": [
+        "str",
+        "int",
+        "float",
+        "dict",
+        "NoneType"
+      ],
+      "field_quality": "real",
+      "missing_rate": 0.0,
+      "normalized_field": "mode",
+      "notes": "raw mode \u2192 mode",
+      "presence_rate": 1.0,
+      "raw_column_name": "mode",
+      "usable_for": []
+    },
+    {
+      "aurelius_signal_category": "request_arrival",
+      "dtypes": [
+        "str",
+        "int",
+        "float",
+        "dict",
+        "NoneType"
+      ],
+      "field_quality": "real",
+      "missing_rate": 0.0,
+      "normalized_field": "concurrency",
+      "notes": "raw concurrency \u2192 concurrency",
+      "presence_rate": 1.0,
+      "raw_column_name": "concurrency",
+      "usable_for": [
+        "constraint_aware_backtest",
+        "latency_prior"
+      ]
+    },
+    {
+      "aurelius_signal_category": "request_arrival",
+      "dtypes": [
+        "str",
+        "int",
+        "float",
+        "dict",
+        "NoneType"
+      ],
+      "field_quality": "real",
+      "missing_rate": 0.0,
+      "normalized_field": "num_requests",
+      "notes": "raw total_requests \u2192 num_requests",
+      "presence_rate": 1.0,
+      "raw_column_name": "total_requests",
+      "usable_for": [
+        "latency_prior",
+        "throughput_prior"
+      ]
+    },
+    {
+      "aurelius_signal_category": "request_completion",
+      "dtypes": [
+        "str",
+        "int",
+        "float",
+        "dict",
+        "NoneType"
+      ],
+      "field_quality": "real",
+      "missing_rate": 0.0,
+      "normalized_field": "num_successful",
+      "notes": "raw successful \u2192 num_successful",
+      "presence_rate": 1.0,
+      "raw_column_name": "successful",
+      "usable_for": [
+        "latency_prior"
+      ]
+    },
+    {
+      "aurelius_signal_category": "failure_timeout",
+      "dtypes": [
+        "str",
+        "int",
+        "float",
+        "dict",
+        "NoneType"
+      ],
+      "field_quality": "real",
+      "missing_rate": 0.0,
+      "normalized_field": "num_failed",
+      "notes": "raw failed \u2192 num_failed",
+      "presence_rate": 1.0,
+      "raw_column_name": "failed",
+      "usable_for": [
+        "latency_prior"
+      ]
+    },
+    {
+      "aurelius_signal_category": "request_completion",
+      "dtypes": [
+        "str",
+        "int",
+        "float",
+        "dict",
+        "NoneType"
+      ],
+      "field_quality": "real",
+      "missing_rate": 0.0,
+      "normalized_field": "duration_s",
+      "notes": "raw wall_time_s \u2192 duration_s",
+      "presence_rate": 1.0,
+      "raw_column_name": "wall_time_s",
+      "usable_for": [
+        "throughput_prior"
+      ]
+    },
+    {
+      "aurelius_signal_category": "latency",
+      "dtypes": [
+        "str",
+        "int",
+        "float",
+        "dict",
+        "NoneType"
+      ],
+      "field_quality": "real",
+      "missing_rate": 0.0,
+      "normalized_field": "mean_e2el_ms",
+      "notes": "raw e2e_avg \u2192 mean_e2el_ms",
+      "presence_rate": 1.0,
+      "raw_column_name": "e2e_avg",
+      "usable_for": [
+        "latency_prior"
+      ]
+    },
+    {
+      "aurelius_signal_category": "latency",
+      "dtypes": [
+        "str",
+        "int",
+        "float",
+        "dict",
+        "NoneType"
+      ],
+      "field_quality": "real",
+      "missing_rate": 0.0,
+      "normalized_field": "p95_e2el_ms",
+      "notes": "raw e2e_p95 \u2192 p95_e2el_ms",
+      "presence_rate": 1.0,
+      "raw_column_name": "e2e_p95",
+      "usable_for": [
+        "latency_prior"
+      ]
+    },
+    {
+      "aurelius_signal_category": "latency",
+      "dtypes": [
+        "str",
+        "int",
+        "float",
+        "dict",
+        "NoneType"
+      ],
+      "field_quality": "real",
+      "missing_rate": 0.0,
+      "normalized_field": "mean_tpot_ms",
+      "notes": "raw tpot_avg \u2192 mean_tpot_ms",
+      "presence_rate": 1.0,
+      "raw_column_name": "tpot_avg",
+      "usable_for": [
+        "latency_prior"
+      ]
+    },
+    {
+      "aurelius_signal_category": "latency",
+      "dtypes": [
+        "str",
+        "int",
+        "float",
+        "dict",
+        "NoneType"
+      ],
+      "field_quality": "real",
+      "missing_rate": 0.0,
+      "normalized_field": "p95_tpot_ms",
+      "notes": "raw tpot_p95 \u2192 p95_tpot_ms",
+      "presence_rate": 1.0,
+      "raw_column_name": "tpot_p95",
+      "usable_for": [
+        "latency_prior"
+      ]
+    },
+    {
+      "aurelius_signal_category": "throughput",
+      "dtypes": [
+        "str",
+        "int",
+        "float",
+        "dict",
+        "NoneType"
+      ],
+      "field_quality": "real",
+      "missing_rate": 0.0,
+      "normalized_field": "total_token_throughput",
+      "notes": "raw throughput_tok_s \u2192 total_token_throughput",
+      "presence_rate": 1.0,
+      "raw_column_name": "throughput_tok_s",
+      "usable_for": [
+        "throughput_prior"
+      ]
+    },
+    {
+      "aurelius_signal_category": "throughput",
+      "dtypes": [
+        "str",
+        "int",
+        "float",
+        "dict",
+        "NoneType"
+      ],
+      "field_quality": "real",
+      "missing_rate": 0.0,
+      "normalized_field": "request_throughput",
+      "notes": "raw throughput_req_s \u2192 request_throughput",
+      "presence_rate": 1.0,
+      "raw_column_name": "throughput_req_s",
+      "usable_for": [
+        "throughput_prior"
+      ]
+    },
+    {
+      "aurelius_signal_category": "latency",
+      "dtypes": [
+        "str",
+        "int",
+        "float",
+        "dict",
+        "NoneType"
+      ],
+      "field_quality": "real",
+      "missing_rate": 0.5,
+      "normalized_field": "mean_ttft_ms",
+      "notes": "raw ttft_avg \u2192 mean_ttft_ms",
+      "presence_rate": 0.5,
+      "raw_column_name": "ttft_avg",
+      "usable_for": [
+        "latency_prior"
+      ]
+    },
+    {
+      "aurelius_signal_category": "latency",
+      "dtypes": [
+        "str",
+        "int",
+        "float",
+        "dict",
+        "NoneType"
+      ],
+      "field_quality": "real",
+      "missing_rate": 0.5,
+      "normalized_field": "p95_ttft_ms",
+      "notes": "raw ttft_p95 \u2192 p95_ttft_ms",
+      "presence_rate": 0.5,
+      "raw_column_name": "ttft_p95",
+      "usable_for": [
+        "latency_prior"
+      ]
+    }
+  ],
+  "config_name": "facebook_chat_streaming",
+  "dataset_id": "odyn-network/odyn-benchmarks",
+  "rejected_columns": [],
+  "unknown_columns": []
+}

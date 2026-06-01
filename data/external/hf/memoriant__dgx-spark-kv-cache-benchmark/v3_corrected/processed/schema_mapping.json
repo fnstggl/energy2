@@ -1,0 +1,149 @@
+{
+  "accepted_columns": [
+    "context_tokens",
+    "cache_type",
+    "kv_buffer_mib",
+    "gpu_mem_mib",
+    "prompt_tps",
+    "gen_tps",
+    "notes"
+  ],
+  "columns": [
+    {
+      "aurelius_signal_category": "tokens",
+      "dtypes": [
+        "str",
+        "int",
+        "float",
+        "dict",
+        "NoneType"
+      ],
+      "field_quality": "real",
+      "missing_rate": 0.0,
+      "normalized_field": "context_tokens",
+      "notes": "raw context_tokens \u2192 context_tokens",
+      "presence_rate": 1.0,
+      "raw_column_name": "context_tokens",
+      "usable_for": [
+        "latency_prior",
+        "cache_residency_evaluation"
+      ]
+    },
+    {
+      "aurelius_signal_category": "cache_residency",
+      "dtypes": [
+        "str",
+        "int",
+        "float",
+        "dict",
+        "NoneType"
+      ],
+      "field_quality": "real",
+      "missing_rate": 0.0,
+      "normalized_field": "cache_type",
+      "notes": "raw cache_type \u2192 cache_type",
+      "presence_rate": 1.0,
+      "raw_column_name": "cache_type",
+      "usable_for": [
+        "cache_residency_evaluation"
+      ]
+    },
+    {
+      "aurelius_signal_category": "memory",
+      "dtypes": [
+        "str",
+        "int",
+        "float",
+        "dict",
+        "NoneType"
+      ],
+      "field_quality": "real",
+      "missing_rate": 0.0,
+      "normalized_field": "kv_buffer_mib",
+      "notes": "raw kv_buffer_mib \u2192 kv_buffer_mib",
+      "presence_rate": 1.0,
+      "raw_column_name": "kv_buffer_mib",
+      "usable_for": [
+        "cache_residency_evaluation"
+      ]
+    },
+    {
+      "aurelius_signal_category": "memory",
+      "dtypes": [
+        "str",
+        "int",
+        "float",
+        "dict",
+        "NoneType"
+      ],
+      "field_quality": "real",
+      "missing_rate": 0.0,
+      "normalized_field": "gpu_mem_mib",
+      "notes": "raw gpu_mem_mib \u2192 gpu_mem_mib",
+      "presence_rate": 1.0,
+      "raw_column_name": "gpu_mem_mib",
+      "usable_for": [
+        "cache_residency_evaluation"
+      ]
+    },
+    {
+      "aurelius_signal_category": "throughput",
+      "dtypes": [
+        "str",
+        "int",
+        "float",
+        "dict",
+        "NoneType"
+      ],
+      "field_quality": "real",
+      "missing_rate": 0.16666666666666666,
+      "normalized_field": "input_token_throughput",
+      "notes": "raw prompt_tps \u2192 input_token_throughput",
+      "presence_rate": 0.8333333333333334,
+      "raw_column_name": "prompt_tps",
+      "usable_for": [
+        "throughput_prior"
+      ]
+    },
+    {
+      "aurelius_signal_category": "throughput",
+      "dtypes": [
+        "str",
+        "int",
+        "float",
+        "dict",
+        "NoneType"
+      ],
+      "field_quality": "real",
+      "missing_rate": 0.16666666666666666,
+      "normalized_field": "total_token_throughput",
+      "notes": "raw gen_tps \u2192 total_token_throughput",
+      "presence_rate": 0.8333333333333334,
+      "raw_column_name": "gen_tps",
+      "usable_for": [
+        "throughput_prior"
+      ]
+    },
+    {
+      "aurelius_signal_category": "metadata_only",
+      "dtypes": [
+        "str",
+        "int",
+        "float",
+        "dict",
+        "NoneType"
+      ],
+      "field_quality": "real",
+      "missing_rate": 0.0,
+      "normalized_field": "notes",
+      "notes": "raw notes \u2192 notes",
+      "presence_rate": 1.0,
+      "raw_column_name": "notes",
+      "usable_for": []
+    }
+  ],
+  "config_name": "v3_corrected",
+  "dataset_id": "memoriant/dgx-spark-kv-cache-benchmark",
+  "rejected_columns": [],
+  "unknown_columns": []
+}

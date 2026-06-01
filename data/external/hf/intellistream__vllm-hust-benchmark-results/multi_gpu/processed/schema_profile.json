@@ -1,0 +1,146 @@
+{
+  "accepted_columns": [
+    "cluster",
+    "config_type",
+    "constraints",
+    "engine",
+    "engine_version",
+    "entry_id",
+    "environment",
+    "hardware",
+    "metadata",
+    "metrics",
+    "model",
+    "versions",
+    "workload"
+  ],
+  "config_name": "multi_gpu",
+  "dataset_id": "intellistream/vllm-hust-benchmark-results",
+  "dtypes": {
+    "cluster": [
+      "str"
+    ],
+    "config_type": [
+      "str"
+    ],
+    "constraints": [
+      "dict"
+    ],
+    "engine": [
+      "str"
+    ],
+    "engine_version": [
+      "str"
+    ],
+    "entry_id": [
+      "str"
+    ],
+    "environment": [
+      "dict"
+    ],
+    "hardware": [
+      "dict"
+    ],
+    "metadata": [
+      "dict"
+    ],
+    "metrics": [
+      "dict"
+    ],
+    "model": [
+      "dict"
+    ],
+    "versions": [
+      "dict"
+    ],
+    "workload": [
+      "dict"
+    ]
+  },
+  "example_values": {
+    "cluster": [],
+    "config_type": [
+      "'multi_gpu'",
+      "'multi_gpu'",
+      "'multi_gpu'"
+    ],
+    "constraints": [
+      "{'scenario_source': 'vllm-benchmark', 'accountable_scope': {'domestic_chip_class': 'Ascend-class', 'representative_model",
+      "{'scenario_source': 'vllm-benchmark', 'accountable_scope': {'domestic_chip_class': 'Ascend-class', 'representative_model",
+      "{'scenario_source': 'vllm-benchmark', 'accountable_scope': {'domestic_chip_class': 'Ascend-class', 'representative_model"
+    ],
+    "engine": [
+      "'vllm-hust'",
+      "'vllm-hust'",
+      "'vllm-hust'"
+    ],
+    "engine_version": [
+      "'0.20.1rc1.dev314+g64ff561c7.d20260505'",
+      "'0.20.1rc1.dev314+g64ff561c7.d20260505'",
+      "'0.17.2rc1.dev450+g289b51ab2.d20260417'"
+    ],
+    "entry_id": [
+      "'606e1a76-564e-4329-883d-05f587cb77a0'",
+      "'6484b5bb-de80-44a9-a3b0-02c3eb5f247f'",
+      "'63ee4565-02fb-4b03-94d3-96471dd82735'"
+    ],
+    "environment": [
+      "{'os': 'Linux-5.10.0-60.18.0.50.oe2203.aarch64-aarch64-with-glibc2.38', 'python_version': '3.11.6', 'pytorch_version': N",
+      "{'os': 'Linux-5.10.0-60.18.0.50.oe2203.aarch64-aarch64-with-glibc2.38', 'python_version': '3.11.6', 'pytorch_version': N",
+      "{'os': 'Linux-5.15.0-25-generic-aarch64-with-glibc2.38', 'python_version': '3.11.15', 'pytorch_version': None, 'cuda_ver"
+    ],
+    "hardware": [
+      "{'vendor': 'Huawei', 'chip_model': '910B3', 'chip_count': 2, 'interconnect': 'unknown', 'memory_per_chip_gb': 64.0, 'tot",
+      "{'vendor': 'Huawei', 'chip_model': '910B3', 'chip_count': 4, 'interconnect': 'unknown', 'memory_per_chip_gb': 64.0, 'tot",
+      "{'vendor': 'Huawei', 'chip_model': '910B3', 'chip_count': 4, 'interconnect': 'unknown', 'memory_per_chip_gb': 64.0, 'tot"
+    ],
+    "metadata": [
+      "{'submitted_at': '2026-05-06T02:29:23Z', 'submitter': 'HUST', 'data_source': 'vllm-hust-benchmark', 'engine': 'vllm-hust",
+      "{'submitted_at': '2026-05-06T02:54:07Z', 'submitter': 'HUST', 'data_source': 'vllm-hust-benchmark', 'engine': 'vllm-hust",
+      "{'submitted_at': '2026-04-17T14:36:06Z', 'submitter': 'ShuhaoZhangTony', 'data_source': 'vllm-hust-benchmark', 'engine':"
+    ],
+    "metrics": [
+      "{'ttft_ms': 0.0, 'tbt_ms': None, 'throughput_tps': 2341.3777779515576, 'peak_mem_mb': 0.0, 'error_rate': 0.0}",
+      "{'ttft_ms': 0.0, 'tbt_ms': None, 'throughput_tps': 1276.736815085315, 'peak_mem_mb': 0.0, 'error_rate': 0.0}",
+      "{'ttft_ms': 6047.122617400601, 'tbt_ms': 200.5217293587934, 'throughput_tps': 142.94426320075533, 'peak_mem_mb': 0.0, 'e"
+    ],
+    "model": [
+      "{'name': 'Qwen/Qwen2.5-14B-Instruct', 'parameters': '14B', 'precision': 'FP16', 'quantization': None, 'canonical_id': 'h",
+      "{'name': 'Qwen/Qwen2.5-14B-Instruct', 'parameters': '14B', 'precision': 'FP16', 'quantization': None, 'canonical_id': 'h",
+      "{'name': 'Qwen/Qwen2.5-7B-Instruct', 'parameters': '7B', 'precision': 'BF16', 'quantization': None, 'canonical_id': 'hf:"
+    ],
+    "versions": [
+      "{'protocol': 'N/A', 'backend': '0.1.dev2792+gc56ccf1e7.d20260505', 'core': '0.20.1rc1.dev314+g64ff561c7.d20260505', 'ben",
+      "{'protocol': 'N/A', 'backend': '0.1.dev2792+gc56ccf1e7.d20260505', 'core': '0.20.1rc1.dev314+g64ff561c7.d20260505', 'ben",
+      "{'protocol': 'N/A', 'backend': 'N/A', 'core': '0.17.2rc1.dev450+g289b51ab2.d20260417', 'benchmark': '0.1.0'}"
+    ],
+    "workload": [
+      "{'name': 'sonnet-throughput', 'input_length': 1024, 'output_length': 256, 'batch_size': None, 'concurrent_requests': Non",
+      "{'name': 'sonnet-throughput', 'input_length': 1024, 'output_length': 128, 'batch_size': None, 'concurrent_requests': Non",
+      "{'name': 'sharegpt-online', 'input_length': 1024, 'output_length': 256, 'batch_size': None, 'concurrent_requests': None,"
+    ]
+  },
+  "file_size_bytes": 10748,
+  "inspected_row_count": 3,
+  "list_length_summaries": {},
+  "missing_rates": {},
+  "nested_keys": [],
+  "raw_columns": [
+    "cluster",
+    "config_type",
+    "constraints",
+    "engine",
+    "engine_version",
+    "entry_id",
+    "environment",
+    "hardware",
+    "metadata",
+    "metrics",
+    "model",
+    "versions",
+    "workload"
+  ],
+  "rejected_columns": [],
+  "source_file": "leaderboard_multi.json",
+  "unknown_columns": []
+}

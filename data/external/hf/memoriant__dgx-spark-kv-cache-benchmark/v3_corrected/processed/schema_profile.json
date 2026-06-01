@@ -1,0 +1,90 @@
+{
+  "accepted_columns": [
+    "context_tokens",
+    "cache_type",
+    "kv_buffer_mib",
+    "gpu_mem_mib",
+    "prompt_tps",
+    "gen_tps",
+    "notes"
+  ],
+  "config_name": "v3_corrected",
+  "dataset_id": "memoriant/dgx-spark-kv-cache-benchmark",
+  "dtypes": {
+    "cache_type": [
+      "str"
+    ],
+    "context_tokens": [
+      "str"
+    ],
+    "gen_tps": [
+      "str"
+    ],
+    "gpu_mem_mib": [
+      "str"
+    ],
+    "kv_buffer_mib": [
+      "str"
+    ],
+    "notes": [
+      "str"
+    ],
+    "prompt_tps": [
+      "str"
+    ]
+  },
+  "example_values": {
+    "cache_type": [
+      "'f16'",
+      "'f16'",
+      "'f16'"
+    ],
+    "context_tokens": [
+      "'0'",
+      "'1493'",
+      "'5916'"
+    ],
+    "gen_tps": [
+      "'45.2'",
+      "'44.7'",
+      "'44.9'"
+    ],
+    "gpu_mem_mib": [
+      "'23092'",
+      "'23114'",
+      "'23116'"
+    ],
+    "kv_buffer_mib": [
+      "'768'",
+      "'768'",
+      "'768'"
+    ],
+    "notes": [
+      "'KV buffer from llama.cpp verbose, baseline GPU from nvidia-smi'",
+      "'64K+ context'",
+      "'47% smaller KV buffer vs f16'"
+    ],
+    "prompt_tps": [
+      "'923.2'",
+      "'1210.8'",
+      "'1187.8'"
+    ]
+  },
+  "file_size_bytes": 846,
+  "inspected_row_count": 18,
+  "list_length_summaries": {},
+  "missing_rates": {},
+  "nested_keys": [],
+  "raw_columns": [
+    "context_tokens",
+    "cache_type",
+    "kv_buffer_mib",
+    "gpu_mem_mib",
+    "prompt_tps",
+    "gen_tps",
+    "notes"
+  ],
+  "rejected_columns": [],
+  "source_file": "data/benchmark_results_v3_complete.csv",
+  "unknown_columns": []
+}

@@ -1,0 +1,90 @@
+{
+  "accepted_columns": [
+    "profile",
+    "num_prompts",
+    "num_results",
+    "submit_ms",
+    "total_ms",
+    "avg_per_prompt_ms",
+    "throughput_prompts_s"
+  ],
+  "config_name": "facebook_batch",
+  "dataset_id": "odyn-network/odyn-benchmarks",
+  "dtypes": {
+    "avg_per_prompt_ms": [
+      "str"
+    ],
+    "num_prompts": [
+      "str"
+    ],
+    "num_results": [
+      "str"
+    ],
+    "profile": [
+      "str"
+    ],
+    "submit_ms": [
+      "str"
+    ],
+    "throughput_prompts_s": [
+      "str"
+    ],
+    "total_ms": [
+      "str"
+    ]
+  },
+  "example_values": {
+    "avg_per_prompt_ms": [
+      "'330.51'",
+      "'48.97'",
+      "'276.34'"
+    ],
+    "num_prompts": [
+      "'250'",
+      "'250'",
+      "'250'"
+    ],
+    "num_results": [
+      "'250'",
+      "'250'",
+      "'250'"
+    ],
+    "profile": [
+      "'A'",
+      "'B'",
+      "'C'"
+    ],
+    "submit_ms": [
+      "'8.71'",
+      "'11.32'",
+      "'9.69'"
+    ],
+    "throughput_prompts_s": [
+      "'3.03'",
+      "'20.42'",
+      "'3.62'"
+    ],
+    "total_ms": [
+      "'82628.6'",
+      "'12242.78'",
+      "'69083.97'"
+    ]
+  },
+  "file_size_bytes": 238,
+  "inspected_row_count": 4,
+  "list_length_summaries": {},
+  "missing_rates": {},
+  "nested_keys": [],
+  "raw_columns": [
+    "profile",
+    "num_prompts",
+    "num_results",
+    "submit_ms",
+    "total_ms",
+    "avg_per_prompt_ms",
+    "throughput_prompts_s"
+  ],
+  "rejected_columns": [],
+  "source_file": "results/facebook_results/batch_benchmarks.csv",
+  "unknown_columns": []
+}

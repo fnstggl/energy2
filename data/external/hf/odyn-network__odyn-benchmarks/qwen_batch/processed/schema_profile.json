@@ -1,0 +1,100 @@
+{
+  "accepted_columns": [
+    "profile",
+    "batch_size",
+    "num_prompts",
+    "num_results",
+    "submit_ms",
+    "total_ms",
+    "avg_per_prompt_ms",
+    "throughput_prompts_s"
+  ],
+  "config_name": "qwen_batch",
+  "dataset_id": "odyn-network/odyn-benchmarks",
+  "dtypes": {
+    "avg_per_prompt_ms": [
+      "str"
+    ],
+    "batch_size": [
+      "str"
+    ],
+    "num_prompts": [
+      "str"
+    ],
+    "num_results": [
+      "str"
+    ],
+    "profile": [
+      "str"
+    ],
+    "submit_ms": [
+      "str"
+    ],
+    "throughput_prompts_s": [
+      "str"
+    ],
+    "total_ms": [
+      "str"
+    ]
+  },
+  "example_values": {
+    "avg_per_prompt_ms": [
+      "'8062.02'",
+      "'2264.27'",
+      "'1257.04'"
+    ],
+    "batch_size": [
+      "'1'",
+      "'8'",
+      "'32'"
+    ],
+    "num_prompts": [
+      "'1'",
+      "'8'",
+      "'32'"
+    ],
+    "num_results": [
+      "'1'",
+      "'8'",
+      "'32'"
+    ],
+    "profile": [
+      "'A'",
+      "'A'",
+      "'A'"
+    ],
+    "submit_ms": [
+      "'18.84'",
+      "'15.36'",
+      "'14.81'"
+    ],
+    "throughput_prompts_s": [
+      "'0.12'",
+      "'0.44'",
+      "'0.8'"
+    ],
+    "total_ms": [
+      "'8062.02'",
+      "'18114.13'",
+      "'40225.22'"
+    ]
+  },
+  "file_size_bytes": 1209,
+  "inspected_row_count": 28,
+  "list_length_summaries": {},
+  "missing_rates": {},
+  "nested_keys": [],
+  "raw_columns": [
+    "profile",
+    "batch_size",
+    "num_prompts",
+    "num_results",
+    "submit_ms",
+    "total_ms",
+    "avg_per_prompt_ms",
+    "throughput_prompts_s"
+  ],
+  "rejected_columns": [],
+  "source_file": "results/qwen_results/batch_benchmarks.csv",
+  "unknown_columns": []
+}

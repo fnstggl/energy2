@@ -1,0 +1,170 @@
+{
+  "accepted_columns": [
+    "profile",
+    "mode",
+    "concurrency",
+    "total_requests",
+    "successful",
+    "failed",
+    "wall_time_s",
+    "e2e_avg",
+    "e2e_p95",
+    "tpot_avg",
+    "tpot_p95",
+    "throughput_tok_s",
+    "throughput_req_s",
+    "ttft_avg",
+    "ttft_p95"
+  ],
+  "config_name": "qwen_chat_streaming",
+  "dataset_id": "odyn-network/odyn-benchmarks",
+  "dtypes": {
+    "concurrency": [
+      "str"
+    ],
+    "e2e_avg": [
+      "str"
+    ],
+    "e2e_p95": [
+      "str"
+    ],
+    "failed": [
+      "str"
+    ],
+    "mode": [
+      "str"
+    ],
+    "profile": [
+      "str"
+    ],
+    "successful": [
+      "str"
+    ],
+    "throughput_req_s": [
+      "str"
+    ],
+    "throughput_tok_s": [
+      "str"
+    ],
+    "total_requests": [
+      "str"
+    ],
+    "tpot_avg": [
+      "str"
+    ],
+    "tpot_p95": [
+      "str"
+    ],
+    "ttft_avg": [
+      "str"
+    ],
+    "ttft_p95": [
+      "str"
+    ],
+    "wall_time_s": [
+      "str"
+    ]
+  },
+  "example_values": {
+    "concurrency": [
+      "'4'",
+      "'8'",
+      "'16'"
+    ],
+    "e2e_avg": [
+      "'9093.87'",
+      "'14726.86'",
+      "'29072.35'"
+    ],
+    "e2e_p95": [
+      "'16734.58'",
+      "'22608.2'",
+      "'38849.11'"
+    ],
+    "failed": [
+      "'0'",
+      "'0'",
+      "'0'"
+    ],
+    "mode": [
+      "'streaming'",
+      "'streaming'",
+      "'streaming'"
+    ],
+    "profile": [
+      "'A'",
+      "'A'",
+      "'A'"
+    ],
+    "successful": [
+      "'250'",
+      "'250'",
+      "'250'"
+    ],
+    "throughput_req_s": [
+      "'0.44'",
+      "'0.54'",
+      "'0.53'"
+    ],
+    "throughput_tok_s": [
+      "'201.58'",
+      "'244.07'",
+      "'244.61'"
+    ],
+    "total_requests": [
+      "'250'",
+      "'250'",
+      "'250'"
+    ],
+    "tpot_avg": [
+      "'19.51'",
+      "'19.74'",
+      "'19.75'"
+    ],
+    "tpot_p95": [
+      "'19.82'",
+      "'20.05'",
+      "'20.09'"
+    ],
+    "ttft_avg": [
+      "'108.55'",
+      "'5745.15'",
+      "'20033.97'"
+    ],
+    "ttft_p95": [
+      "'170.34'",
+      "'9144.14'",
+      "'25528.84'"
+    ],
+    "wall_time_s": [
+      "'572.19'",
+      "'466.79'",
+      "'468.64'"
+    ]
+  },
+  "file_size_bytes": 5774,
+  "inspected_row_count": 64,
+  "list_length_summaries": {},
+  "missing_rates": {},
+  "nested_keys": [],
+  "raw_columns": [
+    "profile",
+    "mode",
+    "concurrency",
+    "total_requests",
+    "successful",
+    "failed",
+    "wall_time_s",
+    "e2e_avg",
+    "e2e_p95",
+    "tpot_avg",
+    "tpot_p95",
+    "throughput_tok_s",
+    "throughput_req_s",
+    "ttft_avg",
+    "ttft_p95"
+  ],
+  "rejected_columns": [],
+  "source_file": "results/qwen_results/chat_benchmarks.csv",
+  "unknown_columns": []
+}

@@ -1,0 +1,148 @@
+{
+  "accepted_columns": [
+    "profile",
+    "num_prompts",
+    "num_results",
+    "submit_ms",
+    "total_ms",
+    "avg_per_prompt_ms",
+    "throughput_prompts_s"
+  ],
+  "columns": [
+    {
+      "aurelius_signal_category": "metadata_only",
+      "dtypes": [
+        "str",
+        "int",
+        "float",
+        "dict",
+        "NoneType"
+      ],
+      "field_quality": "real",
+      "missing_rate": 0.0,
+      "normalized_field": "profile",
+      "notes": "raw profile \u2192 profile",
+      "presence_rate": 1.0,
+      "raw_column_name": "profile",
+      "usable_for": []
+    },
+    {
+      "aurelius_signal_category": "request_arrival",
+      "dtypes": [
+        "str",
+        "int",
+        "float",
+        "dict",
+        "NoneType"
+      ],
+      "field_quality": "real",
+      "missing_rate": 0.0,
+      "normalized_field": "num_requests",
+      "notes": "raw num_prompts \u2192 num_requests",
+      "presence_rate": 1.0,
+      "raw_column_name": "num_prompts",
+      "usable_for": [
+        "throughput_prior"
+      ]
+    },
+    {
+      "aurelius_signal_category": "request_completion",
+      "dtypes": [
+        "str",
+        "int",
+        "float",
+        "dict",
+        "NoneType"
+      ],
+      "field_quality": "real",
+      "missing_rate": 0.0,
+      "normalized_field": "num_completed",
+      "notes": "raw num_results \u2192 num_completed",
+      "presence_rate": 1.0,
+      "raw_column_name": "num_results",
+      "usable_for": [
+        "throughput_prior"
+      ]
+    },
+    {
+      "aurelius_signal_category": "request_arrival",
+      "dtypes": [
+        "str",
+        "int",
+        "float",
+        "dict",
+        "NoneType"
+      ],
+      "field_quality": "real",
+      "missing_rate": 0.0,
+      "normalized_field": "submit_ms",
+      "notes": "raw submit_ms \u2192 submit_ms",
+      "presence_rate": 1.0,
+      "raw_column_name": "submit_ms",
+      "usable_for": [
+        "latency_prior"
+      ]
+    },
+    {
+      "aurelius_signal_category": "latency",
+      "dtypes": [
+        "str",
+        "int",
+        "float",
+        "dict",
+        "NoneType"
+      ],
+      "field_quality": "real",
+      "missing_rate": 0.0,
+      "normalized_field": "total_ms",
+      "notes": "raw total_ms \u2192 total_ms",
+      "presence_rate": 1.0,
+      "raw_column_name": "total_ms",
+      "usable_for": [
+        "latency_prior"
+      ]
+    },
+    {
+      "aurelius_signal_category": "latency",
+      "dtypes": [
+        "str",
+        "int",
+        "float",
+        "dict",
+        "NoneType"
+      ],
+      "field_quality": "derived",
+      "missing_rate": 0.0,
+      "normalized_field": "mean_e2el_ms",
+      "notes": "raw avg_per_prompt_ms \u2192 mean_e2el_ms",
+      "presence_rate": 1.0,
+      "raw_column_name": "avg_per_prompt_ms",
+      "usable_for": [
+        "latency_prior"
+      ]
+    },
+    {
+      "aurelius_signal_category": "throughput",
+      "dtypes": [
+        "str",
+        "int",
+        "float",
+        "dict",
+        "NoneType"
+      ],
+      "field_quality": "real",
+      "missing_rate": 0.0,
+      "normalized_field": "request_throughput",
+      "notes": "raw throughput_prompts_s \u2192 request_throughput",
+      "presence_rate": 1.0,
+      "raw_column_name": "throughput_prompts_s",
+      "usable_for": [
+        "throughput_prior"
+      ]
+    }
+  ],
+  "config_name": "facebook_batch",
+  "dataset_id": "odyn-network/odyn-benchmarks",
+  "rejected_columns": [],
+  "unknown_columns": []
+}

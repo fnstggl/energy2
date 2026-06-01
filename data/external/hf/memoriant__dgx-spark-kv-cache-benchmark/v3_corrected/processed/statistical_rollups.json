@@ -1,0 +1,65 @@
+{
+  "by_strata": {},
+  "overall": {
+    "gen_tps": {
+      "count": 15,
+      "max": 45.6,
+      "mean": 40.78666666666666,
+      "min": 24.0,
+      "p50": 44.6,
+      "p90": 45.3,
+      "p95": 45.3,
+      "p99": 45.6
+    },
+    "gpu_mem_mib": {
+      "count": 18,
+      "max": 23116,
+      "mean": 22821.444444444445,
+      "min": 22540,
+      "p50": 22756,
+      "p90": 23116,
+      "p95": 23116,
+      "p99": 23116
+    },
+    "kv_buffer_mib": {
+      "count": 18,
+      "max": 768,
+      "mean": 464.0,
+      "min": 216,
+      "p50": 408,
+      "p90": 768,
+      "p95": 768,
+      "p99": 768
+    },
+    "prompt_tps": {
+      "count": 15,
+      "max": 1210.8,
+      "mean": 1056.8266666666666,
+      "min": 810.2,
+      "p50": 1151.9,
+      "p90": 1206.7,
+      "p95": 1206.7,
+      "p99": 1210.8
+    }
+  },
+  "subgroup_counts": {
+    "cache_type=f16|context_tokens=0": 1,
+    "cache_type=f16|context_tokens=110019": 1,
+    "cache_type=f16|context_tokens=11814": 1,
+    "cache_type=f16|context_tokens=1493": 1,
+    "cache_type=f16|context_tokens=23610": 1,
+    "cache_type=f16|context_tokens=5916": 1,
+    "cache_type=q4_0|context_tokens=0": 1,
+    "cache_type=q4_0|context_tokens=110019": 1,
+    "cache_type=q4_0|context_tokens=11814": 1,
+    "cache_type=q4_0|context_tokens=1493": 1,
+    "cache_type=q4_0|context_tokens=23610": 1,
+    "cache_type=q4_0|context_tokens=5916": 1,
+    "cache_type=q8_0|context_tokens=0": 1,
+    "cache_type=q8_0|context_tokens=110019": 1,
+    "cache_type=q8_0|context_tokens=11814": 1,
+    "cache_type=q8_0|context_tokens=1493": 1,
+    "cache_type=q8_0|context_tokens=23610": 1,
+    "cache_type=q8_0|context_tokens=5916": 1
+  }
+}

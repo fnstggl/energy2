@@ -3201,3 +3201,102 @@ unlock `promoted_for_dynamic_calibration`; ingest the remaining
 utilisation streams (FB_USED, PIPE_TENSOR_ACTIVE, CPU power);
 cross-validate AcmeTrace Kalos/Seren queue distributions against
 existing Tier-3 traces (Alibaba GPU / Philly / MIT).
+
+## 2026-06-01 — Broadened HF discovery (latency benchmarks) (`claude/determined-pascal-w98qa`)
+
+HF discovery / data-engine PR. No scheduler change, no controller
+default touched, no production claim. Follow-on to PR #133 (AcmeTrace
+focused audit) — runs the INGEST_LATER / MONITOR groups from
+`data/external/hf_discovery/aurelius_gap_closure_audit.json`.
+
+**Headline:** Three new Tier-4 `latency_benchmark_trace` datasets
+bounded-ingested:
+
+- **`odyn-network/odyn-benchmarks`** (Apache-2.0) — vLLM + Ray Serve
+  benchmark with **measured TTFT_avg / TTFT_p95 / TPOT_avg / TPOT_p95 /
+  e2e_avg / e2e_p95 / throughput_tok_s / throughput_req_s** across 4
+  prompt profiles × 2 model + hardware combinations × 6-8 concurrency
+  levels. 4 configs (`qwen_chat_streaming` 64 rows moderate /
+  `facebook_chat_streaming` 48 rows moderate / `qwen_batch` 28 rows
+  moderate / `facebook_batch` 4 rows weak). All three "moderate"
+  configs promoted to `promoted_for_performance_priors` +
+  `promoted_for_constraint_aware_evaluation` + `promoted_for_training_priors`.
+- **`memoriant/dgx-spark-kv-cache-benchmark`** (Apache-2.0) —
+  corrected v3 KV-cache quantization benchmark on NVIDIA DGX Spark
+  GB10 Grace Blackwell unified memory. 18 rows, real
+  `kv_buffer_mib` + `gpu_mem_mib` + `prompt_tps` + `gen_tps` per
+  `(cache_type ∈ {f16, q8_0, q4_0}, context_tokens ∈ {0, 1493, 5916,
+  11814, 23610, 110019})` cell. `promoted_for_training_priors`.
+- **`intellistream/vllm-hust-benchmark-results`** (license=None —
+  conservative no-redistribution) — submissions-driven leaderboard
+  with real `ttft_ms` + `tbt_ms` (=TPOT) + `throughput_tps` +
+  `peak_mem_mb` + `error_rate` across Huawei 910B3 (Ascend-class) ×
+  Qwen / DeepSeek models × workloads. 2 configs (`single_gpu` 42 rows
+  moderate → `promoted_for_performance_priors`; `multi_gpu` 3 rows weak
+  → `promoted_for_training_priors`). No committed normalised sample
+  (license unspecified).
+
+Plus 8 rejection / deferral records (`tarekmasryo/...` self-declared
+synthetic; `spiritbuun/...` codebooks not a dataset;
+`hlarcher/inference-benchmarker` ShareGPT duplicate;
+`Boxoffice1280/Neurips2026...` cc-by-nc-nd-4.0 No-Derivatives;
+`Alexsssu/BurstGPT_LMSYSChat...` BurstGPT duplicate;
+`MCP-1st-Birthday/smoltrace-cloud-cost-tasks` synthetic MCP agent eval;
+`rbgo/llm-inference-benchmark` license=None; `project-vajra/dev-staging-h100-dgx`
+license=None — NCCL collective traces deferred).
+
+**What landed**
+
+- `scripts/ingest_hf_latency_benchmarks.py` — single ingest script for
+  the 3 new datasets. Per-config: schema_profile + schema_mapping +
+  summary + statistical_rollups + 5-row fixture; Apache-2.0 datasets
+  also commit a bounded normalised sample (≤ 100 KiB/file under the
+  300 MiB PR-wide budget). Raw downloads → `data/external/hf/*/raw/`
+  (gitignored by the existing `data/external/hf/*/raw/*` pattern);
+  `analysis_sample.jsonl` (gitignored by `data/external/hf/*/*/processed/analysis_sample.jsonl`).
+- `data/external/hf_discovery/canonical_corpus_registry.json` — grows
+  from 25 → 32 entries.
+- `data/external/hf_discovery/broadened_discovery_audit_summary.json`
+  — per-config ingest decisions + 8 discovery-only records.
+- `docs/HF_DATASET_REGISTRY.md` §7.1 + §7.2 + §10 updated with the
+  new table rows, the 3 new dataset detail blocks (Odyn / Memoriant /
+  Intellistream), the 8 rejection / deferral entries, and a refreshed
+  next-actions list.
+- `tests/test_hf_latency_benchmarks_ingest.py` — 78 new tests covering:
+  no raw / no analysis_sample committed; schema_profile + schema_mapping
+  + summary + statistical_rollups present per config; canonical_trace_type
+  is `latency_benchmark_trace`; promotion gates all pass; trust_tier is
+  `tier_4_latency_benchmark_traces`; registry contains every new config;
+  rejected datasets do NOT leak into the registry; intellistream has
+  no committed normalised sample (license=None policy); Apache-2.0
+  datasets commit a normalised sample under 100 KiB/file; fixture
+  sha256 matches summary; fixture is valid jsonl with mandatory
+  `source_dataset_id` + `trace_type` + `provenance` fields;
+  available_signals includes at least one measured latency or
+  throughput signal; limitations record the Tier-4 / benchmark note;
+  total committed normalised samples stay under the 300 MiB PR budget
+  (in fact < 500 KiB total across the 3 datasets).
+
+**Tests:** 78 new (all green). Existing HF tests (`test_hf_acmetrace_ingest`,
+`test_hf_bounded_ingestion`, `test_hf_corpus_promotion`,
+`test_hf_dataset_discovery`, `test_hf_gap_ingest`, `test_hf_gap_normalized_samples`,
+`test_hf_cara_swissai_audit`, `test_hf_cara_swissai_analysis_tier`,
+`test_hf_corpus_evaluation_harness`) — 265 still green. Combined 343/343.
+
+**Honesty invariants:** raw + analysis samples gitignored
+(`data/external/hf/*/raw/*` + `data/external/hf/*/*/processed/analysis_sample.jsonl`);
+no HF token committed anywhere; trust tier is Tier 4 (NOT pilot
+telemetry, NOT Tier 2/3); benchmark traces never treated as production
+telemetry; every promoted entry carries `license`, `gated`, `provenance`,
+`field_quality`, `limitations`; no oracle as headline; no scheduler /
+controller / robust energy engine touched; intellistream
+license=None → committed normalised sample explicitly skipped with
+`license_unspecified_no_redistribution_promise` reason.
+
+**Next:** cross-validate Odyn `qwen_chat_streaming` TTFT/TPOT surfaces
+against AgentPerfBench `trace_replay` for the overlapping Qwen model
+class; feed the Memoriant `v3_corrected` `kv_buffer_mib` vs `cache_type`
+curve as a memory-pressure prior input to the cache/residency
+forecaster (`aurelius/forecasting/cache_prefix_reuse_forecaster.py`);
+revisit intellistream once a licence is added upstream; continue
+monitoring INGEST_LATER candidates as their license / size changes.
