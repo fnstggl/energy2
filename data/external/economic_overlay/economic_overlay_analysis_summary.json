@@ -1,0 +1,1526 @@
+{
+  "carbon_overlay": {
+    "live_status": "skipped_403",
+    "note": "WattTime live auth returned 403 for this account; carbon intensity falls back to scenario_prior midpoint. carbon_kg is a physical quantity; carbon_cost stays operator-policy-only.",
+    "provider": "WattTime",
+    "value_quality": "scenario_prior"
+  },
+  "doc_version": "economic_overlay_analysis_v1",
+  "energy_overlay": {
+    "note": "PJM/CAISO price series are MEASURED market data; applying them to region-less LLM traces is a scenario region assignment, hence the per-record scenario_prior label.",
+    "primary_market": "PJM",
+    "region_assignment": "scenario (traces are region-less)",
+    "value_quality": "scenario_prior"
+  },
+  "global_coverage": {
+    "estimated_cache_value_usd": {
+      "coverage_pct": 32.0,
+      "rows_with_value": 60000
+    },
+    "estimated_carbon_cost_usd": {
+      "coverage_pct": 0.0,
+      "rows_with_value": 0
+    },
+    "estimated_carbon_kg": {
+      "coverage_pct": 22.72,
+      "rows_with_value": 42598
+    },
+    "estimated_cold_start_cost_usd": {
+      "coverage_pct": 0.0,
+      "rows_with_value": 0
+    },
+    "estimated_decode_cost_usd": {
+      "coverage_pct": 68.05,
+      "rows_with_value": 127598
+    },
+    "estimated_energy_cost_usd": {
+      "coverage_pct": 22.72,
+      "rows_with_value": 42598
+    },
+    "estimated_gpu_cost_usd": {
+      "coverage_pct": 100.0,
+      "rows_with_value": 187505
+    },
+    "estimated_migration_cost_usd": {
+      "coverage_pct": 0.0,
+      "rows_with_value": 0
+    },
+    "estimated_prefill_cost_usd": {
+      "coverage_pct": 68.05,
+      "rows_with_value": 127598
+    },
+    "sla_safe_goodput_per_dollar": {
+      "coverage_pct": 100.0,
+      "rows_with_value": 187505
+    }
+  },
+  "global_field_quality": {
+    "carbon_intensity_g_per_kwh": {
+      "scenario_prior": 187505
+    },
+    "electricity_price_usd_per_kwh": {
+      "scenario_prior": 187505
+    },
+    "energy_kwh": {
+      "derived_from_power_prior": 40000,
+      "measured": 2598,
+      "missing": 144907
+    },
+    "estimated_cache_value_usd": {
+      "derived": 60000,
+      "missing": 127505
+    },
+    "estimated_carbon_cost_usd": {
+      "missing": 187505
+    },
+    "estimated_carbon_kg": {
+      "missing": 144907,
+      "scenario_prior": 42598
+    },
+    "estimated_cold_start_cost_usd": {
+      "missing": 187505
+    },
+    "estimated_decode_cost_usd": {
+      "derived": 127598,
+      "missing": 59907
+    },
+    "estimated_energy_cost_usd": {
+      "missing": 144907,
+      "scenario_prior": 42598
+    },
+    "estimated_gpu_cost_usd": {
+      "derived": 187505
+    },
+    "estimated_migration_cost_usd": {
+      "missing": 187505
+    },
+    "estimated_prefill_cost_usd": {
+      "derived": 127598,
+      "missing": 59907
+    },
+    "gpu_price_usd_per_hour": {
+      "prior": 187134,
+      "prior_fuzzy_match": 371
+    },
+    "sla_safe_goodput_per_dollar": {
+      "derived": 187505
+    }
+  },
+  "global_subgroups": {
+    "by_gpu_type": {
+      "A10": 1424,
+      "A100": 93769,
+      "CPU-C7i": 371,
+      "H100": 65000,
+      "P100": 16582,
+      "T4": 348,
+      "V100": 10011
+    },
+    "by_model_top20": {
+      "01-ai/Yi-6B": 82,
+      "EleutherAI/pythia-1.3b": 74,
+      "EleutherAI/pythia-1.4b": 74,
+      "EleutherAI/pythia-160m": 63,
+      "EleutherAI/pythia-2.7b": 64,
+      "EleutherAI/pythia-410m": 66,
+      "EleutherAI/pythia-6.7b": 58,
+      "EleutherAI/pythia-70m": 66,
+      "Llama3-70B": 30000,
+      "Qwen/Qwen1.5-0.5B": 75,
+      "Qwen/Qwen1.5-1.8B": 66,
+      "Qwen3-32B": 30000,
+      "claude-code-agent": 5000,
+      "facebook/opt-125m": 65,
+      "internal-training-job": 59907,
+      "openai-community/gpt2": 61,
+      "qwen2.5-14b": 10011,
+      "qwen2.5-3b": 26647,
+      "qwen2.5-72b": 6806,
+      "qwen2.5-7b": 16536
+    },
+    "by_overlay_class": {
+      "cross_dataset_joined": 144907,
+      "scenario_prior": 42598
+    },
+    "by_source_dataset": {
+      "Qinghao/AcmeTrace": 59907,
+      "asdwb/cara_latency_prediction": 60000,
+      "eth-easl/swissai-serving-trace": 60000,
+      "optimum-benchmark/llm-perf-leaderboard": 2598,
+      "semianalysisai/cc-traces-weka-no-subagents-051226": 5000
+    }
+  },
+  "global_summary": {
+    "by_overlay_class": {
+      "cross_dataset_joined": 144907,
+      "measured_same_record": 0,
+      "scenario_prior": 42598
+    },
+    "field_quality_breakdown": {
+      "estimated_cache_value_usd": {
+        "n_derived": 60000,
+        "n_measured": 0,
+        "n_missing": 127505,
+        "n_prior": 0,
+        "n_scenario_prior": 0,
+        "n_total": 187505
+      },
+      "estimated_carbon_cost_usd": {
+        "n_derived": 0,
+        "n_measured": 0,
+        "n_missing": 187505,
+        "n_prior": 0,
+        "n_scenario_prior": 0,
+        "n_total": 187505
+      },
+      "estimated_carbon_kg": {
+        "n_derived": 0,
+        "n_measured": 0,
+        "n_missing": 144907,
+        "n_prior": 0,
+        "n_scenario_prior": 42598,
+        "n_total": 187505
+      },
+      "estimated_cold_start_cost_usd": {
+        "n_derived": 0,
+        "n_measured": 0,
+        "n_missing": 187505,
+        "n_prior": 0,
+        "n_scenario_prior": 0,
+        "n_total": 187505
+      },
+      "estimated_decode_cost_usd": {
+        "n_derived": 127598,
+        "n_measured": 0,
+        "n_missing": 59907,
+        "n_prior": 0,
+        "n_scenario_prior": 0,
+        "n_total": 187505
+      },
+      "estimated_energy_cost_usd": {
+        "n_derived": 0,
+        "n_measured": 0,
+        "n_missing": 144907,
+        "n_prior": 0,
+        "n_scenario_prior": 42598,
+        "n_total": 187505
+      },
+      "estimated_gpu_cost_usd": {
+        "n_derived": 187505,
+        "n_measured": 0,
+        "n_missing": 0,
+        "n_prior": 0,
+        "n_scenario_prior": 0,
+        "n_total": 187505
+      },
+      "estimated_migration_cost_usd": {
+        "n_derived": 0,
+        "n_measured": 0,
+        "n_missing": 187505,
+        "n_prior": 0,
+        "n_scenario_prior": 0,
+        "n_total": 187505
+      },
+      "estimated_prefill_cost_usd": {
+        "n_derived": 127598,
+        "n_measured": 0,
+        "n_missing": 59907,
+        "n_prior": 0,
+        "n_scenario_prior": 0,
+        "n_total": 187505
+      },
+      "sla_safe_goodput_per_dollar": {
+        "n_derived": 187505,
+        "n_measured": 0,
+        "n_missing": 0,
+        "n_prior": 0,
+        "n_scenario_prior": 0,
+        "n_total": 187505
+      }
+    },
+    "n": 187505
+  },
+  "gpu_price_overlay_rows": "gpu_price_overlay_multiday.jsonl",
+  "market_fetch_manifest": {
+    "fetched_at_utc": "2026-06-01T17:34:38.005725+00:00",
+    "live_provider_summary": {
+      "measured": [
+        "PJM",
+        "CAISO",
+        "ERCOT"
+      ],
+      "scenario_prior_fallback": [
+        "WattTime (carbon)"
+      ]
+    },
+    "providers": {
+      "caiso_da_energy_price": {
+        "market": "CAISO",
+        "path": "data/external/economic_overlay/economic_overlay_samples/caiso_da_energy_price_7day.jsonl",
+        "region": "us-west",
+        "rows": 168,
+        "status": "success",
+        "value_quality": "measured",
+        "window_days": 7
+      },
+      "ercot_da_energy_price": {
+        "market": "ERCOT",
+        "path": "data/external/economic_overlay/economic_overlay_samples/ercot_da_energy_price_14day.jsonl",
+        "region": "us-south",
+        "rows": 336,
+        "status": "success",
+        "value_quality": "measured",
+        "window_days": 14
+      },
+      "gpu_price_overlay_multiday": {
+        "license": "cc-by-4.0",
+        "path": "data/external/economic_overlay/economic_overlay_samples/gpu_price_overlay_multiday.jsonl",
+        "raw_listings_aggregated": 42943,
+        "rows": 10313,
+        "snapshots": [
+          "prices/dt=2026-05-28/snapshot_20260528T122136Z.parquet",
+          "prices/dt=2026-05-29/snapshot_20260529T121032Z.parquet",
+          "prices/dt=2026-05-30/snapshot_20260530T104438Z.parquet",
+          "prices/dt=2026-05-31/snapshot_20260531T105313Z.parquet",
+          "prices/dt=2026-06-01/snapshot_20260601T145417Z.parquet"
+        ],
+        "source_dataset_id": "afhubbard/gpu-prices",
+        "status": "success",
+        "value_quality": "prior_public_list_price"
+      },
+      "pjm_da_energy_price": {
+        "market": "PJM",
+        "path": "data/external/economic_overlay/economic_overlay_samples/pjm_da_energy_price_14day.jsonl",
+        "region": "us-east",
+        "rows": 337,
+        "status": "success",
+        "value_quality": "measured",
+        "window_days": 14
+      },
+      "watttime_carbon_intensity": {
+        "note": "WattTime login returned HTTP 403 for the supplied account (not authorized for these regions). Skipped per operator instruction; carbon intensity uses scenario_prior midpoint.",
+        "status": "skipped_403",
+        "value_quality": "scenario_prior_fallback"
+      }
+    }
+  },
+  "operator_policy_only_fields": [
+    "carbon_price_per_kg_usd",
+    "per_gpu_hour_price_usd (operator fleet-actual)",
+    "internal_chargeback_rate",
+    "energy_price_per_kwh_usd (operator tariff vs market LMP)",
+    "memory_pressure_pricing_policy"
+  ],
+  "operator_policy_supplied": false,
+  "per_source": {
+    "acmetrace_gpu_power": {
+      "committed_sample_path": "data/external/economic_overlay/economic_overlay_samples/analysis_acmetrace_gpu_power.sample.jsonl",
+      "committed_sample_rows": 800,
+      "corpus_path_gitignored": "data/external/economic_overlay/analysis_corpus/acmetrace_gpu_power.jsonl",
+      "coverage": {
+        "estimated_cache_value_usd": {
+          "coverage_pct": 0.0,
+          "rows_with_value": 0
+        },
+        "estimated_carbon_cost_usd": {
+          "coverage_pct": 0.0,
+          "rows_with_value": 0
+        },
+        "estimated_carbon_kg": {
+          "coverage_pct": 100.0,
+          "rows_with_value": 40000
+        },
+        "estimated_cold_start_cost_usd": {
+          "coverage_pct": 0.0,
+          "rows_with_value": 0
+        },
+        "estimated_decode_cost_usd": {
+          "coverage_pct": 0.0,
+          "rows_with_value": 0
+        },
+        "estimated_energy_cost_usd": {
+          "coverage_pct": 100.0,
+          "rows_with_value": 40000
+        },
+        "estimated_gpu_cost_usd": {
+          "coverage_pct": 100.0,
+          "rows_with_value": 40000
+        },
+        "estimated_migration_cost_usd": {
+          "coverage_pct": 0.0,
+          "rows_with_value": 0
+        },
+        "estimated_prefill_cost_usd": {
+          "coverage_pct": 0.0,
+          "rows_with_value": 0
+        },
+        "sla_safe_goodput_per_dollar": {
+          "coverage_pct": 100.0,
+          "rows_with_value": 40000
+        }
+      },
+      "field_quality": {
+        "carbon_intensity_g_per_kwh": {
+          "scenario_prior": 40000
+        },
+        "electricity_price_usd_per_kwh": {
+          "scenario_prior": 40000
+        },
+        "energy_kwh": {
+          "derived_from_power_prior": 40000
+        },
+        "estimated_cache_value_usd": {
+          "missing": 40000
+        },
+        "estimated_carbon_cost_usd": {
+          "missing": 40000
+        },
+        "estimated_carbon_kg": {
+          "scenario_prior": 40000
+        },
+        "estimated_cold_start_cost_usd": {
+          "missing": 40000
+        },
+        "estimated_decode_cost_usd": {
+          "missing": 40000
+        },
+        "estimated_energy_cost_usd": {
+          "scenario_prior": 40000
+        },
+        "estimated_gpu_cost_usd": {
+          "derived": 40000
+        },
+        "estimated_migration_cost_usd": {
+          "missing": 40000
+        },
+        "estimated_prefill_cost_usd": {
+          "missing": 40000
+        },
+        "gpu_price_usd_per_hour": {
+          "prior": 40000
+        },
+        "sla_safe_goodput_per_dollar": {
+          "derived": 40000
+        }
+      },
+      "rows": 40000,
+      "subgroups": {
+        "by_gpu_type": {
+          "A100": 40000
+        },
+        "by_model_top20": {
+          "internal-training-job": 40000
+        },
+        "by_overlay_class": {
+          "scenario_prior": 40000
+        },
+        "by_source_dataset": {
+          "Qinghao/AcmeTrace": 40000
+        }
+      },
+      "summary": {
+        "by_overlay_class": {
+          "cross_dataset_joined": 0,
+          "measured_same_record": 0,
+          "scenario_prior": 40000
+        },
+        "field_quality_breakdown": {
+          "estimated_cache_value_usd": {
+            "n_derived": 0,
+            "n_measured": 0,
+            "n_missing": 40000,
+            "n_prior": 0,
+            "n_scenario_prior": 0,
+            "n_total": 40000
+          },
+          "estimated_carbon_cost_usd": {
+            "n_derived": 0,
+            "n_measured": 0,
+            "n_missing": 40000,
+            "n_prior": 0,
+            "n_scenario_prior": 0,
+            "n_total": 40000
+          },
+          "estimated_carbon_kg": {
+            "n_derived": 0,
+            "n_measured": 0,
+            "n_missing": 0,
+            "n_prior": 0,
+            "n_scenario_prior": 40000,
+            "n_total": 40000
+          },
+          "estimated_cold_start_cost_usd": {
+            "n_derived": 0,
+            "n_measured": 0,
+            "n_missing": 40000,
+            "n_prior": 0,
+            "n_scenario_prior": 0,
+            "n_total": 40000
+          },
+          "estimated_decode_cost_usd": {
+            "n_derived": 0,
+            "n_measured": 0,
+            "n_missing": 40000,
+            "n_prior": 0,
+            "n_scenario_prior": 0,
+            "n_total": 40000
+          },
+          "estimated_energy_cost_usd": {
+            "n_derived": 0,
+            "n_measured": 0,
+            "n_missing": 0,
+            "n_prior": 0,
+            "n_scenario_prior": 40000,
+            "n_total": 40000
+          },
+          "estimated_gpu_cost_usd": {
+            "n_derived": 40000,
+            "n_measured": 0,
+            "n_missing": 0,
+            "n_prior": 0,
+            "n_scenario_prior": 0,
+            "n_total": 40000
+          },
+          "estimated_migration_cost_usd": {
+            "n_derived": 0,
+            "n_measured": 0,
+            "n_missing": 40000,
+            "n_prior": 0,
+            "n_scenario_prior": 0,
+            "n_total": 40000
+          },
+          "estimated_prefill_cost_usd": {
+            "n_derived": 0,
+            "n_measured": 0,
+            "n_missing": 40000,
+            "n_prior": 0,
+            "n_scenario_prior": 0,
+            "n_total": 40000
+          },
+          "sla_safe_goodput_per_dollar": {
+            "n_derived": 40000,
+            "n_measured": 0,
+            "n_missing": 0,
+            "n_prior": 0,
+            "n_scenario_prior": 0,
+            "n_total": 40000
+          }
+        },
+        "n": 40000
+      }
+    },
+    "acmetrace_kalos_jobs": {
+      "committed_sample_path": "data/external/economic_overlay/economic_overlay_samples/analysis_acmetrace_kalos_jobs.sample.jsonl",
+      "committed_sample_rows": 800,
+      "corpus_path_gitignored": "data/external/economic_overlay/analysis_corpus/acmetrace_kalos_jobs.jsonl",
+      "coverage": {
+        "estimated_cache_value_usd": {
+          "coverage_pct": 0.0,
+          "rows_with_value": 0
+        },
+        "estimated_carbon_cost_usd": {
+          "coverage_pct": 0.0,
+          "rows_with_value": 0
+        },
+        "estimated_carbon_kg": {
+          "coverage_pct": 0.0,
+          "rows_with_value": 0
+        },
+        "estimated_cold_start_cost_usd": {
+          "coverage_pct": 0.0,
+          "rows_with_value": 0
+        },
+        "estimated_decode_cost_usd": {
+          "coverage_pct": 0.0,
+          "rows_with_value": 0
+        },
+        "estimated_energy_cost_usd": {
+          "coverage_pct": 0.0,
+          "rows_with_value": 0
+        },
+        "estimated_gpu_cost_usd": {
+          "coverage_pct": 100.0,
+          "rows_with_value": 19907
+        },
+        "estimated_migration_cost_usd": {
+          "coverage_pct": 0.0,
+          "rows_with_value": 0
+        },
+        "estimated_prefill_cost_usd": {
+          "coverage_pct": 0.0,
+          "rows_with_value": 0
+        },
+        "sla_safe_goodput_per_dollar": {
+          "coverage_pct": 100.0,
+          "rows_with_value": 19907
+        }
+      },
+      "field_quality": {
+        "carbon_intensity_g_per_kwh": {
+          "scenario_prior": 19907
+        },
+        "electricity_price_usd_per_kwh": {
+          "scenario_prior": 19907
+        },
+        "energy_kwh": {
+          "missing": 19907
+        },
+        "estimated_cache_value_usd": {
+          "missing": 19907
+        },
+        "estimated_carbon_cost_usd": {
+          "missing": 19907
+        },
+        "estimated_carbon_kg": {
+          "missing": 19907
+        },
+        "estimated_cold_start_cost_usd": {
+          "missing": 19907
+        },
+        "estimated_decode_cost_usd": {
+          "missing": 19907
+        },
+        "estimated_energy_cost_usd": {
+          "missing": 19907
+        },
+        "estimated_gpu_cost_usd": {
+          "derived": 19907
+        },
+        "estimated_migration_cost_usd": {
+          "missing": 19907
+        },
+        "estimated_prefill_cost_usd": {
+          "missing": 19907
+        },
+        "gpu_price_usd_per_hour": {
+          "prior": 19907
+        },
+        "sla_safe_goodput_per_dollar": {
+          "derived": 19907
+        }
+      },
+      "rows": 19907,
+      "subgroups": {
+        "by_gpu_type": {
+          "A100": 19907
+        },
+        "by_model_top20": {
+          "internal-training-job": 19907
+        },
+        "by_overlay_class": {
+          "cross_dataset_joined": 19907
+        },
+        "by_source_dataset": {
+          "Qinghao/AcmeTrace": 19907
+        }
+      },
+      "summary": {
+        "by_overlay_class": {
+          "cross_dataset_joined": 19907,
+          "measured_same_record": 0,
+          "scenario_prior": 0
+        },
+        "field_quality_breakdown": {
+          "estimated_cache_value_usd": {
+            "n_derived": 0,
+            "n_measured": 0,
+            "n_missing": 19907,
+            "n_prior": 0,
+            "n_scenario_prior": 0,
+            "n_total": 19907
+          },
+          "estimated_carbon_cost_usd": {
+            "n_derived": 0,
+            "n_measured": 0,
+            "n_missing": 19907,
+            "n_prior": 0,
+            "n_scenario_prior": 0,
+            "n_total": 19907
+          },
+          "estimated_carbon_kg": {
+            "n_derived": 0,
+            "n_measured": 0,
+            "n_missing": 19907,
+            "n_prior": 0,
+            "n_scenario_prior": 0,
+            "n_total": 19907
+          },
+          "estimated_cold_start_cost_usd": {
+            "n_derived": 0,
+            "n_measured": 0,
+            "n_missing": 19907,
+            "n_prior": 0,
+            "n_scenario_prior": 0,
+            "n_total": 19907
+          },
+          "estimated_decode_cost_usd": {
+            "n_derived": 0,
+            "n_measured": 0,
+            "n_missing": 19907,
+            "n_prior": 0,
+            "n_scenario_prior": 0,
+            "n_total": 19907
+          },
+          "estimated_energy_cost_usd": {
+            "n_derived": 0,
+            "n_measured": 0,
+            "n_missing": 19907,
+            "n_prior": 0,
+            "n_scenario_prior": 0,
+            "n_total": 19907
+          },
+          "estimated_gpu_cost_usd": {
+            "n_derived": 19907,
+            "n_measured": 0,
+            "n_missing": 0,
+            "n_prior": 0,
+            "n_scenario_prior": 0,
+            "n_total": 19907
+          },
+          "estimated_migration_cost_usd": {
+            "n_derived": 0,
+            "n_measured": 0,
+            "n_missing": 19907,
+            "n_prior": 0,
+            "n_scenario_prior": 0,
+            "n_total": 19907
+          },
+          "estimated_prefill_cost_usd": {
+            "n_derived": 0,
+            "n_measured": 0,
+            "n_missing": 19907,
+            "n_prior": 0,
+            "n_scenario_prior": 0,
+            "n_total": 19907
+          },
+          "sla_safe_goodput_per_dollar": {
+            "n_derived": 19907,
+            "n_measured": 0,
+            "n_missing": 0,
+            "n_prior": 0,
+            "n_scenario_prior": 0,
+            "n_total": 19907
+          }
+        },
+        "n": 19907
+      }
+    },
+    "cara_train_flat": {
+      "committed_sample_path": "data/external/economic_overlay/economic_overlay_samples/analysis_cara_train_flat.sample.jsonl",
+      "committed_sample_rows": 800,
+      "corpus_path_gitignored": "data/external/economic_overlay/analysis_corpus/cara_train_flat.jsonl",
+      "coverage": {
+        "estimated_cache_value_usd": {
+          "coverage_pct": 0.0,
+          "rows_with_value": 0
+        },
+        "estimated_carbon_cost_usd": {
+          "coverage_pct": 0.0,
+          "rows_with_value": 0
+        },
+        "estimated_carbon_kg": {
+          "coverage_pct": 0.0,
+          "rows_with_value": 0
+        },
+        "estimated_cold_start_cost_usd": {
+          "coverage_pct": 0.0,
+          "rows_with_value": 0
+        },
+        "estimated_decode_cost_usd": {
+          "coverage_pct": 100.0,
+          "rows_with_value": 60000
+        },
+        "estimated_energy_cost_usd": {
+          "coverage_pct": 0.0,
+          "rows_with_value": 0
+        },
+        "estimated_gpu_cost_usd": {
+          "coverage_pct": 100.0,
+          "rows_with_value": 60000
+        },
+        "estimated_migration_cost_usd": {
+          "coverage_pct": 0.0,
+          "rows_with_value": 0
+        },
+        "estimated_prefill_cost_usd": {
+          "coverage_pct": 100.0,
+          "rows_with_value": 60000
+        },
+        "sla_safe_goodput_per_dollar": {
+          "coverage_pct": 100.0,
+          "rows_with_value": 60000
+        }
+      },
+      "field_quality": {
+        "carbon_intensity_g_per_kwh": {
+          "scenario_prior": 60000
+        },
+        "electricity_price_usd_per_kwh": {
+          "scenario_prior": 60000
+        },
+        "energy_kwh": {
+          "missing": 60000
+        },
+        "estimated_cache_value_usd": {
+          "missing": 60000
+        },
+        "estimated_carbon_cost_usd": {
+          "missing": 60000
+        },
+        "estimated_carbon_kg": {
+          "missing": 60000
+        },
+        "estimated_cold_start_cost_usd": {
+          "missing": 60000
+        },
+        "estimated_decode_cost_usd": {
+          "derived": 60000
+        },
+        "estimated_energy_cost_usd": {
+          "missing": 60000
+        },
+        "estimated_gpu_cost_usd": {
+          "derived": 60000
+        },
+        "estimated_migration_cost_usd": {
+          "missing": 60000
+        },
+        "estimated_prefill_cost_usd": {
+          "derived": 60000
+        },
+        "gpu_price_usd_per_hour": {
+          "prior": 60000
+        },
+        "sla_safe_goodput_per_dollar": {
+          "derived": 60000
+        }
+      },
+      "rows": 60000,
+      "subgroups": {
+        "by_gpu_type": {
+          "A100": 33407,
+          "P100": 16582,
+          "V100": 10011
+        },
+        "by_model_top20": {
+          "qwen2.5-14b": 10011,
+          "qwen2.5-3b": 26647,
+          "qwen2.5-72b": 6806,
+          "qwen2.5-7b": 16536
+        },
+        "by_overlay_class": {
+          "cross_dataset_joined": 60000
+        },
+        "by_source_dataset": {
+          "asdwb/cara_latency_prediction": 60000
+        }
+      },
+      "summary": {
+        "by_overlay_class": {
+          "cross_dataset_joined": 60000,
+          "measured_same_record": 0,
+          "scenario_prior": 0
+        },
+        "field_quality_breakdown": {
+          "estimated_cache_value_usd": {
+            "n_derived": 0,
+            "n_measured": 0,
+            "n_missing": 60000,
+            "n_prior": 0,
+            "n_scenario_prior": 0,
+            "n_total": 60000
+          },
+          "estimated_carbon_cost_usd": {
+            "n_derived": 0,
+            "n_measured": 0,
+            "n_missing": 60000,
+            "n_prior": 0,
+            "n_scenario_prior": 0,
+            "n_total": 60000
+          },
+          "estimated_carbon_kg": {
+            "n_derived": 0,
+            "n_measured": 0,
+            "n_missing": 60000,
+            "n_prior": 0,
+            "n_scenario_prior": 0,
+            "n_total": 60000
+          },
+          "estimated_cold_start_cost_usd": {
+            "n_derived": 0,
+            "n_measured": 0,
+            "n_missing": 60000,
+            "n_prior": 0,
+            "n_scenario_prior": 0,
+            "n_total": 60000
+          },
+          "estimated_decode_cost_usd": {
+            "n_derived": 60000,
+            "n_measured": 0,
+            "n_missing": 0,
+            "n_prior": 0,
+            "n_scenario_prior": 0,
+            "n_total": 60000
+          },
+          "estimated_energy_cost_usd": {
+            "n_derived": 0,
+            "n_measured": 0,
+            "n_missing": 60000,
+            "n_prior": 0,
+            "n_scenario_prior": 0,
+            "n_total": 60000
+          },
+          "estimated_gpu_cost_usd": {
+            "n_derived": 60000,
+            "n_measured": 0,
+            "n_missing": 0,
+            "n_prior": 0,
+            "n_scenario_prior": 0,
+            "n_total": 60000
+          },
+          "estimated_migration_cost_usd": {
+            "n_derived": 0,
+            "n_measured": 0,
+            "n_missing": 60000,
+            "n_prior": 0,
+            "n_scenario_prior": 0,
+            "n_total": 60000
+          },
+          "estimated_prefill_cost_usd": {
+            "n_derived": 60000,
+            "n_measured": 0,
+            "n_missing": 0,
+            "n_prior": 0,
+            "n_scenario_prior": 0,
+            "n_total": 60000
+          },
+          "sla_safe_goodput_per_dollar": {
+            "n_derived": 60000,
+            "n_measured": 0,
+            "n_missing": 0,
+            "n_prior": 0,
+            "n_scenario_prior": 0,
+            "n_total": 60000
+          }
+        },
+        "n": 60000
+      }
+    },
+    "cc_traces_3000mib": {
+      "committed_sample_path": "data/external/economic_overlay/economic_overlay_samples/analysis_cc_traces_3000mib.sample.jsonl",
+      "committed_sample_rows": 800,
+      "corpus_path_gitignored": "data/external/economic_overlay/analysis_corpus/cc_traces_3000mib.jsonl",
+      "coverage": {
+        "estimated_cache_value_usd": {
+          "coverage_pct": 0.0,
+          "rows_with_value": 0
+        },
+        "estimated_carbon_cost_usd": {
+          "coverage_pct": 0.0,
+          "rows_with_value": 0
+        },
+        "estimated_carbon_kg": {
+          "coverage_pct": 0.0,
+          "rows_with_value": 0
+        },
+        "estimated_cold_start_cost_usd": {
+          "coverage_pct": 0.0,
+          "rows_with_value": 0
+        },
+        "estimated_decode_cost_usd": {
+          "coverage_pct": 100.0,
+          "rows_with_value": 5000
+        },
+        "estimated_energy_cost_usd": {
+          "coverage_pct": 0.0,
+          "rows_with_value": 0
+        },
+        "estimated_gpu_cost_usd": {
+          "coverage_pct": 100.0,
+          "rows_with_value": 5000
+        },
+        "estimated_migration_cost_usd": {
+          "coverage_pct": 0.0,
+          "rows_with_value": 0
+        },
+        "estimated_prefill_cost_usd": {
+          "coverage_pct": 100.0,
+          "rows_with_value": 5000
+        },
+        "sla_safe_goodput_per_dollar": {
+          "coverage_pct": 100.0,
+          "rows_with_value": 5000
+        }
+      },
+      "field_quality": {
+        "carbon_intensity_g_per_kwh": {
+          "scenario_prior": 5000
+        },
+        "electricity_price_usd_per_kwh": {
+          "scenario_prior": 5000
+        },
+        "energy_kwh": {
+          "missing": 5000
+        },
+        "estimated_cache_value_usd": {
+          "missing": 5000
+        },
+        "estimated_carbon_cost_usd": {
+          "missing": 5000
+        },
+        "estimated_carbon_kg": {
+          "missing": 5000
+        },
+        "estimated_cold_start_cost_usd": {
+          "missing": 5000
+        },
+        "estimated_decode_cost_usd": {
+          "derived": 5000
+        },
+        "estimated_energy_cost_usd": {
+          "missing": 5000
+        },
+        "estimated_gpu_cost_usd": {
+          "derived": 5000
+        },
+        "estimated_migration_cost_usd": {
+          "missing": 5000
+        },
+        "estimated_prefill_cost_usd": {
+          "derived": 5000
+        },
+        "gpu_price_usd_per_hour": {
+          "prior": 5000
+        },
+        "sla_safe_goodput_per_dollar": {
+          "derived": 5000
+        }
+      },
+      "rows": 5000,
+      "subgroups": {
+        "by_gpu_type": {
+          "H100": 5000
+        },
+        "by_model_top20": {
+          "claude-code-agent": 5000
+        },
+        "by_overlay_class": {
+          "cross_dataset_joined": 5000
+        },
+        "by_source_dataset": {
+          "semianalysisai/cc-traces-weka-no-subagents-051226": 5000
+        }
+      },
+      "summary": {
+        "by_overlay_class": {
+          "cross_dataset_joined": 5000,
+          "measured_same_record": 0,
+          "scenario_prior": 0
+        },
+        "field_quality_breakdown": {
+          "estimated_cache_value_usd": {
+            "n_derived": 0,
+            "n_measured": 0,
+            "n_missing": 5000,
+            "n_prior": 0,
+            "n_scenario_prior": 0,
+            "n_total": 5000
+          },
+          "estimated_carbon_cost_usd": {
+            "n_derived": 0,
+            "n_measured": 0,
+            "n_missing": 5000,
+            "n_prior": 0,
+            "n_scenario_prior": 0,
+            "n_total": 5000
+          },
+          "estimated_carbon_kg": {
+            "n_derived": 0,
+            "n_measured": 0,
+            "n_missing": 5000,
+            "n_prior": 0,
+            "n_scenario_prior": 0,
+            "n_total": 5000
+          },
+          "estimated_cold_start_cost_usd": {
+            "n_derived": 0,
+            "n_measured": 0,
+            "n_missing": 5000,
+            "n_prior": 0,
+            "n_scenario_prior": 0,
+            "n_total": 5000
+          },
+          "estimated_decode_cost_usd": {
+            "n_derived": 5000,
+            "n_measured": 0,
+            "n_missing": 0,
+            "n_prior": 0,
+            "n_scenario_prior": 0,
+            "n_total": 5000
+          },
+          "estimated_energy_cost_usd": {
+            "n_derived": 0,
+            "n_measured": 0,
+            "n_missing": 5000,
+            "n_prior": 0,
+            "n_scenario_prior": 0,
+            "n_total": 5000
+          },
+          "estimated_gpu_cost_usd": {
+            "n_derived": 5000,
+            "n_measured": 0,
+            "n_missing": 0,
+            "n_prior": 0,
+            "n_scenario_prior": 0,
+            "n_total": 5000
+          },
+          "estimated_migration_cost_usd": {
+            "n_derived": 0,
+            "n_measured": 0,
+            "n_missing": 5000,
+            "n_prior": 0,
+            "n_scenario_prior": 0,
+            "n_total": 5000
+          },
+          "estimated_prefill_cost_usd": {
+            "n_derived": 5000,
+            "n_measured": 0,
+            "n_missing": 0,
+            "n_prior": 0,
+            "n_scenario_prior": 0,
+            "n_total": 5000
+          },
+          "sla_safe_goodput_per_dollar": {
+            "n_derived": 5000,
+            "n_measured": 0,
+            "n_missing": 0,
+            "n_prior": 0,
+            "n_scenario_prior": 0,
+            "n_total": 5000
+          }
+        },
+        "n": 5000
+      }
+    },
+    "optimum_all_configs": {
+      "committed_sample_path": "data/external/economic_overlay/economic_overlay_samples/analysis_optimum_all_configs.sample.jsonl",
+      "committed_sample_rows": 800,
+      "corpus_path_gitignored": "data/external/economic_overlay/analysis_corpus/optimum_all_configs.jsonl",
+      "coverage": {
+        "estimated_cache_value_usd": {
+          "coverage_pct": 0.0,
+          "rows_with_value": 0
+        },
+        "estimated_carbon_cost_usd": {
+          "coverage_pct": 0.0,
+          "rows_with_value": 0
+        },
+        "estimated_carbon_kg": {
+          "coverage_pct": 100.0,
+          "rows_with_value": 2598
+        },
+        "estimated_cold_start_cost_usd": {
+          "coverage_pct": 0.0,
+          "rows_with_value": 0
+        },
+        "estimated_decode_cost_usd": {
+          "coverage_pct": 100.0,
+          "rows_with_value": 2598
+        },
+        "estimated_energy_cost_usd": {
+          "coverage_pct": 100.0,
+          "rows_with_value": 2598
+        },
+        "estimated_gpu_cost_usd": {
+          "coverage_pct": 100.0,
+          "rows_with_value": 2598
+        },
+        "estimated_migration_cost_usd": {
+          "coverage_pct": 0.0,
+          "rows_with_value": 0
+        },
+        "estimated_prefill_cost_usd": {
+          "coverage_pct": 100.0,
+          "rows_with_value": 2598
+        },
+        "sla_safe_goodput_per_dollar": {
+          "coverage_pct": 100.0,
+          "rows_with_value": 2598
+        }
+      },
+      "field_quality": {
+        "carbon_intensity_g_per_kwh": {
+          "scenario_prior": 2598
+        },
+        "electricity_price_usd_per_kwh": {
+          "scenario_prior": 2598
+        },
+        "energy_kwh": {
+          "measured": 2598
+        },
+        "estimated_cache_value_usd": {
+          "missing": 2598
+        },
+        "estimated_carbon_cost_usd": {
+          "missing": 2598
+        },
+        "estimated_carbon_kg": {
+          "scenario_prior": 2598
+        },
+        "estimated_cold_start_cost_usd": {
+          "missing": 2598
+        },
+        "estimated_decode_cost_usd": {
+          "derived": 2598
+        },
+        "estimated_energy_cost_usd": {
+          "scenario_prior": 2598
+        },
+        "estimated_gpu_cost_usd": {
+          "derived": 2598
+        },
+        "estimated_migration_cost_usd": {
+          "missing": 2598
+        },
+        "estimated_prefill_cost_usd": {
+          "derived": 2598
+        },
+        "gpu_price_usd_per_hour": {
+          "prior": 2227,
+          "prior_fuzzy_match": 371
+        },
+        "sla_safe_goodput_per_dollar": {
+          "derived": 2598
+        }
+      },
+      "rows": 2598,
+      "subgroups": {
+        "by_gpu_type": {
+          "A10": 1424,
+          "A100": 455,
+          "CPU-C7i": 371,
+          "T4": 348
+        },
+        "by_model_top20": {
+          "01-ai/Yi-6B": 82,
+          "Deci/DeciLM-7B": 50,
+          "EleutherAI/gpt-j-6b": 50,
+          "EleutherAI/gpt-neo-1.3B": 54,
+          "EleutherAI/gpt-neo-125m": 54,
+          "EleutherAI/gpt-neo-2.7B": 54,
+          "EleutherAI/polyglot-ko-12.8b": 49,
+          "EleutherAI/pythia-1.3b": 74,
+          "EleutherAI/pythia-1.4b": 74,
+          "EleutherAI/pythia-160m": 63,
+          "EleutherAI/pythia-2.7b": 64,
+          "EleutherAI/pythia-410m": 66,
+          "EleutherAI/pythia-6.7b": 58,
+          "EleutherAI/pythia-70m": 66,
+          "Qwen/Qwen1.5-0.5B": 75,
+          "Qwen/Qwen1.5-1.8B": 66,
+          "Qwen/Qwen1.5-4B": 51,
+          "Qwen/Qwen1.5-7B": 51,
+          "facebook/opt-125m": 65,
+          "openai-community/gpt2": 61
+        },
+        "by_overlay_class": {
+          "scenario_prior": 2598
+        },
+        "by_source_dataset": {
+          "optimum-benchmark/llm-perf-leaderboard": 2598
+        }
+      },
+      "summary": {
+        "by_overlay_class": {
+          "cross_dataset_joined": 0,
+          "measured_same_record": 0,
+          "scenario_prior": 2598
+        },
+        "field_quality_breakdown": {
+          "estimated_cache_value_usd": {
+            "n_derived": 0,
+            "n_measured": 0,
+            "n_missing": 2598,
+            "n_prior": 0,
+            "n_scenario_prior": 0,
+            "n_total": 2598
+          },
+          "estimated_carbon_cost_usd": {
+            "n_derived": 0,
+            "n_measured": 0,
+            "n_missing": 2598,
+            "n_prior": 0,
+            "n_scenario_prior": 0,
+            "n_total": 2598
+          },
+          "estimated_carbon_kg": {
+            "n_derived": 0,
+            "n_measured": 0,
+            "n_missing": 0,
+            "n_prior": 0,
+            "n_scenario_prior": 2598,
+            "n_total": 2598
+          },
+          "estimated_cold_start_cost_usd": {
+            "n_derived": 0,
+            "n_measured": 0,
+            "n_missing": 2598,
+            "n_prior": 0,
+            "n_scenario_prior": 0,
+            "n_total": 2598
+          },
+          "estimated_decode_cost_usd": {
+            "n_derived": 2598,
+            "n_measured": 0,
+            "n_missing": 0,
+            "n_prior": 0,
+            "n_scenario_prior": 0,
+            "n_total": 2598
+          },
+          "estimated_energy_cost_usd": {
+            "n_derived": 0,
+            "n_measured": 0,
+            "n_missing": 0,
+            "n_prior": 0,
+            "n_scenario_prior": 2598,
+            "n_total": 2598
+          },
+          "estimated_gpu_cost_usd": {
+            "n_derived": 2598,
+            "n_measured": 0,
+            "n_missing": 0,
+            "n_prior": 0,
+            "n_scenario_prior": 0,
+            "n_total": 2598
+          },
+          "estimated_migration_cost_usd": {
+            "n_derived": 0,
+            "n_measured": 0,
+            "n_missing": 2598,
+            "n_prior": 0,
+            "n_scenario_prior": 0,
+            "n_total": 2598
+          },
+          "estimated_prefill_cost_usd": {
+            "n_derived": 2598,
+            "n_measured": 0,
+            "n_missing": 0,
+            "n_prior": 0,
+            "n_scenario_prior": 0,
+            "n_total": 2598
+          },
+          "sla_safe_goodput_per_dollar": {
+            "n_derived": 2598,
+            "n_measured": 0,
+            "n_missing": 0,
+            "n_prior": 0,
+            "n_scenario_prior": 0,
+            "n_total": 2598
+          }
+        },
+        "n": 2598
+      }
+    },
+    "swissai_bucket_reuse": {
+      "committed_sample_path": "data/external/economic_overlay/economic_overlay_samples/analysis_swissai_bucket_reuse.sample.jsonl",
+      "committed_sample_rows": 800,
+      "corpus_path_gitignored": "data/external/economic_overlay/analysis_corpus/swissai_bucket_reuse.jsonl",
+      "coverage": {
+        "estimated_cache_value_usd": {
+          "coverage_pct": 100.0,
+          "rows_with_value": 60000
+        },
+        "estimated_carbon_cost_usd": {
+          "coverage_pct": 0.0,
+          "rows_with_value": 0
+        },
+        "estimated_carbon_kg": {
+          "coverage_pct": 0.0,
+          "rows_with_value": 0
+        },
+        "estimated_cold_start_cost_usd": {
+          "coverage_pct": 0.0,
+          "rows_with_value": 0
+        },
+        "estimated_decode_cost_usd": {
+          "coverage_pct": 100.0,
+          "rows_with_value": 60000
+        },
+        "estimated_energy_cost_usd": {
+          "coverage_pct": 0.0,
+          "rows_with_value": 0
+        },
+        "estimated_gpu_cost_usd": {
+          "coverage_pct": 100.0,
+          "rows_with_value": 60000
+        },
+        "estimated_migration_cost_usd": {
+          "coverage_pct": 0.0,
+          "rows_with_value": 0
+        },
+        "estimated_prefill_cost_usd": {
+          "coverage_pct": 100.0,
+          "rows_with_value": 60000
+        },
+        "sla_safe_goodput_per_dollar": {
+          "coverage_pct": 100.0,
+          "rows_with_value": 60000
+        }
+      },
+      "field_quality": {
+        "carbon_intensity_g_per_kwh": {
+          "scenario_prior": 60000
+        },
+        "electricity_price_usd_per_kwh": {
+          "scenario_prior": 60000
+        },
+        "energy_kwh": {
+          "missing": 60000
+        },
+        "estimated_cache_value_usd": {
+          "derived": 60000
+        },
+        "estimated_carbon_cost_usd": {
+          "missing": 60000
+        },
+        "estimated_carbon_kg": {
+          "missing": 60000
+        },
+        "estimated_cold_start_cost_usd": {
+          "missing": 60000
+        },
+        "estimated_decode_cost_usd": {
+          "derived": 60000
+        },
+        "estimated_energy_cost_usd": {
+          "missing": 60000
+        },
+        "estimated_gpu_cost_usd": {
+          "derived": 60000
+        },
+        "estimated_migration_cost_usd": {
+          "missing": 60000
+        },
+        "estimated_prefill_cost_usd": {
+          "derived": 60000
+        },
+        "gpu_price_usd_per_hour": {
+          "prior": 60000
+        },
+        "sla_safe_goodput_per_dollar": {
+          "derived": 60000
+        }
+      },
+      "rows": 60000,
+      "subgroups": {
+        "by_gpu_type": {
+          "H100": 60000
+        },
+        "by_model_top20": {
+          "Llama3-70B": 30000,
+          "Qwen3-32B": 30000
+        },
+        "by_overlay_class": {
+          "cross_dataset_joined": 60000
+        },
+        "by_source_dataset": {
+          "eth-easl/swissai-serving-trace": 60000
+        }
+      },
+      "summary": {
+        "by_overlay_class": {
+          "cross_dataset_joined": 60000,
+          "measured_same_record": 0,
+          "scenario_prior": 0
+        },
+        "field_quality_breakdown": {
+          "estimated_cache_value_usd": {
+            "n_derived": 60000,
+            "n_measured": 0,
+            "n_missing": 0,
+            "n_prior": 0,
+            "n_scenario_prior": 0,
+            "n_total": 60000
+          },
+          "estimated_carbon_cost_usd": {
+            "n_derived": 0,
+            "n_measured": 0,
+            "n_missing": 60000,
+            "n_prior": 0,
+            "n_scenario_prior": 0,
+            "n_total": 60000
+          },
+          "estimated_carbon_kg": {
+            "n_derived": 0,
+            "n_measured": 0,
+            "n_missing": 60000,
+            "n_prior": 0,
+            "n_scenario_prior": 0,
+            "n_total": 60000
+          },
+          "estimated_cold_start_cost_usd": {
+            "n_derived": 0,
+            "n_measured": 0,
+            "n_missing": 60000,
+            "n_prior": 0,
+            "n_scenario_prior": 0,
+            "n_total": 60000
+          },
+          "estimated_decode_cost_usd": {
+            "n_derived": 60000,
+            "n_measured": 0,
+            "n_missing": 0,
+            "n_prior": 0,
+            "n_scenario_prior": 0,
+            "n_total": 60000
+          },
+          "estimated_energy_cost_usd": {
+            "n_derived": 0,
+            "n_measured": 0,
+            "n_missing": 60000,
+            "n_prior": 0,
+            "n_scenario_prior": 0,
+            "n_total": 60000
+          },
+          "estimated_gpu_cost_usd": {
+            "n_derived": 60000,
+            "n_measured": 0,
+            "n_missing": 0,
+            "n_prior": 0,
+            "n_scenario_prior": 0,
+            "n_total": 60000
+          },
+          "estimated_migration_cost_usd": {
+            "n_derived": 0,
+            "n_measured": 0,
+            "n_missing": 60000,
+            "n_prior": 0,
+            "n_scenario_prior": 0,
+            "n_total": 60000
+          },
+          "estimated_prefill_cost_usd": {
+            "n_derived": 60000,
+            "n_measured": 0,
+            "n_missing": 0,
+            "n_prior": 0,
+            "n_scenario_prior": 0,
+            "n_total": 60000
+          },
+          "sla_safe_goodput_per_dollar": {
+            "n_derived": 60000,
+            "n_measured": 0,
+            "n_missing": 0,
+            "n_prior": 0,
+            "n_scenario_prior": 0,
+            "n_total": 60000
+          }
+        },
+        "n": 60000
+      }
+    }
+  },
+  "production_claim": false,
+  "shadow_only": true,
+  "tier": "analysis",
+  "total_rows": 187505
+}
