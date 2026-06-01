@@ -2967,3 +2967,52 @@ controller execution path.
 **Next:** production-feasible routing backtest with capacity + quality
 + cost constraints; time-window staleness study for TTFT p99; pilot
 telemetry calibration once `replica_count` + `SLA_label` land.
+
+## 2026-06-01 — CARA Latency Forecaster v1 Calibration + Tail Safety (`feature/cara-latency-tail-calibration`)
+
+Forecasting safety/calibration PR. No ML model wired into any controller.
+No scheduler defaults changed. No external-savings number quoted. Goal:
+make the v1 forecaster honest and safe enough for shadow mode.
+
+**What landed**
+
+- `aurelius/forecasting/cara_latency_calibration.py` — 4 calibrators
+  (ConservativeMultiplierCalibration, QuantileResidualCalibration,
+  SplitConformalUpperBound, BaselineFallbackGate) + tail-safety metrics
+  + PHASE E ordering classifier (classify_tail_status).
+- `scripts/run_cara_latency_calibration_tail_safety.py` — per-(target,
+  quantile, holdout) re-evaluation with calibration variants,
+  subgroup audit, time-holdout-first promotion.
+- `data/external/forecasting/cara_latency_forecaster_v1/calibration_tail_safety_summary.json`
+  with final decision table + promotion thresholds.
+- `docs/CARA_LATENCY_FORECASTER_V1_CALIBRATION.md` with PHASE H decision
+  table.
+- 48 new tests across `test_cara_latency_calibration.py` (unit tests
+  for the 4 classes + Phase E classifier) and
+  `test_cara_latency_tail_safety.py` (JSON artefact + invariant tests).
+
+**Final decision table outcomes:**
+
+  TTFT p50  raw_α=+41.54%  cal_α=+41.60%  cov=0.432  -> shadow_ready
+  TTFT p95  raw_α=+5.90%   cal_α=+19.52%  cov=0.954  -> diagnostic_only (subgroup undercoverage)
+  TTFT p99  raw_α=-31.46%  cal_α=+10.92%  cov=0.984  -> baseline_fallback (fallback fired on 67% of time rows)
+  E2E p50   raw_α=+2.65%   cal_α=+2.62%   cov=0.508  -> diagnostic_only (no p50 E2E threshold)
+  E2E p95   raw_α=+1.29%   cal_α=+0.20%   cov=0.954  -> diagnostic_only (time α < 5%)
+  E2E p99   raw_α=-2.12%   cal_α=+0.22%   cov=0.992  -> diagnostic_only (time α < 5%)
+
+**Honesty invariants:**
+- Calibrators only see (X_cal, y_cal); never test labels. Enforced by
+  signature inspection test.
+- Leakage features blocked from feature pipeline (LEAKAGE_TARGET_FIELDS).
+- Time-holdout is the binding safety gate (PHASE E order).
+- Subgroup safety can downgrade a globally-passing model.
+- BaselineFallbackGate explicit; >25% fallback usage on time-holdout
+  triggers baseline_fallback status.
+- Raw CARA data + analysis_sample.jsonl gitignored.
+
+**Next:** consider shadow wiring TTFT p50 into
+aurelius/frontier/dynamic_estimator.py priors path (separate PR with
+its own pre-registered gates). TTFT p95/p99 require: more recent CARA
+data to address time-drift, OR a subgroup-aware calibration variant.
+E2E forecasting blocked by the deliberate exclusion of
+actual_output_tokens — no obvious unblock without pilot telemetry.
