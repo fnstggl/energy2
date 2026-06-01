@@ -234,6 +234,22 @@ Rules (binding):
 > script: `scripts/register_hf_gap_datasets.py`. Tests:
 > `tests/test_hf_gap_ingest.py` (35 tests, all green).
 
+> **Normalized-sample commit follow-up 2026-06-01 (b).** PR #129
+> deliberately committed only summaries + 5-row fixtures. A follow-up
+> commits a bounded **normalized** analysis sample per dataset for the
+> four datasets with verified permissive licenses (Apache-2.0 / MIT /
+> CC-BY-4.0): BurstGPT 8.0 MB / Google Cluster 21.2 MB / LMCache 0.7 MB
+> / CC-traces 0.4 MB → 30.4 MB total (cap 150 MB). `jaytonde05/prefixbench`
+> is SKIPPED — its HF card has no `license:` field, so the policy
+> requires non-redistribution. Each committed sample lives at
+> `data/external/hf/<safe>/<config>/processed/normalized_sample.jsonl`
+> (a distinct filename so the existing gitignore rule for
+> `analysis_sample.jsonl` is untouched). Per-dataset `summary.json`
+> records `committed_normalized_sample_{path,bytes,rows,sha256}` +
+> `license_redistribution_status` + `raw_committed=false`. Rollup at
+> `data/external/hf_discovery/telemetry_gap_normalized_sample_commit_summary.json`;
+> tests at `tests/test_hf_gap_normalized_samples.py` (29 tests, all green).
+
 #### AgentPerfBench / trace_replay
 
 - **Available signals:** ttft, tpot, itl, e2e_latency,

@@ -12,6 +12,13 @@
     "workload_shape"
   ],
   "canonical_trace_type": "request_shape_trace",
+  "committed_normalized_sample_bytes": 8025795,
+  "committed_normalized_sample_git_sha": "f1df1de07ff31dad5e7c07586f962dfdf4644121",
+  "committed_normalized_sample_materialized_at_s": 1780280387.323963,
+  "committed_normalized_sample_path": "data/external/hf/lzzmm__BurstGPT/burstgpt_1_full/processed/normalized_sample.jsonl",
+  "committed_normalized_sample_reason_skipped": null,
+  "committed_normalized_sample_rows": 59999,
+  "committed_normalized_sample_sha256": "cc41267c180973645f0aef8a9f9cacc1c48732e0b2a1fdda00d64352c4505eae",
   "committed_sample_bytes": 688,
   "committed_sample_rows": 5,
   "config_name": "burstgpt_1_full",
@@ -35,6 +42,8 @@
   "git_sha": "d1b9711627e05946102aa4fe48f208f8331860b0",
   "ingestion_timestamp_s": 1780278383.986067,
   "license": "unspecified_LICENSE_file_present",
+  "license_redistribution_source": "LICENSE file at https://huggingface.co/datasets/lzzmm/BurstGPT/blob/main/LICENSE = 'Attribution 4.0 International' (CC-BY-4.0)",
+  "license_redistribution_status": "permissive_cc_by_4_0",
   "limitations": [
     "Bounded 20 MiB head of BurstGPT_1.csv (file is 52.3 MB; ~1.43M rows total).",
     "Normalized analysis sample capped at 60k rows (RAM + write-time bound).",
@@ -69,6 +78,7 @@
   ],
   "provenance": "lzzmm/BurstGPT@burstgpt_1_full#data/BurstGPT_1.csv#bytes=20971520#git=d1b9711",
   "proxy_fields": [],
+  "raw_committed": false,
   "raw_download_manifest": {
     "cached": true,
     "dest": "/home/user/energy2/data/external/hf/lzzmm__BurstGPT/raw/BurstGPT_1.csv",

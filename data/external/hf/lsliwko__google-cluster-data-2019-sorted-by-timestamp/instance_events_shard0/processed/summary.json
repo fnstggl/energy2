@@ -14,6 +14,13 @@
     "routing_proxy"
   ],
   "canonical_trace_type": "cluster_scheduler_trace",
+  "committed_normalized_sample_bytes": 21205170,
+  "committed_normalized_sample_git_sha": "f1df1de07ff31dad5e7c07586f962dfdf4644121",
+  "committed_normalized_sample_materialized_at_s": 1780280387.5241606,
+  "committed_normalized_sample_path": "data/external/hf/lsliwko__google-cluster-data-2019-sorted-by-timestamp/instance_events_shard0/processed/normalized_sample.jsonl",
+  "committed_normalized_sample_reason_skipped": null,
+  "committed_normalized_sample_rows": 60000,
+  "committed_normalized_sample_sha256": "05956f5e9f58a0cf7b0fbc198716ac0bbcf88ab3510191b7873701e31dc9f841",
   "committed_sample_bytes": 1689,
   "committed_sample_rows": 5,
   "config_name": "instance_events_shard0",
@@ -42,6 +49,8 @@
   "git_sha": "d1b9711627e05946102aa4fe48f208f8331860b0",
   "ingestion_timestamp_s": 1780278405.0131402,
   "license": "cc_by_4_0_derived_from_google",
+  "license_redistribution_source": "Mirror of github.com/google/cluster-data, released by Google under CC-BY-4.0; HF redistribution preserves the same terms",
+  "license_redistribution_status": "permissive_cc_by_4_0",
   "limitations": [
     "Single instance_events shard (52.7 MB gzipped, ~3M events) of the 117 GB Google Cluster 2019 mirror.",
     "Google Borg task lifecycle events (SUBMIT, SCHEDULE, EVICT, FAIL, FINISH, KILL, LOST, QUEUE, UPDATE_PENDING, UPDATE_RUNNING) \u2014 anonymized.",
@@ -81,6 +90,7 @@
   ],
   "provenance": "lsliwko/google-cluster-data-2019-sorted-by-timestamp@instance_events_shard0#GoogleClusterData2019a/data/instance_events/instance_events-00000000-sorted.json.gz#bytes=52752995#git=d1b9711",
   "proxy_fields": [],
+  "raw_committed": false,
   "raw_download_manifest": {
     "cached": true,
     "dest": "/home/user/energy2/data/external/hf/lsliwko__google-cluster-data-2019-sorted-by-timestamp/raw/instance_events-00000000-sorted.json.gz",

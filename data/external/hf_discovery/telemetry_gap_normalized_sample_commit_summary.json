@@ -1,0 +1,65 @@
+{
+  "datasets": [
+    {
+      "commit_decision": "COMMITTED",
+      "committed_bytes": 8025795,
+      "committed_path": "data/external/hf/lzzmm__BurstGPT/burstgpt_1_full/processed/normalized_sample.jsonl",
+      "committed_rows": 59999,
+      "committed_sha256": "cc41267c180973645f0aef8a9f9cacc1c48732e0b2a1fdda00d64352c4505eae",
+      "config_name": "burstgpt_1_full",
+      "dataset_id": "lzzmm/BurstGPT",
+      "license_redistribution_status": "permissive_cc_by_4_0",
+      "license_source": "LICENSE file at https://huggingface.co/datasets/lzzmm/BurstGPT/blob/main/LICENSE = 'Attribution 4.0 International' (CC-BY-4.0)"
+    },
+    {
+      "commit_decision": "COMMITTED",
+      "committed_bytes": 21205170,
+      "committed_path": "data/external/hf/lsliwko__google-cluster-data-2019-sorted-by-timestamp/instance_events_shard0/processed/normalized_sample.jsonl",
+      "committed_rows": 60000,
+      "committed_sha256": "05956f5e9f58a0cf7b0fbc198716ac0bbcf88ab3510191b7873701e31dc9f841",
+      "config_name": "instance_events_shard0",
+      "dataset_id": "lsliwko/google-cluster-data-2019-sorted-by-timestamp",
+      "license_redistribution_status": "permissive_cc_by_4_0",
+      "license_source": "Mirror of github.com/google/cluster-data, released by Google under CC-BY-4.0; HF redistribution preserves the same terms"
+    },
+    {
+      "commit_decision": "COMMITTED",
+      "committed_bytes": 696538,
+      "committed_path": "data/external/hf/sammshen__lmcache-agentic-traces/train_shard4/processed/normalized_sample.jsonl",
+      "committed_rows": 4976,
+      "committed_sha256": "af1bc1ffd4757a3dee9b0e6a8302deaff2f22f45c462a3a5a8e184d469d026cc",
+      "config_name": "train_shard4",
+      "dataset_id": "sammshen/lmcache-agentic-traces",
+      "license_redistribution_status": "permissive_mit",
+      "license_source": "HF card frontmatter license: mit"
+    },
+    {
+      "commit_decision": "COMMITTED",
+      "committed_bytes": 439101,
+      "committed_path": "data/external/hf/semianalysisai__cc-traces-weka-no-subagents-051226/traces_head/processed/normalized_sample.jsonl",
+      "committed_rows": 761,
+      "committed_sha256": "c344f74bc3d1dc9dadb21b835f20c1f088d42fd676e134226f64cfe1d2418ee3",
+      "config_name": "traces_head",
+      "dataset_id": "semianalysisai/cc-traces-weka-no-subagents-051226",
+      "license_redistribution_status": "permissive_apache_2_0",
+      "license_source": "HF card frontmatter license: apache-2.0"
+    },
+    {
+      "commit_decision": "SKIPPED (license)",
+      "config_name": "prefixbench_all",
+      "dataset_id": "jaytonde05/prefixbench",
+      "license_redistribution_status": "unspecified_no_committed_sample",
+      "license_source": "HF card frontmatter has no `license:` key; README provides no redistribution statement. Conservative: do NOT commit a normalized sample."
+    }
+  ],
+  "doc_version": "telemetry_gap_normalized_sample_commit_v1",
+  "git_sha": "f1df1de07ff31dad5e7c07586f962dfdf4644121",
+  "materialized_at_s": 1780280387.5448782,
+  "max_per_sample_bytes": 52428800,
+  "max_total_committed_bytes": 157286400,
+  "modifies_controllers_or_defaults": false,
+  "modifies_robust_energy_engine": false,
+  "production_claim": false,
+  "stage": "phase_a_normalized_sample_commit",
+  "total_committed_bytes": 30366604
+}
