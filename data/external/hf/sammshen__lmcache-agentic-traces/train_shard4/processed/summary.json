@@ -12,6 +12,13 @@
     "workload_shape"
   ],
   "canonical_trace_type": "request_shape_trace",
+  "committed_normalized_sample_bytes": 696538,
+  "committed_normalized_sample_git_sha": "f1df1de07ff31dad5e7c07586f962dfdf4644121",
+  "committed_normalized_sample_materialized_at_s": 1780280387.5348372,
+  "committed_normalized_sample_path": "data/external/hf/sammshen__lmcache-agentic-traces/train_shard4/processed/normalized_sample.jsonl",
+  "committed_normalized_sample_reason_skipped": null,
+  "committed_normalized_sample_rows": 4976,
+  "committed_normalized_sample_sha256": "af1bc1ffd4757a3dee9b0e6a8302deaff2f22f45c462a3a5a8e184d469d026cc",
   "committed_sample_bytes": 757,
   "committed_sample_rows": 5,
   "config_name": "train_shard4",
@@ -32,6 +39,8 @@
   "git_sha": "d1b9711627e05946102aa4fe48f208f8331860b0",
   "ingestion_timestamp_s": 1780278382.5384884,
   "license": "mit",
+  "license_redistribution_source": "HF card frontmatter license: mit",
+  "license_redistribution_status": "permissive_mit",
   "limitations": [
     "Single parquet shard (train-00004-of-00005, 398 MB) of the 2.3 GB 5-shard set.",
     "787 multi-turn agentic LLM sessions (24,881 total iterations); \u22655 turns/session and \u226510K context tokens.",
@@ -65,6 +74,7 @@
   ],
   "provenance": "sammshen/lmcache-agentic-traces@train_shard4#data/train-00004-of-00005.parquet#bytes=398199928#git=d1b9711",
   "proxy_fields": [],
+  "raw_committed": false,
   "raw_download_manifest": {
     "cached": true,
     "dest": "/home/user/energy2/data/external/hf/sammshen__lmcache-agentic-traces/raw/train-00004-of-00005.parquet",

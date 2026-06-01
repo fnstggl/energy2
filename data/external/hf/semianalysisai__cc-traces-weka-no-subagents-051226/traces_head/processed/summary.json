@@ -15,6 +15,13 @@
     "workload_shape"
   ],
   "canonical_trace_type": "request_shape_trace",
+  "committed_normalized_sample_bytes": 439101,
+  "committed_normalized_sample_git_sha": "f1df1de07ff31dad5e7c07586f962dfdf4644121",
+  "committed_normalized_sample_materialized_at_s": 1780280387.54194,
+  "committed_normalized_sample_path": "data/external/hf/semianalysisai__cc-traces-weka-no-subagents-051226/traces_head/processed/normalized_sample.jsonl",
+  "committed_normalized_sample_reason_skipped": null,
+  "committed_normalized_sample_rows": 761,
+  "committed_normalized_sample_sha256": "c344f74bc3d1dc9dadb21b835f20c1f088d42fd676e134226f64cfe1d2418ee3",
   "committed_sample_bytes": 2755,
   "committed_sample_rows": 5,
   "config_name": "traces_head",
@@ -45,6 +52,8 @@
   "git_sha": "d1b9711627e05946102aa4fe48f208f8331860b0",
   "ingestion_timestamp_s": 1780278378.7038772,
   "license": "apache-2.0",
+  "license_redistribution_source": "HF card frontmatter license: apache-2.0",
+  "license_redistribution_status": "permissive_apache_2_0",
   "limitations": [
     "Bounded head-sample of 2.77 GB traces.jsonl (80 MiB cap, ~5k rows).",
     "Real Claude Code CLI \u2265 2.1.139 production traffic (949 agent sessions, ~136.1k requests in the full file).",
@@ -88,6 +97,7 @@
   ],
   "provenance": "semianalysisai/cc-traces-weka-no-subagents-051226@traces_head#traces.jsonl#bytes=83886080#git=d1b9711",
   "proxy_fields": [],
+  "raw_committed": false,
   "raw_download_manifest": {
     "cached": true,
     "dest": "/home/user/energy2/data/external/hf/semianalysisai__cc-traces-weka-no-subagents-051226/raw/traces.jsonl",

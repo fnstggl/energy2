@@ -14,6 +14,49 @@
 > - `data/external/hf_discovery/aurelius_gap_closure_audit.json`
 >   (machine-readable signal × dataset × forecast matrix)
 
+## ⓘ Update 2026-06-01 (b) — bounded normalized analysis samples committed
+
+PR #129 deliberately committed only summaries + 5-row fixtures, leaving
+the per-dataset `processed/analysis_sample.jsonl` files gitignored. That
+was too light for downstream forecasting / backtesting work.
+
+This follow-up commits a bounded **normalized** analysis sample per
+dataset (the same row content, no raw prompt text, no raw downloads).
+Policy: per-sample cap 50 MB, total cap 150 MB, license must permit
+redistribution.
+
+| Dataset | License | Rows committed | Bytes committed | Decision |
+|---|---|---:|---:|---|
+| `lzzmm/BurstGPT` | CC-BY-4.0 (verified LICENSE file in repo) | 59,999 | 8.0 MB | **COMMITTED** at `data/external/hf/lzzmm__BurstGPT/burstgpt_1_full/processed/normalized_sample.jsonl` |
+| `lsliwko/google-cluster-data-2019-sorted-by-timestamp` | CC-BY-4.0 (mirror of github.com/google/cluster-data) | 60,000 | 21.2 MB | **COMMITTED** at `…/instance_events_shard0/processed/normalized_sample.jsonl` |
+| `sammshen/lmcache-agentic-traces` | MIT | 4,976 | 0.7 MB | **COMMITTED** at `…/train_shard4/processed/normalized_sample.jsonl` |
+| `semianalysisai/cc-traces-weka-no-subagents-051226` | Apache-2.0 | 761 | 0.4 MB | **COMMITTED** at `…/traces_head/processed/normalized_sample.jsonl` |
+| `jaytonde05/prefixbench` | UNSPECIFIED | — | — | **SKIPPED** — HF card has no `license:` field; conservative non-redistribution. |
+
+**Total committed: 30.4 MB (cap 150 MB).** Per-dataset
+`summary.json` now carries `committed_normalized_sample_path`,
+`committed_normalized_sample_bytes`, `committed_normalized_sample_rows`,
+`committed_normalized_sample_sha256`, `license_redistribution_status`,
+and `raw_committed=false`. Rollup at
+`data/external/hf_discovery/telemetry_gap_normalized_sample_commit_summary.json`.
+
+**Safety properties preserved:**
+- Raw downloads remain gitignored (no `data/external/hf/*/raw/*` is
+  tracked).
+- `analysis_sample.jsonl` (the unbounded regeneration target) is still
+  gitignored everywhere; only `normalized_sample.jsonl` is committed,
+  via a different filename so the existing gitignore rule is untouched.
+- No raw prompt text / completion text in any committed row. The
+  normalized fields are token counts, timing deltas, model ids,
+  hash-of-block-list summaries (CC-traces), and anonymized Borg metadata
+  (Google Cluster).
+- `tests/test_hf_gap_normalized_samples.py` (29 tests) enforces these
+  invariants on every run.
+
+Script: `scripts/commit_hf_gap_normalized_samples.py`.
+
+---
+
 ## ⓘ Update 2026-06-01 — telemetry-gap ingest landed
 
 5 of the top-10 ingest-now datasets have now been bounded-ingested via

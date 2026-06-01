@@ -8,6 +8,11 @@
     "prefix_reuse"
   ],
   "canonical_trace_type": "cache_residency_trace",
+  "committed_normalized_sample_bytes": 0,
+  "committed_normalized_sample_path": null,
+  "committed_normalized_sample_reason_skipped": "license_redistribution_status=unspecified_no_committed_sample; no committed normalized sample",
+  "committed_normalized_sample_rows": 0,
+  "committed_normalized_sample_sha256": null,
   "committed_sample_bytes": 2165,
   "committed_sample_rows": 5,
   "config_name": "prefixbench_all",
@@ -59,6 +64,8 @@
   "git_sha": "d1b9711627e05946102aa4fe48f208f8331860b0",
   "ingestion_timestamp_s": 1780278406.8490083,
   "license": "unspecified",
+  "license_redistribution_source": "HF card frontmatter has no `license:` key; README provides no redistribution statement. Conservative: do NOT commit a normalized sample.",
+  "license_redistribution_status": "unspecified_no_committed_sample",
   "limitations": [
     "Full ingest of all 4 jsonl files (80 MB total).",
     "SYNTHETIC deterministic prompts engineered for KV-prefix-cache benchmarking; not production traffic.",
@@ -95,6 +102,7 @@
   ],
   "provenance": "jaytonde05/prefixbench@prefixbench_all#shared_schema_1k.jsonl#bytes=8335252#git=d1b9711",
   "proxy_fields": [],
+  "raw_committed": false,
   "raw_download_manifest": {
     "cached": true,
     "dest": "/home/user/energy2/data/external/hf/jaytonde05__prefixbench/raw/shared_schema_1k.jsonl",
