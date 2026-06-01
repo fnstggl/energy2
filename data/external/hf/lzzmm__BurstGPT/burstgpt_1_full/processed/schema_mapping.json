@@ -1,0 +1,106 @@
+{
+  "accepted_columns": [
+    "Log Type",
+    "Model",
+    "Request tokens",
+    "Response tokens",
+    "Timestamp",
+    "Total tokens"
+  ],
+  "columns": [
+    {
+      "aurelius_signal_category": "metadata_only",
+      "dtypes": [
+        "str"
+      ],
+      "field_quality": "real",
+      "missing_rate": 0.0,
+      "normalized_field": "log_type",
+      "notes": "Conversation log vs API call \u2014 customer-traffic-mix proxy.",
+      "presence_rate": 1.0,
+      "raw_column_name": "Log Type",
+      "usable_for": [
+        "workload_shape_prior"
+      ]
+    },
+    {
+      "aurelius_signal_category": "metadata_only",
+      "dtypes": [
+        "str"
+      ],
+      "field_quality": "real",
+      "missing_rate": 0.0,
+      "normalized_field": "model_id",
+      "notes": "ChatGPT or GPT-4.",
+      "presence_rate": 1.0,
+      "raw_column_name": "Model",
+      "usable_for": [
+        "arrival_forecast"
+      ]
+    },
+    {
+      "aurelius_signal_category": "tokens",
+      "dtypes": [
+        "str"
+      ],
+      "field_quality": "real",
+      "missing_rate": 0.0,
+      "normalized_field": "input_tokens",
+      "notes": "Prompt token count.",
+      "presence_rate": 1.0,
+      "raw_column_name": "Request tokens",
+      "usable_for": [
+        "arrival_forecast"
+      ]
+    },
+    {
+      "aurelius_signal_category": "tokens",
+      "dtypes": [
+        "str"
+      ],
+      "field_quality": "real",
+      "missing_rate": 0.0,
+      "normalized_field": "output_tokens",
+      "notes": "Response token count.",
+      "presence_rate": 1.0,
+      "raw_column_name": "Response tokens",
+      "usable_for": [
+        "arrival_forecast"
+      ]
+    },
+    {
+      "aurelius_signal_category": "request_dispatch",
+      "dtypes": [
+        "str"
+      ],
+      "field_quality": "real",
+      "missing_rate": 0.0,
+      "normalized_field": "request_arrival_ts_s",
+      "notes": "Unix-seconds arrival timestamp from Microsoft Azure ChatGPT logs.",
+      "presence_rate": 1.0,
+      "raw_column_name": "Timestamp",
+      "usable_for": [
+        "arrival_forecast",
+        "capacity_forecast"
+      ]
+    },
+    {
+      "aurelius_signal_category": "tokens",
+      "dtypes": [
+        "str"
+      ],
+      "field_quality": "derived",
+      "missing_rate": 0.0,
+      "normalized_field": "total_tokens",
+      "notes": "Sum of request + response tokens (derived).",
+      "presence_rate": 1.0,
+      "raw_column_name": "Total tokens",
+      "usable_for": [
+        "capacity_forecast"
+      ]
+    }
+  ],
+  "config_name": "burstgpt_1_full",
+  "dataset_id": "lzzmm/BurstGPT",
+  "rejected_columns": []
+}

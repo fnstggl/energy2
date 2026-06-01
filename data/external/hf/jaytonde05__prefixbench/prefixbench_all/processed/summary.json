@@ -1,0 +1,136 @@
+{
+  "analysis_sample_bytes": 1800560,
+  "analysis_sample_path": "data/external/hf/jaytonde05__prefixbench/prefixbench_all/processed/analysis_sample.jsonl",
+  "analysis_sample_rows": 4000,
+  "analysis_sample_sha256": "f73ff07fb6891614dffb13c97785caa81c12a3b5d53ec68e21873da7c96d2f60",
+  "available_signals": [
+    "cache_reuse",
+    "prefix_reuse"
+  ],
+  "canonical_trace_type": "cache_residency_trace",
+  "committed_sample_bytes": 2165,
+  "committed_sample_rows": 5,
+  "config_name": "prefixbench_all",
+  "dataset_id": "jaytonde05/prefixbench",
+  "derived_fields": [],
+  "extra_files_manifest": [
+    {
+      "cached": true,
+      "dest": "/home/user/energy2/data/external/hf/jaytonde05__prefixbench/raw/multiturn_agent_branching.jsonl",
+      "downloaded_bytes": 4029413,
+      "error": null,
+      "max_bytes": 67108864,
+      "status": null,
+      "truncated": null,
+      "url": "https://huggingface.co/datasets/jaytonde05/prefixbench/resolve/main/multiturn_agent_branching.jsonl"
+    },
+    {
+      "cached": true,
+      "dest": "/home/user/energy2/data/external/hf/jaytonde05__prefixbench/raw/same_document_multi_query_8k.jsonl",
+      "downloaded_bytes": 44480416,
+      "error": null,
+      "max_bytes": 67108864,
+      "status": null,
+      "truncated": null,
+      "url": "https://huggingface.co/datasets/jaytonde05/prefixbench/resolve/main/same_document_multi_query_8k.jsonl"
+    },
+    {
+      "cached": true,
+      "dest": "/home/user/energy2/data/external/hf/jaytonde05__prefixbench/raw/eviction_pressure_4k.jsonl",
+      "downloaded_bytes": 22691416,
+      "error": null,
+      "max_bytes": 67108864,
+      "status": null,
+      "truncated": null,
+      "url": "https://huggingface.co/datasets/jaytonde05/prefixbench/resolve/main/eviction_pressure_4k.jsonl"
+    }
+  ],
+  "field_quality": {
+    "max_tokens": "real",
+    "metadata_json": "real",
+    "prompt_id": "real",
+    "prompt_text": "synthetic",
+    "temperature": "real"
+  },
+  "fixture_sample_bytes": 2165,
+  "fixture_sample_path": "tests/fixtures/hf/jaytonde05__prefixbench__prefixbench_all_sample.jsonl",
+  "fixture_sample_rows": 5,
+  "gated": false,
+  "git_sha": "d1b9711627e05946102aa4fe48f208f8331860b0",
+  "ingestion_timestamp_s": 1780278406.8490083,
+  "license": "unspecified",
+  "limitations": [
+    "Full ingest of all 4 jsonl files (80 MB total).",
+    "SYNTHETIC deterministic prompts engineered for KV-prefix-cache benchmarking; not production traffic.",
+    "Useful as cache-residency replay corpus; NOT as real cache-hit telemetry."
+  ],
+  "missing_signals": [
+    "arrivals",
+    "autoscaling_proxy",
+    "capacity_proxy",
+    "cost_or_region",
+    "customer_traffic_mix",
+    "gpu_utilization",
+    "kv_block_hashes",
+    "latency",
+    "migration_or_cache_loss_proxy",
+    "model_load_event",
+    "model_unload_event",
+    "queue_state",
+    "replica_count",
+    "request_timestamps",
+    "routing_proxy",
+    "sla_label",
+    "timeout_label",
+    "tpot",
+    "ttft",
+    "workload_shape"
+  ],
+  "normalized_schema": [
+    "max_tokens",
+    "metadata_json",
+    "prompt_id",
+    "prompt_text_len",
+    "temperature"
+  ],
+  "provenance": "jaytonde05/prefixbench@prefixbench_all#shared_schema_1k.jsonl#bytes=8335252#git=d1b9711",
+  "proxy_fields": [],
+  "raw_download_manifest": {
+    "cached": true,
+    "dest": "/home/user/energy2/data/external/hf/jaytonde05__prefixbench/raw/shared_schema_1k.jsonl",
+    "downloaded_bytes": 8335252,
+    "error": null,
+    "max_bytes": 67108864,
+    "status": null,
+    "truncated": null,
+    "url": "https://huggingface.co/datasets/jaytonde05/prefixbench/resolve/main/shared_schema_1k.jsonl"
+  },
+  "raw_file_size_committed": false,
+  "raw_schema": [
+    "id",
+    "max_tokens",
+    "metadata",
+    "prompt",
+    "temperature"
+  ],
+  "real_fields": [
+    "max_tokens",
+    "metadata_json",
+    "prompt_id",
+    "temperature"
+  ],
+  "sample_sha256": "bbbef9528277b55fa2f6f8c959834220c6b429f1015170fdcb5914dc5f4aa3ce",
+  "sampling_method": "head",
+  "schema_mapping_path": "data/external/hf/jaytonde05__prefixbench/prefixbench_all/processed/schema_mapping.json",
+  "schema_profile_path": "data/external/hf/jaytonde05__prefixbench/prefixbench_all/processed/schema_profile.json",
+  "source_url": "https://huggingface.co/datasets/jaytonde05/prefixbench",
+  "statistical_rollups_path": "data/external/hf/jaytonde05__prefixbench/prefixbench_all/processed/statistical_rollups.json",
+  "statistical_sample_strength": "moderate",
+  "stratification_keys": [],
+  "subgroup_counts": {},
+  "summary_path_relative": "data/external/hf/jaytonde05__prefixbench/prefixbench_all/processed/summary.json",
+  "synthetic_fields": [
+    "prompt_text"
+  ],
+  "unknown_columns": []
+}

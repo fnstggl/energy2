@@ -1,0 +1,5 @@
+{"input_tokens":472,"log_type":"Conversation log","model_id":"ChatGPT","output_tokens":18,"request_arrival_ts_s":5,"total_tokens":490}
+{"input_tokens":1087,"log_type":"Conversation log","model_id":"ChatGPT","output_tokens":230,"request_arrival_ts_s":45,"total_tokens":1317}
+{"input_tokens":417,"log_type":"Conversation log","model_id":"GPT-4","output_tokens":276,"request_arrival_ts_s":118,"total_tokens":693}
+{"input_tokens":1360,"log_type":"Conversation log","model_id":"ChatGPT","output_tokens":647,"request_arrival_ts_s":185,"total_tokens":2007}
+{"input_tokens":185,"log_type":"Conversation log","model_id":"ChatGPT","output_tokens":215,"request_arrival_ts_s":214,"total_tokens":400}

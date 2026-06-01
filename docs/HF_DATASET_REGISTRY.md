@@ -191,6 +191,11 @@ Rules (binding):
 | `eth-easl/swissai-serving-trace` | **`qwen380b_instruct_bucket_reuse`** | `cache_residency_trace` | Tier 4 | `promoted_for_cache_residency_evaluation` (+ `training_priors`) | 5 | 45,887 | strong | 2026-05-31 |
 | `eth-easl/swissai-serving-trace` | **`qwen380b_thinking_bucket_reuse`** | `cache_residency_trace` | Tier 4 | `promoted_for_cache_residency_evaluation` (+ `training_priors`) | 5 | 7,399 | moderate | 2026-05-31 |
 | `eth-easl/swissai-serving-trace` | **`llama3_70b_bucket_reuse`** | `cache_residency_trace` | Tier 4 | `promoted_for_cache_residency_evaluation` (+ `training_priors`) | 5 | **153,275** | strong | 2026-05-31 |
+| `semianalysisai/cc-traces-weka-no-subagents-051226` | **`traces_head`** | `request_shape_trace` | Tier 5 | `promoted_for_training_priors` | 5 | 761 | weak | 2026-06-01 |
+| `sammshen/lmcache-agentic-traces` | **`train_shard4`** | `request_shape_trace` | Tier 5 | `promoted_for_training_priors` | 5 | 4,976 | moderate | 2026-06-01 |
+| `lzzmm/BurstGPT` | **`burstgpt_1_full`** | `request_shape_trace` | Tier 5 | `promoted_for_training_priors` | 5 | 59,999 | strong | 2026-06-01 |
+| `lsliwko/google-cluster-data-2019-sorted-by-timestamp` | **`instance_events_shard0`** | `cluster_scheduler_trace` | **Tier 3** | `promoted_for_backtest` (+ `promoted_for_constraint_aware_evaluation`, `promoted_for_training_priors`) | 5 | 60,000 | strong | 2026-06-01 |
+| `jaytonde05/prefixbench` | **`prefixbench_all`** | `cache_residency_trace` | Tier 4 | `promoted_for_cache_residency_evaluation` (+ `promoted_for_training_priors`) | 5 | 4,000 | moderate | 2026-06-01 |
 
 > **CARA** is the first Tier 2 (public telemetry trace) entry in the
 > federated corpus. CARA **train_flat** + **train_queue_details** are
@@ -200,6 +205,34 @@ Rules (binding):
 > the analysis-tier expansion, signal coverage table, forecast
 > readiness table, forecast leverage quantification, missing-telemetry
 > gap analysis, and strongest-forecasting-dataset matrix.
+
+> **Telemetry-gap ingest 2026-06-01.** Five datasets from the
+> `docs/AURELIUS_TELEMETRY_GAP_DISCOVERY.md` top-10 ingest-now list have
+> now been bounded-ingested:
+>
+> - `semianalysisai/cc-traces-weka-no-subagents-051226` — Real Claude
+>   Code production agentic traces with per-request KV block hashes
+>   (`kv_block_hashes` + `migration_or_cache_loss_proxy` signals;
+>   weak strength = 7 sessions / 761 requests from the 80 MiB head).
+> - `sammshen/lmcache-agentic-traces` — 787 multi-turn agentic sessions
+>   with `pre_gap` (think-time) + `session_id` for routing/cache
+>   forecasting (moderate strength = 4,976 rows from one parquet shard).
+> - `lzzmm/BurstGPT` — Real Microsoft Azure ChatGPT/GPT-4 arrival trace
+>   (strong strength = 59,999 rows from the bounded 20 MiB head).
+> - `lsliwko/google-cluster-data-2019-sorted-by-timestamp` — Google
+>   Borg 2019 instance lifecycle events
+>   (`autoscaling_proxy` + `migration_or_cache_loss_proxy` +
+>   `model_load_event` + `model_unload_event` proxies; strong strength
+>   = 60,000 rows from one ~53 MB gzipped shard). **Cluster_scheduler_trace
+>   Tier 3** — the first Tier-3 cluster trace ingested via the HF pipeline.
+> - `jaytonde05/prefixbench` — Synthetic prefix-cache benchmark prompts
+>   (moderate strength = 4,000 rows; full 80 MB corpus across 4 jsonl
+>   files).
+>
+> Ingest summary: `data/external/hf_discovery/telemetry_gap_ingest_summary.json`.
+> Ingest script: `scripts/ingest_hf_gap_datasets.py`. Registry update
+> script: `scripts/register_hf_gap_datasets.py`. Tests:
+> `tests/test_hf_gap_ingest.py` (35 tests, all green).
 
 #### AgentPerfBench / trace_replay
 
@@ -242,8 +275,8 @@ Rules (binding):
 |---|---|---|---|
 | `lmsys/chatbot_arena_conversations` | `request_shape_trace` | `gated_blocked` | HF gated:auto — requires Terms-of-Use acceptance even with HF_TOKEN |
 | `anon8231489123/ShareGPT_Vicuna_unfiltered` | `request_shape_trace` | `candidate` (frontier_value=3) | text-only conversations; no infrastructure signals; existing ShareGPT ingester in `aurelius/traces/sharegpt_aiperf.py` already covers this role |
-| `jaytonde05/prefixbench` | `latency_benchmark_trace` (auto) → `cache_residency_trace` (manual) | `candidate` | synthetic prompt-generator for cache testing; records have nested `metadata.prefix_group` not yet covered by `RAW_TO_NORMALIZED["cache_residency_trace"]`. Reclassify + extend mapping in a follow-up PR. |
-| `semianalysisai/cc-traces-weka-no-subagents-051226` | `cache_residency_trace` (manual) | `candidate` | 136.1k requests / 949 traces with KV block hashes; metadata-only discovery in this PR per the mission-spec STOP rule (do not ingest > 100 MB without explicit approval). |
+| ~~`jaytonde05/prefixbench`~~ | ~~`candidate`~~ → **ingested 2026-06-01** | see §7.1 | — |
+| ~~`semianalysisai/cc-traces-weka-no-subagents-051226`~~ | ~~`candidate`~~ → **ingested 2026-06-01** | see §7.1 | — |
 
 ### 7.3 Datasets known in repo (non-HF or other ingest paths)
 

@@ -1,0 +1,199 @@
+{
+  "config_name": "traces_head",
+  "dataset_id": "semianalysisai/cc-traces-weka-no-subagents-051226",
+  "dtypes": {
+    "api_time": [
+      "float"
+    ],
+    "block_size": [
+      "int"
+    ],
+    "hash_id_scope": [
+      "str"
+    ],
+    "hash_ids": [
+      "list"
+    ],
+    "id": [
+      "str"
+    ],
+    "in": [
+      "int"
+    ],
+    "model": [
+      "str"
+    ],
+    "models": [
+      "list"
+    ],
+    "out": [
+      "int"
+    ],
+    "requests": [
+      "int"
+    ],
+    "t": [
+      "float"
+    ],
+    "think_time": [
+      "float"
+    ],
+    "ttft": [
+      "float"
+    ],
+    "turn": [
+      "int"
+    ],
+    "type": [
+      "str"
+    ]
+  },
+  "example_values": {
+    "api_time": [
+      "6.625",
+      "3.226",
+      "5.002"
+    ],
+    "block_size": [
+      "64",
+      "64",
+      "64"
+    ],
+    "hash_id_scope": [
+      "'local'",
+      "'local'",
+      "'local'"
+    ],
+    "hash_ids": [
+      "[9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, ",
+      "[9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, ",
+      "[9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, "
+    ],
+    "id": [
+      "'0003e152fb91bcbca7b9d7ac920e7c24a966'",
+      "'0003e152fb91bcbca7b9d7ac920e7c24a966'",
+      "'0003e152fb91bcbca7b9d7ac920e7c24a966'"
+    ],
+    "in": [
+      "32701",
+      "32722",
+      "33992"
+    ],
+    "model": [
+      "'claude-opus-4-7'",
+      "'claude-opus-4-7'",
+      "'claude-opus-4-7'"
+    ],
+    "models": [
+      "[\"claude-haiku-4-5-20251001\", \"claude-opus-4-7\"]",
+      "[\"claude-haiku-4-5-20251001\", \"claude-opus-4-7\"]",
+      "[\"claude-haiku-4-5-20251001\", \"claude-opus-4-7\"]"
+    ],
+    "out": [
+      "161",
+      "201",
+      "320"
+    ],
+    "requests": [
+      "27",
+      "27",
+      "27"
+    ],
+    "t": [
+      "0.126",
+      "17.9",
+      "21.623"
+    ],
+    "think_time": [
+      "0.0",
+      "11.148999999999997",
+      "0.49700000000000344"
+    ],
+    "ttft": [
+      "4.667",
+      "1.547",
+      "2.252"
+    ],
+    "turn": [
+      "0",
+      "1",
+      "2"
+    ],
+    "type": [
+      "'s'",
+      "'s'",
+      "'s'"
+    ]
+  },
+  "file_size_bytes": 83886080,
+  "inspected_row_count": 761,
+  "list_length_summaries": {
+    "hash_ids": {
+      "max": 6219,
+      "mean": 2579.1747700394217,
+      "min": 428,
+      "n": 761
+    },
+    "models": {
+      "max": 3,
+      "mean": 2.750328515111695,
+      "min": 2,
+      "n": 761
+    }
+  },
+  "missing_rates": {
+    "api_time": 0.0,
+    "block_size": 0.0,
+    "hash_id_scope": 0.0,
+    "hash_ids": 0.0,
+    "id": 0.0,
+    "in": 0.0,
+    "model": 0.0,
+    "models": 0.0,
+    "out": 0.0,
+    "requests": 0.0,
+    "t": 0.0,
+    "think_time": 0.003942181340341633,
+    "ttft": 0.0,
+    "turn": 0.0,
+    "type": 0.0
+  },
+  "nested_keys": {},
+  "presence_rates": {
+    "api_time": 1.0,
+    "block_size": 1.0,
+    "hash_id_scope": 1.0,
+    "hash_ids": 1.0,
+    "id": 1.0,
+    "in": 1.0,
+    "model": 1.0,
+    "models": 1.0,
+    "out": 1.0,
+    "requests": 1.0,
+    "t": 1.0,
+    "think_time": 0.9960578186596584,
+    "ttft": 1.0,
+    "turn": 1.0,
+    "type": 1.0
+  },
+  "raw_columns": [
+    "api_time",
+    "block_size",
+    "hash_id_scope",
+    "hash_ids",
+    "id",
+    "in",
+    "model",
+    "models",
+    "out",
+    "requests",
+    "t",
+    "think_time",
+    "ttft",
+    "turn",
+    "type"
+  ],
+  "source_files_inspected": [
+    "traces.jsonl"
+  ]
+}

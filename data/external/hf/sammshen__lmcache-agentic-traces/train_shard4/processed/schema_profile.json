@@ -1,0 +1,83 @@
+{
+  "config_name": "train_shard4",
+  "dataset_id": "sammshen/lmcache-agentic-traces",
+  "dtypes": {
+    "input": [
+      "list"
+    ],
+    "model": [
+      "str"
+    ],
+    "output_length": [
+      "int"
+    ],
+    "pre_gap": [
+      "float"
+    ],
+    "session_id": [
+      "str"
+    ]
+  },
+  "example_values": {
+    "input": [
+      "[{\"role\": \"system\", \"content\": \"You are OpenHands agent, a helpful AI assistant that can interact with a computer to sol",
+      "[{\"role\": \"system\", \"content\": \"You are OpenHands agent, a helpful AI assistant that can interact with a computer to sol",
+      "[{\"role\": \"system\", \"content\": \"You are OpenHands agent, a helpful AI assistant that can interact with a computer to sol"
+    ],
+    "model": [
+      "'claude-sonnet-4-6'",
+      "'claude-sonnet-4-6'",
+      "'claude-sonnet-4-6'"
+    ],
+    "output_length": [
+      "90",
+      "356",
+      "113"
+    ],
+    "pre_gap": [
+      "0.7428",
+      "0.714",
+      "0.0682"
+    ],
+    "session_id": [
+      "'swebench__scikit-learn__scikit-learn-12973__claude'",
+      "'swebench__scikit-learn__scikit-learn-12973__claude'",
+      "'swebench__scikit-learn__scikit-learn-12973__claude'"
+    ]
+  },
+  "file_size_bytes": 398199928,
+  "inspected_row_count": 4976,
+  "list_length_summaries": {
+    "input": {
+      "max": 147,
+      "mean": 37.755225080385856,
+      "min": 2,
+      "n": 4976
+    }
+  },
+  "missing_rates": {
+    "input": 0.0,
+    "model": 0.0,
+    "output_length": 0.0,
+    "pre_gap": 0.0,
+    "session_id": 0.0
+  },
+  "nested_keys": {},
+  "presence_rates": {
+    "input": 1.0,
+    "model": 1.0,
+    "output_length": 1.0,
+    "pre_gap": 1.0,
+    "session_id": 1.0
+  },
+  "raw_columns": [
+    "input",
+    "model",
+    "output_length",
+    "pre_gap",
+    "session_id"
+  ],
+  "source_files_inspected": [
+    "data/train-00004-of-00005.parquet"
+  ]
+}

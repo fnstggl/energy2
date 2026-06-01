@@ -1,0 +1,89 @@
+{
+  "accepted_columns": [
+    "id",
+    "max_tokens",
+    "metadata",
+    "prompt",
+    "temperature"
+  ],
+  "columns": [
+    {
+      "aurelius_signal_category": "metadata_only",
+      "dtypes": [
+        "str"
+      ],
+      "field_quality": "real",
+      "missing_rate": 0.0,
+      "normalized_field": "prompt_id",
+      "notes": "Deterministic prompt id.",
+      "presence_rate": 1.0,
+      "raw_column_name": "id",
+      "usable_for": [
+        "cache_residency_evaluation"
+      ]
+    },
+    {
+      "aurelius_signal_category": "tokens",
+      "dtypes": [
+        "int"
+      ],
+      "field_quality": "real",
+      "missing_rate": 0.0,
+      "normalized_field": "max_tokens",
+      "notes": "Generation cap (parameter).",
+      "presence_rate": 1.0,
+      "raw_column_name": "max_tokens",
+      "usable_for": [
+        "cache_residency_evaluation"
+      ]
+    },
+    {
+      "aurelius_signal_category": "metadata_only",
+      "dtypes": [
+        "dict"
+      ],
+      "field_quality": "real",
+      "missing_rate": 0.0,
+      "normalized_field": "metadata_json",
+      "notes": "Nested dict with prefix variant + scenario; JSON-stringified.",
+      "presence_rate": 1.0,
+      "raw_column_name": "metadata",
+      "usable_for": [
+        "cache_residency_evaluation"
+      ]
+    },
+    {
+      "aurelius_signal_category": "metadata_only",
+      "dtypes": [
+        "str"
+      ],
+      "field_quality": "synthetic",
+      "missing_rate": 0.0,
+      "normalized_field": "prompt_text",
+      "notes": "Synthetic prompt (deterministic prefix engineering). Truncated in committed sample.",
+      "presence_rate": 1.0,
+      "raw_column_name": "prompt",
+      "usable_for": [
+        "cache_residency_evaluation"
+      ]
+    },
+    {
+      "aurelius_signal_category": "metadata_only",
+      "dtypes": [
+        "float"
+      ],
+      "field_quality": "real",
+      "missing_rate": 0.0,
+      "normalized_field": "temperature",
+      "notes": "Sampling temperature.",
+      "presence_rate": 1.0,
+      "raw_column_name": "temperature",
+      "usable_for": [
+        "not_usable"
+      ]
+    }
+  ],
+  "config_name": "prefixbench_all",
+  "dataset_id": "jaytonde05/prefixbench",
+  "rejected_columns": []
+}

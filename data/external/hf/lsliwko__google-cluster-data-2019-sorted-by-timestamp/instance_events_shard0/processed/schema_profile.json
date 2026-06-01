@@ -1,0 +1,176 @@
+{
+  "config_name": "instance_events_shard0",
+  "dataset_id": "lsliwko/google-cluster-data-2019-sorted-by-timestamp",
+  "dtypes": {
+    "alloc_collection_id": [
+      "str"
+    ],
+    "alloc_instance_index": [
+      "str"
+    ],
+    "collection_id": [
+      "str"
+    ],
+    "collection_type": [
+      "str"
+    ],
+    "constraint": [
+      "list"
+    ],
+    "instance_index": [
+      "str"
+    ],
+    "machine_id": [
+      "str"
+    ],
+    "missing_type": [
+      "str"
+    ],
+    "priority": [
+      "str"
+    ],
+    "resource_request": [
+      "dict"
+    ],
+    "scheduling_class": [
+      "str"
+    ],
+    "time": [
+      "str"
+    ],
+    "type": [
+      "str"
+    ]
+  },
+  "example_values": {
+    "alloc_collection_id": [
+      "'0'",
+      "'0'",
+      "'0'"
+    ],
+    "alloc_instance_index": [
+      "'-1'",
+      "'-1'",
+      "'-1'"
+    ],
+    "collection_id": [
+      "'195'",
+      "'195'",
+      "'195'"
+    ],
+    "collection_type": [
+      "'1'",
+      "'1'",
+      "'1'"
+    ],
+    "constraint": [
+      "[]",
+      "[]",
+      "[]"
+    ],
+    "instance_index": [
+      "'0'",
+      "'0'",
+      "'0'"
+    ],
+    "machine_id": [
+      "'151920044'",
+      "'151920044'",
+      "'151920044'"
+    ],
+    "missing_type": [
+      "'1'",
+      "'3'",
+      "'3'"
+    ],
+    "priority": [
+      "'360'",
+      "'360'",
+      "'360'"
+    ],
+    "resource_request": [
+      "{\"cpus\": 0.03363037109375, \"memory\": 0.01092529296875}",
+      "{\"cpus\": 0.03363037109375, \"memory\": 0.01092529296875}",
+      "{\"cpus\": 0.03363037109375, \"memory\": 0.01092529296875}"
+    ],
+    "scheduling_class": [
+      "'2'",
+      "'2'",
+      "'2'"
+    ],
+    "time": [
+      "'0'",
+      "'0'",
+      "'0'"
+    ],
+    "type": [
+      "'0'",
+      "'2'",
+      "'3'"
+    ]
+  },
+  "file_size_bytes": 52752995,
+  "inspected_row_count": 60000,
+  "list_length_summaries": {
+    "constraint": {
+      "max": 15,
+      "mean": 0.18446666666666667,
+      "min": 0,
+      "n": 60000
+    }
+  },
+  "missing_rates": {
+    "alloc_collection_id": 0.0,
+    "alloc_instance_index": 0.09775,
+    "collection_id": 0.0,
+    "collection_type": 0.0,
+    "constraint": 0.0,
+    "instance_index": 0.0,
+    "machine_id": 0.07848333333333335,
+    "missing_type": 0.9908166666666667,
+    "priority": 0.0,
+    "resource_request": 0.004966666666666675,
+    "scheduling_class": 0.0,
+    "time": 0.0,
+    "type": 0.0
+  },
+  "nested_keys": {
+    "resource_request": [
+      "cpus",
+      "memory"
+    ]
+  },
+  "presence_rates": {
+    "alloc_collection_id": 1.0,
+    "alloc_instance_index": 0.90225,
+    "collection_id": 1.0,
+    "collection_type": 1.0,
+    "constraint": 1.0,
+    "instance_index": 1.0,
+    "machine_id": 0.9215166666666667,
+    "missing_type": 0.009183333333333333,
+    "priority": 1.0,
+    "resource_request": 0.9950333333333333,
+    "scheduling_class": 1.0,
+    "time": 1.0,
+    "type": 1.0
+  },
+  "raw_columns": [
+    "alloc_collection_id",
+    "alloc_instance_index",
+    "collection_id",
+    "collection_type",
+    "constraint",
+    "instance_index",
+    "machine_id",
+    "missing_type",
+    "priority",
+    "resource_request",
+    "scheduling_class",
+    "time",
+    "type"
+  ],
+  "source_files_inspected": [
+    "GoogleClusterData2019a/data/instance_events/instance_events-00000000-sorted.json.gz"
+  ]
+}

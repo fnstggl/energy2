@@ -1,0 +1,253 @@
+{
+  "accepted_columns": [
+    "api_time",
+    "block_size",
+    "hash_id_scope",
+    "hash_ids",
+    "id",
+    "in",
+    "model",
+    "models",
+    "out",
+    "requests",
+    "t",
+    "think_time",
+    "ttft",
+    "turn",
+    "type"
+  ],
+  "columns": [
+    {
+      "aurelius_signal_category": "latency",
+      "dtypes": [
+        "float"
+      ],
+      "field_quality": "real",
+      "missing_rate": 0.0,
+      "normalized_field": "api_time_s",
+      "notes": "End-to-end API call duration in seconds.",
+      "presence_rate": 1.0,
+      "raw_column_name": "api_time",
+      "usable_for": [
+        "latency_prior"
+      ]
+    },
+    {
+      "aurelius_signal_category": "cache_residency",
+      "dtypes": [
+        "int"
+      ],
+      "field_quality": "real",
+      "missing_rate": 0.0,
+      "normalized_field": "block_size_tokens",
+      "notes": "Session KV block size in tokens (typically 64).",
+      "presence_rate": 1.0,
+      "raw_column_name": "block_size",
+      "usable_for": [
+        "cache_residency_evaluation"
+      ]
+    },
+    {
+      "aurelius_signal_category": "cache_residency",
+      "dtypes": [
+        "str"
+      ],
+      "field_quality": "real",
+      "missing_rate": 0.0,
+      "normalized_field": "hash_id_scope",
+      "notes": "KV block-hash scoping (e.g. 'local').",
+      "presence_rate": 1.0,
+      "raw_column_name": "hash_id_scope",
+      "usable_for": [
+        "cache_residency_evaluation"
+      ]
+    },
+    {
+      "aurelius_signal_category": "cache_residency",
+      "dtypes": [
+        "list"
+      ],
+      "field_quality": "real",
+      "missing_rate": 0.0,
+      "normalized_field": "block_hashes",
+      "notes": "Per-request KV-block-hash list (cache-residency / migration-veto signal). Compressed in committed sample.",
+      "presence_rate": 1.0,
+      "raw_column_name": "hash_ids",
+      "usable_for": [
+        "cache_residency_evaluation",
+        "migration_veto_evaluation"
+      ]
+    },
+    {
+      "aurelius_signal_category": "session_id",
+      "dtypes": [
+        "str"
+      ],
+      "field_quality": "real",
+      "missing_rate": 0.0,
+      "normalized_field": "session_id",
+      "notes": "Per-agent-session UUID. Same value for every request in the session.",
+      "presence_rate": 1.0,
+      "raw_column_name": "id",
+      "usable_for": [
+        "arrival_forecast",
+        "cache_residency_evaluation"
+      ]
+    },
+    {
+      "aurelius_signal_category": "tokens",
+      "dtypes": [
+        "int"
+      ],
+      "field_quality": "real",
+      "missing_rate": 0.0,
+      "normalized_field": "input_tokens",
+      "notes": "Prompt token count.",
+      "presence_rate": 1.0,
+      "raw_column_name": "in",
+      "usable_for": [
+        "arrival_forecast",
+        "latency_prior"
+      ]
+    },
+    {
+      "aurelius_signal_category": "metadata_only",
+      "dtypes": [
+        "str"
+      ],
+      "field_quality": "real",
+      "missing_rate": 0.0,
+      "normalized_field": "model_id",
+      "notes": "Claude model id.",
+      "presence_rate": 1.0,
+      "raw_column_name": "model",
+      "usable_for": [
+        "arrival_forecast"
+      ]
+    },
+    {
+      "aurelius_signal_category": "metadata_only",
+      "dtypes": [
+        "list"
+      ],
+      "field_quality": "real",
+      "missing_rate": 0.0,
+      "normalized_field": "session_models",
+      "notes": "Set of models used across the session.",
+      "presence_rate": 1.0,
+      "raw_column_name": "models",
+      "usable_for": [
+        "workload_shape_prior"
+      ]
+    },
+    {
+      "aurelius_signal_category": "tokens",
+      "dtypes": [
+        "int"
+      ],
+      "field_quality": "real",
+      "missing_rate": 0.0,
+      "normalized_field": "output_tokens",
+      "notes": "Output token count.",
+      "presence_rate": 1.0,
+      "raw_column_name": "out",
+      "usable_for": [
+        "latency_prior"
+      ]
+    },
+    {
+      "aurelius_signal_category": "session_id",
+      "dtypes": [
+        "int"
+      ],
+      "field_quality": "real",
+      "missing_rate": 0.0,
+      "normalized_field": "requests_count",
+      "notes": "Session-level requests array; flattened per-request before mapping.",
+      "presence_rate": 1.0,
+      "raw_column_name": "requests",
+      "usable_for": [
+        "capacity_forecast"
+      ]
+    },
+    {
+      "aurelius_signal_category": "request_dispatch",
+      "dtypes": [
+        "float"
+      ],
+      "field_quality": "real",
+      "missing_rate": 0.0,
+      "normalized_field": "request_arrival_delta_s",
+      "notes": "Per-request arrival time delta in seconds since session start.",
+      "presence_rate": 1.0,
+      "raw_column_name": "t",
+      "usable_for": [
+        "arrival_forecast",
+        "capacity_forecast"
+      ]
+    },
+    {
+      "aurelius_signal_category": "request_dispatch",
+      "dtypes": [
+        "float"
+      ],
+      "field_quality": "real",
+      "missing_rate": 0.003942181340341633,
+      "normalized_field": "think_time_s",
+      "notes": "User/agent think time between turns in seconds.",
+      "presence_rate": 0.9960578186596584,
+      "raw_column_name": "think_time",
+      "usable_for": [
+        "arrival_forecast"
+      ]
+    },
+    {
+      "aurelius_signal_category": "latency",
+      "dtypes": [
+        "float"
+      ],
+      "field_quality": "real",
+      "missing_rate": 0.0,
+      "normalized_field": "ttft_s",
+      "notes": "Time-to-first-token in seconds.",
+      "presence_rate": 1.0,
+      "raw_column_name": "ttft",
+      "usable_for": [
+        "latency_prior"
+      ]
+    },
+    {
+      "aurelius_signal_category": "session_id",
+      "dtypes": [
+        "int"
+      ],
+      "field_quality": "real",
+      "missing_rate": 0.0,
+      "normalized_field": "turn_index",
+      "notes": "Sequential turn index within the session.",
+      "presence_rate": 1.0,
+      "raw_column_name": "turn",
+      "usable_for": [
+        "cache_residency_evaluation"
+      ]
+    },
+    {
+      "aurelius_signal_category": "metadata_only",
+      "dtypes": [
+        "str"
+      ],
+      "field_quality": "real",
+      "missing_rate": 0.0,
+      "normalized_field": "request_type",
+      "notes": "Request kind (e.g. message, tool_result).",
+      "presence_rate": 1.0,
+      "raw_column_name": "type",
+      "usable_for": [
+        "workload_shape_prior"
+      ]
+    }
+  ],
+  "config_name": "traces_head",
+  "dataset_id": "semianalysisai/cc-traces-weka-no-subagents-051226",
+  "rejected_columns": []
+}

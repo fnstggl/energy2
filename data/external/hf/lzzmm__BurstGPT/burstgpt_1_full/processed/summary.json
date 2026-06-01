@@ -1,0 +1,122 @@
+{
+  "analysis_sample_bytes": 8025795,
+  "analysis_sample_path": "data/external/hf/lzzmm__BurstGPT/burstgpt_1_full/processed/analysis_sample.jsonl",
+  "analysis_sample_rows": 59999,
+  "analysis_sample_sha256": "cc41267c180973645f0aef8a9f9cacc1c48732e0b2a1fdda00d64352c4505eae",
+  "available_signals": [
+    "arrivals",
+    "autoscaling_proxy",
+    "capacity_proxy",
+    "customer_traffic_mix",
+    "request_timestamps",
+    "workload_shape"
+  ],
+  "canonical_trace_type": "request_shape_trace",
+  "committed_sample_bytes": 688,
+  "committed_sample_rows": 5,
+  "config_name": "burstgpt_1_full",
+  "dataset_id": "lzzmm/BurstGPT",
+  "derived_fields": [
+    "total_tokens"
+  ],
+  "extra_files_manifest": [],
+  "field_quality": {
+    "input_tokens": "real",
+    "log_type": "real",
+    "model_id": "real",
+    "output_tokens": "real",
+    "request_arrival_ts_s": "real",
+    "total_tokens": "derived"
+  },
+  "fixture_sample_bytes": 688,
+  "fixture_sample_path": "tests/fixtures/hf/lzzmm__BurstGPT__burstgpt_1_full_sample.jsonl",
+  "fixture_sample_rows": 5,
+  "gated": false,
+  "git_sha": "d1b9711627e05946102aa4fe48f208f8331860b0",
+  "ingestion_timestamp_s": 1780278383.986067,
+  "license": "unspecified_LICENSE_file_present",
+  "limitations": [
+    "Bounded 20 MiB head of BurstGPT_1.csv (file is 52.3 MB; ~1.43M rows total).",
+    "Normalized analysis sample capped at 60k rows (RAM + write-time bound).",
+    "BurstGPT_2.csv (145 MB) and the two without_fails splits deferred.",
+    "No GPU type, no scheduler state. Pure arrival timestamps + model + token counts + Conversation vs API Log Type."
+  ],
+  "missing_signals": [
+    "cache_reuse",
+    "cost_or_region",
+    "gpu_utilization",
+    "kv_block_hashes",
+    "latency",
+    "migration_or_cache_loss_proxy",
+    "model_load_event",
+    "model_unload_event",
+    "prefix_reuse",
+    "queue_state",
+    "replica_count",
+    "routing_proxy",
+    "sla_label",
+    "timeout_label",
+    "tpot",
+    "ttft"
+  ],
+  "normalized_schema": [
+    "input_tokens",
+    "log_type",
+    "model_id",
+    "output_tokens",
+    "request_arrival_ts_s",
+    "total_tokens"
+  ],
+  "provenance": "lzzmm/BurstGPT@burstgpt_1_full#data/BurstGPT_1.csv#bytes=20971520#git=d1b9711",
+  "proxy_fields": [],
+  "raw_download_manifest": {
+    "cached": true,
+    "dest": "/home/user/energy2/data/external/hf/lzzmm__BurstGPT/raw/BurstGPT_1.csv",
+    "downloaded_bytes": 20971520,
+    "error": null,
+    "max_bytes": 20971520,
+    "status": null,
+    "truncated": null,
+    "url": "https://huggingface.co/datasets/lzzmm/BurstGPT/resolve/main/data/BurstGPT_1.csv"
+  },
+  "raw_file_size_committed": false,
+  "raw_schema": [
+    "Log Type",
+    "Model",
+    "Request tokens",
+    "Response tokens",
+    "Timestamp",
+    "Total tokens"
+  ],
+  "real_fields": [
+    "input_tokens",
+    "log_type",
+    "model_id",
+    "output_tokens",
+    "request_arrival_ts_s"
+  ],
+  "sample_sha256": "73f4c9703ff78efb4e49aacd3249fc3063010f2f8a165eb94e1752f15b70fe3a",
+  "sampling_method": "head_with_stratification_keys_recorded",
+  "schema_mapping_path": "data/external/hf/lzzmm__BurstGPT/burstgpt_1_full/processed/schema_mapping.json",
+  "schema_profile_path": "data/external/hf/lzzmm__BurstGPT/burstgpt_1_full/processed/schema_profile.json",
+  "source_url": "https://huggingface.co/datasets/lzzmm/BurstGPT",
+  "statistical_rollups_path": "data/external/hf/lzzmm__BurstGPT/burstgpt_1_full/processed/statistical_rollups.json",
+  "statistical_sample_strength": "strong",
+  "stratification_keys": [
+    "Model",
+    "Log Type"
+  ],
+  "subgroup_counts": {
+    "Log Type": {
+      "API log": 32262,
+      "Conversation log": 27737
+    },
+    "Model": {
+      "ChatGPT": 50494,
+      "GPT-4": 9505
+    }
+  },
+  "summary_path_relative": "data/external/hf/lzzmm__BurstGPT/burstgpt_1_full/processed/summary.json",
+  "synthetic_fields": [],
+  "unknown_columns": []
+}

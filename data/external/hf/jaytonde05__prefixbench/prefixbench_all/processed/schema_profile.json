@@ -1,0 +1,85 @@
+{
+  "config_name": "prefixbench_all",
+  "dataset_id": "jaytonde05/prefixbench",
+  "dtypes": {
+    "id": [
+      "str"
+    ],
+    "max_tokens": [
+      "int"
+    ],
+    "metadata": [
+      "dict"
+    ],
+    "prompt": [
+      "str"
+    ],
+    "temperature": [
+      "float"
+    ]
+  },
+  "example_values": {
+    "id": [
+      "'shared_schema_1k_00000'",
+      "'shared_schema_1k_00001'",
+      "'shared_schema_1k_00002'"
+    ],
+    "max_tokens": [
+      "128",
+      "128",
+      "128"
+    ],
+    "metadata": [
+      "{\"scenario\": \"shared_schema_1k\", \"prefix_group\": \"schema_prefix_001\", \"expected_shared_prefix_tokens\": 1004, \"unique_suf",
+      "{\"scenario\": \"shared_schema_1k\", \"prefix_group\": \"schema_prefix_001\", \"expected_shared_prefix_tokens\": 1004, \"unique_suf",
+      "{\"scenario\": \"shared_schema_1k\", \"prefix_group\": \"schema_prefix_001\", \"expected_shared_prefix_tokens\": 1004, \"unique_suf"
+    ],
+    "prompt": [
+      "'Instruction:\\nYou are a careful information extraction system.\\nReturn only valid JSON. Do not include markdown, commen",
+      "'Instruction:\\nYou are a careful information extraction system.\\nReturn only valid JSON. Do not include markdown, commen",
+      "'Instruction:\\nYou are a careful information extraction system.\\nReturn only valid JSON. Do not include markdown, commen"
+    ],
+    "temperature": [
+      "0.0",
+      "0.0",
+      "0.0"
+    ]
+  },
+  "file_size_bytes": 8335252,
+  "inspected_row_count": 4000,
+  "list_length_summaries": {},
+  "missing_rates": {
+    "id": 0.0,
+    "max_tokens": 0.0,
+    "metadata": 0.0,
+    "prompt": 0.0,
+    "temperature": 0.0
+  },
+  "nested_keys": {
+    "metadata": [
+      "description",
+      "expected_shared_prefix_tokens",
+      "prefix_group",
+      "request_order",
+      "scenario",
+      "unique_suffix_tokens"
+    ]
+  },
+  "presence_rates": {
+    "id": 1.0,
+    "max_tokens": 1.0,
+    "metadata": 1.0,
+    "prompt": 1.0,
+    "temperature": 1.0
+  },
+  "raw_columns": [
+    "id",
+    "max_tokens",
+    "metadata",
+    "prompt",
+    "temperature"
+  ],
+  "source_files_inspected": [
+    "shared_schema_1k.jsonl"
+  ]
+}

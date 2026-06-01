@@ -1,0 +1,107 @@
+{
+  "analysis_sample_bytes": 696538,
+  "analysis_sample_path": "data/external/hf/sammshen__lmcache-agentic-traces/train_shard4/processed/analysis_sample.jsonl",
+  "analysis_sample_rows": 4976,
+  "analysis_sample_sha256": "af1bc1ffd4757a3dee9b0e6a8302deaff2f22f45c462a3a5a8e184d469d026cc",
+  "available_signals": [
+    "arrivals",
+    "cache_reuse",
+    "prefix_reuse",
+    "request_timestamps",
+    "routing_proxy",
+    "workload_shape"
+  ],
+  "canonical_trace_type": "request_shape_trace",
+  "committed_sample_bytes": 757,
+  "committed_sample_rows": 5,
+  "config_name": "train_shard4",
+  "dataset_id": "sammshen/lmcache-agentic-traces",
+  "derived_fields": [],
+  "extra_files_manifest": [],
+  "field_quality": {
+    "input_len": "real",
+    "model_id": "real",
+    "output_tokens": "real",
+    "pre_gap_s": "real",
+    "session_id": "real"
+  },
+  "fixture_sample_bytes": 757,
+  "fixture_sample_path": "tests/fixtures/hf/sammshen__lmcache-agentic-traces__train_shard4_sample.jsonl",
+  "fixture_sample_rows": 5,
+  "gated": false,
+  "git_sha": "d1b9711627e05946102aa4fe48f208f8331860b0",
+  "ingestion_timestamp_s": 1780278382.5384884,
+  "license": "mit",
+  "limitations": [
+    "Single parquet shard (train-00004-of-00005, 398 MB) of the 2.3 GB 5-shard set.",
+    "787 multi-turn agentic LLM sessions (24,881 total iterations); \u22655 turns/session and \u226510K context tokens.",
+    "Designed for tiered KV-cache benchmarking (LMCache).",
+    "No GPU type, no queue/scheduler state, no measured TTFT/TPOT."
+  ],
+  "missing_signals": [
+    "autoscaling_proxy",
+    "capacity_proxy",
+    "cost_or_region",
+    "customer_traffic_mix",
+    "gpu_utilization",
+    "kv_block_hashes",
+    "latency",
+    "migration_or_cache_loss_proxy",
+    "model_load_event",
+    "model_unload_event",
+    "queue_state",
+    "replica_count",
+    "sla_label",
+    "timeout_label",
+    "tpot",
+    "ttft"
+  ],
+  "normalized_schema": [
+    "input_len",
+    "model_id",
+    "output_tokens",
+    "pre_gap_s",
+    "session_id"
+  ],
+  "provenance": "sammshen/lmcache-agentic-traces@train_shard4#data/train-00004-of-00005.parquet#bytes=398199928#git=d1b9711",
+  "proxy_fields": [],
+  "raw_download_manifest": {
+    "cached": true,
+    "dest": "/home/user/energy2/data/external/hf/sammshen__lmcache-agentic-traces/raw/train-00004-of-00005.parquet",
+    "downloaded_bytes": 398199928,
+    "error": null,
+    "max_bytes": null,
+    "status": null,
+    "truncated": null,
+    "url": "https://huggingface.co/datasets/sammshen/lmcache-agentic-traces/resolve/main/data/train-00004-of-00005.parquet"
+  },
+  "raw_file_size_committed": false,
+  "raw_schema": [
+    "input",
+    "model",
+    "output_length",
+    "pre_gap",
+    "session_id"
+  ],
+  "real_fields": [
+    "input_len",
+    "model_id",
+    "output_tokens",
+    "pre_gap_s",
+    "session_id"
+  ],
+  "sample_sha256": "09afc7bfc6a342b3cd4b13a29d90d6b5e73d83f9da497fe65fe7723c2ecfdd3b",
+  "sampling_method": "head_with_stratification_keys_recorded",
+  "schema_mapping_path": "data/external/hf/sammshen__lmcache-agentic-traces/train_shard4/processed/schema_mapping.json",
+  "schema_profile_path": "data/external/hf/sammshen__lmcache-agentic-traces/train_shard4/processed/schema_profile.json",
+  "source_url": "https://huggingface.co/datasets/sammshen/lmcache-agentic-traces",
+  "statistical_rollups_path": "data/external/hf/sammshen__lmcache-agentic-traces/train_shard4/processed/statistical_rollups.json",
+  "statistical_sample_strength": "moderate",
+  "stratification_keys": [
+    "source"
+  ],
+  "subgroup_counts": {},
+  "summary_path_relative": "data/external/hf/sammshen__lmcache-agentic-traces/train_shard4/processed/summary.json",
+  "synthetic_fields": [],
+  "unknown_columns": []
+}

@@ -1,0 +1,222 @@
+{
+  "accepted_columns": [
+    "alloc_collection_id",
+    "alloc_instance_index",
+    "collection_id",
+    "collection_type",
+    "constraint",
+    "instance_index",
+    "machine_id",
+    "missing_type",
+    "priority",
+    "resource_request",
+    "scheduling_class",
+    "time",
+    "type"
+  ],
+  "columns": [
+    {
+      "aurelius_signal_category": "placement",
+      "dtypes": [
+        "str"
+      ],
+      "field_quality": "real",
+      "missing_rate": 0.0,
+      "normalized_field": "alloc_collection_id",
+      "notes": "Alloc-set collection id (nested allocations).",
+      "presence_rate": 1.0,
+      "raw_column_name": "alloc_collection_id",
+      "usable_for": [
+        "placement_prior"
+      ]
+    },
+    {
+      "aurelius_signal_category": "metadata_only",
+      "dtypes": [
+        "str"
+      ],
+      "field_quality": "real",
+      "missing_rate": 0.09775,
+      "normalized_field": "alloc_instance_index",
+      "notes": "Alloc instance index.",
+      "presence_rate": 0.90225,
+      "raw_column_name": "alloc_instance_index",
+      "usable_for": [
+        "placement_prior"
+      ]
+    },
+    {
+      "aurelius_signal_category": "metadata_only",
+      "dtypes": [
+        "str"
+      ],
+      "field_quality": "real",
+      "missing_rate": 0.0,
+      "normalized_field": "collection_id",
+      "notes": "Borg collection (workload group) id.",
+      "presence_rate": 1.0,
+      "raw_column_name": "collection_id",
+      "usable_for": [
+        "autoscaling_evaluation"
+      ]
+    },
+    {
+      "aurelius_signal_category": "metadata_only",
+      "dtypes": [
+        "str"
+      ],
+      "field_quality": "real",
+      "missing_rate": 0.0,
+      "normalized_field": "collection_type",
+      "notes": "JOB vs ALLOC_SET.",
+      "presence_rate": 1.0,
+      "raw_column_name": "collection_type",
+      "usable_for": [
+        "autoscaling_evaluation"
+      ]
+    },
+    {
+      "aurelius_signal_category": "scheduler_state",
+      "dtypes": [
+        "list"
+      ],
+      "field_quality": "real",
+      "missing_rate": 0.0,
+      "normalized_field": "constraint_summary",
+      "notes": "Scheduling constraints (list); summarised.",
+      "presence_rate": 1.0,
+      "raw_column_name": "constraint",
+      "usable_for": [
+        "placement_prior"
+      ]
+    },
+    {
+      "aurelius_signal_category": "metadata_only",
+      "dtypes": [
+        "str"
+      ],
+      "field_quality": "real",
+      "missing_rate": 0.0,
+      "normalized_field": "instance_index",
+      "notes": "Per-task index within a collection.",
+      "presence_rate": 1.0,
+      "raw_column_name": "instance_index",
+      "usable_for": [
+        "placement_prior"
+      ]
+    },
+    {
+      "aurelius_signal_category": "placement",
+      "dtypes": [
+        "str"
+      ],
+      "field_quality": "real",
+      "missing_rate": 0.07848333333333335,
+      "normalized_field": "machine_id",
+      "notes": "Anonymized machine cell id.",
+      "presence_rate": 0.9215166666666667,
+      "raw_column_name": "machine_id",
+      "usable_for": [
+        "placement_prior",
+        "migration_veto_evaluation"
+      ]
+    },
+    {
+      "aurelius_signal_category": "metadata_only",
+      "dtypes": [
+        "str"
+      ],
+      "field_quality": "real",
+      "missing_rate": 0.9908166666666667,
+      "normalized_field": "missing_type",
+      "notes": "Indicator that the event type was inferred.",
+      "presence_rate": 0.009183333333333333,
+      "raw_column_name": "missing_type",
+      "usable_for": [
+        "not_usable"
+      ]
+    },
+    {
+      "aurelius_signal_category": "scheduler_state",
+      "dtypes": [
+        "str"
+      ],
+      "field_quality": "real",
+      "missing_rate": 0.0,
+      "normalized_field": "priority",
+      "notes": "Borg priority value.",
+      "presence_rate": 1.0,
+      "raw_column_name": "priority",
+      "usable_for": [
+        "autoscaling_evaluation"
+      ]
+    },
+    {
+      "aurelius_signal_category": "scheduler_state",
+      "dtypes": [
+        "dict"
+      ],
+      "field_quality": "real",
+      "missing_rate": 0.004966666666666675,
+      "normalized_field": "resource_request_summary",
+      "notes": "Dict with cpus + memory; flattened to JSON in committed sample.",
+      "presence_rate": 0.9950333333333333,
+      "raw_column_name": "resource_request",
+      "usable_for": [
+        "capacity_forecast"
+      ]
+    },
+    {
+      "aurelius_signal_category": "scheduler_state",
+      "dtypes": [
+        "str"
+      ],
+      "field_quality": "real",
+      "missing_rate": 0.0,
+      "normalized_field": "scheduling_class",
+      "notes": "Borg scheduling class (0=lowest, 3=highest).",
+      "presence_rate": 1.0,
+      "raw_column_name": "scheduling_class",
+      "usable_for": [
+        "autoscaling_evaluation"
+      ]
+    },
+    {
+      "aurelius_signal_category": "request_dispatch",
+      "dtypes": [
+        "str"
+      ],
+      "field_quality": "real",
+      "missing_rate": 0.0,
+      "normalized_field": "event_time_us",
+      "notes": "Microsecond Borg trace time.",
+      "presence_rate": 1.0,
+      "raw_column_name": "time",
+      "usable_for": [
+        "arrival_forecast",
+        "capacity_forecast",
+        "autoscaling_evaluation"
+      ]
+    },
+    {
+      "aurelius_signal_category": "scheduler_state",
+      "dtypes": [
+        "str"
+      ],
+      "field_quality": "real",
+      "missing_rate": 0.0,
+      "normalized_field": "event_type",
+      "notes": "One of SUBMIT, SCHEDULE, EVICT, FAIL, FINISH, KILL, LOST, QUEUE, UPDATE_PENDING, UPDATE_RUNNING.",
+      "presence_rate": 1.0,
+      "raw_column_name": "type",
+      "usable_for": [
+        "autoscaling_evaluation",
+        "migration_veto_evaluation",
+        "model_load_unload_proxy"
+      ]
+    }
+  ],
+  "config_name": "instance_events_shard0",
+  "dataset_id": "lsliwko/google-cluster-data-2019-sorted-by-timestamp",
+  "rejected_columns": []
+}

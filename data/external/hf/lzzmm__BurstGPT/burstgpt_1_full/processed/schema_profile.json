@@ -1,0 +1,87 @@
+{
+  "config_name": "burstgpt_1_full",
+  "dataset_id": "lzzmm/BurstGPT",
+  "dtypes": {
+    "Log Type": [
+      "str"
+    ],
+    "Model": [
+      "str"
+    ],
+    "Request tokens": [
+      "str"
+    ],
+    "Response tokens": [
+      "str"
+    ],
+    "Timestamp": [
+      "str"
+    ],
+    "Total tokens": [
+      "str"
+    ]
+  },
+  "example_values": {
+    "Log Type": [
+      "'Conversation log'",
+      "'Conversation log'",
+      "'Conversation log'"
+    ],
+    "Model": [
+      "'ChatGPT'",
+      "'ChatGPT'",
+      "'GPT-4'"
+    ],
+    "Request tokens": [
+      "'472'",
+      "'1087'",
+      "'417'"
+    ],
+    "Response tokens": [
+      "'18'",
+      "'230'",
+      "'276'"
+    ],
+    "Timestamp": [
+      "'5'",
+      "'45'",
+      "'118'"
+    ],
+    "Total tokens": [
+      "'490'",
+      "'1317'",
+      "'693'"
+    ]
+  },
+  "file_size_bytes": 20971520,
+  "inspected_row_count": 59999,
+  "list_length_summaries": {},
+  "missing_rates": {
+    "Log Type": 0.0,
+    "Model": 0.0,
+    "Request tokens": 0.0,
+    "Response tokens": 0.0,
+    "Timestamp": 0.0,
+    "Total tokens": 0.0
+  },
+  "nested_keys": {},
+  "presence_rates": {
+    "Log Type": 1.0,
+    "Model": 1.0,
+    "Request tokens": 1.0,
+    "Response tokens": 1.0,
+    "Timestamp": 1.0,
+    "Total tokens": 1.0
+  },
+  "raw_columns": [
+    "Log Type",
+    "Model",
+    "Request tokens",
+    "Response tokens",
+    "Timestamp",
+    "Total tokens"
+  ],
+  "source_files_inspected": [
+    "data/BurstGPT_1.csv"
+  ]
+}

@@ -1,0 +1,255 @@
+{
+  "doc_version": "telemetry_gap_ingest_summary_v1",
+  "failed": [],
+  "git_sha": "d1b9711627e05946102aa4fe48f208f8331860b0",
+  "ingested": [
+    {
+      "available_signals": [
+        "arrivals",
+        "cache_reuse",
+        "kv_block_hashes",
+        "latency",
+        "migration_or_cache_loss_proxy",
+        "prefix_reuse",
+        "request_timestamps",
+        "ttft",
+        "workload_shape"
+      ],
+      "bytes_sampled": 439101,
+      "config_name": "traces_head",
+      "dataset_id": "semianalysisai/cc-traces-weka-no-subagents-051226",
+      "license": "apache-2.0",
+      "limitations": [
+        "Bounded head-sample of 2.77 GB traces.jsonl (80 MiB cap, ~5k rows).",
+        "Real Claude Code CLI \u2265 2.1.139 production traffic (949 agent sessions, ~136.1k requests in the full file).",
+        "Multi-turn agentic traces with per-request KV block hashes; bucket_hashes preserved at the raw level, hashed + sampled in the committed sample.",
+        "No GPU type, no queue/scheduler state, no measured TTFT/TPOT in this trace format."
+      ],
+      "missing_signals": [
+        "autoscaling_proxy",
+        "capacity_proxy",
+        "cost_or_region",
+        "customer_traffic_mix",
+        "gpu_utilization",
+        "model_load_event",
+        "model_unload_event",
+        "queue_state",
+        "replica_count",
+        "routing_proxy",
+        "sla_label",
+        "timeout_label",
+        "tpot"
+      ],
+      "promotion_state": "promoted_for_training_priors",
+      "promotion_tags": [
+        "promoted_for_training_priors"
+      ],
+      "raw_bytes_downloaded": 83886080,
+      "rows_sampled": 761,
+      "strength": "weak",
+      "summary_path": "data/external/hf/semianalysisai__cc-traces-weka-no-subagents-051226/traces_head/processed/summary.json",
+      "trace_type": "request_shape_trace",
+      "url": "https://huggingface.co/datasets/semianalysisai/cc-traces-weka-no-subagents-051226"
+    },
+    {
+      "available_signals": [
+        "arrivals",
+        "cache_reuse",
+        "prefix_reuse",
+        "request_timestamps",
+        "routing_proxy",
+        "workload_shape"
+      ],
+      "bytes_sampled": 696538,
+      "config_name": "train_shard4",
+      "dataset_id": "sammshen/lmcache-agentic-traces",
+      "license": "mit",
+      "limitations": [
+        "Single parquet shard (train-00004-of-00005, 398 MB) of the 2.3 GB 5-shard set.",
+        "787 multi-turn agentic LLM sessions (24,881 total iterations); \u22655 turns/session and \u226510K context tokens.",
+        "Designed for tiered KV-cache benchmarking (LMCache).",
+        "No GPU type, no queue/scheduler state, no measured TTFT/TPOT."
+      ],
+      "missing_signals": [
+        "autoscaling_proxy",
+        "capacity_proxy",
+        "cost_or_region",
+        "customer_traffic_mix",
+        "gpu_utilization",
+        "kv_block_hashes",
+        "latency",
+        "migration_or_cache_loss_proxy",
+        "model_load_event",
+        "model_unload_event",
+        "queue_state",
+        "replica_count",
+        "sla_label",
+        "timeout_label",
+        "tpot",
+        "ttft"
+      ],
+      "promotion_state": "promoted_for_training_priors",
+      "promotion_tags": [
+        "promoted_for_training_priors"
+      ],
+      "raw_bytes_downloaded": 398199928,
+      "rows_sampled": 4976,
+      "strength": "moderate",
+      "summary_path": "data/external/hf/sammshen__lmcache-agentic-traces/train_shard4/processed/summary.json",
+      "trace_type": "request_shape_trace",
+      "url": "https://huggingface.co/datasets/sammshen/lmcache-agentic-traces"
+    },
+    {
+      "available_signals": [
+        "arrivals",
+        "autoscaling_proxy",
+        "capacity_proxy",
+        "customer_traffic_mix",
+        "request_timestamps",
+        "workload_shape"
+      ],
+      "bytes_sampled": 8025795,
+      "config_name": "burstgpt_1_full",
+      "dataset_id": "lzzmm/BurstGPT",
+      "license": "unspecified_LICENSE_file_present",
+      "limitations": [
+        "Bounded 20 MiB head of BurstGPT_1.csv (file is 52.3 MB; ~1.43M rows total).",
+        "Normalized analysis sample capped at 60k rows (RAM + write-time bound).",
+        "BurstGPT_2.csv (145 MB) and the two without_fails splits deferred.",
+        "No GPU type, no scheduler state. Pure arrival timestamps + model + token counts + Conversation vs API Log Type."
+      ],
+      "missing_signals": [
+        "cache_reuse",
+        "cost_or_region",
+        "gpu_utilization",
+        "kv_block_hashes",
+        "latency",
+        "migration_or_cache_loss_proxy",
+        "model_load_event",
+        "model_unload_event",
+        "prefix_reuse",
+        "queue_state",
+        "replica_count",
+        "routing_proxy",
+        "sla_label",
+        "timeout_label",
+        "tpot",
+        "ttft"
+      ],
+      "promotion_state": "promoted_for_training_priors",
+      "promotion_tags": [
+        "promoted_for_training_priors"
+      ],
+      "raw_bytes_downloaded": 20971520,
+      "rows_sampled": 59999,
+      "strength": "strong",
+      "summary_path": "data/external/hf/lzzmm__BurstGPT/burstgpt_1_full/processed/summary.json",
+      "trace_type": "request_shape_trace",
+      "url": "https://huggingface.co/datasets/lzzmm/BurstGPT"
+    },
+    {
+      "available_signals": [
+        "arrivals",
+        "autoscaling_proxy",
+        "capacity_proxy",
+        "migration_or_cache_loss_proxy",
+        "model_load_event",
+        "model_unload_event",
+        "request_timestamps",
+        "routing_proxy"
+      ],
+      "bytes_sampled": 21205170,
+      "config_name": "instance_events_shard0",
+      "dataset_id": "lsliwko/google-cluster-data-2019-sorted-by-timestamp",
+      "license": "cc_by_4_0_derived_from_google",
+      "limitations": [
+        "Single instance_events shard (52.7 MB gzipped, ~3M events) of the 117 GB Google Cluster 2019 mirror.",
+        "Google Borg task lifecycle events (SUBMIT, SCHEDULE, EVICT, FAIL, FINISH, KILL, LOST, QUEUE, UPDATE_PENDING, UPDATE_RUNNING) \u2014 anonymized.",
+        "NOT LLM serving telemetry \u2014 Borg job-level scheduling events. Treat as autoscaling / migration / fleet-inventory PROXY only.",
+        "Mirror of github.com/google/cluster-data; license cc-by-4.0 per Google's release."
+      ],
+      "missing_signals": [
+        "cache_reuse",
+        "cost_or_region",
+        "customer_traffic_mix",
+        "gpu_utilization",
+        "kv_block_hashes",
+        "latency",
+        "prefix_reuse",
+        "queue_state",
+        "replica_count",
+        "sla_label",
+        "timeout_label",
+        "tpot",
+        "ttft",
+        "workload_shape"
+      ],
+      "promotion_state": "promoted_for_backtest",
+      "promotion_tags": [
+        "promoted_for_backtest",
+        "promoted_for_constraint_aware_evaluation",
+        "promoted_for_training_priors"
+      ],
+      "raw_bytes_downloaded": 52752995,
+      "rows_sampled": 60000,
+      "strength": "strong",
+      "summary_path": "data/external/hf/lsliwko__google-cluster-data-2019-sorted-by-timestamp/instance_events_shard0/processed/summary.json",
+      "trace_type": "cluster_scheduler_trace",
+      "url": "https://huggingface.co/datasets/lsliwko/google-cluster-data-2019-sorted-by-timestamp"
+    },
+    {
+      "available_signals": [
+        "cache_reuse",
+        "prefix_reuse"
+      ],
+      "bytes_sampled": 1800560,
+      "config_name": "prefixbench_all",
+      "dataset_id": "jaytonde05/prefixbench",
+      "license": "unspecified",
+      "limitations": [
+        "Full ingest of all 4 jsonl files (80 MB total).",
+        "SYNTHETIC deterministic prompts engineered for KV-prefix-cache benchmarking; not production traffic.",
+        "Useful as cache-residency replay corpus; NOT as real cache-hit telemetry."
+      ],
+      "missing_signals": [
+        "arrivals",
+        "autoscaling_proxy",
+        "capacity_proxy",
+        "cost_or_region",
+        "customer_traffic_mix",
+        "gpu_utilization",
+        "kv_block_hashes",
+        "latency",
+        "migration_or_cache_loss_proxy",
+        "model_load_event",
+        "model_unload_event",
+        "queue_state",
+        "replica_count",
+        "request_timestamps",
+        "routing_proxy",
+        "sla_label",
+        "timeout_label",
+        "tpot",
+        "ttft",
+        "workload_shape"
+      ],
+      "promotion_state": "promoted_for_cache_residency_evaluation",
+      "promotion_tags": [
+        "promoted_for_cache_residency_evaluation",
+        "promoted_for_training_priors"
+      ],
+      "raw_bytes_downloaded": 8335252,
+      "rows_sampled": 4000,
+      "strength": "moderate",
+      "summary_path": "data/external/hf/jaytonde05__prefixbench/prefixbench_all/processed/summary.json",
+      "trace_type": "cache_residency_trace",
+      "url": "https://huggingface.co/datasets/jaytonde05/prefixbench"
+    }
+  ],
+  "ingested_at_s": 1780278406.8573287,
+  "modifies_controllers_or_defaults": false,
+  "modifies_robust_energy_engine": false,
+  "production_claim": false,
+  "stage": "discovery_and_bounded_ingest",
+  "uses_oracle_as_headline": false
+}

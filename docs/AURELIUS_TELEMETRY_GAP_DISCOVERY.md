@@ -14,6 +14,69 @@
 > - `data/external/hf_discovery/aurelius_gap_closure_audit.json`
 >   (machine-readable signal × dataset × forecast matrix)
 
+## ⓘ Update 2026-06-01 — telemetry-gap ingest landed
+
+5 of the top-10 ingest-now datasets have now been bounded-ingested via
+`scripts/ingest_hf_gap_datasets.py` (audit-only; raw + analysis_sample
+gitignored, only schema_profile + schema_mapping + summary +
+statistical_rollups + tiny fixtures committed). Cross-dataset rollup:
+`data/external/hf_discovery/telemetry_gap_ingest_summary.json`.
+Tests: `tests/test_hf_gap_ingest.py` (35 tests, all green).
+
+| Dataset | Bytes sampled | Rows | Strength | Promotion state | Key signals unlocked |
+|---|---:|---:|---|---|---|
+| `semianalysisai/cc-traces-weka-no-subagents-051226` | 80 MiB (raw) / 0.4 MB (normalized) | 761 | weak | `promoted_for_training_priors` | `kv_block_hashes`, `migration_or_cache_loss_proxy`, `prefix_reuse`, `ttft`, `latency` |
+| `sammshen/lmcache-agentic-traces` | 398 MB (one shard) / 0.7 MB (normalized) | 4,976 | moderate | `promoted_for_training_priors` | `routing_proxy`, `cache_reuse`, `prefix_reuse`, `arrivals` |
+| `lzzmm/BurstGPT` | 20 MiB (raw) / 8.0 MB (normalized) | 59,999 | strong | `promoted_for_training_priors` | `arrivals`, `capacity_proxy`, `autoscaling_proxy`, `customer_traffic_mix` |
+| `lsliwko/google-cluster-data-2019-sorted-by-timestamp` | 53 MB (one gz shard) / 21 MB (normalized) | 60,000 | strong | `promoted_for_backtest` + `promoted_for_constraint_aware_evaluation` | `autoscaling_proxy`, `model_load_event`, `model_unload_event`, `migration_or_cache_loss_proxy`, `routing_proxy` |
+| `jaytonde05/prefixbench` | 80 MB (full, 4 jsonl) / 1.8 MB (normalized) | 4,000 | moderate | `promoted_for_cache_residency_evaluation` + `promoted_for_training_priors` | `cache_reuse`, `prefix_reuse` |
+
+**Net signal closures from this ingest** (signals that were NONE or
+WEAK before, MODERATE+ now):
+
+| Signal | Before | After ingest | Source |
+|---|---|---|---|
+| kv_block_hashes | NONE | MODERATE | CC-traces (per-request hash list) |
+| migration_or_cache_loss_proxy | NONE | MODERATE | CC-traces + Google Cluster |
+| model_load_event | NONE | MODERATE (Borg) | Google Cluster SCHEDULE |
+| model_unload_event | NONE | MODERATE (Borg) | Google Cluster EVICT/KILL/FAIL/FINISH |
+| autoscaling_proxy | NONE | MODERATE | BurstGPT + Google Cluster |
+| capacity_proxy | WEAK | STRONG | BurstGPT (strong) + Google Cluster (strong) |
+| arrival_patterns (additive) | STRONG | STRONG+ | + BurstGPT + CC-traces + LMCache + Google Cluster |
+| customer_traffic_mix | NONE | MODERATE | BurstGPT (Conversation vs API Log Type) |
+| routing_proxy | NONE | MODERATE | LMCache (session_id) + Google Cluster (machine_id) |
+| cache_reuse (additive) | STRONG | STRONG+ | + CC-traces + LMCache + PrefixBench |
+| prefix_reuse (additive) | STRONG | STRONG+ | + CC-traces + LMCache + PrefixBench |
+
+**Per-dataset worth-ingesting verdict:**
+
+- ✅ `lzzmm/BurstGPT` — strong-strength real Azure arrivals. Closes
+  capacity + autoscaling proxies. Worth ingesting.
+- ✅ `lsliwko/google-cluster-data-2019` — strong-strength Borg events;
+  the only public source that gives autoscaling / migration / model-
+  load / model-unload labels (job-level Borg, not LLM serving — still
+  a useful PROXY). Highest gap-closing value. Worth ingesting.
+- ✅ `sammshen/lmcache-agentic-traces` — moderate-strength curated
+  agentic sessions. Worth ingesting.
+- ✅ `jaytonde05/prefixbench` — moderate synthetic prefix corpus. Worth
+  ingesting for replay-driven cache evaluation.
+- ⚠️ `semianalysisai/cc-traces-weka-no-subagents-051226` — only weak
+  strength at the 80 MiB head because each session is ~12 MB. The
+  signal value (KV block hashes!) is uniquely high but the strength
+  is below the `moderate` threshold required for
+  `promoted_for_cache_residency_evaluation`. A follow-up should
+  bounded-ingest a larger window (e.g. 300 MiB head ≈ 25 sessions =
+  ~2,700 requests = moderate) OR sample session-level then expand
+  per session-row to per-request rows with a turn cap to maximise
+  session diversity per byte. Currently promoted only for training
+  priors. Worth ingesting; needs strength expansion in next PR.
+
+**Gaps that remain irreducibly pilot-only** — unchanged from §7
+below. The 12 signals listed in §7 still cannot be sourced from any
+HF dataset and require Tier 1 customer telemetry.
+
+---
+
 ## 0. Scope, evidence trail + safety
 
 - This document is the human-readable rollup of

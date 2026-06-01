@@ -1,0 +1,90 @@
+{
+  "accepted_columns": [
+    "input",
+    "model",
+    "output_length",
+    "pre_gap",
+    "session_id"
+  ],
+  "columns": [
+    {
+      "aurelius_signal_category": "tokens",
+      "dtypes": [
+        "list"
+      ],
+      "field_quality": "real",
+      "missing_rate": 0.0,
+      "normalized_field": "input_len",
+      "notes": "Full prompt text; only character length kept in committed sample (cache-residency proxy).",
+      "presence_rate": 1.0,
+      "raw_column_name": "input",
+      "usable_for": [
+        "cache_residency_evaluation"
+      ]
+    },
+    {
+      "aurelius_signal_category": "metadata_only",
+      "dtypes": [
+        "str"
+      ],
+      "field_quality": "real",
+      "missing_rate": 0.0,
+      "normalized_field": "model_id",
+      "notes": "Model name.",
+      "presence_rate": 1.0,
+      "raw_column_name": "model",
+      "usable_for": [
+        "arrival_forecast"
+      ]
+    },
+    {
+      "aurelius_signal_category": "tokens",
+      "dtypes": [
+        "int"
+      ],
+      "field_quality": "real",
+      "missing_rate": 0.0,
+      "normalized_field": "output_tokens",
+      "notes": "Generated token count.",
+      "presence_rate": 1.0,
+      "raw_column_name": "output_length",
+      "usable_for": [
+        "arrival_forecast"
+      ]
+    },
+    {
+      "aurelius_signal_category": "request_dispatch",
+      "dtypes": [
+        "float"
+      ],
+      "field_quality": "real",
+      "missing_rate": 0.0,
+      "normalized_field": "pre_gap_s",
+      "notes": "Inter-turn gap (think-time) in seconds. Arrival pattern signal.",
+      "presence_rate": 1.0,
+      "raw_column_name": "pre_gap",
+      "usable_for": [
+        "arrival_forecast"
+      ]
+    },
+    {
+      "aurelius_signal_category": "session_id",
+      "dtypes": [
+        "str"
+      ],
+      "field_quality": "real",
+      "missing_rate": 0.0,
+      "normalized_field": "session_id",
+      "notes": "Multi-turn agentic session identifier.",
+      "presence_rate": 1.0,
+      "raw_column_name": "session_id",
+      "usable_for": [
+        "cache_residency_evaluation",
+        "arrival_forecast"
+      ]
+    }
+  ],
+  "config_name": "train_shard4",
+  "dataset_id": "sammshen/lmcache-agentic-traces",
+  "rejected_columns": []
+}
