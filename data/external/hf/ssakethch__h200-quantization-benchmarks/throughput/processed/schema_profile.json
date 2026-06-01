@@ -1,0 +1,254 @@
+{
+  "accepted_columns": [
+    "model",
+    "quant",
+    "request_rate",
+    "successful_reqs",
+    "failed_reqs",
+    "duration_s",
+    "input_tokens",
+    "output_tokens",
+    "req_throughput",
+    "output_tok_throughput",
+    "peak_output_tok_throughput",
+    "total_tok_throughput",
+    "mean_ttft_ms",
+    "median_ttft_ms",
+    "p99_ttft_ms",
+    "mean_tpot_ms",
+    "median_tpot_ms",
+    "p99_tpot_ms",
+    "mean_itl_ms",
+    "median_itl_ms",
+    "p99_itl_ms"
+  ],
+  "config_name": "throughput",
+  "dataset_id": "ssakethch/h200-quantization-benchmarks",
+  "dtypes": {
+    "duration_s": [
+      "float"
+    ],
+    "failed_reqs": [
+      "float"
+    ],
+    "input_tokens": [
+      "float"
+    ],
+    "mean_itl_ms": [
+      "float"
+    ],
+    "mean_tpot_ms": [
+      "float"
+    ],
+    "mean_ttft_ms": [
+      "float"
+    ],
+    "median_itl_ms": [
+      "float"
+    ],
+    "median_tpot_ms": [
+      "float"
+    ],
+    "median_ttft_ms": [
+      "float"
+    ],
+    "model": [
+      "str"
+    ],
+    "output_tok_throughput": [
+      "float"
+    ],
+    "output_tokens": [
+      "float"
+    ],
+    "p99_itl_ms": [
+      "float"
+    ],
+    "p99_tpot_ms": [
+      "float"
+    ],
+    "p99_ttft_ms": [
+      "float"
+    ],
+    "peak_output_tok_throughput": [
+      "float"
+    ],
+    "quant": [
+      "str"
+    ],
+    "req_throughput": [
+      "float"
+    ],
+    "request_rate": [
+      "float"
+    ],
+    "successful_reqs": [
+      "float"
+    ],
+    "total_tok_throughput": [
+      "float"
+    ]
+  },
+  "example_values": {
+    "duration_s": [
+      "'123.21'",
+      "'125.18'",
+      "'123.28'"
+    ],
+    "failed_reqs": [
+      "'0'",
+      "'0'",
+      "'0'"
+    ],
+    "input_tokens": [
+      "'26289'",
+      "'50588'",
+      "'96557'"
+    ],
+    "mean_itl_ms": [
+      "'9.31'",
+      "'9.31'",
+      "'9.47'"
+    ],
+    "mean_tpot_ms": [
+      "'9.33'",
+      "'9.21'",
+      "'9.49'"
+    ],
+    "mean_ttft_ms": [
+      "'56.3'",
+      "'53.09'",
+      "'38.96'"
+    ],
+    "median_itl_ms": [
+      "'9.04'",
+      "'9.17'",
+      "'9.34'"
+    ],
+    "median_tpot_ms": [
+      "'9.14'",
+      "'9.22'",
+      "'9.45'"
+    ],
+    "median_ttft_ms": [
+      "'40.53'",
+      "'51.5'",
+      "'34.96'"
+    ],
+    "model": [
+      "'meta-llama/Llama-3.1-8B-Instruct'",
+      "'meta-llama/Llama-3.1-8B-Instruct'",
+      "'meta-llama/Llama-3.1-8B-Instruct'"
+    ],
+    "output_tok_throughput": [
+      "'202.77'",
+      "'388.58'",
+      "'791.43'"
+    ],
+    "output_tokens": [
+      "'24984'",
+      "'48643'",
+      "'97566'"
+    ],
+    "p99_itl_ms": [
+      "'18.93'",
+      "'20.02'",
+      "'18.84'"
+    ],
+    "p99_tpot_ms": [
+      "'12.29'",
+      "'10.2'",
+      "'10.53'"
+    ],
+    "p99_ttft_ms": [
+      "'295.33'",
+      "'104.49'",
+      "'70.77'"
+    ],
+    "peak_output_tok_throughput": [
+      "'570.0'",
+      "'838.0'",
+      "'1588.0'"
+    ],
+    "quant": [
+      "'bf16'",
+      "'bf16'",
+      "'bf16'"
+    ],
+    "req_throughput": [
+      "'0.97'",
+      "'1.92'",
+      "'3.89'"
+    ],
+    "request_rate": [
+      "'1'",
+      "'2'",
+      "'4'"
+    ],
+    "successful_reqs": [
+      "'120'",
+      "'240'",
+      "'480'"
+    ],
+    "total_tok_throughput": [
+      "'416.13'",
+      "'792.69'",
+      "'1574.68'"
+    ]
+  },
+  "file_size_bytes": 41504,
+  "inspected_row_count": 275,
+  "list_length_summaries": {},
+  "missing_rates": {
+    "duration_s": 0.0,
+    "failed_reqs": 0.0,
+    "input_tokens": 0.0,
+    "mean_itl_ms": 0.0,
+    "mean_tpot_ms": 0.0,
+    "mean_ttft_ms": 0.0,
+    "median_itl_ms": 0.0,
+    "median_tpot_ms": 0.0,
+    "median_ttft_ms": 0.0,
+    "model": 0.0,
+    "output_tok_throughput": 0.0,
+    "output_tokens": 0.0,
+    "p99_itl_ms": 0.0,
+    "p99_tpot_ms": 0.0,
+    "p99_ttft_ms": 0.0,
+    "peak_output_tok_throughput": 0.0,
+    "quant": 0.0,
+    "req_throughput": 0.0,
+    "request_rate": 0.0,
+    "successful_reqs": 0.0,
+    "total_tok_throughput": 0.0
+  },
+  "nested_keys": [],
+  "raw_columns": [
+    "model",
+    "quant",
+    "request_rate",
+    "successful_reqs",
+    "failed_reqs",
+    "duration_s",
+    "input_tokens",
+    "output_tokens",
+    "req_throughput",
+    "output_tok_throughput",
+    "peak_output_tok_throughput",
+    "total_tok_throughput",
+    "mean_ttft_ms",
+    "median_ttft_ms",
+    "p99_ttft_ms",
+    "mean_tpot_ms",
+    "median_tpot_ms",
+    "p99_tpot_ms",
+    "mean_itl_ms",
+    "median_itl_ms",
+    "p99_itl_ms"
+  ],
+  "rejected_columns": [],
+  "source_files": [
+    "data/throughput.csv"
+  ],
+  "unknown_columns": []
+}

@@ -1,0 +1,204 @@
+{
+  "audited_at_s": 1780351887.7289653,
+  "discovery_only_records": [
+    {
+      "bucket": "D_synthetic_economics",
+      "candidate_trace_type": "mixed_or_unknown_trace",
+      "dataset_id": "sairamn/gcp-cloud-billing-cost",
+      "gated": false,
+      "kind": "reject_synthetic_economics",
+      "license_observed": "mit",
+      "reason": "Auditing data.csv shows clearly SYNTHETIC GCP billing data: sequential resource_NNN IDs, random-looking CPU/memory utilisation paired with arbitrary services (e.g. 'Artifact Registry' with 78 GB and 93% CPU util), no README content, no provenance, no measurement methodology. Rejected per the binding directive 'DO NOT treat synthetic cost fields as real economics'. The data does not close the operational \u00d7 economic join gap."
+    },
+    {
+      "bucket": "F_irrelevant",
+      "candidate_trace_type": "mixed_or_unknown_trace",
+      "dataset_id": "ClarusC64/ai-load-carbon-aware-scheduling-coherence-risk-v0.1",
+      "gated": false,
+      "kind": "reject_synthetic_eval_task",
+      "license_observed": "mit",
+      "reason": "Synthetic text-classification 'coherence-risk' eval task (n<1K rows, scorer.py + train.csv + tester.csv). Not an infrastructure dataset \u2014 it is an LLM-output evaluation fixture. No measured serving / scheduling / cost / carbon telemetry. Rejected as irrelevant to the Aurelius constraint-aware objective."
+    },
+    {
+      "bucket": "F_irrelevant",
+      "candidate_trace_type": "mixed_or_unknown_trace",
+      "dataset_id": "ClarusC64/datacenter-power-load-coherence-risk-v0.1",
+      "gated": false,
+      "kind": "reject_synthetic_eval_task",
+      "license_observed": "mit",
+      "reason": "Same author / template as the AI-load coherence-risk dataset. Synthetic text-classification eval fixture (n<1K, scorer.py + train.csv + tester.csv). Not real datacenter power-load telemetry. Rejected as irrelevant."
+    },
+    {
+      "bucket": "F_irrelevant",
+      "candidate_trace_type": "mixed_or_unknown_trace",
+      "dataset_id": "Phipper/pe-energy-infrastructure-training-data",
+      "gated": false,
+      "kind": "reject_irrelevant_domain",
+      "license_observed": "apache-2.0",
+      "reason": "Private-equity energy-infrastructure finance LLM training fixtures (dpo_pairs.jsonl + opus_reasoning.jsonl + sft_conversations.jsonl, 1K<n<10K). Domain = finance / private-equity reasoning, NOT serving / scheduling / datacenter telemetry. Tagged 'energy-infrastructure' but refers to PE asset-class language, not Aurelius signals. Rejected."
+    },
+    {
+      "bucket": "F_irrelevant",
+      "candidate_trace_type": "mixed_or_unknown_trace",
+      "dataset_id": "uohna/llm_inference_energy_combined.parquet",
+      "gated": false,
+      "kind": "reject_empty_repository",
+      "license_observed": null,
+      "reason": "Repository contains only .gitattributes \u2014 no actual data file is published despite the .parquet repo name. usedStorage=0. Cannot be ingested."
+    },
+    {
+      "bucket": "F_irrelevant",
+      "candidate_trace_type": "mixed_or_unknown_trace",
+      "dataset_id": "metrum-ai/llm-perf-dashboard",
+      "gated": false,
+      "kind": "reject_repository_not_found",
+      "license_observed": null,
+      "reason": "HF API returns 404 ('Repository not found'). The sister dataset metrum-ai/llm-perfdata is already ingested in the corpus (multi_source_curated_v1 config). No further data-source available from Metrum AI."
+    },
+    {
+      "bucket": "F_irrelevant",
+      "candidate_trace_type": "request_shape_trace",
+      "dataset_id": "crozai/vllm-benchmark-coding",
+      "gated": false,
+      "kind": "duplicate_existing",
+      "license_observed": null,
+      "reason": "ShareGPT-derived coding-focused conversation fixtures used as INPUT to vLLM's benchmark_serving.py (not the benchmark RESULTS). Single column 'conversations' (role/value pairs). Duplicate of the existing sharegpt_aiperf workload-shape ingester. No measured TTFT / TPOT / throughput / GPU telemetry. License unspecified. Rejected as duplicate."
+    },
+    {
+      "bucket": "F_irrelevant",
+      "candidate_trace_type": "mixed_or_unknown_trace",
+      "dataset_id": "intellistream/sage-agent-benchmark",
+      "gated": false,
+      "kind": "reject_capability_benchmark_no_infra",
+      "license_observed": "mit",
+      "reason": "SAGE agent capability benchmark (tool selection, task planning, timing judgement, ~11K QA samples). Evaluates agent accuracy / correctness, NOT serving / scheduling / infrastructure cost. No measured latency / queue / GPU / energy. Rejected \u2014 capability-only benchmark adds nothing to the Aurelius constraint-aware decision engine."
+    }
+  ],
+  "doc_version": "round6_broadened_discovery_audit_summary_v1",
+  "economic_priority_summary": {
+    "datasets_with_economic_only_signals": [],
+    "datasets_with_operational_and_economic_signals": [],
+    "join_keys_available_for_economic_overlays": [
+      "gpu_type",
+      "model_id",
+      "engine",
+      "quantization",
+      "request_rate"
+    ],
+    "negative_result_finding": "Round 6 inspected the 9 round-5 discovery-only candidates. ONE qualified for bounded ingest (ssakethch/h200-quantization-benchmarks \u2014 H200 latency benchmark with measured TTFT/TPOT/ITL p50/p99). EIGHT were rejected as synthetic, irrelevant, deleted, duplicate, or capability-only. The single ingested dataset carries NO economic columns. Aurelius' goodput/$ denominator therefore remains operator-policy-supplied + public-pricing-prior + ElectricityMaps/ENTSO-E carbon intensity. This confirms the round-5 finding that the public HF dataset space does NOT currently close the operational \u00d7 economic join gap.",
+    "scorer_coefficients_calibratable_from_round6": [],
+    "scorer_coefficients_operator_policy_only_after_round6": [
+      "gpu_hour_price_usd",
+      "kwh_per_request",
+      "carbon_g_per_kwh",
+      "spot_interruption_probability",
+      "egress_cost_per_gb",
+      "regional_price_usd_per_mwh"
+    ]
+  },
+  "failed": [],
+  "git_sha": "dcac2beef6ffe0ff47081ad23574f2d96ca953da",
+  "ingested": [
+    {
+      "analysis_sample_rows": 275,
+      "available_signals": [
+        "ttft",
+        "tpot",
+        "itl",
+        "throughput",
+        "concurrency",
+        "input_tokens",
+        "output_tokens",
+        "gpu_type",
+        "model_id",
+        "engine",
+        "request_arrival",
+        "failure_label",
+        "request_completion"
+      ],
+      "canonical_trace_type": "latency_benchmark_trace",
+      "committed_normalized_sample_bytes": 0,
+      "committed_normalized_sample_reason_skipped": "license_unspecified_no_redistribution_promise",
+      "committed_normalized_sample_rows": 0,
+      "config_name": "throughput",
+      "dataset_id": "ssakethch/h200-quantization-benchmarks",
+      "fixture_sample_rows": 5,
+      "gated": false,
+      "license": null,
+      "limitations": [
+        "ssakethch/h200-quantization-benchmarks: benchmark results for 40 quantized + non-quantized instruction-tuned LLMs on NVIDIA H200 SXM (141 GB HBM3e) MIG-partitioned instances via vLLM. Trust Tier 4 (latency_benchmark_trace) \u2014 NOT pilot telemetry.",
+        "LICENSE = unspecified (no `license:` field in the HF dataset card YAML front-matter). Recorded license=None. Bounded normalised sample is NOT committed for this dataset (license_redistribution_status=unspecified). 5-row schema-test fixture is committed as fair-use schema evidence only.",
+        "request_rate is the CONFIGURED concurrency level (1, 2, 4, 8, 16) for the vLLM benchmark_serving.py harness, NOT a real arrival trace. Treat as a closed-loop throughput sweep, not a scheduler arrival process.",
+        "GPU coverage = NVIDIA H200 SXM only. This dataset is the corpus' FIRST measured-source H200 entry (metrum-ai/llm-perfdata carries 10 multi-source-curated H200 rows but those are not a single-campaign measurement). Generalisation OUTSIDE H200 SXM MIG is unsafe.",
+        "Engine = vLLM only. Engine version is NOT recorded. Generalisation to SGLang / TGI / Triton / TensorRT-LLM is unsafe.",
+        "Single failure observation: rr=8 with neuralmagic/DeepSeek-R1-Distill-Qwen-32B-FP8-dynamic shows num_failed=1. dwetzel/DeepSeek-R1-Distill-Qwen-32B-GPTQ-INT4 at rr=16 shows a ~34 s mean_ttft_ms \u2014 saturation regime, not a stable measurement. Aurelius MUST treat the rr=16 highest-concurrency cells as backpressure-saturated outliers when fitting latency priors.",
+        "NO queue / wait / scheduler-state / KV-cache / GPU-utilisation telemetry. Aurelius queue-risk, batch-frontier, KV-cache, and energy-cost modules MUST NOT consume this dataset.",
+        "NO cost / energy / carbon-intensity / billing fields. Goodput/$ denominator MUST remain operator-policy-supplied + public-pricing-prior + ElectricityMaps / ENTSO-E carbon intensity (already integrated). This dataset does NOT close the operational \u00d7 economic join gap.",
+        "model_family is a derived bucket (Llama-3.1 / Llama-3.2 / Qwen3 / Qwen2.5 / DeepSeek-R1-Distill-Qwen / Gemma / Other) \u2014 do not treat as upstream-author-supplied metadata.",
+        "gpu_type / gpu_memory_gb / gpu_partition / engine are CONSTANT per dataset card and labelled field_quality=derived. They are not measured per row.",
+        "NVFP4 coverage is SMALL \u2014 only 5 rows (1 model \u00d7 5 request rates). Subgroup p95/p99 claims for quant=nvfp4 are statistically weak even though overall strength=strong.",
+        "BENCHMARK-ONLY \u2014 Tier 4. Not pilot telemetry. Pilot telemetry remains the only Tier 1 calibration source."
+      ],
+      "missing_signals": [
+        "e2e_latency",
+        "queue_wait",
+        "queue_depth",
+        "gpu_utilization",
+        "memory_pressure",
+        "batch_size",
+        "engine_version",
+        "kv_cache_size",
+        "cache_hit",
+        "kernel_duration",
+        "timeout_label",
+        "sla_label",
+        "autoscaling",
+        "replica_count",
+        "carbon_intensity",
+        "energy_per_request",
+        "cost_per_token",
+        "cost_per_request"
+      ],
+      "promotion_reasons": [],
+      "promotion_state": "promoted_for_performance_priors",
+      "promotion_tags": [
+        "promoted_for_performance_priors",
+        "promoted_for_constraint_aware_evaluation",
+        "promoted_for_training_priors"
+      ],
+      "statistical_sample_strength": "strong",
+      "subgroup_counts": {
+        "quant=awq|request_rate=1.0": 14,
+        "quant=awq|request_rate=16.0": 14,
+        "quant=awq|request_rate=2.0": 14,
+        "quant=awq|request_rate=4.0": 14,
+        "quant=awq|request_rate=8.0": 14,
+        "quant=bf16|request_rate=1.0": 14,
+        "quant=bf16|request_rate=16.0": 14,
+        "quant=bf16|request_rate=2.0": 14,
+        "quant=bf16|request_rate=4.0": 14,
+        "quant=bf16|request_rate=8.0": 14,
+        "quant=fp8|request_rate=1.0": 14,
+        "quant=fp8|request_rate=16.0": 14,
+        "quant=fp8|request_rate=2.0": 14,
+        "quant=fp8|request_rate=4.0": 14,
+        "quant=fp8|request_rate=8.0": 14,
+        "quant=gptq|request_rate=1.0": 12,
+        "quant=gptq|request_rate=16.0": 12,
+        "quant=gptq|request_rate=2.0": 12,
+        "quant=gptq|request_rate=4.0": 12,
+        "quant=gptq|request_rate=8.0": 12,
+        "quant=nvfp4|request_rate=1.0": 1,
+        "quant=nvfp4|request_rate=16.0": 1,
+        "quant=nvfp4|request_rate=2.0": 1,
+        "quant=nvfp4|request_rate=4.0": 1,
+        "quant=nvfp4|request_rate=8.0": 1
+      }
+    }
+  ],
+  "modifies_controllers_or_defaults": false,
+  "modifies_robust_energy_engine": false,
+  "production_claim": false,
+  "scope": "Round 6 broadened HF discovery \u2014 bounded ingest of ssakethch/h200-quantization-benchmarks (Tier-4 latency_benchmark_trace; first measured-source H200 SXM vLLM benchmark in the federated corpus) plus discovery-only rejection records for the 8 remaining round-5 candidates.",
+  "uses_oracle_as_headline": false
+}

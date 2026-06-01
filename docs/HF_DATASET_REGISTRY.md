@@ -283,6 +283,7 @@ Rules (binding):
 | `Lightcap/agent-runtime-telemetry-small` | **`tool_summary`** | **`tool_runtime_trace`** | **Tier 3** | `promoted_for_schema_only` | 5 | 32 | fixture_only | 2026-06-01 |
 | `Lightcap/agent-runtime-telemetry-small` | **`operation_events`** | **`tool_runtime_trace`** | **Tier 3** | **`promoted_for_backtest`** (+ `promoted_for_constraint_aware_evaluation`, `promoted_for_training_priors`) | 5 | **9,903** | moderate | 2026-06-01 |
 | `Lightcap/agent-runtime-telemetry-small` | **`audit_records`** | **`tool_runtime_trace`** | **Tier 3** | **`promoted_for_backtest`** (+ `promoted_for_constraint_aware_evaluation`, `promoted_for_training_priors`) | 5 | **14,053** | strong | 2026-06-01 |
+| `ssakethch/h200-quantization-benchmarks` | **`throughput`** | `latency_benchmark_trace` | Tier 4 | `promoted_for_performance_priors` (+ `promoted_for_constraint_aware_evaluation`, `promoted_for_training_priors`) | 5 | **275** | strong | 2026-06-01 |
 
 > **CARA** is the first Tier 2 (public telemetry trace) entry in the
 > federated corpus. CARA **train_flat** + **train_queue_details** are
@@ -1158,6 +1159,119 @@ Rules (binding):
   gitignored — regenerable via
   `scripts/ingest_hf_metrum_llmperfdata.py`.
 
+#### `ssakethch/h200-quantization-benchmarks` — Round-6 first measured-source H200 SXM (Tier-4 latency_benchmark_trace)
+
+- **What it is.** vLLM serving benchmark on NVIDIA H200 SXM (141 GB
+  HBM3e, MIG-partitioned) covering 40 instruction-tuned LLMs × 5
+  quantizations (AWQ, GPTQ, FP8, BF16, NVFP4) × 5 request rates
+  (1, 2, 4, 8, 16). One config (`throughput`) ships 275 rows of real
+  measured `mean_ttft_ms` / `median_ttft_ms` / `p99_ttft_ms` +
+  matching TPOT and ITL percentiles + per-cell req / output / total
+  token throughput + successful / failed counts + run duration +
+  input / output tokens. License is **unspecified** upstream (no
+  `license:` field in the HF card YAML front-matter).
+- **Why it fills a gap.** The corpus previously had NO
+  **single-source** measured H200 prior. metrum-ai/llm-perfdata's
+  10 H200 rows are multi-source-curated (each row is a different
+  upstream report). This dataset gives 55 H200 rows from a SINGLE
+  vLLM-MIG campaign with consistent methodology — the first time
+  Aurelius can fit a per-(quant, request_rate) latency / throughput
+  surface for H200 from one source. Also adds **NVFP4** quantisation
+  to the corpus (previously absent — the metrum-ai ledger does not
+  include NVFP4).
+- **Available signals.** `ttft` (mean+median+p99), `tpot`
+  (mean+median+p99), `itl` (mean+median+p99), `throughput`
+  (request+output-token+peak-output-token+total-token), `concurrency`
+  (request_rate), `input_tokens`, `output_tokens`, `gpu_type`
+  (constant: NVIDIA H200 SXM, 141 GB HBM3e MIG), `model_id`,
+  `engine` (constant: vLLM), `request_arrival` (request_rate as a
+  closed-loop arrival proxy — NOT a real arrival trace),
+  `request_completion` (num_successful + duration_s),
+  `failure_label` (num_failed; >0 only for one rr=8 FP8 cell).
+- **Statistical sample strength = strong.** 275 rows; (quant,
+  request_rate) cross-tab has 12-14 rows per cell for AWQ / BF16 /
+  FP8 / GPTQ. NVFP4 has only 1 row per cell — flagged as
+  `insufficient_sample_groups` in `statistical_rollups.json`.
+  Promotion = **`promoted_for_performance_priors`** (+
+  `promoted_for_constraint_aware_evaluation`,
+  `promoted_for_training_priors`).
+- **Missing signals.** `e2e_latency`, `queue_state` / `queue_wait` /
+  `queue_depth`, `gpu_utilization` / `memory_pressure`,
+  `batch_size`, `engine_version`, `kv_cache_size` / `cache_hit`,
+  `kernel_duration`, `timeout_label` / `sla_label`, `autoscaling` /
+  `replica_count`, **`energy_per_request` / `carbon_intensity` /
+  `cost_per_token` / `cost_per_request`** (entire economic
+  signal-set absent — Round-6 confirms the Round-5 negative result
+  that public HF datasets do not currently close the operational ×
+  economic join gap).
+- **Recommended Aurelius uses.**
+  - **H200 single-source latency / throughput priors.** Per
+    (quantization, request_rate) cell — first single-campaign H200
+    cell that exists in the corpus. Use TTFT_p99 + TPOT_p99 + ITL_p99
+    for the H200 placement engine's risk priors.
+  - **Quantisation-aware throughput priors.** Five quantisations on
+    the same hardware × same model family gives a cleaner
+    quantisation-effect signal than the multi-source metrum-ai
+    ledger.
+  - **NVFP4 placement breadth.** First NVFP4 coverage in the corpus
+    (5 rows, RedHatAI/gemma-4-31B-it-NVFP4 only). Use for placement
+    breadth only — n=1 per cell forbids p99 claims.
+  - **Concurrency-saturation prior.** Mean_ttft jumps from
+    O(50 ms) at rr=1 to O(34,000 ms) at rr=16 for certain models
+    (e.g. dwetzel/DeepSeek-R1-Distill-Qwen-32B-GPTQ-INT4) — direct
+    measurement of where the serving stack falls over the latency
+    cliff.
+- **Prohibited uses.**
+  - **Real arrival / queue scheduling.** request_rate is a
+    closed-loop concurrency level, not a real arrival trace.
+  - **Generalisation outside H200 SXM MIG + vLLM.** Single GPU
+    class, single engine; cross-engine / cross-GPU extrapolation is
+    unsafe.
+  - **Subgroup p95 / p99 claims for quant=nvfp4.** Only 5 rows
+    across all 5 request rates (1 row per cell) — explicitly
+    flagged in `insufficient_sample_groups`.
+  - **Treating rr=16 highest-concurrency cells as stable.**
+    Backpressure-saturated outliers (mean_ttft up to 34 s for some
+    models); fit non-saturation priors using rr ≤ 8 cells only.
+  - **Goodput / $ denominator calibration.** No cost / energy /
+    carbon fields — economic signals MUST come from operator policy
+    + public pricing prior + grid carbon intensity.
+  - **Pilot-grade SLA truth.** Tier 4 benchmark, not pilot
+    telemetry.
+- **Bounded ingest layout.** One raw CSV (~41 KiB) lives under
+  `data/external/hf/ssakethch__h200-quantization-benchmarks/raw/`
+  and is **gitignored**. Per-config processed `summary.json`,
+  `schema_profile.json`, `schema_mapping.json`,
+  `statistical_rollups.json`, and the 5-row stratified fixture
+  (~5 KiB, covering all 5 quantisations) ARE committed.
+  `analysis_sample.jsonl` (full 275 rows, ~250 KiB) is gitignored;
+  `committed_normalized_sample.jsonl` is NOT written because
+  license=unspecified does not permit redistribution
+  (`committed_normalized_sample_reason_skipped` =
+  `license_unspecified_no_redistribution_promise`). Regenerable
+  via `scripts/ingest_hf_h200_quantization.py`.
+- **Round-6 negative-result finding (economic priority).** The
+  Round-6 audit inspected all 9 round-5 discovery-only candidates.
+  One qualified (this dataset); eight were rejected:
+  `sairamn/gcp-cloud-billing-cost` (synthetic billing — `Total Cost
+  (INR)` pattern, sequential resource IDs, no provenance),
+  `ClarusC64/ai-load-carbon-aware-scheduling-coherence-risk-v0.1`
+  and `ClarusC64/datacenter-power-load-coherence-risk-v0.1`
+  (synthetic text-classification eval tasks, n<1K),
+  `Phipper/pe-energy-infrastructure-training-data` (private-equity
+  finance LLM SFT data, not infrastructure telemetry),
+  `uohna/llm_inference_energy_combined.parquet` (empty repository),
+  `metrum-ai/llm-perf-dashboard` (HF 404 — repository not found),
+  `crozai/vllm-benchmark-coding` (ShareGPT-derived workload input
+  fixtures, duplicate of the existing `sharegpt_aiperf` ingester),
+  `intellistream/sage-agent-benchmark` (agent capability eval,
+  no infrastructure signals). NONE of these added economic
+  signals — the Round-5 economic-overlay gap stands. Aurelius'
+  goodput/$ denominator remains operator-policy +
+  public-pricing-prior + ElectricityMaps/ENTSO-E carbon intensity
+  (already integrated). Records under
+  `data/external/hf_discovery/round6_broadened_discovery_audit_summary.json`.
+
 #### `Lightcap/agent-runtime-telemetry-small` — inaugural `tool_runtime_trace`, Tier-3 cluster-scheduler-trace-family
 
 - **Why this dataset matters for Aurelius.** First public Hugging Face
@@ -1695,10 +1809,50 @@ Re-running `scripts/discover_hf_aurelius_datasets.py` rebuilds
   `docs/CROSS_TRACE_FRONTIER_GENERALIZATION_AUDIT.md` so future
   consumers know how much weight to give curated-vs-measured rows.
 - **Re-audit `ssakethch/h200-quantization-benchmarks` once it
-  declares a license.** 40 LLMs × H200 MIG quantization sweep would
-  be the first H200-MIG coverage in the corpus AND the first
-  40-model breadth quantization comparison. Holding only on the
-  license-and-gating-recorded gate.
+  declares a license.** ~~Holding only on the license-and-gating-
+  recorded gate.~~ Done 2026-06-01 — see Round-6 entry below.
+- **Done 2026-06-01** — Round-6 broadened discovery (focused
+  follow-on of the 9 round-5 discovery-only candidates): ingested
+  `ssakethch/h200-quantization-benchmarks` as Tier-4
+  `latency_benchmark_trace` (275 rows × 21 cols, strong strength).
+  First single-source measured H200 SXM MIG vLLM benchmark in the
+  corpus + first NVFP4 quantisation coverage. Promotion =
+  `promoted_for_performance_priors` (+ `constraint_aware_evaluation`
+  + `training_priors`). License is **unspecified** (no `license:`
+  field in HF card YAML) → `committed_normalized_sample.jsonl` is
+  NOT committed (`committed_normalized_sample_reason_skipped =
+  license_unspecified_no_redistribution_promise`); only the 5-row
+  stratified fixture (~5 KiB, covering all 5 quantisations) is
+  committed. Eight round-5 candidates rejected as discovery-only:
+  `sairamn/gcp-cloud-billing-cost` (synthetic billing),
+  `ClarusC64/ai-load-carbon-aware-scheduling-coherence-risk-v0.1` +
+  `ClarusC64/datacenter-power-load-coherence-risk-v0.1` (synthetic
+  ML eval tasks), `Phipper/pe-energy-infrastructure-training-data`
+  (finance LLM SFT, not infrastructure),
+  `uohna/llm_inference_energy_combined.parquet` (empty repository),
+  `metrum-ai/llm-perf-dashboard` (HF 404),
+  `crozai/vllm-benchmark-coding` (ShareGPT-derived input fixtures,
+  duplicate of `sharegpt_aiperf`),
+  `intellistream/sage-agent-benchmark` (agent capability eval, no
+  infrastructure signals). See §7.1 entry "ssakethch/h200-
+  quantization-benchmarks — Round-6 first measured-source H200 SXM",
+  `scripts/ingest_hf_h200_quantization.py`,
+  `data/external/hf_discovery/round6_broadened_discovery_audit_summary.json`,
+  and `tests/test_hf_h200_quantization_ingest.py` (34 tests, all
+  green).
+- **Round-6 negative-result snapshot (economic priority).** The
+  Round-6 audit re-confirmed the Round-5 finding: NONE of the 9
+  round-5 candidates carry economic signals. The single ingested
+  Round-6 dataset (H200 quantization) is operational-only — no
+  cost / energy / carbon fields. The Aurelius goodput/$ denominator
+  remains operator-policy + public-pricing prior + ElectricityMaps
+  / ENTSO-E carbon intensity. The H200 ingest still adds real
+  alpha to the constraint-aware engine via H200-specific latency /
+  throughput priors and the NVFP4 quantisation coverage cell — the
+  negative-result-on-economics does NOT make the ingest itself a
+  negative result. Recorded in
+  `data/external/hf_discovery/round6_broadened_discovery_audit_summary.json`
+  under `economic_priority_summary`.
 
 ## 11. License + auth
 

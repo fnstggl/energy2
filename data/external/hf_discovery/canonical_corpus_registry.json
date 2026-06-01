@@ -4152,6 +4152,100 @@
       "trust_tier": "tier_5_request_shape_traces"
     },
     {
+      "analysis_sample_bytes": 255591,
+      "analysis_sample_rows": 275,
+      "available_signals": [
+        "ttft",
+        "tpot",
+        "itl",
+        "throughput",
+        "concurrency",
+        "input_tokens",
+        "output_tokens",
+        "gpu_type",
+        "model_id",
+        "engine",
+        "request_arrival",
+        "failure_label",
+        "request_completion"
+      ],
+      "canonical_trace_type": "latency_benchmark_trace",
+      "committed_sample_bytes": 4636,
+      "committed_sample_rows": 5,
+      "config_name": "throughput",
+      "dataset_id": "ssakethch/h200-quantization-benchmarks",
+      "derived_fields": [
+        "concurrency",
+        "model_family",
+        "gpu_type",
+        "gpu_memory_gb",
+        "gpu_partition",
+        "engine"
+      ],
+      "fixture_sample_bytes": 4636,
+      "fixture_sample_rows": 5,
+      "gated": false,
+      "ingestion_timestamp_s": 1780351887.7166264,
+      "license": null,
+      "limitations": [
+        "ssakethch/h200-quantization-benchmarks: benchmark results for 40 quantized + non-quantized instruction-tuned LLMs on NVIDIA H200 SXM (141 GB HBM3e) MIG-partitioned instances via vLLM. Trust Tier 4 (latency_benchmark_trace) \u2014 NOT pilot telemetry.",
+        "LICENSE = unspecified (no `license:` field in the HF dataset card YAML front-matter). Recorded license=None. Bounded normalised sample is NOT committed for this dataset (license_redistribution_status=unspecified). 5-row schema-test fixture is committed as fair-use schema evidence only.",
+        "request_rate is the CONFIGURED concurrency level (1, 2, 4, 8, 16) for the vLLM benchmark_serving.py harness, NOT a real arrival trace. Treat as a closed-loop throughput sweep, not a scheduler arrival process.",
+        "GPU coverage = NVIDIA H200 SXM only. This dataset is the corpus' FIRST measured-source H200 entry (metrum-ai/llm-perfdata carries 10 multi-source-curated H200 rows but those are not a single-campaign measurement). Generalisation OUTSIDE H200 SXM MIG is unsafe.",
+        "Engine = vLLM only. Engine version is NOT recorded. Generalisation to SGLang / TGI / Triton / TensorRT-LLM is unsafe.",
+        "Single failure observation: rr=8 with neuralmagic/DeepSeek-R1-Distill-Qwen-32B-FP8-dynamic shows num_failed=1. dwetzel/DeepSeek-R1-Distill-Qwen-32B-GPTQ-INT4 at rr=16 shows a ~34 s mean_ttft_ms \u2014 saturation regime, not a stable measurement. Aurelius MUST treat the rr=16 highest-concurrency cells as backpressure-saturated outliers when fitting latency priors.",
+        "NO queue / wait / scheduler-state / KV-cache / GPU-utilisation telemetry. Aurelius queue-risk, batch-frontier, KV-cache, and energy-cost modules MUST NOT consume this dataset.",
+        "NO cost / energy / carbon-intensity / billing fields. Goodput/$ denominator MUST remain operator-policy-supplied + public-pricing-prior + ElectricityMaps / ENTSO-E carbon intensity (already integrated). This dataset does NOT close the operational \u00d7 economic join gap.",
+        "model_family is a derived bucket (Llama-3.1 / Llama-3.2 / Qwen3 / Qwen2.5 / DeepSeek-R1-Distill-Qwen / Gemma / Other) \u2014 do not treat as upstream-author-supplied metadata.",
+        "gpu_type / gpu_memory_gb / gpu_partition / engine are CONSTANT per dataset card and labelled field_quality=derived. They are not measured per row.",
+        "NVFP4 coverage is SMALL \u2014 only 5 rows (1 model \u00d7 5 request rates). Subgroup p95/p99 claims for quant=nvfp4 are statistically weak even though overall strength=strong.",
+        "BENCHMARK-ONLY \u2014 Tier 4. Not pilot telemetry. Pilot telemetry remains the only Tier 1 calibration source."
+      ],
+      "missing_signals": [
+        "e2e_latency",
+        "queue_wait",
+        "queue_depth",
+        "gpu_utilization",
+        "memory_pressure",
+        "batch_size",
+        "engine_version",
+        "kv_cache_size",
+        "cache_hit",
+        "kernel_duration",
+        "timeout_label",
+        "sla_label",
+        "autoscaling",
+        "replica_count",
+        "carbon_intensity",
+        "energy_per_request",
+        "cost_per_token",
+        "cost_per_request"
+      ],
+      "promotion_evaluated_at_s": 1780351887.7169764,
+      "promotion_reasons": [],
+      "promotion_state": "promoted_for_performance_priors",
+      "promotion_tags": [
+        "promoted_for_performance_priors",
+        "promoted_for_constraint_aware_evaluation",
+        "promoted_for_training_priors"
+      ],
+      "provenance": "ssakethch/h200-quantization-benchmarks@throughput#data/throughput.csv#git=dcac2be",
+      "proxy_fields": [],
+      "sample_sha256": "02415b853817bb8aa47880b7fbff759d6f39b024ab6c9bb456161f3524be7eaa",
+      "sampling_method": "full_bounded",
+      "schema_mapping_path": "data/external/hf/ssakethch__h200-quantization-benchmarks/throughput/processed/schema_mapping.json",
+      "schema_profile_path": "data/external/hf/ssakethch__h200-quantization-benchmarks/throughput/processed/schema_profile.json",
+      "source_url": "https://huggingface.co/datasets/ssakethch/h200-quantization-benchmarks",
+      "statistical_sample_strength": "strong",
+      "stratification_keys": [
+        "quantization",
+        "request_rate"
+      ],
+      "summary_path_relative": "data/external/hf/ssakethch__h200-quantization-benchmarks/throughput/processed/summary.json",
+      "synthetic_fields": [],
+      "trust_tier": "tier_4_latency_benchmark_traces"
+    },
+    {
       "analysis_sample_bytes": 381462,
       "analysis_sample_rows": 350,
       "available_signals": [
@@ -4230,12 +4324,12 @@
       "trust_tier": "tier_4_latency_benchmark_traces"
     }
   ],
-  "entry_count": 52,
+  "entry_count": 53,
   "modifies_controllers_or_defaults": false,
   "modifies_robust_energy_engine": false,
   "production_claim": false,
   "stage": "federated_benchmark_corpus_v1",
   "trust_hierarchy_note": "Tier 1 (real pilot telemetry) remains the only production calibration source. Promotion here is research-class only.",
   "uses_oracle_as_headline": false,
-  "written_at_s": 1780345342.1448996
+  "written_at_s": 1780351887.7184665
 }

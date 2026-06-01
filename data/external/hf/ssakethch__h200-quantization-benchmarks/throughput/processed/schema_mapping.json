@@ -1,0 +1,372 @@
+{
+  "accepted_columns": [
+    "model",
+    "quant",
+    "request_rate",
+    "successful_reqs",
+    "failed_reqs",
+    "duration_s",
+    "input_tokens",
+    "output_tokens",
+    "req_throughput",
+    "output_tok_throughput",
+    "peak_output_tok_throughput",
+    "total_tok_throughput",
+    "mean_ttft_ms",
+    "median_ttft_ms",
+    "p99_ttft_ms",
+    "mean_tpot_ms",
+    "median_tpot_ms",
+    "p99_tpot_ms",
+    "mean_itl_ms",
+    "median_itl_ms",
+    "p99_itl_ms"
+  ],
+  "columns": [
+    {
+      "aurelius_signal_category": "metadata_only",
+      "dtypes": [
+        "str",
+        "float",
+        "int"
+      ],
+      "field_quality": "real",
+      "normalized_field": "model_id",
+      "notes": "Upstream model identifier (HF org/name).",
+      "raw_column_name": "model",
+      "units": null,
+      "usable_for": [
+        "latency_prior",
+        "throughput_prior"
+      ]
+    },
+    {
+      "aurelius_signal_category": "metadata_only",
+      "dtypes": [
+        "str",
+        "float",
+        "int"
+      ],
+      "field_quality": "real",
+      "normalized_field": "quantization",
+      "notes": "Quantisation regime: awq / gptq / fp8 / bf16 / nvfp4.",
+      "raw_column_name": "quant",
+      "units": null,
+      "usable_for": [
+        "latency_prior",
+        "throughput_prior"
+      ]
+    },
+    {
+      "aurelius_signal_category": "request_arrival",
+      "dtypes": [
+        "str",
+        "float",
+        "int"
+      ],
+      "field_quality": "real",
+      "normalized_field": "request_rate",
+      "notes": "Configured request rate (requests/s) for the vLLM benchmark harness. NOT a real arrival trace.",
+      "raw_column_name": "request_rate",
+      "units": "req/s",
+      "usable_for": [
+        "latency_prior",
+        "throughput_prior",
+        "constraint_aware_backtest"
+      ]
+    },
+    {
+      "aurelius_signal_category": "request_completion",
+      "dtypes": [
+        "str",
+        "float",
+        "int"
+      ],
+      "field_quality": "real",
+      "normalized_field": "num_successful",
+      "notes": "Successful request count for this (model, quant, rate) cell.",
+      "raw_column_name": "successful_reqs",
+      "units": null,
+      "usable_for": [
+        "throughput_prior"
+      ]
+    },
+    {
+      "aurelius_signal_category": "failure_timeout",
+      "dtypes": [
+        "str",
+        "float",
+        "int"
+      ],
+      "field_quality": "real",
+      "normalized_field": "num_failed",
+      "notes": "Failed request count. >0 at rr=8 only for neuralmagic/DeepSeek-R1-Distill-Qwen-32B-FP8-dynamic.",
+      "raw_column_name": "failed_reqs",
+      "units": null,
+      "usable_for": [
+        "latency_prior"
+      ]
+    },
+    {
+      "aurelius_signal_category": "request_completion",
+      "dtypes": [
+        "str",
+        "float",
+        "int"
+      ],
+      "field_quality": "real",
+      "normalized_field": "duration_s",
+      "notes": "Wall time for the run, seconds.",
+      "raw_column_name": "duration_s",
+      "units": "s",
+      "usable_for": [
+        "throughput_prior"
+      ]
+    },
+    {
+      "aurelius_signal_category": "tokens",
+      "dtypes": [
+        "str",
+        "float",
+        "int"
+      ],
+      "field_quality": "real",
+      "normalized_field": "input_tokens",
+      "notes": "Total input tokens across all requests in this cell.",
+      "raw_column_name": "input_tokens",
+      "units": null,
+      "usable_for": [
+        "latency_prior",
+        "throughput_prior"
+      ]
+    },
+    {
+      "aurelius_signal_category": "tokens",
+      "dtypes": [
+        "str",
+        "float",
+        "int"
+      ],
+      "field_quality": "real",
+      "normalized_field": "output_tokens",
+      "notes": "Total generated tokens across all requests in this cell.",
+      "raw_column_name": "output_tokens",
+      "units": null,
+      "usable_for": [
+        "throughput_prior"
+      ]
+    },
+    {
+      "aurelius_signal_category": "throughput",
+      "dtypes": [
+        "str",
+        "float",
+        "int"
+      ],
+      "field_quality": "real",
+      "normalized_field": "request_throughput",
+      "notes": "Request throughput (req/s) over the wall-clock duration.",
+      "raw_column_name": "req_throughput",
+      "units": "req/s",
+      "usable_for": [
+        "throughput_prior"
+      ]
+    },
+    {
+      "aurelius_signal_category": "throughput",
+      "dtypes": [
+        "str",
+        "float",
+        "int"
+      ],
+      "field_quality": "real",
+      "normalized_field": "output_token_throughput",
+      "notes": "Output token throughput (tok/s) \u2014 generation phase.",
+      "raw_column_name": "output_tok_throughput",
+      "units": "tok/s",
+      "usable_for": [
+        "throughput_prior"
+      ]
+    },
+    {
+      "aurelius_signal_category": "throughput",
+      "dtypes": [
+        "str",
+        "float",
+        "int"
+      ],
+      "field_quality": "real",
+      "normalized_field": "peak_output_token_throughput",
+      "notes": "Peak observed output-token throughput in this run.",
+      "raw_column_name": "peak_output_tok_throughput",
+      "units": "tok/s",
+      "usable_for": [
+        "throughput_prior"
+      ]
+    },
+    {
+      "aurelius_signal_category": "throughput",
+      "dtypes": [
+        "str",
+        "float",
+        "int"
+      ],
+      "field_quality": "real",
+      "normalized_field": "total_token_throughput",
+      "notes": "Total (input+output) token throughput (tok/s).",
+      "raw_column_name": "total_tok_throughput",
+      "units": "tok/s",
+      "usable_for": [
+        "throughput_prior"
+      ]
+    },
+    {
+      "aurelius_signal_category": "latency",
+      "dtypes": [
+        "str",
+        "float",
+        "int"
+      ],
+      "field_quality": "real",
+      "normalized_field": "mean_ttft_ms",
+      "notes": "Mean time-to-first-token, milliseconds.",
+      "raw_column_name": "mean_ttft_ms",
+      "units": "ms",
+      "usable_for": [
+        "latency_prior"
+      ]
+    },
+    {
+      "aurelius_signal_category": "latency",
+      "dtypes": [
+        "str",
+        "float",
+        "int"
+      ],
+      "field_quality": "real",
+      "normalized_field": "median_ttft_ms",
+      "notes": "Median time-to-first-token, milliseconds.",
+      "raw_column_name": "median_ttft_ms",
+      "units": "ms",
+      "usable_for": [
+        "latency_prior"
+      ]
+    },
+    {
+      "aurelius_signal_category": "latency",
+      "dtypes": [
+        "str",
+        "float",
+        "int"
+      ],
+      "field_quality": "real",
+      "normalized_field": "p99_ttft_ms",
+      "notes": "p99 time-to-first-token, milliseconds.",
+      "raw_column_name": "p99_ttft_ms",
+      "units": "ms",
+      "usable_for": [
+        "latency_prior"
+      ]
+    },
+    {
+      "aurelius_signal_category": "latency",
+      "dtypes": [
+        "str",
+        "float",
+        "int"
+      ],
+      "field_quality": "real",
+      "normalized_field": "mean_tpot_ms",
+      "notes": "Mean time-per-output-token, milliseconds.",
+      "raw_column_name": "mean_tpot_ms",
+      "units": "ms",
+      "usable_for": [
+        "latency_prior"
+      ]
+    },
+    {
+      "aurelius_signal_category": "latency",
+      "dtypes": [
+        "str",
+        "float",
+        "int"
+      ],
+      "field_quality": "real",
+      "normalized_field": "median_tpot_ms",
+      "notes": "Median time-per-output-token, milliseconds.",
+      "raw_column_name": "median_tpot_ms",
+      "units": "ms",
+      "usable_for": [
+        "latency_prior"
+      ]
+    },
+    {
+      "aurelius_signal_category": "latency",
+      "dtypes": [
+        "str",
+        "float",
+        "int"
+      ],
+      "field_quality": "real",
+      "normalized_field": "p99_tpot_ms",
+      "notes": "p99 time-per-output-token, milliseconds.",
+      "raw_column_name": "p99_tpot_ms",
+      "units": "ms",
+      "usable_for": [
+        "latency_prior"
+      ]
+    },
+    {
+      "aurelius_signal_category": "latency",
+      "dtypes": [
+        "str",
+        "float",
+        "int"
+      ],
+      "field_quality": "real",
+      "normalized_field": "mean_itl_ms",
+      "notes": "Mean inter-token latency, milliseconds.",
+      "raw_column_name": "mean_itl_ms",
+      "units": "ms",
+      "usable_for": [
+        "latency_prior"
+      ]
+    },
+    {
+      "aurelius_signal_category": "latency",
+      "dtypes": [
+        "str",
+        "float",
+        "int"
+      ],
+      "field_quality": "real",
+      "normalized_field": "median_itl_ms",
+      "notes": "Median inter-token latency, milliseconds.",
+      "raw_column_name": "median_itl_ms",
+      "units": "ms",
+      "usable_for": [
+        "latency_prior"
+      ]
+    },
+    {
+      "aurelius_signal_category": "latency",
+      "dtypes": [
+        "str",
+        "float",
+        "int"
+      ],
+      "field_quality": "real",
+      "normalized_field": "p99_itl_ms",
+      "notes": "p99 inter-token latency, milliseconds.",
+      "raw_column_name": "p99_itl_ms",
+      "units": "ms",
+      "usable_for": [
+        "latency_prior"
+      ]
+    }
+  ],
+  "config_name": "throughput",
+  "dataset_id": "ssakethch/h200-quantization-benchmarks",
+  "rejected_columns": [],
+  "unknown_columns": []
+}

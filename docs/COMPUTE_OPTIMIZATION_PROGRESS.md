@@ -3841,3 +3841,197 @@ envelope overhead is broadly representative or Lightcap-specific.
 Remaining PR-#143 next-actions (additional Exgentic shards, optimum
 × AgentPerfBench cross-validation, energy × CO2 carbon-aware
 placement prior, MoE benchmark probe) still pending.
+
+## 2026-06-01 — hf-corpus: Round-6 broadened discovery — ssakethch/h200-quantization-benchmarks (Tier-4) (`claude/cool-lamport-ZBD0r`)
+
+HF discovery / data-engine PR. No scheduler change, no controller change,
+no robust-energy-engine change, no oracle as headline, no Tier 1 promotion,
+no production claim. Round-6 broadened-discovery focused follow-on of the
+9 round-5 discovery-only candidates from
+`data/external/hf_discovery/round5_broadened_discovery_audit_summary.json`.
+
+**One new (dataset, config) ingested + promoted.**
+`ssakethch/h200-quantization-benchmarks @ throughput` (`latency_benchmark_trace`,
+**Tier 4**) — first single-source measured **NVIDIA H200 SXM** (141 GB
+HBM3e, MIG-partitioned) vLLM serving benchmark in the federated corpus.
+275 rows × 21 cols of real `mean_ttft_ms` / `median_ttft_ms` / `p99_ttft_ms`
++ matching TPOT and ITL percentiles + per-cell req / output / total token
+throughput + successful / failed counts + run duration + input / output
+tokens, across 40 instruction-tuned LLMs × 5 quantisations (AWQ / GPTQ /
+FP8 / BF16 / **NVFP4**) × 5 request rates (1, 2, 4, 8, 16).
+Statistical sample strength = **strong** (12-14 rows per (quant,
+request_rate) cell except NVFP4 which has only 1 row per cell —
+explicitly flagged in `insufficient_sample_groups`). Promotion =
+**`promoted_for_performance_priors`** (+ `promoted_for_constraint_aware_evaluation`
++ `promoted_for_training_priors`). License is **unspecified** upstream
+(no `license:` field in HF dataset card YAML) → `committed_normalized_sample.jsonl`
+is NOT written (`committed_normalized_sample_reason_skipped =
+license_unspecified_no_redistribution_promise`); only the 5-row
+stratified fixture (~5 KiB, covering all 5 quantisations) is committed.
+
+**Eight round-5 candidates rejected as discovery-only (not ingested).**
+Recorded in `data/external/hf_discovery/round6_broadened_discovery_audit_summary.json`
+under `discovery_only_records` (and merged into
+`hf_dataset_candidates.json` with `round6_audit_reason` +
+`round6_audit_bucket` per record):
+
+- `sairamn/gcp-cloud-billing-cost` — `reject_synthetic_economics`.
+  Sequential `resource_NNN` IDs, random-looking CPU / memory utilisation
+  paired with arbitrary services, empty README, `Total Cost (INR)`
+  pattern. SYNTHETIC GCP billing.
+- `ClarusC64/ai-load-carbon-aware-scheduling-coherence-risk-v0.1` —
+  `reject_synthetic_eval_task`. Synthetic text-classification eval
+  fixture (n<1K + scorer.py).
+- `ClarusC64/datacenter-power-load-coherence-risk-v0.1` —
+  `reject_synthetic_eval_task`. Same author / template; synthetic ML
+  classification eval.
+- `Phipper/pe-energy-infrastructure-training-data` —
+  `reject_irrelevant_domain`. Private-equity finance LLM SFT data,
+  not infrastructure telemetry.
+- `uohna/llm_inference_energy_combined.parquet` —
+  `reject_empty_repository`. Only `.gitattributes` published;
+  usedStorage=0.
+- `metrum-ai/llm-perf-dashboard` — `reject_repository_not_found`. HF
+  API 404. (Sister `metrum-ai/llm-perfdata` already ingested in PR
+  #141.)
+- `crozai/vllm-benchmark-coding` — `duplicate_existing`. ShareGPT-
+  derived coding-focused conversation fixtures used as INPUT to
+  vLLM's `benchmark_serving.py` (not the benchmark RESULTS). Single
+  `conversations` column. Duplicate of `sharegpt_aiperf` workload
+  shape.
+- `intellistream/sage-agent-benchmark` —
+  `reject_capability_benchmark_no_infra`. Agent capability eval
+  (tool selection / task planning / timing judgement, ~11K QA
+  samples). No serving / scheduling / cost / energy signals.
+
+**Round-6 negative-result finding (economic priority).** The ingested
+H200 dataset carries NO economic columns (no `cost_per_request`,
+`cost_per_token`, `energy_per_request`, `kwh_per_request`,
+`gpu_hour_price_usd`, `carbon_intensity`, `electricity_price`). NONE
+of the 8 rejected round-5 candidates added economic signals either.
+The Round-5 economic-overlay gap therefore stands: Aurelius' goodput/$
+denominator remains operator-policy + public-pricing-prior +
+ElectricityMaps/ENTSO-E carbon intensity (already integrated). The
+H200 ingest still adds REAL alpha to the constraint-aware engine via
+H200-specific latency / throughput priors and the inaugural NVFP4
+quantisation cell — the negative-result-on-economics does NOT make
+the ingest itself a negative result. Recorded in
+`data/external/hf_discovery/round6_broadened_discovery_audit_summary.json::economic_priority_summary`.
+
+**Files changed (PR scope).**
+- `scripts/ingest_hf_h200_quantization.py` — new (≈ 800 lines).
+  Bounded ingest of `data/throughput.csv` (~41 KiB raw); writes
+  schema_profile + schema_mapping + statistical_rollups + summary +
+  5-row fixture + (gitignored) `analysis_sample.jsonl`. Merges the
+  registry entry + updates `hf_dataset_candidates.json` + writes the
+  Round-6 audit summary.
+- `data/external/hf/ssakethch__h200-quantization-benchmarks/throughput/processed/{summary,schema_profile,schema_mapping,statistical_rollups}.json`
+  — new (committed; raw + analysis_sample gitignored).
+- `tests/fixtures/hf/ssakethch__h200-quantization-benchmarks__throughput_sample.jsonl`
+  — new (5 rows, 4.6 KiB, deterministic, covers all 5 quantisations).
+- `data/external/hf_discovery/canonical_corpus_registry.json` — +1
+  entry; entry count 53.
+- `data/external/hf_discovery/hf_dataset_candidates.json` — 9 records
+  updated / added (1 ingested + 8 discovery-only).
+- `data/external/hf_discovery/round6_broadened_discovery_audit_summary.json`
+  — new audit rollup.
+- `docs/HF_DATASET_REGISTRY.md` — §7.1 table row added for the new
+  config; dedicated §7.1 narrative subsection
+  "ssakethch/h200-quantization-benchmarks — Round-6 first
+  measured-source H200 SXM"; §10 next-actions marks the ssakethch
+  re-audit as Done with the Round-6 entry + the eight rejection
+  records.
+- `tests/test_hf_h200_quantization_ingest.py` — new (34 tests).
+
+**Test suite.** `tests/test_hf_h200_quantization_ingest.py` adds 34
+tests, all green. Coverage:
+
+- No raw CSV / `analysis_sample.jsonl` / committed_normalized sample
+  tracked by git (license=unspecified guard).
+- No `HF_TOKEN` / `Bearer ` leak in any committed JSON / fixture.
+- All four processed artefacts present + non-empty.
+- Schema profile records the expected 21 raw columns with no
+  unknown_columns; every column has a dtype + examples.
+- Schema mapping maps the 9 latency columns (mean/median/p99 of
+  TTFT/TPOT/ITL) to `aurelius_signal_category = latency` with
+  `field_quality = real`, and the 4 throughput columns to
+  `throughput`. All field_quality values are in the allowed set; all
+  signal categories are in the allowed set.
+- Promotion gates all pass (schema, fixture, bounded_size,
+  license_and_gating, canonical_trace_type, signals, limitations,
+  use_case, analysis_sample_policy).
+- Promotion state = `promoted_for_performance_priors`; promotion
+  tags include `constraint_aware_evaluation` + `training_priors`.
+- Canonical trace type = `latency_benchmark_trace`; statistical
+  sample strength = `strong`.
+- Fixture vs. analysis sample separation recorded (5 vs 275 rows).
+- Available signals include ttft / tpot / itl / throughput /
+  concurrency; missing signals include queue_wait / queue_depth /
+  gpu_utilization / cost_per_request / energy_per_request /
+  carbon_intensity (Aurelius rules require explicit absence
+  labelling).
+- Limitations disclose Tier 4 + NOT pilot telemetry + H200-only.
+- Fixture is well-formed (5 jsonl rows, each carries
+  `source_dataset_id` + `trace_type` + `gpu_type =
+  "NVIDIA H200 SXM"` + `engine = "vllm"`); covers all 5
+  quantisations; sample sha256 matches `summary.json::sample_sha256`.
+- Statistical rollups include all 9 latency percentiles in
+  `overall`; subgroup counts match the 5×5 (quant × request_rate)
+  grid (14 / 14 / 14 / 12 / 1 per quant per cell); the 5 NVFP4
+  cells are flagged in `insufficient_sample_groups`.
+- Canonical registry contains the new entry; trust_tier =
+  `tier_4_latency_benchmark_traces`; license is `None`; analysis
+  rows = 275; fixture rows = 5.
+- Candidate registry records all 8 round-6 discovery-only IDs with
+  `round6_audit_reason` + `round6_audit_bucket` populated and
+  `recommended_action ∈ {reject_*, duplicate_existing}`.
+- Round-6 audit summary records 1 ingested + 8 discovery-only +
+  the negative-result economic-priority finding.
+
+Cross-suite: the full pre-existing HF test family (468 tests across
+`test_hf_economic_signal_discovery.py`, `test_hf_gap_ingest.py`,
+`test_hf_gap_normalized_samples.py`, `test_hf_llmperf_bedrock_ingest.py`,
+`test_hf_llm_energy_consumption_ingest.py`,
+`test_hf_optimum_benchmark_ingest.py`,
+`test_hf_cara_swissai_audit.py`,
+`test_hf_cara_swissai_analysis_tier.py`,
+`test_hf_agent_llm_traces_ingest.py`) + the latency-benchmark family
+(218 tests across `test_hf_metrum_llmperfdata_ingest.py`,
+`test_hf_latency_benchmarks_ingest.py`,
+`test_hf_lightcap_runtime_telemetry_ingest.py`,
+`test_hf_acmetrace_ingest.py`) + the core promotion / discovery /
+ingestion family (71 tests across `test_hf_dataset_discovery.py`,
+`test_hf_bounded_ingestion.py`, `test_hf_corpus_promotion.py`,
+`test_hf_corpus_evaluation_harness.py`) all remain green.
+
+**Honesty + scope guarantees.** No production claim; no scheduler /
+controller / robust energy engine touched; no oracle as headline;
+no Tier 1 promotion. Single-source H200 measurements explicitly
+labelled Tier 4 (latency_benchmark_trace) — pilot telemetry remains
+the only Tier 1 calibration source. `gpu_type` / `gpu_memory_gb` /
+`gpu_partition` / `engine` constants labelled `field_quality =
+derived` (constant per dataset card, not per-row measurements);
+`concurrency` aliased from `request_rate` labelled
+`field_quality = derived`. `model_family` is a derived bucket
+(Llama-3.1 / Llama-3.2 / Qwen3 / Qwen2.5 / DeepSeek-R1-Distill-Qwen
+/ Gemma / Other). The `limitations` block pins (a) license =
+unspecified, (b) closed-loop concurrency (not a real arrival
+trace), (c) H200-only generalisation envelope, (d) vLLM-only engine
+envelope, (e) NVFP4 subgroup insufficient-sample, (f) rr=16
+backpressure-saturated outliers, (g) NO queue / wait / scheduler /
+KV / GPU-util telemetry, (h) NO cost / energy / carbon fields, (i)
+Tier 4 benchmark not pilot. Raw CSV gitignored;
+`analysis_sample.jsonl` gitignored; `committed_normalized_sample.jsonl`
+deliberately NOT written under license=unspecified.
+
+**Next.** Cross-validate the H200 single-source measurements against
+the metrum-ai/llm-perfdata multi-source-curated H200 rows (10 rows)
+to surface any cross-source methodology drift. Continue Round-7 HF
+discovery only when a new high-priority candidate surfaces — the
+known-shape gaps now are: (a) a public Tier-2 telemetry export with
+ACTUAL queue / GPU-util / replica state alongside latency (the CARA
+analysis-tier still dominates this), (b) a measured-source dataset
+joining operational telemetry with economic signals (the binding
+Aurelius gap; Round 6 confirms it remains open). Pilot telemetry
+(Tier 1) remains the only path to production calibration — no
+HF dataset closes that gate.
