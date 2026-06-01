@@ -1,0 +1,388 @@
+{
+  "accepted_columns": [
+    "benchmark",
+    "collected_at",
+    "harness",
+    "max_tokens",
+    "models",
+    "session_id",
+    "spans",
+    "total_tokens"
+  ],
+  "columns": [
+    {
+      "aurelius_signal_category": "metadata_only",
+      "dtypes": [
+        "str"
+      ],
+      "field_quality": "real",
+      "missing_rate": null,
+      "normalized_field": "benchmark",
+      "notes": "Benchmark suite (swebench / appworld / tau2_airline / ...).",
+      "presence_rate": null,
+      "raw_column_name": "benchmark",
+      "usable_for": [
+        "workload_shape_prior"
+      ]
+    },
+    {
+      "aurelius_signal_category": "metadata_only",
+      "dtypes": [
+        "str"
+      ],
+      "field_quality": "real",
+      "missing_rate": null,
+      "normalized_field": "collected_at_iso",
+      "notes": "When the trace was collected (ISO timestamp).",
+      "presence_rate": null,
+      "raw_column_name": "collected_at",
+      "usable_for": [
+        "workload_shape_prior"
+      ]
+    },
+    {
+      "aurelius_signal_category": "metadata_only",
+      "dtypes": [
+        "str"
+      ],
+      "field_quality": "real",
+      "missing_rate": null,
+      "normalized_field": "harness",
+      "notes": "Agent harness label (openai_solo / tool_calling / claude_code / ...).",
+      "presence_rate": null,
+      "raw_column_name": "harness",
+      "usable_for": [
+        "workload_shape_prior"
+      ]
+    },
+    {
+      "aurelius_signal_category": "tokens",
+      "dtypes": [
+        "int"
+      ],
+      "field_quality": "real",
+      "missing_rate": null,
+      "normalized_field": "session_max_tokens",
+      "notes": "Session-level max-tokens config (parameter).",
+      "presence_rate": null,
+      "raw_column_name": "max_tokens",
+      "usable_for": [
+        "workload_shape_prior"
+      ]
+    },
+    {
+      "aurelius_signal_category": "metadata_only",
+      "dtypes": [
+        "list"
+      ],
+      "field_quality": "real",
+      "missing_rate": null,
+      "normalized_field": "session_models_json",
+      "notes": "List of models used across the session (JSON-stringified).",
+      "presence_rate": null,
+      "raw_column_name": "models",
+      "usable_for": [
+        "workload_shape_prior"
+      ]
+    },
+    {
+      "aurelius_signal_category": "session_id",
+      "dtypes": [
+        "str"
+      ],
+      "field_quality": "real",
+      "missing_rate": null,
+      "normalized_field": "session_id",
+      "notes": "Agent session UUID. Spans in the same session share it.",
+      "presence_rate": null,
+      "raw_column_name": "session_id",
+      "usable_for": [
+        "cache_residency_evaluation",
+        "arrival_forecast",
+        "workload_shape_prior"
+      ]
+    },
+    {
+      "aurelius_signal_category": "session_id",
+      "dtypes": [
+        "list"
+      ],
+      "field_quality": "real",
+      "missing_rate": null,
+      "normalized_field": "span_index",
+      "notes": "Session-level spans list; flattened per-span before mapping.",
+      "presence_rate": null,
+      "raw_column_name": "spans",
+      "usable_for": [
+        "workload_shape_prior",
+        "cache_residency_evaluation"
+      ]
+    },
+    {
+      "aurelius_signal_category": "tokens",
+      "dtypes": [
+        "int"
+      ],
+      "field_quality": "real",
+      "missing_rate": null,
+      "normalized_field": "session_total_tokens",
+      "notes": "Session-level total-tokens aggregate.",
+      "presence_rate": null,
+      "raw_column_name": "total_tokens",
+      "usable_for": [
+        "workload_shape_prior"
+      ]
+    }
+  ],
+  "config_name": "swebench_claude_code_shard12",
+  "dataset_id": "Exgentic/agent-llm-traces",
+  "nested_columns": [
+    {
+      "aurelius_signal_category": "metadata_only",
+      "field_quality": "real",
+      "normalized_field": "operation_name",
+      "notes": "OTel attributes dict; flattened keys mapped below.",
+      "raw_column_name": "spans[].attributes",
+      "usable_for": [
+        "workload_shape_prior"
+      ]
+    },
+    {
+      "aurelius_signal_category": "metadata_only",
+      "field_quality": "real",
+      "normalized_field": "benchmark",
+      "notes": "Benchmark suite (swebench / appworld / tau2_airline / ...).",
+      "raw_column_name": "spans[].benchmark",
+      "usable_for": [
+        "workload_shape_prior"
+      ]
+    },
+    {
+      "aurelius_signal_category": "request_completion",
+      "field_quality": "real",
+      "normalized_field": "end_time_iso",
+      "notes": "RFC3339 ISO span end; epoch seconds also exposed as end_time_s.",
+      "raw_column_name": "spans[].end_time",
+      "usable_for": [
+        "latency_prior"
+      ]
+    },
+    {
+      "aurelius_signal_category": "metadata_only",
+      "field_quality": "real",
+      "normalized_field": "harness",
+      "notes": "Agent harness label (openai_solo / tool_calling / claude_code / ...).",
+      "raw_column_name": "spans[].harness",
+      "usable_for": [
+        "workload_shape_prior"
+      ]
+    },
+    {
+      "aurelius_signal_category": "metadata_only",
+      "field_quality": "real",
+      "normalized_field": "span_kind",
+      "notes": "OTel SpanKind (SPAN_KIND_CLIENT / SERVER / INTERNAL).",
+      "raw_column_name": "spans[].kind",
+      "usable_for": [
+        "workload_shape_prior"
+      ]
+    },
+    {
+      "aurelius_signal_category": "metadata_only",
+      "field_quality": "real",
+      "normalized_field": "session_models_json",
+      "notes": "List of models used across the session (JSON-stringified).",
+      "raw_column_name": "spans[].models",
+      "usable_for": [
+        "workload_shape_prior"
+      ]
+    },
+    {
+      "aurelius_signal_category": "metadata_only",
+      "field_quality": "real",
+      "normalized_field": "span_name",
+      "notes": "Span name (typically 'chat <model>').",
+      "raw_column_name": "spans[].name",
+      "usable_for": [
+        "workload_shape_prior"
+      ]
+    },
+    {
+      "aurelius_signal_category": "metadata_only",
+      "field_quality": "real",
+      "normalized_field": "span_type",
+      "notes": "OTel resource_attributes dict; not flattened beyond service id.",
+      "raw_column_name": "spans[].resource_attributes",
+      "usable_for": [
+        "workload_shape_prior"
+      ]
+    },
+    {
+      "aurelius_signal_category": "session_id",
+      "field_quality": "real",
+      "normalized_field": "session_id",
+      "notes": "Agent session UUID. Spans in the same session share it.",
+      "raw_column_name": "spans[].session_id",
+      "usable_for": [
+        "cache_residency_evaluation",
+        "arrival_forecast",
+        "workload_shape_prior"
+      ]
+    },
+    {
+      "aurelius_signal_category": "metadata_only",
+      "field_quality": "real",
+      "normalized_field": "span_id",
+      "notes": "OpenTelemetry span identifier.",
+      "raw_column_name": "spans[].span_id",
+      "usable_for": [
+        "workload_shape_prior"
+      ]
+    },
+    {
+      "aurelius_signal_category": "request_arrival",
+      "field_quality": "real",
+      "normalized_field": "start_time_iso",
+      "notes": "RFC3339 ISO span start; epoch seconds also exposed as start_time_s.",
+      "raw_column_name": "spans[].start_time",
+      "usable_for": [
+        "arrival_forecast",
+        "latency_prior"
+      ]
+    },
+    {
+      "aurelius_signal_category": "failure_timeout",
+      "field_quality": "real",
+      "normalized_field": "status_code",
+      "notes": "OTel status struct; code 2 == ERROR is the failure_timeout signal.",
+      "raw_column_name": "spans[].status",
+      "usable_for": [
+        "latency_prior",
+        "cache_residency_evaluation"
+      ]
+    },
+    {
+      "aurelius_signal_category": "session_id",
+      "field_quality": "real",
+      "normalized_field": "session_id",
+      "notes": "OTel trace identifier; aliased onto session_id.",
+      "raw_column_name": "spans[].trace_id",
+      "usable_for": [
+        "workload_shape_prior"
+      ]
+    },
+    {
+      "aurelius_signal_category": "metadata_only",
+      "field_quality": "real",
+      "normalized_field": "span_type",
+      "notes": "Provider-specific span subtype.",
+      "raw_column_name": "spans[].type",
+      "usable_for": [
+        "workload_shape_prior"
+      ]
+    },
+    {
+      "aurelius_signal_category": "tokens",
+      "field_quality": "derived",
+      "normalized_field": "input_messages_chars",
+      "notes": "Raw payload string DROPPED; only character count retained.",
+      "raw_column_name": "spans[].attributes.gen_ai.input.messages",
+      "usable_for": [
+        "workload_shape_prior"
+      ]
+    },
+    {
+      "aurelius_signal_category": "metadata_only",
+      "field_quality": "real",
+      "normalized_field": "operation_name",
+      "notes": "gen_ai semantic-convention operation name.",
+      "raw_column_name": "spans[].attributes.gen_ai.operation.name",
+      "usable_for": [
+        "workload_shape_prior"
+      ]
+    },
+    {
+      "aurelius_signal_category": "tokens",
+      "field_quality": "derived",
+      "normalized_field": "output_messages_chars",
+      "notes": "Raw payload string DROPPED; only character count retained.",
+      "raw_column_name": "spans[].attributes.gen_ai.output.messages",
+      "usable_for": [
+        "workload_shape_prior"
+      ]
+    },
+    {
+      "aurelius_signal_category": "metadata_only",
+      "field_quality": "real",
+      "normalized_field": "request_model",
+      "notes": "gen_ai requested model id.",
+      "raw_column_name": "spans[].attributes.gen_ai.request.model",
+      "usable_for": [
+        "workload_shape_prior"
+      ]
+    },
+    {
+      "aurelius_signal_category": "failure_timeout",
+      "field_quality": "real",
+      "normalized_field": "finish_reasons",
+      "notes": "List of finish reasons (stop / length / tool_calls).",
+      "raw_column_name": "spans[].attributes.gen_ai.response.finish_reasons",
+      "usable_for": [
+        "latency_prior"
+      ]
+    },
+    {
+      "aurelius_signal_category": "metadata_only",
+      "field_quality": "real",
+      "normalized_field": "response_id",
+      "notes": "Provider-side response id; ignored for replay.",
+      "raw_column_name": "spans[].attributes.gen_ai.response.id",
+      "usable_for": [
+        "workload_shape_prior"
+      ]
+    },
+    {
+      "aurelius_signal_category": "metadata_only",
+      "field_quality": "real",
+      "normalized_field": "response_model",
+      "notes": "gen_ai responding model id.",
+      "raw_column_name": "spans[].attributes.gen_ai.response.model",
+      "usable_for": [
+        "workload_shape_prior"
+      ]
+    },
+    {
+      "aurelius_signal_category": "metadata_only",
+      "field_quality": "derived",
+      "normalized_field": "tool_definitions_chars",
+      "notes": "Raw payload string DROPPED; only character count retained.",
+      "raw_column_name": "spans[].attributes.gen_ai.tool.definitions",
+      "usable_for": [
+        "workload_shape_prior"
+      ]
+    },
+    {
+      "aurelius_signal_category": "tokens",
+      "field_quality": "real",
+      "normalized_field": "input_tokens",
+      "notes": "Real input token count.",
+      "raw_column_name": "spans[].attributes.gen_ai.usage.input_tokens",
+      "usable_for": [
+        "latency_prior",
+        "arrival_forecast"
+      ]
+    },
+    {
+      "aurelius_signal_category": "tokens",
+      "field_quality": "real",
+      "normalized_field": "output_tokens",
+      "notes": "Real output token count.",
+      "raw_column_name": "spans[].attributes.gen_ai.usage.output_tokens",
+      "usable_for": [
+        "latency_prior",
+        "arrival_forecast"
+      ]
+    }
+  ],
+  "rejected_columns": []
+}

@@ -1,0 +1,448 @@
+{
+  "config_name": "swebench_claude_code_shard12",
+  "dataset_id": "Exgentic/agent-llm-traces",
+  "example_values": {
+    "benchmark": [
+      "'swebench'",
+      "'swebench'",
+      "'swebench'"
+    ],
+    "collected_at_iso": [
+      "'2026-05-07T09:05:45.133411'",
+      "'2026-05-07T09:05:45.133411'",
+      "'2026-05-07T09:05:45.133411'"
+    ],
+    "duration_ms": [
+      "14716.823816299438",
+      "23206.4208984375",
+      "31419.247150421143"
+    ],
+    "end_time_iso": [
+      "'2026-04-20T11:45:09.572759+00:00'",
+      "'2026-04-20T11:45:41.872387+00:00'",
+      "'2026-04-20T11:46:22.008845+00:00'"
+    ],
+    "end_time_s": [
+      "1776685509.572759",
+      "1776685541.872387",
+      "1776685582.008845"
+    ],
+    "finish_reasons": [
+      "[\"tool_calls\"]",
+      "[\"tool_calls\"]",
+      "[\"tool_calls\"]"
+    ],
+    "finish_reasons_count": [
+      "1",
+      "1",
+      "1"
+    ],
+    "harness": [
+      "'claude_code'",
+      "'claude_code'",
+      "'claude_code'"
+    ],
+    "input_messages_chars": [
+      "5483",
+      "6702",
+      "7857"
+    ],
+    "input_messages_hash": [
+      "'6c457e71ef9f3972'",
+      "'7c9136ed72f1cc1f'",
+      "'85ba102ab4dd85ad'"
+    ],
+    "input_tokens": [
+      "18987",
+      "19247",
+      "19559"
+    ],
+    "is_error": [
+      "False",
+      "False",
+      "False"
+    ],
+    "operation_name": [
+      "'chat'",
+      "'chat'",
+      "'chat'"
+    ],
+    "output_messages_chars": [
+      "976",
+      "275",
+      "298"
+    ],
+    "output_tokens": [
+      "217",
+      "64",
+      "62"
+    ],
+    "request_model": [
+      "'azure/DeepSeek-V3.2'",
+      "'azure/DeepSeek-V3.2'",
+      "'azure/DeepSeek-V3.2'"
+    ],
+    "response_id": [
+      "'65ec2b356a404255b036c54eb911d350'",
+      "'518f96830f7e487cb706b3718db45439'",
+      "'f82627bc13a14b0aa57c4ffee763108b'"
+    ],
+    "response_model": [
+      "'azure/DeepSeek-V3.2'",
+      "'azure/DeepSeek-V3.2'",
+      "'azure/DeepSeek-V3.2'"
+    ],
+    "session_id": [
+      "'e3bfdef4aca3_a9f89b3e'",
+      "'e3bfdef4aca3_a9f89b3e'",
+      "'e3bfdef4aca3_a9f89b3e'"
+    ],
+    "session_max_tokens": [
+      "67663",
+      "67663",
+      "67663"
+    ],
+    "session_models_count": [
+      "1",
+      "1",
+      "1"
+    ],
+    "session_models_json": [
+      "'[\"azure/DeepSeek-V3.2\"]'",
+      "'[\"azure/DeepSeek-V3.2\"]'",
+      "'[\"azure/DeepSeek-V3.2\"]'"
+    ],
+    "session_total_tokens": [
+      "3850086",
+      "3850086",
+      "3850086"
+    ],
+    "span_id": [
+      "'aac422b0b74dbc4f'",
+      "'a7f5a9fb8d9a6c4c'",
+      "'17f0213662c674fe'"
+    ],
+    "span_index": [
+      "0",
+      "1",
+      "2"
+    ],
+    "span_kind": [
+      "'SPAN_KIND_CLIENT'",
+      "'SPAN_KIND_CLIENT'",
+      "'SPAN_KIND_CLIENT'"
+    ],
+    "span_name": [
+      "'chat azure/DeepSeek-V3.2'",
+      "'chat azure/DeepSeek-V3.2'",
+      "'chat azure/DeepSeek-V3.2'"
+    ],
+    "span_type": [
+      "'llm_call'",
+      "'llm_call'",
+      "'llm_call'"
+    ],
+    "start_time_iso": [
+      "'2026-04-20T11:44:54.855935+00:00'",
+      "'2026-04-20T11:45:18.665966+00:00'",
+      "'2026-04-20T11:45:50.589598+00:00'"
+    ],
+    "start_time_s": [
+      "1776685494.855935",
+      "1776685518.665966",
+      "1776685550.589598"
+    ],
+    "status_code": [
+      "1",
+      "1",
+      "1"
+    ],
+    "status_message": [
+      "''",
+      "''",
+      "''"
+    ],
+    "tool_definitions_chars": [
+      "63235",
+      "63235",
+      "63235"
+    ]
+  },
+  "file_size_bytes": 41029485,
+  "flattened_columns": [
+    "benchmark",
+    "collected_at_iso",
+    "duration_ms",
+    "end_time_iso",
+    "end_time_s",
+    "finish_reasons",
+    "finish_reasons_count",
+    "harness",
+    "input_messages_chars",
+    "input_messages_hash",
+    "input_tokens",
+    "is_error",
+    "operation_name",
+    "output_messages_chars",
+    "output_tokens",
+    "request_model",
+    "response_id",
+    "response_model",
+    "session_id",
+    "session_max_tokens",
+    "session_models_count",
+    "session_models_json",
+    "session_total_tokens",
+    "span_id",
+    "span_index",
+    "span_kind",
+    "span_name",
+    "span_type",
+    "start_time_iso",
+    "start_time_s",
+    "status_code",
+    "status_message",
+    "tool_definitions_chars"
+  ],
+  "flattened_dtypes": {
+    "benchmark": [
+      "str"
+    ],
+    "collected_at_iso": [
+      "str"
+    ],
+    "duration_ms": [
+      "float"
+    ],
+    "end_time_iso": [
+      "str"
+    ],
+    "end_time_s": [
+      "float"
+    ],
+    "finish_reasons": [
+      "list"
+    ],
+    "finish_reasons_count": [
+      "int"
+    ],
+    "harness": [
+      "str"
+    ],
+    "input_messages_chars": [
+      "int"
+    ],
+    "input_messages_hash": [
+      "str"
+    ],
+    "input_tokens": [
+      "int"
+    ],
+    "is_error": [
+      "bool"
+    ],
+    "operation_name": [
+      "str"
+    ],
+    "output_messages_chars": [
+      "int"
+    ],
+    "output_tokens": [
+      "int"
+    ],
+    "request_model": [
+      "str"
+    ],
+    "response_id": [
+      "null",
+      "str"
+    ],
+    "response_model": [
+      "str"
+    ],
+    "session_id": [
+      "str"
+    ],
+    "session_max_tokens": [
+      "int"
+    ],
+    "session_models_count": [
+      "int"
+    ],
+    "session_models_json": [
+      "str"
+    ],
+    "session_total_tokens": [
+      "int"
+    ],
+    "span_id": [
+      "str"
+    ],
+    "span_index": [
+      "int"
+    ],
+    "span_kind": [
+      "str"
+    ],
+    "span_name": [
+      "str"
+    ],
+    "span_type": [
+      "str"
+    ],
+    "start_time_iso": [
+      "str"
+    ],
+    "start_time_s": [
+      "float"
+    ],
+    "status_code": [
+      "int"
+    ],
+    "status_message": [
+      "str"
+    ],
+    "tool_definitions_chars": [
+      "int"
+    ]
+  },
+  "inspected_row_count": 2294,
+  "inspected_session_count": 46,
+  "missing_rates": {
+    "benchmark": 0.0,
+    "collected_at_iso": 0.0,
+    "duration_ms": 0.0,
+    "end_time_iso": 0.0,
+    "end_time_s": 0.0,
+    "finish_reasons": 0.0,
+    "finish_reasons_count": 0.0,
+    "harness": 0.0,
+    "input_messages_chars": 0.0,
+    "input_messages_hash": 0.0,
+    "input_tokens": 0.0,
+    "is_error": 0.0,
+    "operation_name": 0.0,
+    "output_messages_chars": 0.0,
+    "output_tokens": 0.0,
+    "request_model": 0.0,
+    "response_id": 0.0,
+    "response_model": 0.0,
+    "session_id": 0.0,
+    "session_max_tokens": 0.0,
+    "session_models_count": 0.0,
+    "session_models_json": 0.0,
+    "session_total_tokens": 0.0,
+    "span_id": 0.0,
+    "span_index": 0.0,
+    "span_kind": 0.0,
+    "span_name": 0.0,
+    "span_type": 0.0,
+    "start_time_iso": 0.0,
+    "start_time_s": 0.0,
+    "status_code": 0.0,
+    "status_message": 0.0,
+    "tool_definitions_chars": 0.0
+  },
+  "presence_rates": {
+    "benchmark": 1.0,
+    "collected_at_iso": 1.0,
+    "duration_ms": 1.0,
+    "end_time_iso": 1.0,
+    "end_time_s": 1.0,
+    "finish_reasons": 1.0,
+    "finish_reasons_count": 1.0,
+    "harness": 1.0,
+    "input_messages_chars": 1.0,
+    "input_messages_hash": 1.0,
+    "input_tokens": 1.0,
+    "is_error": 1.0,
+    "operation_name": 1.0,
+    "output_messages_chars": 1.0,
+    "output_tokens": 1.0,
+    "request_model": 1.0,
+    "response_id": 1.0,
+    "response_model": 1.0,
+    "session_id": 1.0,
+    "session_max_tokens": 1.0,
+    "session_models_count": 1.0,
+    "session_models_json": 1.0,
+    "session_total_tokens": 1.0,
+    "span_id": 1.0,
+    "span_index": 1.0,
+    "span_kind": 1.0,
+    "span_name": 1.0,
+    "span_type": 1.0,
+    "start_time_iso": 1.0,
+    "start_time_s": 1.0,
+    "status_code": 1.0,
+    "status_message": 1.0,
+    "tool_definitions_chars": 1.0
+  },
+  "raw_attribute_keys": [
+    "gen_ai.input.messages",
+    "gen_ai.operation.name",
+    "gen_ai.output.messages",
+    "gen_ai.request.model",
+    "gen_ai.response.finish_reasons",
+    "gen_ai.response.id",
+    "gen_ai.response.model",
+    "gen_ai.tool.definitions",
+    "gen_ai.usage.input_tokens",
+    "gen_ai.usage.output_tokens"
+  ],
+  "raw_columns": [
+    "benchmark",
+    "collected_at",
+    "harness",
+    "max_tokens",
+    "models",
+    "session_id",
+    "spans",
+    "total_tokens"
+  ],
+  "raw_session_dtypes": {
+    "benchmark": [
+      "str"
+    ],
+    "collected_at": [
+      "str"
+    ],
+    "harness": [
+      "str"
+    ],
+    "max_tokens": [
+      "int"
+    ],
+    "models": [
+      "list"
+    ],
+    "session_id": [
+      "str"
+    ],
+    "spans": [
+      "list"
+    ],
+    "total_tokens": [
+      "int"
+    ]
+  },
+  "raw_span_keys": [
+    "attributes",
+    "benchmark",
+    "end_time",
+    "harness",
+    "kind",
+    "models",
+    "name",
+    "resource_attributes",
+    "session_id",
+    "span_id",
+    "start_time",
+    "status",
+    "trace_id",
+    "type"
+  ],
+  "source_files_inspected": [
+    "data/train-00012-of-00039.parquet"
+  ]
+}

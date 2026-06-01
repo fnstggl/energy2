@@ -1,5 +1,5 @@
 {
-  "candidate_count": 48,
+  "candidate_count": 51,
   "candidates": [
     {
       "aurelius_use_case": "Workload replay shape; eval/batch frontier scenarios; request mix modelling; prompt/output distribution priors.",
@@ -274,6 +274,93 @@
       "recommended_action": "reject_low_value",
       "schema_available": false,
       "schema_quality_score": 1,
+      "trust_level": "tier_5_request_shape_traces"
+    },
+    {
+      "aurelius_use_case": "Per-LLM-call duration / tokens / status / model priors for AGENT workloads (Claude Code / OpenAI tool_calling / Gemini / DeepSeek / Kimi). Workload-shape evidence only; the duration_ms is closed-API end-to-end (network + provider serving), NOT a GPU TTFT/TPOT signal.",
+      "available_signals": [
+        "arrivals",
+        "request_timestamps",
+        "workload_shape",
+        "customer_traffic_mix",
+        "routing_proxy",
+        "cache_reuse",
+        "prefix_reuse",
+        "latency",
+        "sla_label",
+        "timeout_label"
+      ],
+      "available_splits": [
+        {
+          "config": "default",
+          "num_examples": 1781,
+          "split": "train"
+        }
+      ],
+      "candidate_trace_type": "request_shape_trace",
+      "classification_evidence": {
+        "request_shape_trace": [
+          "OpenTelemetry spans with gen_ai.usage.input_tokens / output_tokens",
+          "session_id + spans + start_time/end_time \u2192 workload shape"
+        ]
+      },
+      "configs": [
+        "default"
+      ],
+      "dataset_id": "Exgentic/agent-llm-traces",
+      "dataset_url": "https://huggingface.co/datasets/Exgentic/agent-llm-traces",
+      "discovery_timestamp_s": 1780308684.0266542,
+      "downloads": 2117,
+      "estimated_size": [
+        "1K<n<10K"
+      ],
+      "feature_names": [
+        "harness",
+        "benchmark",
+        "models",
+        "max_tokens",
+        "total_tokens",
+        "session_id",
+        "spans",
+        "collected_at"
+      ],
+      "frontier_value_score": 3,
+      "gated_status": "public",
+      "ingestion_feasibility_score": 5,
+      "last_modified": "2026-05-14T18:50:50.000Z",
+      "license": "cdla-permissive-2.0",
+      "likes": 17,
+      "matched_keywords": [
+        "agent_workload::OpenTelemetry",
+        "request_shape::gen_ai_tokens",
+        "latency::closed_api_duration"
+      ],
+      "missing_signals": [
+        "ttft",
+        "tpot",
+        "itl",
+        "queue_state",
+        "gpu_utilization",
+        "gpu_memory",
+        "memory_pressure",
+        "replica_count",
+        "autoscaling_proxy",
+        "capacity_proxy",
+        "kv_block_hashes",
+        "model_load_event",
+        "model_unload_event"
+      ],
+      "not_recommended_uses": [
+        "GPU-serving latency calibration (durations include provider routing + network)",
+        "TTFT / TPOT inference (no per-token timing)",
+        "Production dynamic-frontier calibration",
+        "Cross-vendor latency generalisation (azure-hosted models in this shard)"
+      ],
+      "overall_priority_score": 3.5,
+      "production_similarity_score": 2,
+      "recommended_action": "ingest_now_bounded",
+      "schema_available": true,
+      "schema_quality_score": 5,
       "trust_level": "tier_5_request_shape_traces"
     },
     {
@@ -4686,7 +4773,31 @@
     "jaytonde05/iris-prefix-cache-benchmark",
     "osteele/llm-calibration-db"
   ],
-  "last_updated_at_s": 1780287174.1208394,
+  "focused_audit_2026_06_01b": {
+    "audit_date": "2026-06-01",
+    "audit_label": "exgentic_agent_llm_traces_followup_ingest",
+    "audit_timestamp_s": 1780308684.0275795,
+    "outcomes": {
+      "Exgentic/agent-llm-traces": {
+        "action": "ingest_now_bounded",
+        "config_ingested": "swebench_claude_code_shard12",
+        "informs": [
+          "workload_modelling"
+        ],
+        "license": "cdla-permissive-2.0",
+        "notes": "Bounded ingest of one mid-sized parquet (train-00012-of-00039, 41 MB raw, gitignored). Flattens OTel session-spans to per-span request rows with duration_ms + tokens + model + status + finish reasons + payload-size proxies. duration_ms is closed-API e2e \u2014 NOT a GPU TTFT/TPOT signal. Other shards remain available for follow-on ingest.",
+        "promotion_state": "promoted_for_training_priors",
+        "promotion_tags": [
+          "promoted_for_training_priors"
+        ],
+        "rows_sampled": 2294,
+        "strength": "moderate",
+        "trace_type": "request_shape_trace",
+        "trust_tier": "tier_5_request_shape_traces"
+      }
+    }
+  },
+  "last_updated_at_s": 1780308684.0275779,
   "production_claim": false,
   "query_groups_used": [
     "latency_benchmark",
@@ -4706,5 +4817,5 @@
   ],
   "stage": "hf_dataset_discovery_v1",
   "updated_at_iso": "2026-06-01T06:18:30Z",
-  "updated_at_s": 1780294710.8910913
+  "updated_at_s": 1780308684.0275784
 }

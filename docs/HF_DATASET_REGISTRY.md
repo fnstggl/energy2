@@ -236,6 +236,7 @@ Rules (binding):
 | `optimum-benchmark/llm-perf-leaderboard` | **`pytorch_cuda_bnb_1xT4`** | `latency_benchmark_trace` | Tier 4 | `promoted_for_performance_priors` (+ `constraint_aware_evaluation`, `training_priors`) | 5 | 775 | strong | 2026-06-01 |
 | `optimum-benchmark/llm-perf-leaderboard` | **`pytorch_cuda_torchao_1xA10`** | `latency_benchmark_trace` | Tier 4 | `promoted_for_training_priors` | 5 | 15 | weak | 2026-06-01 |
 | `optimum-benchmark/llm-perf-leaderboard` | **`pytorch_cpu_unquantized_32vCPU_C7i`** | `latency_benchmark_trace` | Tier 4 | `promoted_for_performance_priors` (+ `constraint_aware_evaluation`, `training_priors`) | 5 | **1,128** | strong | 2026-06-01 |
+| `Exgentic/agent-llm-traces` | **`swebench_claude_code_shard12`** | `request_shape_trace` | Tier 5 | `promoted_for_training_priors` | 5 | **2,294** | moderate | 2026-06-01 |
 
 > **CARA** is the first Tier 2 (public telemetry trace) entry in the
 > federated corpus. CARA **train_flat** + **train_queue_details** are
@@ -661,6 +662,95 @@ Rules (binding):
   from the bounded raw download via
   `scripts/ingest_hf_optimum_benchmark.py`.
 
+> **Exgentic agent-LLM-traces follow-on ingest 2026-06-01 (c).** The
+> "next-action" candidate from PR #135 has now been bounded-ingested as
+> Tier-5 `request_shape_trace`. This fills the agent-workload per-call
+> duration / token-usage gap that the federated corpus previously covered
+> only via `sammshen/lmcache-agentic-traces` (single LMCache shard). One
+> mid-sized parquet (`train-00012-of-00039`, 41 MB raw, gitignored) gives
+> 46 SWE-bench × claude_code agent sessions across two azure-hosted
+> models (DeepSeek-V3.2 + Kimi-K2.5), flattened to **2,294 spans /
+> request rows** at moderate strength. cdla-permissive-2.0 license permits
+> redistribution → a 2.3 MiB normalised sample is committed under the
+> 100 MiB-per-file / 300 MiB-per-PR policy.
+>
+> Ingest script: `scripts/ingest_hf_agent_llm_traces.py`. Registry
+> updater: `scripts/register_hf_agent_llm_traces.py`. Candidate updater:
+> `scripts/update_hf_candidates_agent_llm_traces.py`. Cross-dataset
+> rollup: `data/external/hf_discovery/agent_llm_traces_ingest_summary.json`.
+> Tests: `tests/test_hf_agent_llm_traces_ingest.py` (20 tests, all green).
+
+#### Exgentic agent-LLM-traces — Tier-5 OpenTelemetry agent spans
+
+- **Provenance.** [`Exgentic/agent-llm-traces`](https://huggingface.co/datasets/Exgentic/agent-llm-traces)
+  — 1,781 OpenTelemetry agent traces collected May 2026 across 6
+  benchmarks × 5 frameworks × 6 frontier models (Claude / GPT / Gemini /
+  DeepSeek / Kimi). License: cdla-permissive-2.0 (Community Data License
+  Agreement, permissive variant 2.0 — explicitly redistribution-friendly
+  for derivative datasets). Total upstream size 2.77 GB across 39
+  parquet files (range 0.27 MiB → 137 MiB per file).
+- **Configs ingested.** `swebench_claude_code_shard12` — one mid-sized
+  parquet (`data/train-00012-of-00039.parquet`, 41.03 MiB) containing 46
+  SWE-bench agent sessions running through the `claude_code` harness on
+  `azure/DeepSeek-V3.2` (799 spans) + `azure/Kimi-K2.5` (1,495 spans).
+  Flattened to **2,294 span / request rows** (moderate strength).
+- **Available signals:** per-span `start_time` + `end_time` (RFC3339
+  ISO) → epoch seconds + `duration_ms` (closed-API e2e, see prohibited
+  uses), real `gen_ai.usage.input_tokens` / `gen_ai.usage.output_tokens`,
+  `gen_ai.request.model` + `gen_ai.response.model`,
+  `gen_ai.response.finish_reasons` (stop / length / tool_calls),
+  `status.code` (OTel: 0=UNSET, 1=OK, 2=ERROR) → `is_error` /
+  `sla_label` / `timeout_label`, payload-size proxies
+  (`input_messages_chars` / `output_messages_chars` /
+  `tool_definitions_chars` — derived from the dropped raw strings),
+  `input_messages_hash` (16-hex sha256 prefix of the input messages JSON,
+  a session-affinity / prefix-reuse proxy). Per-session: `harness`,
+  `benchmark`, `models`, `session_id`, `max_tokens`, `total_tokens`.
+- **Missing signals:** `ttft`, `tpot`, `itl`, real `queue_state`,
+  `kv_block_hashes`, `gpu_utilization` / `gpu_memory` / `memory_pressure`,
+  `replica_count`, `autoscaling_proxy`, `capacity_proxy`,
+  `model_load_event` / `model_unload_event`, `cost_or_region`.
+- **Recommended Aurelius uses:**
+  - Agent-workload **request-shape priors** — per-LLM-call
+    `(input_tokens, output_tokens, finish_reason, request_model)` joint
+    distributions for the eval/batch frontier replay corpus. Strongest
+    public source for SWE-bench-style multi-turn agent traffic shape
+    that the existing `lmcache-agentic-traces` ingester does not cover
+    (different harnesses, different models, different benchmarks).
+  - Multi-model agent **routing-proxy priors** — `session_id` +
+    `input_messages_hash` let consumers measure how often the same
+    semantic prefix recurs within a session. Useful as a soft
+    prefix-reuse signal in agent workloads (not as a measured cache-hit
+    rate — there is no KV-cache instrumentation here).
+  - Agent-failure-mode priors — `status_code == 2` (OTel ERROR) and
+    `finish_reasons == ['length']` flag are the only failure / timeout
+    signals available; combined gives a (weak) SLA-violation prior.
+- **Prohibited uses:**
+  - **GPU-serving latency calibration.** `duration_ms` is closed-API
+    end-to-end span timing (network + provider routing + provider
+    serving), NOT a measured GPU TTFT/TPOT. Treating it as a serving
+    latency surface would conflate provider routing with GPU-execution
+    time. Use `optimum-benchmark/llm-perf-leaderboard` or
+    `agent-perf-bench/AgentPerfBench` for that instead.
+  - **Cross-vendor latency generalisation.** This shard's models are
+    azure-hosted (DeepSeek + Kimi); duration_ms includes azure's
+    network and provider-routing latency. Do NOT generalise to
+    on-premise / different-region setups.
+  - **Production dynamic-frontier calibration.** Tier-5
+    request_shape_trace — pilot telemetry remains the only Tier-1
+    calibration source.
+  - **Treating `is_error == True` as a production SLA-violation rate.**
+    OTel ERROR can be provider timeouts / 5xx / tool-call failures;
+    without provider SLA contracts this is a (weak) failure proxy only.
+- **Bounded ingest layout:** the 41 MiB parquet lives under
+  `data/external/hf/Exgentic__agent-llm-traces/raw/` and is
+  **gitignored**. Per-config processed `summary.json`,
+  `schema_profile.json`, `schema_mapping.json`,
+  `statistical_rollups.json`, 5-row fixture (5.0 KiB), and 2.3 MiB
+  `normalized_sample.jsonl` (cdla-permissive-2.0 → redistribution-safe)
+  ARE committed. Per-config `analysis_sample.jsonl` is gitignored —
+  regenerable via `scripts/ingest_hf_agent_llm_traces.py`.
+
 ### 7.2 Datasets evaluated but rejected / blocked
 
 | dataset_id | trace_type | state | reason |
@@ -802,13 +892,28 @@ Re-running `scripts/discover_hf_aurelius_datasets.py` rebuilds
   in the federated corpus with measured per-request energy at this
   granularity, directly feeding the energy / carbon cost terms in the
   Aurelius objective.
-- Ingest `Exgentic/agent-llm-traces` next (1,781 OpenTelemetry agent
-  traces, cdla-permissive-2.0, 2.77 GB across 39 parquet files). Plan:
-  download the smallest parquet file (~70 MiB) and normalise the span
-  list into a `request_shape_trace` extended with `duration_ms`,
-  `input_tokens`, `output_tokens`, `status_code` per LLM call. This
-  fills the agent-task duration / token-usage gap currently covered
-  only by `sammshen/lmcache-agentic-traces`.
+- **Done 2026-06-01** — `Exgentic/agent-llm-traces` ingested as Tier-5
+  `request_shape_trace` (config `swebench_claude_code_shard12`, 2,294
+  spans, moderate strength, cdla-permissive-2.0 → 2.3 MiB committed
+  normalised sample). The OpenTelemetry span-list is flattened to
+  per-LLM-call request rows with closed-API `duration_ms`, real
+  `input_tokens` / `output_tokens` / `status_code` / `finish_reasons` /
+  `request_model`, plus payload-size proxies + `input_messages_hash`.
+  Closed-API timing caveat is pinned in `limitations` and enforced by
+  `tests/test_hf_agent_llm_traces_ingest.py::test_no_gpu_serving_signals_claimed`.
+- Ingest additional `Exgentic/agent-llm-traces` shards on follow-on runs
+  to add cross-harness coverage (the SWE-bench/claude_code shard alone
+  has only 2 azure-hosted models). Suggested next shards:
+  `train-00022-of-00039` (smallest, openai_solo × tau2_airline, OpenAI
+  azure/gpt-4.1) and `train-00009-of-00039` (large, 136 MB raw, likely
+  ≥10k spans → strong strength).
+- Cross-validate `Exgentic/agent-llm-traces` per-request
+  `input_tokens` / `output_tokens` joint distribution against
+  `sammshen/lmcache-agentic-traces` (the only other agent-workload
+  request-shape source in the corpus) — publish a workload-shape
+  comparison under
+  `docs/CROSS_TRACE_FRONTIER_GENERALIZATION_AUDIT.md` to calibrate which
+  agent harness produces the heaviest input-token tail.
 - Cross-validate `optimum-benchmark/llm-perf-leaderboard` mean_ttft_ms
   / mean_tpot_ms surfaces against `agent-perf-bench/AgentPerfBench`
   `trace_replay` for matched (model_family, batch_size, sequence_length)

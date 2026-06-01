@@ -2,6 +2,80 @@
   "doc_version": "hf_corpus_canonical_registry_v1",
   "entries": [
     {
+      "analysis_sample_bytes": 2322517,
+      "analysis_sample_rows": 2294,
+      "available_signals": [
+        "arrivals",
+        "cache_reuse",
+        "customer_traffic_mix",
+        "latency",
+        "prefix_reuse",
+        "request_timestamps",
+        "routing_proxy",
+        "sla_label",
+        "timeout_label",
+        "workload_shape"
+      ],
+      "canonical_trace_type": "request_shape_trace",
+      "committed_sample_bytes": 5155,
+      "committed_sample_rows": 5,
+      "config_name": "swebench_claude_code_shard12",
+      "dataset_id": "Exgentic/agent-llm-traces",
+      "derived_fields": [
+        "input_messages_chars",
+        "output_messages_chars",
+        "tool_definitions_chars"
+      ],
+      "fixture_sample_bytes": 5155,
+      "fixture_sample_rows": 5,
+      "gated": false,
+      "ingestion_timestamp_s": 1780308613.699307,
+      "license": "cdla-permissive-2.0",
+      "limitations": [
+        "Single parquet shard (train-00012-of-00039, data/train-00012-of-00039.parquet) of the 39-shard 2.77 GB Exgentic agent-LLM-traces set (1,781 sessions total).",
+        "OpenTelemetry span-list dataset; each row is one LLM-call span flattened from the parent agent session. duration_ms is closed-API end-to-end (network + provider serving), NOT GPU TTFT/TPOT.",
+        "Models in this shard are accessed through provider APIs (azure/DeepSeek-V3.2, azure/Kimi-K2.5). Latency includes network + provider routing \u2014 do NOT use as a GPU-serving latency prior.",
+        "Raw 'gen_ai.input.messages' / 'gen_ai.output.messages' / 'gen_ai.tool.definitions' payload strings (median 50K chars / max 200K) are DROPPED in the committed normalized sample; only character counts and a per-input hash remain.",
+        "No GPU type, no measured TTFT/TPOT, no queue/scheduler state, no replica/autoscale signal, no cache-hit telemetry. Treat as workload-shape evidence only."
+      ],
+      "missing_signals": [
+        "autoscaling_proxy",
+        "capacity_proxy",
+        "cost_or_region",
+        "gpu_utilization",
+        "kv_block_hashes",
+        "migration_or_cache_loss_proxy",
+        "model_load_event",
+        "model_unload_event",
+        "queue_state",
+        "replica_count",
+        "tpot",
+        "ttft"
+      ],
+      "promotion_evaluated_at_s": 1780308650.553722,
+      "promotion_reasons": [],
+      "promotion_state": "promoted_for_training_priors",
+      "promotion_tags": [
+        "promoted_for_training_priors"
+      ],
+      "provenance": "Exgentic/agent-llm-traces@swebench_claude_code_shard12#data/train-00012-of-00039.parquet#bytes=41029485#git=3a9ef2e",
+      "proxy_fields": [],
+      "sample_sha256": "768aa28d252e2c469aa62643b5e026622b07079db059e6acc2dcd0d3b1998548",
+      "sampling_method": "head_session_then_flatten_spans",
+      "schema_mapping_path": "data/external/hf/Exgentic__agent-llm-traces/swebench_claude_code_shard12/processed/schema_mapping.json",
+      "schema_profile_path": "data/external/hf/Exgentic__agent-llm-traces/swebench_claude_code_shard12/processed/schema_profile.json",
+      "source_url": "https://huggingface.co/datasets/Exgentic/agent-llm-traces",
+      "statistical_sample_strength": "moderate",
+      "stratification_keys": [
+        "harness",
+        "benchmark",
+        "request_model"
+      ],
+      "summary_path_relative": "data/external/hf/Exgentic__agent-llm-traces/swebench_claude_code_shard12/processed/summary.json",
+      "synthetic_fields": [],
+      "trust_tier": "tier_5_request_shape_traces"
+    },
+    {
       "analysis_sample_bytes": 1301186,
       "analysis_sample_rows": 6680,
       "available_signals": [
@@ -3268,12 +3342,12 @@
       "trust_tier": "tier_5_request_shape_traces"
     }
   ],
-  "entry_count": 41,
+  "entry_count": 42,
   "modifies_controllers_or_defaults": false,
   "modifies_robust_energy_engine": false,
   "production_claim": false,
   "stage": "federated_benchmark_corpus_v1",
   "trust_hierarchy_note": "Tier 1 (real pilot telemetry) remains the only production calibration source. Promotion here is research-class only.",
   "uses_oracle_as_headline": false,
-  "written_at_s": 1780301856.2381504
+  "written_at_s": 1780308650.5537772
 }

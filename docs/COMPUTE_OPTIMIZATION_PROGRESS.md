@@ -3430,3 +3430,114 @@ batch_size, sequence_length) triples. Combine the optimum
 `prefill_energy_gpu_kwh` + `decode_energy_gpu_kwh` columns with
 regional CO2 g/kWh from the existing CAISO/PJM/WattTime ingester to
 produce the corpus' first end-to-end carbon-aware placement prior.
+
+### hf-corpus: Exgentic/agent-llm-traces follow-on ingest (2026-06-01)
+
+The "next-action" candidate from PR #135 has been bounded-ingested as
+Tier-5 `request_shape_trace`. Goal: fill the agent-workload per-LLM-call
+duration / token-usage gap previously covered only by the single
+`sammshen/lmcache-agentic-traces` shard. Scope strictly limited to the
+data-engine PR pattern — no scheduler, controller, robust energy engine,
+or production claim touched.
+
+**Bounded ingest scope.**
+
+- One mid-sized parquet (`data/train-00012-of-00039.parquet`, 41.03 MiB
+  raw, gitignored) of the 39-shard 2.77 GB dataset. License:
+  cdla-permissive-2.0 (CDLA permissive variant 2.0 — redistribution-
+  friendly for derivative datasets).
+- 46 SWE-bench / `claude_code` agent sessions across two azure-hosted
+  models (DeepSeek-V3.2 = 799 spans, Kimi-K2.5 = 1,495 spans) →
+  flattened to **2,294 per-LLM-call request rows** (moderate strength).
+- Closed-API span timing (network + provider routing + provider
+  serving). NOT a GPU TTFT/TPOT signal — limitation pinned in
+  `summary.limitations` and enforced by
+  `tests/test_hf_agent_llm_traces_ingest.py::test_no_gpu_serving_signals_claimed`.
+
+**Schema mapping (gen_ai OpenTelemetry semantic conventions).**
+
+- Session-level: `harness` / `benchmark` / `models` / `session_id` /
+  `max_tokens` / `total_tokens` / `collected_at`.
+- Per-span: `start_time` / `end_time` → epoch seconds + `duration_ms`;
+  `gen_ai.usage.input_tokens` / `output_tokens` (real); `gen_ai.request.model`
+  / `gen_ai.response.model`; `gen_ai.response.finish_reasons`; OTel
+  `status.code` → `is_error` / `sla_label` / `timeout_label`.
+- Payload-size proxies: `input_messages_chars` / `output_messages_chars`
+  / `tool_definitions_chars` (the raw 50K-char median payloads are
+  DROPPED in the committed sample); `input_messages_hash` is a 16-hex
+  sha256 prefix usable as a session-affinity / soft prefix-reuse proxy.
+
+**Promotion outcome.**
+
+- `Exgentic/agent-llm-traces@swebench_claude_code_shard12`:
+  `promoted_for_training_priors` (Tier 5 request_shape_trace; moderate
+  strength = 2,294 rows ≥ 1k threshold, < 10k threshold).
+- Available signals: `arrivals`, `request_timestamps`, `workload_shape`,
+  `routing_proxy`, `customer_traffic_mix`, `cache_reuse`, `prefix_reuse`
+  (input-message-hash proxy), `latency` (closed-API e2e — NOT GPU),
+  `sla_label`, `timeout_label`.
+- Missing signals: `ttft`, `tpot`, `itl`, `queue_state`,
+  `gpu_utilization`, `replica_count`, `autoscaling_proxy`,
+  `capacity_proxy`, `kv_block_hashes`, `model_load_event`,
+  `model_unload_event`.
+
+**Output artefacts (all committed).**
+
+- `scripts/ingest_hf_agent_llm_traces.py` — bounded ingester (probes
+  schema, flattens session-spans → per-span rows, drops huge payload
+  bodies, writes profile + mapping + summary + rollups + fixture +
+  bounded normalised sample).
+- `scripts/register_hf_agent_llm_traces.py` — appends the new entry to
+  `data/external/hf_discovery/canonical_corpus_registry.json` via
+  `aurelius.traces.hf_corpus.promotion`.
+- `scripts/update_hf_candidates_agent_llm_traces.py` — adds the
+  Exgentic candidate row to
+  `data/external/hf_discovery/hf_dataset_candidates.json` and stamps
+  the `focused_audit_2026_06_01b` block.
+- `data/external/hf/Exgentic__agent-llm-traces/swebench_claude_code_shard12/processed/`
+  — `summary.json`, `schema_profile.json`, `schema_mapping.json`,
+  `statistical_rollups.json`, `normalized_sample.jsonl` (2.3 MiB, well
+  under the 100 MiB-per-file / 300 MiB-per-PR policy cap).
+- `tests/fixtures/hf/Exgentic__agent-llm-traces__swebench_claude_code_shard12_sample.jsonl`
+  — 5-row deterministic fixture (5.0 KiB).
+- `data/external/hf_discovery/agent_llm_traces_ingest_summary.json` —
+  cross-dataset rollup with provenance + license + signals.
+- `docs/HF_DATASET_REGISTRY.md` — registry table row added, dedicated
+  per-dataset section documenting available/missing signals +
+  recommended/prohibited uses, §10 next-actions updated.
+
+**Test suite.** `tests/test_hf_agent_llm_traces_ingest.py` (20 tests,
+all green) covers: no raw / analysis_sample.jsonl committed; fixture
+≤ 16 KiB; per-config schema_profile + schema_mapping + summary +
+rollups present; mapping classifies every accepted column + enumerates
+every observed `gen_ai.*` nested attribute; all 9 promotion gates pass;
+promotion state is `promoted_for_training_priors`; available + missing
+signals disjoint; expected request-shape signals present; forbidden GPU
+serving signals (`ttft` / `tpot` / `queue_state` / `gpu_utilization` /
+`replica_count`) are in `missing_signals`; `limitations` pins the
+closed-API caveat; raw `gen_ai.input.messages` / `output.messages` /
+`tool.definitions` strings are NOT in the committed sample (only the
+char-count proxies); committed normalised sample ≤ 100 MiB with matching
+sha256; canonical registry includes the entry; candidates JSON records
+the follow-on audit; trust tier is Tier 5 (NOT Tier 1); license is
+cdla-permissive-2.0. The full HF test suite (491 tests across all
+`test_hf_*.py`) remains green.
+
+**Honesty + scope guarantees.** No production claim; no scheduler /
+controller / robust energy engine touched; no oracle as headline; no
+Tier 1 promotion; explicit closed-API caveat in `limitations`; no Tier
+1 promotion; `field_quality` recorded for every accepted column +
+gen_ai attribute (real for measured tokens / status / model; derived
+for char-count proxies of dropped payloads); analysis_sample.jsonl is
+gitignored; raw parquet is gitignored; bounded normalised sample is
+committed only because cdla-permissive-2.0 permits redistribution.
+
+**Next (documented exactly in `docs/HF_DATASET_REGISTRY.md` §10):**
+ingest additional Exgentic shards for cross-harness coverage
+(`train-00022-of-00039` smallest = openai_solo × tau2_airline,
+`train-00009-of-00039` largest = likely ≥10k spans → strong strength).
+Cross-validate Exgentic per-call `(input_tokens, output_tokens)` joint
+distribution against `sammshen/lmcache-agentic-traces`. Remaining
+PR-#135 next-actions (optimum × AgentPerfBench cross-validation,
+energy × CO2 carbon-aware placement prior, MoE benchmark probe) still
+pending.
