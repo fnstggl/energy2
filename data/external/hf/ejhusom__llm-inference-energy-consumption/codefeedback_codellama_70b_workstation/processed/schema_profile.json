@@ -1,0 +1,343 @@
+{
+  "accepted_columns": [
+    "index",
+    "model_name",
+    "type",
+    "created_at",
+    "start_time",
+    "end_time",
+    "clock_duration",
+    "total_duration",
+    "load_duration",
+    "prompt_duration",
+    "response_duration",
+    "prompt_token_length",
+    "response_token_length",
+    "energy_consumption_monitoring",
+    "energy_consumption_llm_cpu",
+    "energy_consumption_llm_gpu",
+    "energy_consumption_llm_total",
+    "energy_consumption_llm"
+  ],
+  "config_name": "codefeedback_codellama_70b_workstation",
+  "dataset_id": "ejhusom/llm-inference-energy-consumption",
+  "dtypes": {
+    "clock_duration": [
+      "str"
+    ],
+    "created_at": [
+      "str"
+    ],
+    "end_time": [
+      "str"
+    ],
+    "energy_consumption_llm": [
+      "str"
+    ],
+    "energy_consumption_llm_cpu": [
+      "str"
+    ],
+    "energy_consumption_llm_gpu": [
+      "str"
+    ],
+    "energy_consumption_llm_total": [
+      "str"
+    ],
+    "energy_consumption_monitoring": [
+      "str"
+    ],
+    "index": [
+      "str"
+    ],
+    "load_duration": [
+      "str"
+    ],
+    "model_name": [
+      "str"
+    ],
+    "prompt_duration": [
+      "str"
+    ],
+    "prompt_token_length": [
+      "str"
+    ],
+    "response_duration": [
+      "str"
+    ],
+    "response_token_length": [
+      "str"
+    ],
+    "start_time": [
+      "str"
+    ],
+    "total_duration": [
+      "str"
+    ],
+    "type": [
+      "str"
+    ]
+  },
+  "example_values": {
+    "clock_duration": [
+      "'0 days 00:11:04.496131'",
+      "'0 days 00:13:40.342038'",
+      "'0 days 00:43:58.535344'"
+    ],
+    "created_at": [
+      "'2024-05-30 09:31:33.081382733+00:00'",
+      "'2024-05-30 09:45:23.029122107+00:00'",
+      "'2024-05-30 10:29:33.608918717+00:00'"
+    ],
+    "end_time": [
+      "'2024-05-30 09:31:33.082261+00:00'",
+      "'2024-05-30 09:45:23.029966+00:00'",
+      "'2024-05-30 10:29:33.609753+00:00'"
+    ],
+    "energy_consumption_llm": [
+      "'0.004408866578201375'",
+      "'0.005512801188935242'",
+      "'0.01769119291218821'"
+    ],
+    "energy_consumption_llm_cpu": [
+      "'3.1715683860753124e-06'",
+      "'3.4579067999415163e-06'",
+      "'1.1001928354707847e-05'"
+    ],
+    "energy_consumption_llm_gpu": [
+      "'0.0044056950098153'",
+      "'0.0055093432821353'",
+      "'0.0176801909838335'"
+    ],
+    "energy_consumption_llm_total": [
+      "'0.0044088665782014'",
+      "'0.0055128011889352'",
+      "'0.0176911929121882'"
+    ],
+    "energy_consumption_monitoring": [
+      "'0.0003023708846712'",
+      "'0.00037328806224'",
+      "'0.0012004700013989'"
+    ],
+    "index": [
+      "'0'",
+      "'0'",
+      "'0'"
+    ],
+    "load_duration": [
+      "'8751971808'",
+      "'1846132'",
+      "'1575359'"
+    ],
+    "model_name": [
+      "'codellama:70b'",
+      "'codellama:70b'",
+      "'codellama:70b'"
+    ],
+    "prompt_duration": [
+      "'5139754000'",
+      "'5117707000'",
+      "'5086785000'"
+    ],
+    "prompt_token_length": [
+      "'50'",
+      "'47'",
+      "'43'"
+    ],
+    "response_duration": [
+      "'650462495000'",
+      "'815088191000'",
+      "'2633310982000'"
+    ],
+    "response_token_length": [
+      "'343'",
+      "'427'",
+      "'1311'"
+    ],
+    "start_time": [
+      "'2024-05-30 09:20:28.586130+00:00'",
+      "'2024-05-30 09:31:42.687928+00:00'",
+      "'2024-05-30 09:45:35.074409+00:00'"
+    ],
+    "total_duration": [
+      "'664490759609'",
+      "'820338145004'",
+      "'2638531816627'"
+    ],
+    "type": [
+      "'unknown'",
+      "'unknown'",
+      "'unknown'"
+    ]
+  },
+  "file_size_bytes": 393372,
+  "inspected_row_count": 161,
+  "list_length_summaries": {},
+  "missing_rates": {
+    "clock_duration": 0.0,
+    "created_at": 0.0,
+    "end_time": 0.0,
+    "energy_consumption_llm": 0.0,
+    "energy_consumption_llm_cpu": 0.0,
+    "energy_consumption_llm_gpu": 0.0,
+    "energy_consumption_llm_total": 0.0,
+    "energy_consumption_monitoring": 0.0,
+    "index": 0.0,
+    "load_duration": 0.0,
+    "model_name": 0.0,
+    "prompt_duration": 0.0,
+    "prompt_token_length": 0.0,
+    "response_duration": 0.0,
+    "response_token_length": 0.0,
+    "start_time": 0.0,
+    "total_duration": 0.0,
+    "type": 0.0
+  },
+  "nested_keys": [],
+  "raw_columns": [
+    "",
+    "index",
+    "model_name",
+    "created_at",
+    "total_duration",
+    "load_duration",
+    "prompt_token_length",
+    "prompt_duration",
+    "response_token_length",
+    "response_duration",
+    "prompt",
+    "response",
+    "energy_consumption_monitoring",
+    "energy_consumption_llm_cpu",
+    "energy_consumption_llm_gpu",
+    "type",
+    "clock_duration",
+    "start_time",
+    "end_time",
+    "energy_consumption_llm_total",
+    "energy_consumption_llm",
+    "word_count",
+    "sentence_count",
+    "avg_word_length",
+    "word_diversity",
+    "unique_word_count",
+    "avg_sentence_length",
+    "punctuation_count",
+    "stop_word_count",
+    "long_word_count",
+    "named_entity_count",
+    "noun_count",
+    "verb_count",
+    "adj_count",
+    "adverb_count",
+    "pronoun_count",
+    "prop_adverbs",
+    "prop_pronouns",
+    "sentiment_polarity",
+    "sentiment_subjectivity",
+    "flesch_reading_ease",
+    "flesch_kincaid_grade",
+    "gunning_fog",
+    "smog_index",
+    "automated_readability_index",
+    "coleman_liau_index",
+    "linsear_write_formula",
+    "dale_chall_readability_score",
+    "text_standard",
+    "spache_readability",
+    "mcalpine_eflaw",
+    "reading_time",
+    "fernandez_huerta",
+    "szigriszt_pazos",
+    "gutierrez_polini",
+    "crawford",
+    "osman",
+    "gulpease_index",
+    "wiener_sachtextformel",
+    "syllable_count",
+    "lexicon_count",
+    "char_count",
+    "letter_count",
+    "polysyllabcount",
+    "monosyllabcount",
+    "question_marks",
+    "exclamation_marks",
+    "sentence_embedding_variance",
+    "personal_pronouns",
+    "named_entities",
+    "adjectives",
+    "adverbs",
+    "length_x_complexity",
+    "questions_about_entities",
+    "desc_complexity_ratio",
+    "word_count_squared",
+    "avg_sentence_length_cubed",
+    "lexical_diversity"
+  ],
+  "raw_file_truncated": false,
+  "rejected_columns": [
+    "",
+    "prompt",
+    "response",
+    "word_count",
+    "sentence_count",
+    "avg_word_length",
+    "word_diversity",
+    "unique_word_count",
+    "avg_sentence_length",
+    "punctuation_count",
+    "stop_word_count",
+    "long_word_count",
+    "named_entity_count",
+    "noun_count",
+    "verb_count",
+    "adj_count",
+    "adverb_count",
+    "pronoun_count",
+    "prop_adverbs",
+    "prop_pronouns",
+    "sentiment_polarity",
+    "sentiment_subjectivity",
+    "flesch_reading_ease",
+    "flesch_kincaid_grade",
+    "gunning_fog",
+    "smog_index",
+    "automated_readability_index",
+    "coleman_liau_index",
+    "linsear_write_formula",
+    "dale_chall_readability_score",
+    "text_standard",
+    "spache_readability",
+    "mcalpine_eflaw",
+    "reading_time",
+    "fernandez_huerta",
+    "szigriszt_pazos",
+    "gutierrez_polini",
+    "crawford",
+    "osman",
+    "gulpease_index",
+    "wiener_sachtextformel",
+    "syllable_count",
+    "lexicon_count",
+    "char_count",
+    "letter_count",
+    "polysyllabcount",
+    "monosyllabcount",
+    "question_marks",
+    "exclamation_marks",
+    "sentence_embedding_variance",
+    "personal_pronouns",
+    "named_entities",
+    "adjectives",
+    "adverbs",
+    "length_x_complexity",
+    "questions_about_entities",
+    "desc_complexity_ratio",
+    "word_count_squared",
+    "avg_sentence_length_cubed",
+    "lexical_diversity"
+  ],
+  "source_files": [
+    "data/codefeedback_codellama_70b_workstation.csv"
+  ],
+  "unknown_columns": []
+}

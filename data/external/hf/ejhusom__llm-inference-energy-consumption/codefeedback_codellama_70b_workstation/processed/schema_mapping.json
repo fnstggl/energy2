@@ -1,0 +1,350 @@
+{
+  "accepted_columns": [
+    "index",
+    "model_name",
+    "type",
+    "created_at",
+    "start_time",
+    "end_time",
+    "clock_duration",
+    "total_duration",
+    "load_duration",
+    "prompt_duration",
+    "response_duration",
+    "prompt_token_length",
+    "response_token_length",
+    "energy_consumption_monitoring",
+    "energy_consumption_llm_cpu",
+    "energy_consumption_llm_gpu",
+    "energy_consumption_llm_total",
+    "energy_consumption_llm"
+  ],
+  "columns": [
+    {
+      "aurelius_signal_category": "metadata_only",
+      "dtypes": [
+        "str"
+      ],
+      "field_quality": "real",
+      "normalized_field": "model_name",
+      "notes": "Ollama model id (e.g. gemma:7b, codellama:70b).",
+      "raw_column_name": "model_name",
+      "units": null,
+      "usable_for": [
+        "workload_shape_only",
+        "latency_prior"
+      ]
+    },
+    {
+      "aurelius_signal_category": "metadata_only",
+      "dtypes": [
+        "str"
+      ],
+      "field_quality": "real",
+      "normalized_field": "prompt_type_raw",
+      "notes": "Ollama `done_reason` (always 'unknown' in this dataset snapshot \u2014 Ollama did not yet emit a labelled reason). Kept for forward-compat.",
+      "raw_column_name": "type",
+      "units": null,
+      "usable_for": [
+        "workload_shape_only"
+      ]
+    },
+    {
+      "aurelius_signal_category": "request_completion",
+      "dtypes": [
+        "str"
+      ],
+      "field_quality": "real",
+      "normalized_field": "created_at",
+      "notes": "Ollama-reported response completion timestamp.",
+      "raw_column_name": "created_at",
+      "units": "ISO-8601 timestamp with timezone",
+      "usable_for": [
+        "workload_shape_only"
+      ]
+    },
+    {
+      "aurelius_signal_category": "request_arrival",
+      "dtypes": [
+        "str"
+      ],
+      "field_quality": "real",
+      "normalized_field": "start_time",
+      "notes": "Client-side request start (wall clock).",
+      "raw_column_name": "start_time",
+      "units": "ISO-8601 timestamp with timezone",
+      "usable_for": [
+        "workload_shape_only"
+      ]
+    },
+    {
+      "aurelius_signal_category": "request_completion",
+      "dtypes": [
+        "str"
+      ],
+      "field_quality": "real",
+      "normalized_field": "end_time",
+      "notes": "Client-side request end (wall clock).",
+      "raw_column_name": "end_time",
+      "units": "ISO-8601 timestamp with timezone",
+      "usable_for": [
+        "workload_shape_only"
+      ]
+    },
+    {
+      "aurelius_signal_category": "latency",
+      "dtypes": [
+        "str"
+      ],
+      "field_quality": "real",
+      "normalized_field": "clock_duration_str",
+      "notes": "Wall-clock duration string. Use total_duration_ns instead.",
+      "raw_column_name": "clock_duration",
+      "units": "human-formatted duration",
+      "usable_for": [
+        "latency_prior"
+      ]
+    },
+    {
+      "aurelius_signal_category": "latency",
+      "dtypes": [
+        "float"
+      ],
+      "field_quality": "real",
+      "normalized_field": "total_duration_ns",
+      "notes": "Ollama-reported end-to-end request duration in ns (includes model load + prompt eval + generation).",
+      "raw_column_name": "total_duration",
+      "units": "nanoseconds",
+      "usable_for": [
+        "latency_prior",
+        "constraint_aware_evaluation"
+      ]
+    },
+    {
+      "aurelius_signal_category": "latency",
+      "dtypes": [
+        "float"
+      ],
+      "field_quality": "real",
+      "normalized_field": "load_duration_ns",
+      "notes": "Time to load the model into memory. Effectively zero when the model is already resident (residency / cold-start proxy).",
+      "raw_column_name": "load_duration",
+      "units": "nanoseconds",
+      "usable_for": [
+        "latency_prior",
+        "cache_residency_evaluation"
+      ]
+    },
+    {
+      "aurelius_signal_category": "latency",
+      "dtypes": [
+        "float"
+      ],
+      "field_quality": "real",
+      "normalized_field": "prompt_duration_ns",
+      "notes": "Ollama prompt-eval duration; proxies TTFT (time to first token) under a single-stream serving setup.",
+      "raw_column_name": "prompt_duration",
+      "units": "nanoseconds",
+      "usable_for": [
+        "latency_prior"
+      ]
+    },
+    {
+      "aurelius_signal_category": "latency",
+      "dtypes": [
+        "float"
+      ],
+      "field_quality": "real",
+      "normalized_field": "response_duration_ns",
+      "notes": "Ollama generation duration; divided by output_token_count gives TPOT (ms / token) under single-stream.",
+      "raw_column_name": "response_duration",
+      "units": "nanoseconds",
+      "usable_for": [
+        "latency_prior",
+        "throughput_prior"
+      ]
+    },
+    {
+      "aurelius_signal_category": "tokens",
+      "dtypes": [
+        "int"
+      ],
+      "field_quality": "real",
+      "normalized_field": "prompt_token_length",
+      "notes": "Input-token count (Ollama tokenizer).",
+      "raw_column_name": "prompt_token_length",
+      "units": "tokens",
+      "usable_for": [
+        "workload_shape_only",
+        "latency_prior"
+      ]
+    },
+    {
+      "aurelius_signal_category": "tokens",
+      "dtypes": [
+        "int"
+      ],
+      "field_quality": "real",
+      "normalized_field": "response_token_length",
+      "notes": "Output-token count (Ollama tokenizer).",
+      "raw_column_name": "response_token_length",
+      "units": "tokens",
+      "usable_for": [
+        "workload_shape_only",
+        "throughput_prior"
+      ]
+    },
+    {
+      "aurelius_signal_category": "cost_energy_carbon",
+      "dtypes": [
+        "float"
+      ],
+      "field_quality": "real",
+      "normalized_field": "energy_kwh_monitoring",
+      "notes": "Energy used by the monitoring/measurement framework itself (CodeCarbon overhead). Subtract from total when building energy priors.",
+      "raw_column_name": "energy_consumption_monitoring",
+      "units": "kWh",
+      "usable_for": [
+        "latency_prior"
+      ]
+    },
+    {
+      "aurelius_signal_category": "cost_energy_carbon",
+      "dtypes": [
+        "float"
+      ],
+      "field_quality": "real",
+      "normalized_field": "energy_kwh_llm_cpu",
+      "notes": "CPU-side energy per request (real, CodeCarbon).",
+      "raw_column_name": "energy_consumption_llm_cpu",
+      "units": "kWh",
+      "usable_for": [
+        "latency_prior",
+        "constraint_aware_evaluation"
+      ]
+    },
+    {
+      "aurelius_signal_category": "cost_energy_carbon",
+      "dtypes": [
+        "float"
+      ],
+      "field_quality": "real",
+      "normalized_field": "energy_kwh_llm_gpu",
+      "notes": "GPU-side energy per request (real, CodeCarbon). Zero when the run was CPU-only (laptop1 / server).",
+      "raw_column_name": "energy_consumption_llm_gpu",
+      "units": "kWh",
+      "usable_for": [
+        "latency_prior",
+        "constraint_aware_evaluation"
+      ]
+    },
+    {
+      "aurelius_signal_category": "cost_energy_carbon",
+      "dtypes": [
+        "float"
+      ],
+      "field_quality": "real",
+      "normalized_field": "energy_kwh_llm_total",
+      "notes": "CPU+GPU per-request energy (real).",
+      "raw_column_name": "energy_consumption_llm_total",
+      "units": "kWh",
+      "usable_for": [
+        "latency_prior",
+        "constraint_aware_evaluation"
+      ]
+    },
+    {
+      "aurelius_signal_category": "cost_energy_carbon",
+      "dtypes": [
+        "float"
+      ],
+      "field_quality": "real",
+      "normalized_field": "energy_kwh_llm",
+      "notes": "Alternative per-request LLM energy column. Usually equals energy_consumption_llm_total.",
+      "raw_column_name": "energy_consumption_llm",
+      "units": "kWh",
+      "usable_for": [
+        "latency_prior"
+      ]
+    },
+    {
+      "aurelius_signal_category": "metadata_only",
+      "dtypes": [
+        "int"
+      ],
+      "field_quality": "real",
+      "normalized_field": "index",
+      "notes": "Position of the request in the source experiment log.",
+      "raw_column_name": "index",
+      "units": null,
+      "usable_for": [
+        "workload_shape_only"
+      ]
+    }
+  ],
+  "config_name": "codefeedback_codellama_70b_workstation",
+  "dataset_id": "ejhusom/llm-inference-energy-consumption",
+  "rejected_columns": [
+    "",
+    "prompt",
+    "response",
+    "word_count",
+    "sentence_count",
+    "avg_word_length",
+    "word_diversity",
+    "unique_word_count",
+    "avg_sentence_length",
+    "punctuation_count",
+    "stop_word_count",
+    "long_word_count",
+    "named_entity_count",
+    "noun_count",
+    "verb_count",
+    "adj_count",
+    "adverb_count",
+    "pronoun_count",
+    "prop_adverbs",
+    "prop_pronouns",
+    "sentiment_polarity",
+    "sentiment_subjectivity",
+    "flesch_reading_ease",
+    "flesch_kincaid_grade",
+    "gunning_fog",
+    "smog_index",
+    "automated_readability_index",
+    "coleman_liau_index",
+    "linsear_write_formula",
+    "dale_chall_readability_score",
+    "text_standard",
+    "spache_readability",
+    "mcalpine_eflaw",
+    "reading_time",
+    "fernandez_huerta",
+    "szigriszt_pazos",
+    "gutierrez_polini",
+    "crawford",
+    "osman",
+    "gulpease_index",
+    "wiener_sachtextformel",
+    "syllable_count",
+    "lexicon_count",
+    "char_count",
+    "letter_count",
+    "polysyllabcount",
+    "monosyllabcount",
+    "question_marks",
+    "exclamation_marks",
+    "sentence_embedding_variance",
+    "personal_pronouns",
+    "named_entities",
+    "adjectives",
+    "adverbs",
+    "length_x_complexity",
+    "questions_about_entities",
+    "desc_complexity_ratio",
+    "word_count_squared",
+    "avg_sentence_length_cubed",
+    "lexical_diversity"
+  ],
+  "unknown_columns": []
+}
