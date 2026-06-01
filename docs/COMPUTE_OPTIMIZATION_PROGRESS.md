@@ -3070,3 +3070,44 @@ forecasting is pilot telemetry (measured queue wait, SLA labels, GPU
 utilisation), not more CARA feature engineering. TTFT p50 shadow records
 can be wired into dynamic_estimator.py priors path in a future PR with
 its own pre-registered gates.
+
+## 2026-06-01 — Placement Prior Audit + TTFT p50 Shadow Prior (`feature/placement-prior-audit-ttft-shadow`)
+
+Audit/shadow PR. No production scheduler change, no real execution, no
+controller default touched, no production claim. The mission's
+explicit-honest verdict: TTFT p50 is not economically important under
+the existing goodput/$ scorer.
+
+**What landed**
+
+- `scripts/audit_placement_prior_scoring_path.py` + machine-readable
+  trace at `data/external/forecasting/placement_prior_audit/scoring_path_audit.json`:
+  15 inputs to score_residency_candidate catalogued; 11 are static /
+  heuristic / proxy / missing, 2 are measured (queue depth, queue wait
+  proxy). Headline gap: GPU type is not used as a latency prior.
+- `aurelius/forecasting/ttft_shadow_prior.py`: thin adapter exposing
+  TTFTShadowPrior (per-(model_size, gpu_type, prompt_token_bin) median
+  TTFT lookup) + refine_service_time_proxy_s. Default apply_to_scorer=
+  False; the MAX clamp (max(static, predicted)) is the safety floor.
+- `scripts/run_ttft_shadow_prior_eval.py` + eval JSON: 2,000 test
+  requests x 5 candidate instance_types. Binding policy: 0 top-1
+  changes, 0 ranking changes, +0.00% goodput/$ delta. Diagnostic
+  (without clamp): every per-candidate latency estimate changes (100%
+  tie-break rate) but top-1 still doesn't change because baseline ties
+  resolve to A30 (alphabetical) and A30 is also the prior's choice
+  (lowest median).
+- docs/PLACEMENT_PRIOR_AUDIT.md.
+- 30 new tests across test_placement_prior_audit.py +
+  test_ttft_shadow_prior_integration.py.
+
+**Final status: diagnostic_only.** Two structural reasons documented:
+the 2.0s static service-time proxy dwarfs sub-second TTFT priors; the
+scorer has no per-(GPU, model) cost surface. None are in scope for this
+PR; both are documented as the next forecasting milestone.
+
+Tests: 30 new + 289 existing CARA + HF + frontier tests still pass.
+
+**Honesty invariants:** audit_only=True, modifies_controllers=False,
+TTFT p95/p99 not exposed by adapter for control, p50 prior optional,
+MAX clamp is binding safety floor, default does not apply to scorer,
+no executor imports.

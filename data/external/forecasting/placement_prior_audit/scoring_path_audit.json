@@ -1,0 +1,245 @@
+{
+  "audit_only": true,
+  "counts_by_classification": {
+    "constant": 0,
+    "derived": 2,
+    "derived_binary": 1,
+    "forecasted": 0,
+    "heuristic": 2,
+    "measured": 1,
+    "measured_or_proxy": 1,
+    "missing": 6,
+    "proxy": 1,
+    "static_prior": 1
+  },
+  "doc_version": "placement_scoring_path_audit_v1",
+  "evaluated_at_s": 1780280887.395016,
+  "gpu_type_per_candidate_state_present": true,
+  "gpu_type_used_as_latency_prior": false,
+  "headline_gap": "GPU type is not parsed from location_key; the 9x p99 TTFT spread observed in CARA across GPU types is invisible to the current goodput/$ scorer.",
+  "measured_inputs": [
+    "queue depth",
+    "queue wait"
+  ],
+  "model_size_per_candidate_state_present": false,
+  "model_size_used_as_latency_prior": false,
+  "modifies_controllers_or_defaults": false,
+  "modifies_robust_energy_engine": false,
+  "production_claim": false,
+  "queue_state_used_in_latency_estimate": true,
+  "scorer_signature": {
+    "callable": "score_residency_candidate",
+    "module": "aurelius.residency.decision",
+    "parameters": [
+      {
+        "annotation": "ModelResidencyRequest",
+        "kind": "POSITIONAL_OR_KEYWORD",
+        "name": "request"
+      },
+      {
+        "annotation": "ModelLocationState",
+        "kind": "POSITIONAL_OR_KEYWORD",
+        "name": "candidate_location"
+      },
+      {
+        "annotation": "Optional[ModelLoadProfile]",
+        "kind": "POSITIONAL_OR_KEYWORD",
+        "name": "load_profile"
+      },
+      {
+        "annotation": "SafetyContext",
+        "kind": "POSITIONAL_OR_KEYWORD",
+        "name": "cost_config"
+      },
+      {
+        "annotation": "SafetyContext",
+        "kind": "POSITIONAL_OR_KEYWORD",
+        "name": "safety_context"
+      }
+    ],
+    "return_annotation": "CandidateScore",
+    "source_file": "/home/user/energy2/aurelius/residency/decision.py"
+  },
+  "scoring_inputs": [
+    {
+      "captures_gpu_type": false,
+      "captures_model_size": false,
+      "captures_queue_state": false,
+      "classification": "heuristic",
+      "enters_at": "aurelius/residency/decision.py::_service_time_s -> service_s -> expected_latency",
+      "input": "TTFT",
+      "is_per_candidate": false,
+      "notes": "TTFT is not measured per-candidate; the scorer collapses TTFT+TPOT into one ``service_time_s`` heuristic. The 9x p99 TTFT spread across GPU types (CARA) is invisible.",
+      "source": "SafetyContext.seconds_per_token * request.output_tokens OR SafetyContext.service_time_proxy_s (default 2.0s)"
+    },
+    {
+      "captures_gpu_type": false,
+      "captures_model_size": false,
+      "captures_queue_state": false,
+      "classification": "heuristic",
+      "enters_at": "aurelius/residency/decision.py::_service_time_s -> service_s",
+      "input": "TPOT",
+      "is_per_candidate": false,
+      "notes": "TPOT is not separated from TTFT in the per-candidate score.",
+      "source": "Same ``service_time_proxy_s`` path as TTFT"
+    },
+    {
+      "captures_gpu_type": false,
+      "captures_model_size": false,
+      "captures_queue_state": true,
+      "classification": "derived",
+      "enters_at": "aurelius/residency/decision.py::score_residency_candidate -> expected_latency = queue_wait + model_penalty + adapter_penalty + service_s",
+      "input": "E2E latency",
+      "is_per_candidate": true,
+      "notes": "Derived; only as good as its constituents. The service component is a heuristic.",
+      "source": "Sum of queue, load-penalty, and service-time components"
+    },
+    {
+      "captures_gpu_type": true,
+      "captures_model_size": false,
+      "captures_queue_state": true,
+      "classification": "measured",
+      "enters_at": "ModelLocationState.queue_depth",
+      "input": "queue depth",
+      "is_per_candidate": true,
+      "notes": "Treated as measured when present; missing \u2192 queue_telemetry_missing veto.",
+      "source": "Telemetry adapter when available; None otherwise"
+    },
+    {
+      "captures_gpu_type": true,
+      "captures_model_size": false,
+      "captures_queue_state": true,
+      "classification": "measured_or_proxy",
+      "enters_at": "ModelLocationState.estimated_queue_wait_s OR proxy queue_depth * service_time_s",
+      "input": "queue wait",
+      "is_per_candidate": true,
+      "notes": "Proxy degrades to heuristic when only queue_depth is present.",
+      "source": "Measured when available; proxy = queue_depth \u00d7 service_s when not"
+    },
+    {
+      "captures_gpu_type": false,
+      "captures_model_size": false,
+      "captures_queue_state": false,
+      "classification": "missing",
+      "enters_at": "ModelLocationState.location_key (string only); not parsed",
+      "input": "GPU type",
+      "is_per_candidate": true,
+      "notes": "Largest single gap surfaced by the CARA evidence (9x p99 TTFT spread across GPUs).",
+      "source": "GPU type is encoded in location_key but the scorer does not parse it; no per-(model, GPU) priors enter score."
+    },
+    {
+      "captures_gpu_type": false,
+      "captures_model_size": false,
+      "captures_queue_state": false,
+      "classification": "missing",
+      "enters_at": "request.model_id (string only); not parsed",
+      "input": "model size",
+      "is_per_candidate": false,
+      "notes": "Model size influences TTFT/TPOT but never enters score.",
+      "source": "Not used as a per-candidate prior"
+    },
+    {
+      "captures_gpu_type": false,
+      "captures_model_size": false,
+      "captures_queue_state": true,
+      "classification": "missing",
+      "enters_at": "(not used)",
+      "input": "throughput",
+      "is_per_candidate": true,
+      "notes": "Telemetry exists in CARA but the scorer ignores it.",
+      "source": "EMA decode/prefill throughput from CARA is not consumed"
+    },
+    {
+      "captures_gpu_type": false,
+      "captures_model_size": false,
+      "captures_queue_state": false,
+      "classification": "proxy",
+      "enters_at": "(not used directly); only feeds residency-aware routing via has_model / has_adapter",
+      "input": "KV cache state",
+      "is_per_candidate": true,
+      "notes": "KV cache utilisation + free blocks from CARA are not used.",
+      "source": "Booleans (model_resident / adapter_resident) only"
+    },
+    {
+      "captures_gpu_type": false,
+      "captures_model_size": false,
+      "captures_queue_state": false,
+      "classification": "missing",
+      "enters_at": "(not used)",
+      "input": "cache reuse",
+      "is_per_candidate": true,
+      "notes": "Cache_residency forecasts are not wired in.",
+      "source": "SwissAI bucket-reuse signals not consumed by this scorer"
+    },
+    {
+      "captures_gpu_type": false,
+      "captures_model_size": false,
+      "captures_queue_state": false,
+      "classification": "static_prior",
+      "enters_at": "score_residency_candidate -> model_penalty + adapter_penalty",
+      "input": "residency / cold-start",
+      "is_per_candidate": true,
+      "notes": "Static priors per model/adapter, not telemetry-fitted.",
+      "source": "ModelLoadProfile.model_load_penalty_s; missing -> veto"
+    },
+    {
+      "captures_gpu_type": false,
+      "captures_model_size": false,
+      "captures_queue_state": false,
+      "classification": "derived",
+      "enters_at": "expected_cost = (expected_latency / 3600) * gpu_hour_price + memory_pressure_cost",
+      "input": "cost",
+      "is_per_candidate": true,
+      "notes": "Single global GPU-hour price; no per-(GPU type) cost surface.",
+      "source": "SafetyContext.gpu_hour_price (constant default 3.0) \u00d7 latency"
+    },
+    {
+      "captures_gpu_type": false,
+      "captures_model_size": false,
+      "captures_queue_state": false,
+      "classification": "missing",
+      "enters_at": "(not in residency scorer)",
+      "input": "energy / carbon",
+      "is_per_candidate": false,
+      "notes": "Energy/carbon enter batch scheduling, not per-request serving placement.",
+      "source": "Handled by aurelius/optimization/scheduler.py for batch jobs only"
+    },
+    {
+      "captures_gpu_type": false,
+      "captures_model_size": false,
+      "captures_queue_state": true,
+      "classification": "derived_binary",
+      "enters_at": "sla_met = expected_latency <= ctx.sla_s(request)",
+      "input": "SLA risk",
+      "is_per_candidate": true,
+      "notes": "Binary; no calibrated SLA-violation probability.",
+      "source": "Hard threshold, not a probability"
+    },
+    {
+      "captures_gpu_type": false,
+      "captures_model_size": false,
+      "captures_queue_state": true,
+      "classification": "missing",
+      "enters_at": "(not used)",
+      "input": "timeout risk",
+      "is_per_candidate": true,
+      "notes": "No per-candidate timeout probability.",
+      "source": "Surfaced in frontier risk.py for the dynamic frontier; not in residency scorer"
+    }
+  ],
+  "shadow_only": true,
+  "static_or_heuristic_inputs": [
+    "TTFT",
+    "TPOT",
+    "GPU type",
+    "model size",
+    "throughput",
+    "KV cache state",
+    "cache reuse",
+    "residency / cold-start",
+    "energy / carbon",
+    "SLA risk",
+    "timeout risk"
+  ],
+  "uses_oracle_as_headline": false
+}
