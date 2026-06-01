@@ -1,0 +1,166 @@
+{
+  "datasets_with_autoscaling": [],
+  "datasets_with_cold_start": [
+    "JefferyZhan/GThinker-11k-cold-start",
+    "Mini-o3/Mini-o3-Coldstart-Dataset",
+    "Kangheng/OVR-Dataset-ColdStart",
+    "SciReason/SciLM-CoT_ColdStart",
+    "Godheritage/BesiegeField_humandataset_coldstart",
+    "TerenceLau/sparrow-coldstart",
+    "Jacky1006/Cold-start",
+    "WaltonFuture/Multimodal-Cold-Start",
+    "aochongoliverli/Qwen2.5-3B-math8k-coldstart-100steps-dapo-20epochs-8rollouts-8192max-len-rollouts",
+    "penfever/walton-multimodal-cold-start-r1-format-30k"
+  ],
+  "datasets_with_memory_pressure": [
+    "memoriant/dgx-spark-kv-cache-benchmark",
+    "Nathan-Maine/dgx-spark-kv-cache-benchmark",
+    "alireza7/GrepSeek-ColdStart-SFT-10k"
+  ],
+  "datasets_with_migration": [
+    "eth-easl/swissai-serving-trace"
+  ],
+  "datasets_with_queueing": [
+    "Qinghao/AcmeTrace"
+  ],
+  "datasets_with_serving_stability": [
+    "ssong1/llmperf-bedrock",
+    "Qinghao/AcmeTrace"
+  ],
+  "doc_version": "frontier_discovery_v1",
+  "new_not_previously_evaluated": 140,
+  "no_ingestion": true,
+  "no_training": true,
+  "production_claim": false,
+  "top_10_datasets_by_priority": [
+    {
+      "dataset_id": "ssong1/llmperf-bedrock",
+      "economic_relevance": "High",
+      "forecastability": 49,
+      "frontier_signals": [
+        "serving_stability"
+      ],
+      "new": false,
+      "score": 57.4
+    },
+    {
+      "dataset_id": "memoriant/dgx-spark-kv-cache-benchmark",
+      "economic_relevance": "High",
+      "forecastability": 27,
+      "frontier_signals": [
+        "memory_pressure"
+      ],
+      "new": false,
+      "score": 44.2
+    },
+    {
+      "dataset_id": "Nathan-Maine/dgx-spark-kv-cache-benchmark",
+      "economic_relevance": "High",
+      "forecastability": 27,
+      "frontier_signals": [
+        "memory_pressure"
+      ],
+      "new": false,
+      "score": 44.2
+    },
+    {
+      "dataset_id": "JefferyZhan/GThinker-11k-cold-start",
+      "economic_relevance": "Low",
+      "forecastability": 38,
+      "frontier_signals": [
+        "cold_start"
+      ],
+      "new": true,
+      "score": 38.8
+    },
+    {
+      "dataset_id": "Mini-o3/Mini-o3-Coldstart-Dataset",
+      "economic_relevance": "Low",
+      "forecastability": 38,
+      "frontier_signals": [
+        "cold_start"
+      ],
+      "new": true,
+      "score": 38.8
+    },
+    {
+      "dataset_id": "minhkhoi1026/opencl-llmperf",
+      "economic_relevance": "Reject",
+      "forecastability": 45,
+      "frontier_signals": [],
+      "new": true,
+      "score": 37.0
+    },
+    {
+      "dataset_id": "Kangheng/OVR-Dataset-ColdStart",
+      "economic_relevance": "Low",
+      "forecastability": 34,
+      "frontier_signals": [
+        "cold_start"
+      ],
+      "new": true,
+      "score": 36.4
+    },
+    {
+      "dataset_id": "SciReason/SciLM-CoT_ColdStart",
+      "economic_relevance": "Low",
+      "forecastability": 34,
+      "frontier_signals": [
+        "cold_start"
+      ],
+      "new": true,
+      "score": 36.4
+    },
+    {
+      "dataset_id": "Godheritage/BesiegeField_humandataset_coldstart",
+      "economic_relevance": "Low",
+      "forecastability": 34,
+      "frontier_signals": [
+        "cold_start"
+      ],
+      "new": true,
+      "score": 36.4
+    },
+    {
+      "dataset_id": "TerenceLau/sparrow-coldstart",
+      "economic_relevance": "Low",
+      "forecastability": 34,
+      "frontier_signals": [
+        "cold_start"
+      ],
+      "new": true,
+      "score": 36.4
+    }
+  ],
+  "top_signals_by_category": {
+    "autoscaling": [],
+    "cold_start": [
+      "JefferyZhan/GThinker-11k-cold-start",
+      "Mini-o3/Mini-o3-Coldstart-Dataset",
+      "Kangheng/OVR-Dataset-ColdStart",
+      "SciReason/SciLM-CoT_ColdStart",
+      "Godheritage/BesiegeField_humandataset_coldstart",
+      "TerenceLau/sparrow-coldstart",
+      "Jacky1006/Cold-start",
+      "WaltonFuture/Multimodal-Cold-Start"
+    ],
+    "memory_pressure": [
+      "memoriant/dgx-spark-kv-cache-benchmark",
+      "Nathan-Maine/dgx-spark-kv-cache-benchmark",
+      "alireza7/GrepSeek-ColdStart-SFT-10k"
+    ],
+    "migration": [
+      "eth-easl/swissai-serving-trace"
+    ],
+    "queueing": [
+      "Qinghao/AcmeTrace"
+    ],
+    "serving_stability": [
+      "ssong1/llmperf-bedrock",
+      "Qinghao/AcmeTrace"
+    ]
+  },
+  "total_inspected": 160,
+  "total_probes": 60,
+  "total_unique_discovered": 399
+}
