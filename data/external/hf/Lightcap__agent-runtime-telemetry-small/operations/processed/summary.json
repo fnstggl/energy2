@@ -30,7 +30,7 @@
   "fixture_sample_bytes": 6373,
   "fixture_sample_rows": 5,
   "gated": false,
-  "ingestion_timestamp_s": 1780337448.9449887,
+  "ingestion_timestamp_s": 1780345334.0872679,
   "license": "cc-by-4.0",
   "limitations": [
     "Real measured MCP-style agent-runtime tool-call execution telemetry exported from Faruk Alpay's Lightcap runtime (operations.parquet).",
@@ -94,7 +94,7 @@
     "updated_at_iso",
     "updated_at_s"
   ],
-  "provenance": "Lightcap/agent-runtime-telemetry-small@operations#data/operations.parquet#bytes=276568#git=a0e87b3",
+  "provenance": "Lightcap/agent-runtime-telemetry-small@operations#data/operations.parquet#bytes=276568#git=f3ed2df",
   "proxy_fields": [
     "args_count",
     "kwargs_key_count",

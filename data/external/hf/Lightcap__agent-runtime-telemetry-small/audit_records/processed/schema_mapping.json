@@ -1,0 +1,273 @@
+{
+  "accepted_columns": [
+    "category",
+    "created_at_utc",
+    "duration_ms",
+    "kind",
+    "payload_bytes",
+    "payload_key_count",
+    "payload_keys",
+    "payload_sha256",
+    "record_file",
+    "record_id",
+    "record_name",
+    "record_path_scope",
+    "request_id",
+    "response_key_count",
+    "response_keys",
+    "status",
+    "tool"
+  ],
+  "columns": [
+    {
+      "aurelius_signal_category": "scheduler_state",
+      "field_quality": "real",
+      "normalized_field": "category",
+      "notes": "Audit-record category: tool_requests (inbound MCP request) or tool_results (outbound MCP response). The pair shares request_id; results carry duration_ms.",
+      "presence_rate": 1.0,
+      "raw_column_name": "category",
+      "raw_dtype": [
+        "str"
+      ],
+      "usable_for": [
+        "routing_quality",
+        "constraint_aware_backtest"
+      ]
+    },
+    {
+      "aurelius_signal_category": "request_arrival",
+      "field_quality": "real",
+      "normalized_field": "created_at_iso",
+      "notes": "RFC3339 ISO arrival timestamp; epoch seconds derived as created_at_s.",
+      "presence_rate": 1.0,
+      "raw_column_name": "created_at_utc",
+      "raw_dtype": [
+        "str"
+      ],
+      "usable_for": [
+        "latency_prior",
+        "constraint_aware_backtest"
+      ]
+    },
+    {
+      "aurelius_signal_category": "latency",
+      "field_quality": "real",
+      "normalized_field": "duration_ms",
+      "notes": "Real measured MCP-shell-layer duration in ms. Populated only on tool_results rows (50% of audit_records). Heavy tail: p99=2.5 s, max=900 s in this export.",
+      "presence_rate": 1.0,
+      "raw_column_name": "duration_ms",
+      "raw_dtype": [
+        "float",
+        "null"
+      ],
+      "usable_for": [
+        "latency_prior",
+        "constraint_aware_backtest"
+      ]
+    },
+    {
+      "aurelius_signal_category": "metadata_only",
+      "field_quality": "real",
+      "normalized_field": "kind",
+      "notes": "MCP message kind: mcp_tool_request or mcp_tool_result.",
+      "presence_rate": 1.0,
+      "raw_column_name": "kind",
+      "raw_dtype": [
+        "str"
+      ],
+      "usable_for": [
+        "routing_quality"
+      ]
+    },
+    {
+      "aurelius_signal_category": "tokens",
+      "field_quality": "real",
+      "normalized_field": "payload_bytes",
+      "notes": "Real measured audit-record payload byte count. For tool_requests: request-body bytes. For tool_results: response-body bytes.",
+      "presence_rate": 1.0,
+      "raw_column_name": "payload_bytes",
+      "raw_dtype": [
+        "int"
+      ],
+      "usable_for": [
+        "workload_shape_only",
+        "latency_prior"
+      ]
+    },
+    {
+      "aurelius_signal_category": "tokens",
+      "field_quality": "real",
+      "normalized_field": "payload_key_count",
+      "notes": "Audit-record payload key count (payload-shape proxy).",
+      "presence_rate": 1.0,
+      "raw_column_name": "payload_key_count",
+      "raw_dtype": [
+        "int"
+      ],
+      "usable_for": [
+        "workload_shape_only"
+      ]
+    },
+    {
+      "aurelius_signal_category": "metadata_only",
+      "field_quality": "real",
+      "normalized_field": "payload_keys",
+      "notes": "Pipe-delimited audit-record payload key list.",
+      "presence_rate": 1.0,
+      "raw_column_name": "payload_keys",
+      "raw_dtype": [
+        "str"
+      ],
+      "usable_for": [
+        "workload_shape_only"
+      ]
+    },
+    {
+      "aurelius_signal_category": "cache_residency",
+      "field_quality": "real",
+      "normalized_field": "payload_sha256",
+      "notes": "sha256 of the audit-record payload body. Same fingerprint across requests = identical request body (cache-reuse proxy at the MCP shell layer).",
+      "presence_rate": 1.0,
+      "raw_column_name": "payload_sha256",
+      "raw_dtype": [
+        "str"
+      ],
+      "usable_for": [
+        "cache_residency_evaluation"
+      ]
+    },
+    {
+      "aurelius_signal_category": "metadata_only",
+      "field_quality": "real",
+      "normalized_field": "record_file",
+      "notes": "Audit-record filename ('{timestamp}_{record_name}.json').",
+      "presence_rate": 1.0,
+      "raw_column_name": "record_file",
+      "raw_dtype": [
+        "str"
+      ],
+      "usable_for": [
+        "workload_shape_only"
+      ]
+    },
+    {
+      "aurelius_signal_category": "metadata_only",
+      "field_quality": "real",
+      "normalized_field": "record_id",
+      "notes": "Per-record sequence id (1..N).",
+      "presence_rate": 1.0,
+      "raw_column_name": "record_id",
+      "raw_dtype": [
+        "int"
+      ],
+      "usable_for": [
+        "workload_shape_only"
+      ]
+    },
+    {
+      "aurelius_signal_category": "metadata_only",
+      "field_quality": "real",
+      "normalized_field": "record_name",
+      "notes": "Audit-record name (typically '{tool}_{request_id}').",
+      "presence_rate": 1.0,
+      "raw_column_name": "record_name",
+      "raw_dtype": [
+        "str"
+      ],
+      "usable_for": [
+        "workload_shape_only"
+      ]
+    },
+    {
+      "aurelius_signal_category": "metadata_only",
+      "field_quality": "real",
+      "normalized_field": "record_path_scope",
+      "notes": "Audit-record file path scope (e.g. 'workspace').",
+      "presence_rate": 1.0,
+      "raw_column_name": "record_path_scope",
+      "raw_dtype": [
+        "str"
+      ],
+      "usable_for": [
+        "workload_shape_only"
+      ]
+    },
+    {
+      "aurelius_signal_category": "session_id",
+      "field_quality": "real",
+      "normalized_field": "request_id",
+      "notes": "MCP request UUID. Joins to operations.request_id. Each request_id has 2 audit records: one tool_requests + one tool_results.",
+      "presence_rate": 1.0,
+      "raw_column_name": "request_id",
+      "raw_dtype": [
+        "str"
+      ],
+      "usable_for": [
+        "routing_quality",
+        "constraint_aware_backtest"
+      ]
+    },
+    {
+      "aurelius_signal_category": "tokens",
+      "field_quality": "real",
+      "normalized_field": "response_key_count",
+      "notes": "Audit-record response key count. Populated only on tool_results rows.",
+      "presence_rate": 1.0,
+      "raw_column_name": "response_key_count",
+      "raw_dtype": [
+        "int"
+      ],
+      "usable_for": [
+        "workload_shape_only",
+        "latency_prior"
+      ]
+    },
+    {
+      "aurelius_signal_category": "metadata_only",
+      "field_quality": "real",
+      "normalized_field": "response_keys",
+      "notes": "Pipe-delimited response key list. Populated only on tool_results rows.",
+      "presence_rate": 1.0,
+      "raw_column_name": "response_keys",
+      "raw_dtype": [
+        "str"
+      ],
+      "usable_for": [
+        "workload_shape_only"
+      ]
+    },
+    {
+      "aurelius_signal_category": "failure_timeout",
+      "field_quality": "real",
+      "normalized_field": "status",
+      "notes": "Terminal status (only populated on tool_results: ok / error / accepted / running). Blank on tool_requests.",
+      "presence_rate": 1.0,
+      "raw_column_name": "status",
+      "raw_dtype": [
+        "str"
+      ],
+      "usable_for": [
+        "routing_quality",
+        "constraint_aware_backtest"
+      ]
+    },
+    {
+      "aurelius_signal_category": "metadata_only",
+      "field_quality": "real",
+      "normalized_field": "tool_name",
+      "notes": "Tool routing key. Same set as operations.tool_name.",
+      "presence_rate": 1.0,
+      "raw_column_name": "tool",
+      "raw_dtype": [
+        "str"
+      ],
+      "usable_for": [
+        "routing_quality",
+        "workload_shape_only"
+      ]
+    }
+  ],
+  "config_name": "audit_records",
+  "dataset_id": "Lightcap/agent-runtime-telemetry-small",
+  "rejected_columns": []
+}

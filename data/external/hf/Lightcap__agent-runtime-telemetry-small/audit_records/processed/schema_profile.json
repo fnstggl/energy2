@@ -1,0 +1,502 @@
+{
+  "config_name": "audit_records",
+  "dataset_id": "Lightcap/agent-runtime-telemetry-small",
+  "example_values": {
+    "backend_preference": [
+      "None",
+      "None",
+      "None"
+    ],
+    "category": [
+      "'tool_requests'",
+      "'tool_results'",
+      "'tool_requests'"
+    ],
+    "created_at_iso": [
+      "'2026-04-14T23:36:26.571367+00:00'",
+      "'2026-04-14T23:36:26.576276+00:00'",
+      "'2026-04-14T23:36:26.590582+00:00'"
+    ],
+    "created_at_s": [
+      "1776209786.571367",
+      "1776209786.576276",
+      "1776209786.590582"
+    ],
+    "duration_ms": [
+      "None",
+      "4.572874997393228",
+      "None"
+    ],
+    "duration_s": [
+      "None",
+      "0.004572874997393228",
+      "None"
+    ],
+    "is_cancelled": [
+      "None",
+      "False",
+      "None"
+    ],
+    "is_error": [
+      "None",
+      "False",
+      "None"
+    ],
+    "kind": [
+      "'mcp_tool_request'",
+      "'mcp_tool_result'",
+      "'mcp_tool_request'"
+    ],
+    "operation_id": [
+      "None",
+      "None",
+      "None"
+    ],
+    "operation_mode": [
+      "None",
+      "None",
+      "None"
+    ],
+    "payload_bytes": [
+      "231",
+      "129573",
+      "235"
+    ],
+    "payload_key_count": [
+      "7",
+      "8",
+      "7"
+    ],
+    "payload_keys": [
+      "'args|created_at_utc|kind|kwargs|operation_id|request_id|tool'",
+      "'created_at_utc|duration_ms|kind|operation_id|request_id|response_data|status|tool'",
+      "'args|created_at_utc|kind|kwargs|operation_id|request_id|tool'"
+    ],
+    "payload_sha256": [
+      "'85e6d6591d05b7e5b5457c03fd300cd4ab8c2395f1fa2b3ba5639445321dcd6b'",
+      "'7e0b254c7faafd8567e10368879709881e1c69d15857893ee9d6c60e450e8602'",
+      "'69764b103ad9258325f89f163d507582c0dc056972336ada332369920d7e10b1'"
+    ],
+    "record_file": [
+      "'20260414T233626571367Z_chatgpt_agent_protocol_4a819805068e412f8d4aea0d6e3fd138.json'",
+      "'20260414T233626576276Z_chatgpt_agent_protocol_4a819805068e412f8d4aea0d6e3fd138.json'",
+      "'20260414T233626590582Z_foundry_agent_instructions_777ad2d3181e4ff4b89caadee32b9afb.json'"
+    ],
+    "record_id": [
+      "1",
+      "2",
+      "3"
+    ],
+    "record_name": [
+      "'chatgpt_agent_protocol_4a819805068e412f8d4aea0d6e3fd138'",
+      "'chatgpt_agent_protocol_4a819805068e412f8d4aea0d6e3fd138'",
+      "'foundry_agent_instructions_777ad2d3181e4ff4b89caadee32b9afb'"
+    ],
+    "record_path_scope": [
+      "'workspace'",
+      "'workspace'",
+      "'workspace'"
+    ],
+    "request_id": [
+      "'4a819805068e412f8d4aea0d6e3fd138'",
+      "'4a819805068e412f8d4aea0d6e3fd138'",
+      "'777ad2d3181e4ff4b89caadee32b9afb'"
+    ],
+    "response_key_count": [
+      "0",
+      "4",
+      "0"
+    ],
+    "response_keys": [
+      "None",
+      "'execution_surface|protocol|protocol_bundle|signal_registry'",
+      "None"
+    ],
+    "stage": [
+      "None",
+      "None",
+      "None"
+    ],
+    "status": [
+      "None",
+      "'ok'",
+      "None"
+    ],
+    "tool_name": [
+      "'chatgpt_agent_protocol'",
+      "'chatgpt_agent_protocol'",
+      "'foundry_agent_instructions'"
+    ],
+    "updated_at_iso": [
+      "'2026-04-14T23:36:26.571367+00:00'",
+      "'2026-04-14T23:36:26.576276+00:00'",
+      "'2026-04-14T23:36:26.590582+00:00'"
+    ],
+    "updated_at_s": [
+      "1776209786.571367",
+      "1776209786.576276",
+      "1776209786.590582"
+    ]
+  },
+  "file_size_bytes": 2247227,
+  "inspected_row_count": 14053,
+  "missing_rates": {
+    "backend_preference": 1.0,
+    "category": 0.0,
+    "created_at_iso": 0.0,
+    "created_at_s": 0.0,
+    "duration_ms": 0.4989681918451576,
+    "duration_s": 0.4989681918451576,
+    "is_cancelled": 0.4989681918451576,
+    "is_error": 0.4989681918451576,
+    "kind": 0.0,
+    "operation_id": 1.0,
+    "operation_mode": 1.0,
+    "payload_bytes": 0.0,
+    "payload_key_count": 0.0,
+    "payload_keys": 0.0,
+    "payload_sha256": 0.0,
+    "record_file": 0.0,
+    "record_id": 0.0,
+    "record_name": 0.0,
+    "record_path_scope": 0.0,
+    "request_id": 0.0,
+    "response_key_count": 0.0,
+    "response_keys": 0.5419483384330748,
+    "stage": 1.0,
+    "status": 0.4989681918451576,
+    "tool_name": 0.0,
+    "updated_at_iso": 0.0,
+    "updated_at_s": 0.0
+  },
+  "normalized_columns": [
+    "backend_preference",
+    "category",
+    "created_at_iso",
+    "created_at_s",
+    "duration_ms",
+    "duration_s",
+    "is_cancelled",
+    "is_error",
+    "kind",
+    "operation_id",
+    "operation_mode",
+    "payload_bytes",
+    "payload_key_count",
+    "payload_keys",
+    "payload_sha256",
+    "record_file",
+    "record_id",
+    "record_name",
+    "record_path_scope",
+    "request_id",
+    "response_key_count",
+    "response_keys",
+    "stage",
+    "status",
+    "tool_name",
+    "updated_at_iso",
+    "updated_at_s"
+  ],
+  "normalized_dtypes": {
+    "backend_preference": [
+      "null"
+    ],
+    "category": [
+      "str"
+    ],
+    "created_at_iso": [
+      "str"
+    ],
+    "created_at_s": [
+      "float"
+    ],
+    "duration_ms": [
+      "float",
+      "null"
+    ],
+    "duration_s": [
+      "float",
+      "null"
+    ],
+    "is_cancelled": [
+      "bool",
+      "null"
+    ],
+    "is_error": [
+      "bool",
+      "null"
+    ],
+    "kind": [
+      "str"
+    ],
+    "operation_id": [
+      "null"
+    ],
+    "operation_mode": [
+      "null"
+    ],
+    "payload_bytes": [
+      "int"
+    ],
+    "payload_key_count": [
+      "int"
+    ],
+    "payload_keys": [
+      "str"
+    ],
+    "payload_sha256": [
+      "str"
+    ],
+    "record_file": [
+      "str"
+    ],
+    "record_id": [
+      "int"
+    ],
+    "record_name": [
+      "str"
+    ],
+    "record_path_scope": [
+      "str"
+    ],
+    "request_id": [
+      "str"
+    ],
+    "response_key_count": [
+      "int"
+    ],
+    "response_keys": [
+      "null",
+      "str"
+    ],
+    "stage": [
+      "null"
+    ],
+    "status": [
+      "null",
+      "str"
+    ],
+    "tool_name": [
+      "str"
+    ],
+    "updated_at_iso": [
+      "str"
+    ],
+    "updated_at_s": [
+      "float"
+    ]
+  },
+  "presence_rates": {
+    "backend_preference": 0.0,
+    "category": 1.0,
+    "created_at_iso": 1.0,
+    "created_at_s": 1.0,
+    "duration_ms": 0.5010318081548424,
+    "duration_s": 0.5010318081548424,
+    "is_cancelled": 0.5010318081548424,
+    "is_error": 0.5010318081548424,
+    "kind": 1.0,
+    "operation_id": 0.0,
+    "operation_mode": 0.0,
+    "payload_bytes": 1.0,
+    "payload_key_count": 1.0,
+    "payload_keys": 1.0,
+    "payload_sha256": 1.0,
+    "record_file": 1.0,
+    "record_id": 1.0,
+    "record_name": 1.0,
+    "record_path_scope": 1.0,
+    "request_id": 1.0,
+    "response_key_count": 1.0,
+    "response_keys": 0.45805166156692523,
+    "stage": 0.0,
+    "status": 0.5010318081548424,
+    "tool_name": 1.0,
+    "updated_at_iso": 1.0,
+    "updated_at_s": 1.0
+  },
+  "raw_columns": [
+    "category",
+    "created_at_utc",
+    "duration_ms",
+    "kind",
+    "payload_bytes",
+    "payload_key_count",
+    "payload_keys",
+    "payload_sha256",
+    "record_file",
+    "record_id",
+    "record_name",
+    "record_path_scope",
+    "request_id",
+    "response_key_count",
+    "response_keys",
+    "status",
+    "tool"
+  ],
+  "raw_dtypes": {
+    "category": [
+      "str"
+    ],
+    "created_at_utc": [
+      "str"
+    ],
+    "duration_ms": [
+      "float",
+      "null"
+    ],
+    "kind": [
+      "str"
+    ],
+    "payload_bytes": [
+      "int"
+    ],
+    "payload_key_count": [
+      "int"
+    ],
+    "payload_keys": [
+      "str"
+    ],
+    "payload_sha256": [
+      "str"
+    ],
+    "record_file": [
+      "str"
+    ],
+    "record_id": [
+      "int"
+    ],
+    "record_name": [
+      "str"
+    ],
+    "record_path_scope": [
+      "str"
+    ],
+    "request_id": [
+      "str"
+    ],
+    "response_key_count": [
+      "int"
+    ],
+    "response_keys": [
+      "str"
+    ],
+    "status": [
+      "str"
+    ],
+    "tool": [
+      "str"
+    ]
+  },
+  "raw_example_values": {
+    "category": [
+      "'tool_requests'",
+      "'tool_results'",
+      "'tool_requests'"
+    ],
+    "created_at_utc": [
+      "'2026-04-14T23:36:26.571367+00:00'",
+      "'2026-04-14T23:36:26.576276+00:00'",
+      "'2026-04-14T23:36:26.590582+00:00'"
+    ],
+    "duration_ms": [
+      "None",
+      "4.572874997393228",
+      "None"
+    ],
+    "kind": [
+      "'mcp_tool_request'",
+      "'mcp_tool_result'",
+      "'mcp_tool_request'"
+    ],
+    "payload_bytes": [
+      "231",
+      "129573",
+      "235"
+    ],
+    "payload_key_count": [
+      "7",
+      "8",
+      "7"
+    ],
+    "payload_keys": [
+      "'args|created_at_utc|kind|kwargs|operation_id|request_id|tool'",
+      "'created_at_utc|duration_ms|kind|operation_id|request_id|response_data|status|tool'",
+      "'args|created_at_utc|kind|kwargs|operation_id|request_id|tool'"
+    ],
+    "payload_sha256": [
+      "'85e6d6591d05b7e5b5457c03fd300cd4ab8c2395f1fa2b3ba5639445321dcd6b'",
+      "'7e0b254c7faafd8567e10368879709881e1c69d15857893ee9d6c60e450e8602'",
+      "'69764b103ad9258325f89f163d507582c0dc056972336ada332369920d7e10b1'"
+    ],
+    "record_file": [
+      "'20260414T233626571367Z_chatgpt_agent_protocol_4a819805068e412f8d4aea0d6e3fd138.json'",
+      "'20260414T233626576276Z_chatgpt_agent_protocol_4a819805068e412f8d4aea0d6e3fd138.json'",
+      "'20260414T233626590582Z_foundry_agent_instructions_777ad2d3181e4ff4b89caadee32b9afb.json'"
+    ],
+    "record_id": [
+      "1",
+      "2",
+      "3"
+    ],
+    "record_name": [
+      "'chatgpt_agent_protocol_4a819805068e412f8d4aea0d6e3fd138'",
+      "'chatgpt_agent_protocol_4a819805068e412f8d4aea0d6e3fd138'",
+      "'foundry_agent_instructions_777ad2d3181e4ff4b89caadee32b9afb'"
+    ],
+    "record_path_scope": [
+      "'workspace'",
+      "'workspace'",
+      "'workspace'"
+    ],
+    "request_id": [
+      "'4a819805068e412f8d4aea0d6e3fd138'",
+      "'4a819805068e412f8d4aea0d6e3fd138'",
+      "'777ad2d3181e4ff4b89caadee32b9afb'"
+    ],
+    "response_key_count": [
+      "0",
+      "4",
+      "0"
+    ],
+    "response_keys": [
+      "''",
+      "'execution_surface|protocol|protocol_bundle|signal_registry'",
+      "''"
+    ],
+    "status": [
+      "''",
+      "'ok'",
+      "''"
+    ],
+    "tool": [
+      "'chatgpt_agent_protocol'",
+      "'chatgpt_agent_protocol'",
+      "'foundry_agent_instructions'"
+    ]
+  },
+  "raw_presence_rates": {
+    "category": 1.0,
+    "created_at_utc": 1.0,
+    "duration_ms": 1.0,
+    "kind": 1.0,
+    "payload_bytes": 1.0,
+    "payload_key_count": 1.0,
+    "payload_keys": 1.0,
+    "payload_sha256": 1.0,
+    "record_file": 1.0,
+    "record_id": 1.0,
+    "record_name": 1.0,
+    "record_path_scope": 1.0,
+    "request_id": 1.0,
+    "response_key_count": 1.0,
+    "response_keys": 1.0,
+    "status": 1.0,
+    "tool": 1.0
+  },
+  "raw_row_count": 14053,
+  "source_files_inspected": [
+    "data/audit_records.parquet"
+  ]
+}

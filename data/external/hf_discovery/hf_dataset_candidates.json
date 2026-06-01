@@ -5698,9 +5698,10 @@
       "trust_level": "tier_6_synthetic_benchmark_data"
     },
     {
-      "audit_decision": "ingested_as_tool_runtime_trace",
+      "audit_decision": "ingested_as_tool_runtime_trace_followup",
       "audit_note_2026_06_01c": "Round-5 defer cleared: Lightcap ingested 2026-06-01 as the inaugural tool_runtime_trace canonical type (new). operations config (2,262 rows \u00d7 33 cols) -> promoted_for_backtest + promoted_for_constraint_aware_evaluation + promoted_for_training_priors. tool_summary config (32 aggregated rows) -> promoted_for_schema_only. Trust tier: Tier 3 (tier_3_cluster_scheduler_traces \u2014 real measured execution telemetry, job-trace shape, but the 'jobs' are MCP tool calls, not GPU jobs). Routing-quality + failure-rate + tail-latency priors for agent workloads. NO GPU / NO model / NO LLM-serving signal \u2014 closed tool-runtime e2e timing only.",
-      "audit_round": "focused_audit_2026_06_01c",
+      "audit_note_2026_06_01d": "Follow-up 2026-06-01d: Lightcap operation_events + audit_records configs ingested into the same tool_runtime_trace canonical type. operation_events (9,903 lifecycle events \u00d7 13 cols, moderate strength) -> promoted_for_backtest + constraint_aware_evaluation + training_priors. Per-event duration_ms = ms-since-the-operation's started event = real dispatch-latency / execution-latency / completion-stage priors (started\u2192executing p50=19 ms; affinity_warning p50=806 ms; full lifecycle p50=125 ms / p95=19 s). audit_records (14,053 rows \u00d7 17 cols, strong strength) -> promoted_for_backtest + constraint_aware_evaluation + training_priors. MCP-shell-layer duration_ms is REAL on tool_results rows (7,041 / 14,053; p50=4.7 ms / p95=400 ms / p99=2.5 s / max=900 s; error_rate=8.6%). NO GPU / NO model / NO LLM-serving signal \u2014 same closed-runtime-timing scope as the operations config. Joins: operation_id (operation_events <-> operations); request_id (audit_records <-> operations).",
+      "audit_round": "focused_audit_2026_06_01d",
       "aurelius_use_case": "Round-5 discovery audit \u2014 see reason.",
       "available_signals": [],
       "available_splits": [],
@@ -5922,7 +5923,34 @@
     "scope": "Inaugural tool_runtime_trace canonical-type ingest (Lightcap/agent-runtime-telemetry-small). Clears Round-5 'defer_high_value_different_trace_class' block by adding the new canonical type to aurelius/traces/hf_corpus/schemas.py + promotion.py.",
     "trust_tier": "tier_3_cluster_scheduler_traces"
   },
-  "last_updated_at_s": 1780337610.8697517,
+  "focused_audit_2026_06_01d": {
+    "canonical_type": "tool_runtime_trace",
+    "configs_ingested": [
+      "Lightcap/agent-runtime-telemetry-small@operation_events (9,903 events \u00d7 2,262 operations, moderate strength)",
+      "Lightcap/agent-runtime-telemetry-small@audit_records (14,053 audit records: 7,012 requests + 7,041 results, strong strength)"
+    ],
+    "datasets": [
+      "Lightcap/agent-runtime-telemetry-small"
+    ],
+    "headline_promotion_state": "promoted_for_backtest",
+    "headline_promotion_tags": [
+      "promoted_for_backtest",
+      "promoted_for_constraint_aware_evaluation",
+      "promoted_for_training_priors"
+    ],
+    "join_keys": {
+      "audit_records__operations": "request_id",
+      "operation_events__operations": "operation_id"
+    },
+    "license": "cc-by-4.0",
+    "modifies_controllers_or_defaults": false,
+    "modifies_robust_energy_engine": false,
+    "production_claim": false,
+    "ran_at_s": 1780345342.1493084,
+    "scope": "Lightcap follow-up: ingested the two remaining configs (operation_events + audit_records) into the existing tool_runtime_trace canonical type. Unlocks per-stage lifecycle-transition timing (dispatch / execution / completion priors at the agent-runtime layer) and MCP-shell-layer request/response duration priors with strong-strength sample (14,053 rows; p99=2.5 s, max=900 s). Closes the documented \u00a710 next-task 'Lightcap follow-up (next-run priority)' from registry doc / PR #143.",
+    "trust_tier": "tier_3_cluster_scheduler_traces"
+  },
+  "last_updated_at_s": 1780345342.1493075,
   "production_claim": false,
   "query_groups_used": [
     "latency_benchmark",

@@ -24,7 +24,7 @@
   "fixture_sample_bytes": 5066,
   "fixture_sample_rows": 5,
   "gated": false,
-  "ingestion_timestamp_s": 1780337610.695189,
+  "ingestion_timestamp_s": 1780345334.3430226,
   "license": "cc-by-4.0",
   "limitations": [
     "Pre-aggregated per-(tool_name, status) bucket summary from Faruk Alpay's Lightcap tool-runtime (tool_summary.parquet, 32 rows, 22 distinct tools).",
@@ -96,7 +96,7 @@
     "updated_at_iso",
     "updated_at_s"
   ],
-  "provenance": "Lightcap/agent-runtime-telemetry-small@tool_summary#data/tool_summary.parquet#bytes=8030#git=a0e87b3",
+  "provenance": "Lightcap/agent-runtime-telemetry-small@tool_summary#data/tool_summary.parquet#bytes=8030#git=f3ed2df",
   "proxy_fields": [
     "args_count",
     "kwargs_key_count",

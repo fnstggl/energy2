@@ -311,6 +311,30 @@ TOOL_RUNTIME_PAYLOAD_FIELDS = {
     "has_source_binding",
     "series_rows_count",
     "scenario_rows_count",
+    # Per-event lifecycle dimensions (operation_events config). One row
+    # per lifecycle transition; the gap between consecutive event_time_utc
+    # values per operation_id is what gives Aurelius dispatch /
+    # execution / completion latency priors.
+    "event_id",
+    "event_type",
+    "payload_bytes",
+    "payload_sha256",
+    "payload_key_count",
+    "payload_keys",
+    "payload_status",
+    "payload_stage",
+    # MCP audit-record dimensions (audit_records config). One row per
+    # MCP request/result audit record; results carry real measured
+    # duration_ms at the MCP shell layer (distinct from operations'
+    # runtime-level duration).
+    "record_id",
+    "category",
+    "record_name",
+    "record_file",
+    "record_path_scope",
+    "kind",
+    "response_key_count",
+    "response_keys",
 }
 
 
@@ -662,6 +686,22 @@ class ToolRuntimeRecord(CanonicalCorpusRecord):
     has_source_binding: Optional[bool] = None
     series_rows_count: Optional[int] = None
     scenario_rows_count: Optional[int] = None
+    event_id: Optional[int] = None
+    event_type: Optional[str] = None
+    payload_bytes: Optional[int] = None
+    payload_sha256: Optional[str] = None
+    payload_key_count: Optional[int] = None
+    payload_keys: Optional[str] = None
+    payload_status: Optional[str] = None
+    payload_stage: Optional[str] = None
+    record_id: Optional[int] = None
+    category: Optional[str] = None
+    record_name: Optional[str] = None
+    record_file: Optional[str] = None
+    record_path_scope: Optional[str] = None
+    kind: Optional[str] = None
+    response_key_count: Optional[int] = None
+    response_keys: Optional[str] = None
 
     def __post_init__(self):
         self._validate_base(TOOL_RUNTIME_PAYLOAD_FIELDS)
