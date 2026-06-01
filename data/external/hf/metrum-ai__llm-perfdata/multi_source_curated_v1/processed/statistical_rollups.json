@@ -1,0 +1,369 @@
+{
+  "by_strata": {
+    "gpu=AMD MI300X|engine=vLLM (ROCm)|precision=BF16": {
+      "tokens_per_sec": {
+        "count": 1,
+        "max": 18752.0,
+        "mean": 18752.0,
+        "min": 18752.0,
+        "p25": 18752.0,
+        "p50": 18752.0,
+        "p75": 18752.0,
+        "p90": 18752.0,
+        "p95": 18752.0,
+        "p99": 18752.0
+      }
+    },
+    "gpu=Intel Gaudi 3|engine=vLLM|precision=BF16": {
+      "tokens_per_sec": {
+        "count": 4,
+        "max": 21264.0,
+        "mean": 12574.8475,
+        "min": 9072.96,
+        "p25": 9453.21,
+        "p50": 9981.215,
+        "p75": 13102.852499999999,
+        "p90": 17999.541,
+        "p95": 19631.7705,
+        "p99": 20937.554099999998
+      },
+      "tpot_ms": {
+        "count": 1,
+        "max": 38.54,
+        "mean": 38.54,
+        "min": 38.54,
+        "p25": 38.54,
+        "p50": 38.54,
+        "p75": 38.54,
+        "p90": 38.54,
+        "p95": 38.54,
+        "p99": 38.54
+      }
+    },
+    "gpu=NVIDIA A100|engine=vLLM|precision=FP16": {
+      "tokens_per_sec": {
+        "count": 7,
+        "max": 3362.71,
+        "mean": 1846.6714285714286,
+        "min": 495.93,
+        "p25": 596.24,
+        "p50": 1868.44,
+        "p75": 3003.57,
+        "p90": 3147.226,
+        "p95": 3254.968,
+        "p99": 3341.1616
+      },
+      "tpot_ms": {
+        "count": 7,
+        "max": 71.98,
+        "mean": 41.22428571428571,
+        "min": 14.96,
+        "p25": 21.595,
+        "p50": 45.87,
+        "p75": 56.285,
+        "p90": 64.744,
+        "p95": 68.362,
+        "p99": 71.2564
+      },
+      "ttft_ms": {
+        "count": 7,
+        "max": 1301.37,
+        "mean": 761.7771428571428,
+        "min": 309.36,
+        "p25": 366.615,
+        "p50": 579.43,
+        "p75": 1204.525,
+        "p90": 1300.134,
+        "p95": 1300.752,
+        "p99": 1301.2464
+      }
+    },
+    "gpu=NVIDIA H100|engine=SGLang|precision=BF16": {
+      "tokens_per_sec": {
+        "count": 4,
+        "max": 3088.08,
+        "mean": 1730.8249999999998,
+        "min": 91.0,
+        "p25": 522.655,
+        "p50": 1872.11,
+        "p75": 3080.2799999999997,
+        "p90": 3084.96,
+        "p95": 3086.52,
+        "p99": 3087.768
+      },
+      "ttft_ms": {
+        "count": 3,
+        "max": 258.0,
+        "mean": 216.0,
+        "min": 136.0,
+        "p25": 195.0,
+        "p50": 254.0,
+        "p75": 256.0,
+        "p90": 257.2,
+        "p95": 257.6,
+        "p99": 257.92
+      }
+    },
+    "gpu=NVIDIA H100|engine=vLLM (v0)|precision=BF16": {
+      "tokens_per_sec": {
+        "count": 3,
+        "max": 2744.1,
+        "mean": 2025.2266666666667,
+        "min": 588.62,
+        "p25": 1665.79,
+        "p50": 2742.96,
+        "p75": 2743.5299999999997,
+        "p90": 2743.872,
+        "p95": 2743.986,
+        "p99": 2744.0771999999997
+      },
+      "ttft_ms": {
+        "count": 3,
+        "max": 415.0,
+        "mean": 363.3333333333333,
+        "min": 318.0,
+        "p25": 337.5,
+        "p50": 357.0,
+        "p75": 386.0,
+        "p90": 403.4,
+        "p95": 409.2,
+        "p99": 413.84
+      }
+    },
+    "gpu=NVIDIA H100|engine=vLLM (v1)|precision=BF16": {
+      "tokens_per_sec": {
+        "count": 3,
+        "max": 3141.16,
+        "mean": 2270.883333333333,
+        "min": 634.87,
+        "p25": 1835.745,
+        "p50": 3036.62,
+        "p75": 3088.89,
+        "p90": 3120.252,
+        "p95": 3130.7059999999997,
+        "p99": 3139.0692
+      },
+      "ttft_ms": {
+        "count": 3,
+        "max": 373.0,
+        "mean": 332.3333333333333,
+        "min": 276.0,
+        "p25": 312.0,
+        "p50": 348.0,
+        "p75": 360.5,
+        "p90": 368.0,
+        "p95": 370.5,
+        "p99": 372.5
+      }
+    },
+    "gpu=NVIDIA H100|engine=vLLM|precision=BF16": {
+      "tokens_per_sec": {
+        "count": 3,
+        "max": 477.49,
+        "mean": 272.5,
+        "min": 80.0,
+        "p25": 170.005,
+        "p50": 260.01,
+        "p75": 368.75,
+        "p90": 433.994,
+        "p95": 455.74199999999996,
+        "p99": 473.1404
+      }
+    },
+    "gpu=NVIDIA H100|engine=vLLM|precision=FP8": {
+      "tokens_per_sec": {
+        "count": 2,
+        "max": 291.5,
+        "mean": 163.25,
+        "min": 35.0,
+        "p25": 99.125,
+        "p50": 163.25,
+        "p75": 227.375,
+        "p90": 265.85,
+        "p95": 278.67499999999995,
+        "p99": 288.935
+      }
+    },
+    "gpu=NVIDIA H200|engine=SGLang|precision=BF16": {
+      "tpot_ms": {
+        "count": 1,
+        "max": 0.042,
+        "mean": 0.042,
+        "min": 0.042,
+        "p25": 0.042,
+        "p50": 0.042,
+        "p75": 0.042,
+        "p90": 0.042,
+        "p95": 0.042,
+        "p99": 0.042
+      },
+      "ttft_ms": {
+        "count": 1,
+        "max": 7.292,
+        "mean": 7.292,
+        "min": 7.292,
+        "p25": 7.292,
+        "p50": 7.292,
+        "p75": 7.292,
+        "p90": 7.292,
+        "p95": 7.292,
+        "p99": 7.292
+      }
+    },
+    "gpu=NVIDIA L40S|engine=vLLM|precision=BF16": {
+      "tokens_per_sec": {
+        "count": 1,
+        "max": 95.0,
+        "mean": 95.0,
+        "min": 95.0,
+        "p25": 95.0,
+        "p50": 95.0,
+        "p75": 95.0,
+        "p90": 95.0,
+        "p95": 95.0,
+        "p99": 95.0
+      }
+    }
+  },
+  "insufficient_sample_groups": [
+    "gpu=NVIDIA B200|engine=vLLM|precision=FP8",
+    "gpu=NVIDIA H200|engine=vLLM|precision=FP8",
+    "gpu=NVIDIA H200|engine=SGLang|precision=BF16",
+    "gpu=AMD MI300X|engine=vLLM|precision=BF16",
+    "gpu=NVIDIA H100|engine=vLLM|precision=FP8",
+    "gpu=AMD MI300X|engine=vLLM (ROCm)|precision=FP8",
+    "gpu=NVIDIA L40S|engine=vLLM|precision=BF16",
+    "gpu=NVIDIA B200|engine=SGLang|precision=BF16",
+    "gpu=AMD MI300X|engine=vLLM (ROCm)|precision=BF16",
+    "gpu=AMD MI355X|engine=vLLM (ROCm)|precision=BF16",
+    "gpu=NVIDIA L40S|engine=SGLang|precision=BF16",
+    "gpu=NVIDIA H100|engine=vLLM|precision=FP16",
+    "gpu=NVIDIA RTX 4090|engine=vLLM|precision=BF16",
+    "gpu=NVIDIA RTX 4090|engine=SGLang|precision=BF16",
+    "gpu=NVIDIA B200|engine=vLLM|precision=BF16",
+    "gpu=NVIDIA H100|engine=vLLM (v0)|precision=BF16",
+    "gpu=NVIDIA H100|engine=vLLM (v1)|precision=BF16",
+    "gpu=NVIDIA H100|engine=SGLang|precision=FP8",
+    "gpu=unknown|engine=vLLM|precision=unknown",
+    "gpu=unknown|engine=SGLang|precision=unknown"
+  ],
+  "overall": {
+    "concurrency": {
+      "count": 63,
+      "max": 1000.0,
+      "mean": 108.01587301587301,
+      "min": 1.0,
+      "p25": 32.0,
+      "p50": 64.0,
+      "p75": 100.0,
+      "p90": 128.0,
+      "p95": 243.19999999999982,
+      "p99": 1000.0
+    },
+    "num_gpus": {
+      "count": 80,
+      "max": 8.0,
+      "mean": 3.275,
+      "min": 1.0,
+      "p25": 1.0,
+      "p50": 1.0,
+      "p75": 8.0,
+      "p90": 8.0,
+      "p95": 8.0,
+      "p99": 8.0
+    },
+    "output_tokens": {
+      "count": 4,
+      "max": 2048.0,
+      "mean": 858.0,
+      "min": 128.0,
+      "p25": 224.0,
+      "p50": 628.0,
+      "p75": 1262.0,
+      "p90": 1733.6000000000001,
+      "p95": 1890.7999999999997,
+      "p99": 2016.5599999999997
+    },
+    "prompt_tokens": {
+      "count": 4,
+      "max": 4096.0,
+      "mean": 1338.0,
+      "min": 128.0,
+      "p25": 128.0,
+      "p50": 564.0,
+      "p75": 1774.0,
+      "p90": 3167.2000000000007,
+      "p95": 3631.599999999999,
+      "p99": 4003.1199999999994
+    },
+    "tokens_per_sec": {
+      "count": 38,
+      "max": 128794.0,
+      "mean": 7876.01394736842,
+      "min": 35.0,
+      "p25": 141.375,
+      "p50": 650.7049999999999,
+      "p75": 3085.48,
+      "p90": 12893.329000000034,
+      "p95": 27811.649999999936,
+      "p99": 105158.77000000016
+    },
+    "tpot_ms": {
+      "count": 10,
+      "max": 138.67,
+      "mean": 46.5822,
+      "min": 0.042,
+      "p25": 19.737499999999997,
+      "p50": 42.205,
+      "p75": 58.1025,
+      "p90": 78.64899999999997,
+      "p95": 108.65949999999992,
+      "p99": 132.6679
+    },
+    "ttft_ms": {
+      "count": 17,
+      "max": 1301.37,
+      "mean": 474.98423529411764,
+      "min": 7.292,
+      "p25": 276.0,
+      "p50": 348.0,
+      "p75": 415.0,
+      "p90": 1185.568,
+      "p95": 1299.722,
+      "p99": 1301.0403999999999
+    }
+  },
+  "stratification_keys": [
+    "gpu_type",
+    "engine",
+    "precision"
+  ],
+  "subgroup_counts": {
+    "gpu=AMD MI300X|engine=vLLM (ROCm)|precision=BF16": 3,
+    "gpu=AMD MI300X|engine=vLLM (ROCm)|precision=FP8": 1,
+    "gpu=AMD MI300X|engine=vLLM|precision=BF16": 1,
+    "gpu=AMD MI355X|engine=vLLM (ROCm)|precision=BF16": 2,
+    "gpu=Intel Gaudi 3|engine=SGLang|precision=BF16": 5,
+    "gpu=Intel Gaudi 3|engine=vLLM|precision=BF16": 6,
+    "gpu=NVIDIA A100|engine=vLLM|precision=FP16": 8,
+    "gpu=NVIDIA B200|engine=SGLang|precision=BF16": 2,
+    "gpu=NVIDIA B200|engine=vLLM|precision=BF16": 1,
+    "gpu=NVIDIA B200|engine=vLLM|precision=FP8": 2,
+    "gpu=NVIDIA H100|engine=SGLang|precision=BF16": 8,
+    "gpu=NVIDIA H100|engine=SGLang|precision=FP8": 2,
+    "gpu=NVIDIA H100|engine=vLLM (v0)|precision=BF16": 3,
+    "gpu=NVIDIA H100|engine=vLLM (v1)|precision=BF16": 3,
+    "gpu=NVIDIA H100|engine=vLLM|precision=BF16": 8,
+    "gpu=NVIDIA H100|engine=vLLM|precision=FP16": 1,
+    "gpu=NVIDIA H100|engine=vLLM|precision=FP8": 3,
+    "gpu=NVIDIA H200|engine=SGLang|precision=BF16": 4,
+    "gpu=NVIDIA H200|engine=vLLM|precision=BF16": 5,
+    "gpu=NVIDIA H200|engine=vLLM|precision=FP8": 1,
+    "gpu=NVIDIA L40S|engine=SGLang|precision=BF16": 1,
+    "gpu=NVIDIA L40S|engine=vLLM|precision=BF16": 4,
+    "gpu=NVIDIA RTX 4090|engine=SGLang|precision=BF16": 1,
+    "gpu=NVIDIA RTX 4090|engine=vLLM|precision=BF16": 1,
+    "gpu=unknown|engine=SGLang|precision=unknown": 2,
+    "gpu=unknown|engine=vLLM|precision=unknown": 2
+  }
+}

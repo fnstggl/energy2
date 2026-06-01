@@ -121,6 +121,15 @@ scripts/ingest_hf_llm_energy_consumption.py
      total). First Ollama-engine entry + first consumer/laptop-tier prior
      in the federated corpus. License: cc-by-sa-4.0.
 
+scripts/ingest_hf_metrum_llmperfdata.py
+  -> 1 metrum-ai/llm-perfdata config (Round 5; multi_source_curated_v1)
+     covering 80 rows × 24 models × 9 GPUs × 5 engines × 3 precisions —
+     a multi-source curated TTFT / TPOT / throughput ledger that fills the
+     corpus' previously-empty H100 / H200 / B200 / L40S / RTX-4090 /
+     AMD MI300X / MI355X / Intel Gaudi 3 cells and the SGLang / vLLM-ROCm
+     engine cells. Statistical strength = weak (densest cell n=8) →
+     promoted_for_training_priors only. License: MIT.
+
 scripts/run_hf_corpus_evaluations.py
   -> data/external/hf_discovery/hf_corpus_evaluation_summary.json
 ```
@@ -251,6 +260,7 @@ Rules (binding):
 | `ejhusom/llm-inference-energy-consumption` | **`alpaca_gemma_7b_workstation`** | `latency_benchmark_trace` | Tier 4 | `promoted_for_performance_priors` (+ `constraint_aware_evaluation`, `training_priors`) | 5 | **8,735** | strong | 2026-06-01 |
 | `ejhusom/llm-inference-energy-consumption` | **`codefeedback_codellama_7b_workstation`** | `latency_benchmark_trace` | Tier 4 | `promoted_for_performance_priors` (+ `constraint_aware_evaluation`, `training_priors`) | 5 | **3,109** | moderate | 2026-06-01 |
 | `ejhusom/llm-inference-energy-consumption` | **`codefeedback_codellama_70b_workstation`** | `latency_benchmark_trace` | Tier 4 | `promoted_for_training_priors` | 5 | 161 | weak | 2026-06-01 |
+| `metrum-ai/llm-perfdata` | **`multi_source_curated_v1`** | `latency_benchmark_trace` | Tier 4 | `promoted_for_training_priors` | 5 | 80 | weak | 2026-06-01 |
 
 > **CARA** is the first Tier 2 (public telemetry trace) entry in the
 > federated corpus. CARA **train_flat** + **train_queue_details** are
@@ -1007,6 +1017,125 @@ Rules (binding):
   gitignored — regenerable via
   `scripts/ingest_hf_llm_energy_consumption.py`.
 
+#### `metrum-ai/llm-perfdata` — Round-5 broadened-discovery multi-source curated GPU-coverage breadth prior
+
+- **What it is.** MIT-licensed multi-source curated ledger maintained
+  by Metrum AI. One config (`multi_source_curated_v1`) ships 80 rows
+  covering 24 models × 9 GPU types × 5 serving engines × 3 precisions,
+  each row carrying TTFT / TPOT / Tokens-per-sec / Concurrency
+  measurements that the curator copied from a public upstream
+  benchmark report (every row's `Source_URL` is a separate upstream).
+- **Why it fills a gap.** Before Round 5 the Aurelius federated
+  corpus had NO public prior for **NVIDIA H100, H200, B200, L40S,
+  RTX-4090, AMD MI300X, MI355X, or Intel Gaudi 3** — the existing
+  Tier-4 latency benchmarks are A100 / A10 / T4 / DGX-Spark /
+  32vCPU-C7i / Bedrock-managed-API only. This is also the first
+  **SGLang** and **vLLM-ROCm** (and vLLM v0 / v1) coverage in the
+  corpus. The placement / routing engine previously could not even
+  enumerate the H200 / B200 / Gaudi-3 cells as legal destinations
+  with a measurable prior.
+- **Coverage by GPU (n per row).** NVIDIA H100 (28), Intel Gaudi 3
+  (11), NVIDIA H200 (10), NVIDIA A100 (8), NVIDIA B200 (5),
+  AMD MI300X (5), NVIDIA L40S (5), AMD MI355X (2), NVIDIA RTX 4090
+  (2), unknown (4). By engine: vLLM (43), SGLang (25), vLLM-ROCm (6),
+  vLLM-v0 (3), vLLM-v1 (3).
+- **Available signals (with real per-row values, but SPARSE field
+  coverage).** `model_id` / `model_size` / `precision` / `gpu_type`
+  / `num_gpus` / `engine` (16/16 columns populated 76-80/80); but
+  `ttft_ms` 17/80, `tpot_ms` 10/80, `tokens_per_sec` 38/80,
+  `prompt_tokens` 4/80, `output_tokens` 4/80, `context_window` 8/80.
+  Many rows carry only Tokens_per_sec or only a free-text
+  Source_Notes blurb describing aggregate behaviour.
+- **Statistical sample strength = weak.** Densest (gpu, engine,
+  precision) cell is (NVIDIA A100, vLLM, FP16) with 8 rows — below
+  the `moderate` threshold required for
+  `promoted_for_performance_priors` and
+  `promoted_for_constraint_aware_evaluation`. Promotion is therefore
+  gated to **`promoted_for_training_priors` ONLY**. p95 / p99
+  percentile claims per cell are explicitly blocked — the rollups
+  record an `insufficient_sample_groups` list for every stratum with
+  fewer than 5 rows.
+- **Missing signals.** `itl`, `e2e_latency`, `queue_state` /
+  `queue_wait` / `queue_depth`, `gpu_utilization` / `memory_pressure`,
+  `batch_size`, `timeout_label` / `sla_label` / `failure_label`,
+  `autoscaling` / `replica_count`, `kv_cache_size` / `cache_hit` /
+  `kernel_duration`, **`energy_per_request` / `carbon_intensity` /
+  `cost_per_token` / `cost_per_request`** (the entire economic
+  signal-set is absent — see the Round-5 negative-result finding
+  below).
+- **Recommended Aurelius uses.**
+  - **Cross-hardware-tier placement breadth.** First public prior
+    that lets the placement engine reason about H100 / H200 / B200 /
+    L40S / RTX-4090 / MI300X / MI355X / Gaudi-3 cells as legal
+    destinations. Use as a **breadth-only** prior — absolute
+    numbers cross-source-averaged.
+  - **Cross-engine routing breadth.** First SGLang and vLLM-ROCm
+    coverage; lets the routing engine include these engines as
+    legal destinations and back off using metrum-ai numbers when
+    no direct measurement exists.
+  - **Cross-cell training prior input.** Use the
+    `committed_normalized_sample.jsonl` (all 80 rows) as a training
+    prior for any (gpu, engine) → throughput estimator that uses
+    the broader corpus's denser cells as the calibration source and
+    metrum-ai only as a coverage anchor.
+- **Prohibited uses.**
+  - **Single-source p95 / p99 percentile claims.** Every row's
+    Source_URL is a different upstream report; percentiles inside
+    one (gpu, engine) cell would average heterogeneous methodologies.
+  - **TTFT / TPOT per-request calibration.** TTFT_ms and TPOT_ms
+    semantics are NOT formally defined in the dataset card — they
+    are whatever each upstream benchmark report called them. ITL is
+    not recorded; TPOT may collapse ITL × output_tokens depending
+    on the upstream source.
+  - **Queue-risk / batching / concurrency-contention calibration.**
+    No queue state, no measured contention; the Aurelius queue-risk
+    module and batch-frontier MUST NOT consume this dataset.
+  - **Goodput / $ and carbon-cost calibration.** No measured
+    cost / energy / carbon fields. The Aurelius goodput/$
+    denominator MUST NOT consume metrum-ai absolute numbers — they
+    are operational priors only.
+  - **Pilot-grade SLA truth.** Tier 4 multi-source curated ledger,
+    not pilot telemetry.
+- **Round-5 negative-result finding (economic priority).** Round 5
+  ran ~80 targeted HF queries for economic + operational signal
+  combinations (`gpu pricing`, `gpu hourly price`, `cloud gpu
+  pricing`, `spot gpu price`, `cloud billing`, `chargeback`, `cost
+  per token`, `cost per request`, `inference cost`, `gpu energy`,
+  `energy per request`, `kwh inference`, `carbon intensity
+  datacenter`, `electricity price workload`, `price aware
+  scheduling`, `cost aware scheduling`, `spot instance trace`,
+  `region cost latency`, …). NO public HF dataset was found that
+  joins (operational TTFT / TPOT / throughput / queue × measured
+  GPU-hour-cost or measured kWh-per-request × verifiable
+  provenance). The high-attention dataset shapes that surfaced
+  were either: (a) synthetic billing data (`sairamn/gcp-cloud-
+  billing-cost` — clearly generated values, `Total Cost (INR)`
+  pattern), (b) AI-safety "claim-coherence" eval data
+  (`ClarusC64/*-coherence-risk-v0.1` family — text classification,
+  not telemetry), or (c) finance training data
+  (`Phipper/pe-energy-infrastructure-training-data` — PE deal
+  reasoning, not infrastructure). The Aurelius goodput/$
+  denominator therefore remains **operator-policy + public-pricing
+  prior + regional grid carbon intensity** (from
+  ElectricityMaps / ENTSO-E, already integrated). This is a
+  **useful negative result**: the public HF dataset space does NOT
+  currently close the (operational × economic) join gap; the
+  economic side has to come from operator chargeback policy +
+  cloud price catalogues + grid carbon intensity, not from public
+  HF datasets. The Round-5 audit summary
+  (`data/external/hf_discovery/round5_broadened_discovery_audit_summary.json`)
+  records this finding under `economic_priority_summary`.
+- **Bounded ingest layout.** One raw parquet (~11 KiB) lives under
+  `data/external/hf/metrum-ai__llm-perfdata/raw/` and is
+  **gitignored**. Per-config processed `summary.json`,
+  `schema_profile.json`, `schema_mapping.json`,
+  `statistical_rollups.json`, 5-row fixture (≤ 4 KiB) covering
+  4 distinct (gpu, engine) pairs, and the committed MIT
+  `committed_normalized_sample.jsonl` (full 80 rows, ~ 47 KiB) ARE
+  committed. `analysis_sample.jsonl` (same 80 rows, ~ 47 KiB) is
+  gitignored — regenerable via
+  `scripts/ingest_hf_metrum_llmperfdata.py`.
+
 ### 7.2 Datasets evaluated but rejected / blocked
 
 | dataset_id | trace_type | state | reason |
@@ -1052,6 +1181,17 @@ Rules (binding):
 | `inference-optimization/speculators_benchmarks_tool_call` | `request_shape_trace` | `reject_low_information_density` | BFCL v4 tool-call evaluation tasks (function-call test cases). Workload-shape only — NO measured infrastructure signal. The existing `sharegpt_aiperf` ingester covers request-shape priors with comparable density. |
 | `kshitijthakkar/large-moe-inference-benchmark` | `latency_benchmark_trace` | `gated_blocked` | HF gated:manual (companion to `kshitijthakkar/moe-inference-benchmark`). 38 rows, MoE-specific schema (model_id, prompt, tokens_generated, time_seconds, tokens_per_second, total_params, active_params). HF_TOKEN is NOT authorised. Re-confirmed `gated_blocked` in Round 4. |
 | `ejhusom/llm-inference-energy-consumption` | — | ~~candidate~~ → **ingested 2026-06-01** | see §7.1 (Tier-4 cross-hardware-tier energy + timing, Round 4). |
+| `sairamn/gcp-cloud-billing-cost` | `mixed_or_unknown_trace` | `reject_synthetic_economics` (Round 5) | GCP cloud-billing CSV (18.9 MB, 100K-1M rows). Schema looks economic-relevant on paper (Resource ID, Service Name, Usage Quantity, Region/Zone, CPU/Memory Utilization, Cost per Quantity ($), Total Cost (INR)) but inspection shows clearly SYNTHETIC values: uniform `resource_NNN` IDs, round-number cost columns, absurd network-data magnitudes, INR-conversion pattern. No upstream-source attribution. Synthetic chargeback/cost data; Tier-6. The Aurelius goodput/$ denominator MUST NOT consume synthetic billing rows. |
+| `ClarusC64/ai-load-carbon-aware-scheduling-coherence-risk-v0.1` | `mixed_or_unknown_trace` | `reject_synthetic_ai_safety_eval` (Round 5) | ClarusC64 "coherence-risk" series — text-classification eval that detects when claimed carbon-aware scheduling decisions diverge from claimed emissions outcomes. NO measured infrastructure signal — AI-safety / claim-coherence evaluation, not telemetry. n<1K. |
+| `ClarusC64/datacenter-power-load-coherence-risk-v0.1` | `mixed_or_unknown_trace` | `reject_synthetic_ai_safety_eval` (Round 5) | Same ClarusC64 family — datacenter power-load claim coherence vs. true outcome. AI-safety eval format, n<1K, no measured telemetry. |
+| `Phipper/pe-energy-infrastructure-training-data` | `mixed_or_unknown_trace` | `reject_out_of_scope` (Round 5) | Private-equity / energy-infrastructure finance training data (297 DPO pairs + 804 SFT conversations + 2,308 Opus-distilled reasoning traces across PE deal analysis / financial modeling / regulatory / strategy). Despite the `energy-infrastructure` tag, this is finance domain text — NO measured infrastructure or telemetry signal. |
+| `uohna/llm_inference_energy_combined.parquet` | `mixed_or_unknown_trace` | `reject_empty_dataset` (Round 5) | Empty dataset — only `.gitattributes` is committed in the repository tree; no actual parquet files. Despite the promising name, there is no data to ingest. |
+| `Lightcap/agent-runtime-telemetry-small` | `request_shape_trace` (claimed) | `defer_high_value_different_trace_class` (Round 5) | REAL MCP-style agent-runtime tool-call telemetry from local SQLite stores (cc-by-4.0; 8 parquet configs — operations 2,262 × 33 with real `duration_ms` + `status` + `error_type` + `tool_name` + UTC timestamps; operation_events 9,903; audit_records 14,053; tool_summary 32 tools with p95). HIGH information density for tool-call / agent-orchestration RELIABILITY priors — but the canonical Aurelius trace types are LLM-serving-focused; this carries NO model_id / NO input_tokens / NO GPU / NO queue / NO concurrency / NO cache fields. Deferred to a follow-on run that adds a new `tool_runtime_trace` canonical type OR maps tool-call durations into `request_shape_trace` as a routing-quality / failure-rate prior. Distinct from Exgentic (LLM call spans). |
+| `metrum-ai/llm-perf-dashboard` | `latency_benchmark_trace` | `defer_pending_inspection` (Round 5) | Companion dashboard dataset to `metrum-ai/llm-perfdata` (same author). Schema not yet inspected because the dashboard format is markdown / static-site oriented rather than tabular. Deferred to a follow-on run if the dashboard exports additional measurement rows beyond what llm-perfdata already covers. |
+| `ssakethch/h200-quantization-benchmarks` | `latency_benchmark_trace` | `defer_pending_full_schema_probe` (Round 5) | Benchmark results for 40 quantized + non-quantized instruction-tuned LLMs on NVIDIA H200 MIG (Multi-Instance GPU). Potentially high-value (first H200-MIG coverage + first 40-model breadth quantization comparison) but the dataset card declares no SPDX license. Deferred — without redistribution clarity, committing a normalised sample would violate the corpus license-and-gating gate. Re-audit if author adds a license. |
+| `crozai/vllm-benchmark-coding` | `request_shape_trace` | `duplicate_existing` (Round 5) | Coding-workload prompt fixtures designed for `vllm/benchmark_serving.py` — workload-shape only (prompt strings + token counts). NO measured TTFT / TPOT / throughput. `aurelius/traces/sharegpt_aiperf.py` and `hlarcher/inference-benchmarker` (already rejected) cover this role at higher density. |
+| `intellistream/sage-agent-benchmark` | `request_shape_trace` | `reject_eval_only_no_telemetry` (Round 5) | AgentBench-style evaluation for tool-selection / task-planning / response-generation accuracy. NO measured latency / GPU / queue / cache signal — agent-capability scoring only. Out of scope for the constraint-aware engine (same rationale as `abdallah1008/semantic-router-benchmark-data`). |
+| `metrum-ai/llm-perfdata` | — | ~~candidate~~ → **ingested 2026-06-01** | see §7.1 (Tier-4 multi-source curated GPU coverage breadth prior, Round 5). |
 
 ### 7.3 Datasets known in repo (non-HF or other ingest paths)
 
@@ -1229,6 +1369,65 @@ Re-running `scripts/discover_hf_aurelius_datasets.py` rebuilds
   — smallest representative file) as a Tier-4 `kernel_profile_trace`.
   Per-kernel `cuda_time_us` + `LlamaDecoderLayer` breakdown is exactly
   the GPU-direct counterpart to the closed-API Bedrock prior.
+- **Done 2026-06-01** — Round-5 broadened discovery (economic-priority
+  pass): ingested `metrum-ai/llm-perfdata` as the first Tier-4
+  multi-source curated GPU coverage breadth prior, closing the
+  previously-empty H100 / H200 / B200 / L40S / RTX-4090 / AMD MI300X /
+  MI355X / Intel Gaudi 3 cells and the SGLang / vLLM-ROCm engine cells.
+  MIT-licensed; weak strength → promoted_for_training_priors only.
+  See §7.1 entry "metrum-ai/llm-perfdata — Round-5 broadened-discovery
+  multi-source curated GPU-coverage breadth prior".
+- **Round-5 negative-result snapshot (economic priority).** After
+  ~80 targeted economic + operational HF searches (`gpu pricing`,
+  `cloud gpu pricing`, `spot gpu price`, `chargeback`, `cost per
+  token`, `cost per request`, `inference cost`, `gpu energy`,
+  `kwh inference`, `carbon intensity datacenter`, `electricity
+  price workload`, `cost aware scheduling`, `spot instance trace`,
+  `region cost latency`, …), NO public HF dataset was found that
+  joins (operational TTFT / TPOT / throughput / queue × measured
+  GPU-hour cost OR measured kWh-per-request × verifiable
+  provenance). The shapes that surfaced were either synthetic
+  billing (`sairamn/gcp-cloud-billing-cost`), AI-safety
+  claim-coherence evals (`ClarusC64/*-coherence-risk-v0.1`
+  family), finance training data
+  (`Phipper/pe-energy-infrastructure-training-data`), empty
+  (`uohna/llm_inference_energy_combined.parquet`), deferred
+  high-value-different-trace-class
+  (`Lightcap/agent-runtime-telemetry-small`), or
+  license-blocker (`ssakethch/h200-quantization-benchmarks`). The
+  Aurelius goodput/$ denominator therefore remains
+  **operator-policy + public-pricing prior + regional grid carbon
+  intensity** (from ElectricityMaps / ENTSO-E, already
+  integrated). This is a USEFUL NEGATIVE RESULT recorded in
+  `data/external/hf_discovery/round5_broadened_discovery_audit_summary.json`
+  under `economic_priority_summary` so that future runs don't
+  re-run the same search.
+- **Lightcap follow-up (next-run priority).** Decide whether to
+  (a) add a new `tool_runtime_trace` canonical type that covers
+  MCP-style agent tool-call execution telemetry as a first-class
+  citizen, OR (b) flatten Lightcap's `operations.parquet` rows into
+  the existing `request_shape_trace` schema as a routing-quality /
+  tool-failure prior. Lightcap is REAL measured telemetry under
+  cc-by-4.0 with `duration_ms` + `status` + `error_type` +
+  `tool_name` + UTC timestamps across 2,262 operations and 14,053
+  audit rows — losing it because it doesn't fit the existing
+  LLM-serving-focused trace types is a real cost. Distinct from
+  `Exgentic/agent-llm-traces` which captures LLM-CALL spans (with
+  model + input/output_tokens); Lightcap captures TOOL-CALL
+  operations (no LLM-specific fields).
+- **Cross-validate `metrum-ai/llm-perfdata` densest cells against
+  matched corpus measurements.** Where metrum-ai records (gpu,
+  engine) cells that also appear elsewhere — (A100, vLLM, FP16) →
+  agent-perf-bench + odyn cross-reference; (H100, vLLM, BF16) →
+  no overlap yet; (L40S, vLLM, BF16) → no overlap yet — publish a
+  delta-from-corpus-baseline table under
+  `docs/CROSS_TRACE_FRONTIER_GENERALIZATION_AUDIT.md` so future
+  consumers know how much weight to give curated-vs-measured rows.
+- **Re-audit `ssakethch/h200-quantization-benchmarks` once it
+  declares a license.** 40 LLMs × H200 MIG quantization sweep would
+  be the first H200-MIG coverage in the corpus AND the first
+  40-model breadth quantization comparison. Holding only on the
+  license-and-gating-recorded gate.
 
 ## 11. License + auth
 

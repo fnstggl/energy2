@@ -1,0 +1,199 @@
+{
+  "accepted_columns": [
+    "Concurrency",
+    "Context_Window",
+    "GPU_Type",
+    "Model",
+    "Num_GPUs",
+    "Output_Tokens",
+    "Precision",
+    "Prompt_Tokens",
+    "Quantization",
+    "Serving_Engine",
+    "Size",
+    "Source_Notes",
+    "Source_URL",
+    "TPOT_ms",
+    "TTFT_ms",
+    "Tokens_per_sec"
+  ],
+  "config_name": "multi_source_curated_v1",
+  "dataset_id": "metrum-ai/llm-perfdata",
+  "dtypes": {
+    "Concurrency": [
+      "float"
+    ],
+    "Context_Window": [
+      "float"
+    ],
+    "GPU_Type": [
+      "str"
+    ],
+    "Model": [
+      "str"
+    ],
+    "Num_GPUs": [
+      "int"
+    ],
+    "Output_Tokens": [
+      "float"
+    ],
+    "Precision": [
+      "str"
+    ],
+    "Prompt_Tokens": [
+      "float"
+    ],
+    "Quantization": [
+      "str"
+    ],
+    "Serving_Engine": [
+      "str"
+    ],
+    "Size": [
+      "str"
+    ],
+    "Source_Notes": [
+      "str"
+    ],
+    "Source_URL": [
+      "str"
+    ],
+    "TPOT_ms": [
+      "float"
+    ],
+    "TTFT_ms": [
+      "float"
+    ],
+    "Tokens_per_sec": [
+      "float"
+    ]
+  },
+  "example_values": {
+    "Concurrency": [
+      "50.0",
+      "50.0",
+      "50.0"
+    ],
+    "Context_Window": [
+      "8192.0",
+      "8192.0",
+      "8192.0"
+    ],
+    "GPU_Type": [
+      "'NVIDIA A100'",
+      "'NVIDIA A100'",
+      "'NVIDIA A100'"
+    ],
+    "Model": [
+      "'DeepSeek-R1-Distill-Qwen'",
+      "'DeepSeek-R1-Distill-Qwen'",
+      "'DeepSeek-R1-Distill-Qwen'"
+    ],
+    "Num_GPUs": [
+      "1",
+      "1",
+      "1"
+    ],
+    "Output_Tokens": [
+      "256.0",
+      "128.0",
+      "1000.0"
+    ],
+    "Precision": [
+      "'FP16'",
+      "'FP16'",
+      "'FP16'"
+    ],
+    "Prompt_Tokens": [
+      "4096.0",
+      "128.0",
+      "1000.0"
+    ],
+    "Quantization": [
+      "'AWQ'",
+      "'AWQ'",
+      "'AWQ'"
+    ],
+    "Serving_Engine": [
+      "'vLLM'",
+      "'vLLM'",
+      "'vLLM'"
+    ],
+    "Size": [
+      "'7B'",
+      "'14B'",
+      "'32B'"
+    ],
+    "Source_Notes": [
+      "'DeepSeek distill vLLM test on A100; concurrency=50'",
+      "'DeepSeek distill vLLM test on A100; concurrency=50'",
+      "'DeepSeek distill vLLM test on A100; concurrency=50'"
+    ],
+    "Source_URL": [
+      "'[2]'",
+      "'[3]'",
+      "'[4]'"
+    ],
+    "TPOT_ms": [
+      "14.96",
+      "25.31",
+      "52.65"
+    ],
+    "TTFT_ms": [
+      "309.36",
+      "579.43",
+      "1299.31"
+    ],
+    "Tokens_per_sec": [
+      "3362.71",
+      "3003.57",
+      "577.17"
+    ]
+  },
+  "file_size_bytes": 11252,
+  "inspected_row_count": 80,
+  "list_length_summaries": {},
+  "missing_rates": {
+    "Concurrency": 0.2125,
+    "Context_Window": 0.9,
+    "GPU_Type": 0.05,
+    "Model": 0.0,
+    "Num_GPUs": 0.0,
+    "Output_Tokens": 0.95,
+    "Precision": 0.05,
+    "Prompt_Tokens": 0.95,
+    "Quantization": 0.9125,
+    "Serving_Engine": 0.0,
+    "Size": 0.025,
+    "Source_Notes": 0.0,
+    "Source_URL": 0.3875,
+    "TPOT_ms": 0.875,
+    "TTFT_ms": 0.7875,
+    "Tokens_per_sec": 0.525
+  },
+  "nested_keys": [],
+  "raw_columns": [
+    "Concurrency",
+    "Context_Window",
+    "GPU_Type",
+    "Model",
+    "Num_GPUs",
+    "Output_Tokens",
+    "Precision",
+    "Prompt_Tokens",
+    "Quantization",
+    "Serving_Engine",
+    "Size",
+    "Source_Notes",
+    "Source_URL",
+    "TPOT_ms",
+    "TTFT_ms",
+    "Tokens_per_sec"
+  ],
+  "rejected_columns": [],
+  "source_files": [
+    "data/train-00000-of-00001.parquet"
+  ],
+  "unknown_columns": []
+}

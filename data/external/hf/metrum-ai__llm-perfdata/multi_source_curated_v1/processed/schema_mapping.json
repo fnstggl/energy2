@@ -1,0 +1,259 @@
+{
+  "accepted_columns": [
+    "Concurrency",
+    "Context_Window",
+    "GPU_Type",
+    "Model",
+    "Num_GPUs",
+    "Output_Tokens",
+    "Precision",
+    "Prompt_Tokens",
+    "Quantization",
+    "Serving_Engine",
+    "Size",
+    "Source_Notes",
+    "Source_URL",
+    "TPOT_ms",
+    "TTFT_ms",
+    "Tokens_per_sec"
+  ],
+  "columns": [
+    {
+      "aurelius_signal_category": "metadata_only",
+      "dtypes": [
+        "str"
+      ],
+      "field_quality": "real",
+      "normalized_field": "model_id",
+      "notes": "Published model identifier as named by the upstream source.",
+      "raw_column_name": "Model",
+      "units": null,
+      "usable_for": [
+        "latency_prior",
+        "throughput_prior"
+      ]
+    },
+    {
+      "aurelius_signal_category": "metadata_only",
+      "dtypes": [
+        "str"
+      ],
+      "field_quality": "real",
+      "normalized_field": "model_size",
+      "notes": "Parameter scale shorthand.",
+      "raw_column_name": "Size",
+      "units": "params shorthand (e.g. '7B', '70B')",
+      "usable_for": [
+        "latency_prior",
+        "throughput_prior"
+      ]
+    },
+    {
+      "aurelius_signal_category": "metadata_only",
+      "dtypes": [
+        "str"
+      ],
+      "field_quality": "real",
+      "normalized_field": "precision",
+      "notes": "Numeric precision used during serving (FP16, BF16, FP8, INT4).",
+      "raw_column_name": "Precision",
+      "units": null,
+      "usable_for": [
+        "latency_prior",
+        "throughput_prior"
+      ]
+    },
+    {
+      "aurelius_signal_category": "gpu_resource",
+      "dtypes": [
+        "str"
+      ],
+      "field_quality": "real",
+      "normalized_field": "gpu_type",
+      "notes": "Accelerator family (NVIDIA A100/H100/H200/B200/L40S/RTX-4090, AMD MI300X/MI355X, Intel Gaudi 3). First H100/H200/B200/Gaudi-3/MI300X/MI355X/L40S/RTX-4090 coverage in the corpus.",
+      "raw_column_name": "GPU_Type",
+      "units": null,
+      "usable_for": [
+        "latency_prior",
+        "throughput_prior",
+        "constraint_aware_evaluation"
+      ]
+    },
+    {
+      "aurelius_signal_category": "gpu_resource",
+      "dtypes": [
+        "int"
+      ],
+      "field_quality": "real",
+      "normalized_field": "num_gpus",
+      "notes": "Integer count of GPUs participating in the benchmark.",
+      "raw_column_name": "Num_GPUs",
+      "units": "count",
+      "usable_for": [
+        "constraint_aware_evaluation"
+      ]
+    },
+    {
+      "aurelius_signal_category": "metadata_only",
+      "dtypes": [
+        "str"
+      ],
+      "field_quality": "real",
+      "normalized_field": "engine",
+      "notes": "vLLM / SGLang / vLLM-ROCm / vLLM-v0 / vLLM-v1. First SGLang and vLLM-ROCm coverage in the federated corpus.",
+      "raw_column_name": "Serving_Engine",
+      "units": null,
+      "usable_for": [
+        "latency_prior",
+        "throughput_prior"
+      ]
+    },
+    {
+      "aurelius_signal_category": "throughput",
+      "dtypes": [
+        "float"
+      ],
+      "field_quality": "real",
+      "normalized_field": "concurrency",
+      "notes": "Concurrent request count for the benchmark. NOT queue-state telemetry \u2014 Aurelius queue-risk module MUST NOT consume.",
+      "raw_column_name": "Concurrency",
+      "units": "concurrent requests",
+      "usable_for": [
+        "throughput_prior"
+      ]
+    },
+    {
+      "aurelius_signal_category": "throughput",
+      "dtypes": [
+        "float"
+      ],
+      "field_quality": "real",
+      "normalized_field": "tokens_per_sec",
+      "notes": "Aggregate output throughput as reported by the upstream source.",
+      "raw_column_name": "Tokens_per_sec",
+      "units": "tokens / second",
+      "usable_for": [
+        "throughput_prior"
+      ]
+    },
+    {
+      "aurelius_signal_category": "latency",
+      "dtypes": [
+        "float"
+      ],
+      "field_quality": "real",
+      "normalized_field": "ttft_ms",
+      "notes": "Time to first token (whatever the upstream source meant by TTFT). Present in 17/80 rows. Cross-source semantics differ \u2014 do NOT compute single-source-quality percentiles.",
+      "raw_column_name": "TTFT_ms",
+      "units": "milliseconds",
+      "usable_for": [
+        "latency_prior"
+      ]
+    },
+    {
+      "aurelius_signal_category": "latency",
+      "dtypes": [
+        "float"
+      ],
+      "field_quality": "real",
+      "normalized_field": "tpot_ms",
+      "notes": "Tail-period-of-token generation as reported by the upstream source. May collapse ITL \u00d7 output_tokens depending on the source convention. Present in 10/80 rows.",
+      "raw_column_name": "TPOT_ms",
+      "units": "milliseconds",
+      "usable_for": [
+        "latency_prior"
+      ]
+    },
+    {
+      "aurelius_signal_category": "tokens",
+      "dtypes": [
+        "float"
+      ],
+      "field_quality": "real",
+      "normalized_field": "prompt_tokens",
+      "notes": "Input prompt token count. Present in 4/80 rows.",
+      "raw_column_name": "Prompt_Tokens",
+      "units": "tokens",
+      "usable_for": [
+        "workload_shape_only",
+        "latency_prior"
+      ]
+    },
+    {
+      "aurelius_signal_category": "tokens",
+      "dtypes": [
+        "float"
+      ],
+      "field_quality": "real",
+      "normalized_field": "output_tokens",
+      "notes": "Generated output token count. Present in 4/80 rows.",
+      "raw_column_name": "Output_Tokens",
+      "units": "tokens",
+      "usable_for": [
+        "workload_shape_only",
+        "throughput_prior"
+      ]
+    },
+    {
+      "aurelius_signal_category": "metadata_only",
+      "dtypes": [
+        "float"
+      ],
+      "field_quality": "real",
+      "normalized_field": "context_window",
+      "notes": "Maximum supported context tokens for the configuration.",
+      "raw_column_name": "Context_Window",
+      "units": "tokens",
+      "usable_for": [
+        "workload_shape_only"
+      ]
+    },
+    {
+      "aurelius_signal_category": "metadata_only",
+      "dtypes": [
+        "str"
+      ],
+      "field_quality": "real",
+      "normalized_field": "quantization",
+      "notes": "Applied quantization strategy (when distinct from Precision).",
+      "raw_column_name": "Quantization",
+      "units": null,
+      "usable_for": [
+        "latency_prior",
+        "throughput_prior"
+      ]
+    },
+    {
+      "aurelius_signal_category": "metadata_only",
+      "dtypes": [
+        "str"
+      ],
+      "field_quality": "real",
+      "normalized_field": "source_url",
+      "notes": "Public URL of the upstream benchmark report each row was copied from. PRIMARY attribution and trust-tracing key \u2014 every row's TTFT/TPOT/throughput inherits the upstream source's methodology.",
+      "raw_column_name": "Source_URL",
+      "units": null,
+      "usable_for": [
+        "not_usable"
+      ]
+    },
+    {
+      "aurelius_signal_category": "metadata_only",
+      "dtypes": [
+        "str"
+      ],
+      "field_quality": "real",
+      "normalized_field": "source_notes",
+      "notes": "Free-text hardware-topology / measurement-context blurbs from the curator. Do NOT parse programmatically.",
+      "raw_column_name": "Source_Notes",
+      "units": null,
+      "usable_for": [
+        "not_usable"
+      ]
+    }
+  ],
+  "config_name": "multi_source_curated_v1",
+  "dataset_id": "metrum-ai/llm-perfdata",
+  "rejected_columns": [],
+  "unknown_columns": []
+}
