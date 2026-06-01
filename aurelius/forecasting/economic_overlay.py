@@ -270,7 +270,23 @@ class GPUPriceOverlay:
           3. exact family on-demand (any region, any provider) → median
           4. nearest family fallback → median
           5. missing
-        """
+
+        Memoized on the (gpu_type, region, is_spot, provider) key so an
+        analysis-tier sweep of N records collapses to one computation per
+        distinct key (the return contract is unchanged)."""
+        cache = self.__dict__.setdefault("_lookup_cache", {})
+        ck = (gpu_type, region, is_spot, provider)
+        if ck in cache:
+            return cache[ck]
+        res = self._lookup_uncached(gpu_type=gpu_type, region=region,
+                                    is_spot=is_spot, provider=provider)
+        cache[ck] = res
+        return res
+
+    def _lookup_uncached(self, *, gpu_type: Optional[str],
+                         region: Optional[str] = None,
+                         is_spot: Optional[bool] = None,
+                         provider: Optional[str] = None) -> dict[str, Any]:
         target_fam = _gpu_family(gpu_type)
         if target_fam is None:
             return {"price_per_gpu_hour_usd": None,
@@ -423,13 +439,15 @@ class EnergyPriceOverlay:
                     "value_quality": "measured",
                     "formula": "median(pjm_da_lmp) / 1000",
                     "n_rows": len(self.rows)}
-        # nearest-prior lookup
-        target = timestamp
-        nearest = min(
-            self.rows,
-            key=lambda r: abs(_iso_to_ord(r["timestamp"]) - _iso_to_ord(target))
-            if r.get("timestamp") else float("inf"),
-        )
+        # nearest-prior lookup. Precompute the price-series ordinals once
+        # (cached on the instance) so an N-record sweep parses each series
+        # timestamp once rather than once-per-record.
+        idx = self.__dict__.get("_ord_index")
+        if idx is None:
+            idx = [(_iso_to_ord(r.get("timestamp")), r) for r in self.rows]
+            self.__dict__["_ord_index"] = idx
+        target_ord = _iso_to_ord(timestamp)
+        nearest = min(idx, key=lambda pr: abs(pr[0] - target_ord))[1]
         return {"price_per_kwh_usd": float(nearest["price_per_mwh"]) / 1000.0,
                 "value_quality": "measured",
                 "formula": f"pjm_da_lmp[t≈{nearest['timestamp']}] / 1000",
@@ -493,6 +511,25 @@ class OverlayBuilderConfig:
     gpu_price_path: Optional[Path] = None
     operator_policy: OperatorPricingPolicy = field(
         default_factory=OperatorPricingPolicy)
+    # When True, a measured market price (e.g. live PJM/CAISO LMP) applied to
+    # a region-LESS operational trace is relabelled `scenario_prior`: the
+    # *price series* is real measured market data, but the *region assignment*
+    # is an assumption (mission §4.B fallback). Default False preserves the
+    # original v1 semantics (the smoke-test builder + its 66 tests).
+    scenario_region_assignment: bool = False
+    energy_market_label: Optional[str] = None  # e.g. "PJM" / "CAISO"
+
+
+# Aurelius region -> energy market, used to decide when a trace's region
+# makes a measured market join legitimate (vs a scenario assignment).
+REGION_TO_MARKET = {
+    "us-east": "PJM",
+    "us-east-1": "PJM",
+    "us-west": "CAISO",
+    "us-west-1": "CAISO",
+    "us-west-2": "CAISO",
+    "us-south": "ERCOT",
+}
 
 
 class OverlayBuilder:
@@ -578,9 +615,20 @@ class OverlayBuilder:
         else:
             res = self.energy.lookup(timestamp=rec.timestamp)
             rec.electricity_price_usd_per_kwh = res.get("price_per_kwh_usd")
-            vq["electricity_price_usd_per_kwh"] = res.get(
-                "value_quality", "missing")
-            fm["electricity_price_usd_per_kwh"] = res.get("formula", "")
+            energy_vq = res.get("value_quality", "missing")
+            energy_fm = res.get("formula", "")
+            # Scenario-region downgrade: measured market price applied to a
+            # region-less trace is honestly a scenario_prior (real price,
+            # assumed region). Only downgrades `measured`; never upgrades.
+            if (self.cfg.scenario_region_assignment
+                    and energy_vq == "measured"
+                    and not rec.region):
+                mkt = self.cfg.energy_market_label or self.energy.market
+                energy_vq = "scenario_prior"
+                energy_fm = (f"{mkt} measured market price applied to "
+                             "region-less trace (scenario region assignment)")
+            vq["electricity_price_usd_per_kwh"] = energy_vq
+            fm["electricity_price_usd_per_kwh"] = energy_fm
 
         # ── C. Carbon intensity ─────────────────────────────────────────
         cres = self.carbon.lookup()
@@ -789,23 +837,37 @@ class OverlayBuilder:
 def _classify_overlay(rec: EconomicOverlayRecord) -> str:
     """Three result classes per mission §6 — never mixed in one headline.
 
-    Classification is by the inputs that flow into `sla_safe_goodput_per_dollar`
-    (gpu_cost, energy_cost, migration_cost, cold_start_cost, cache_value).
-    `carbon_intensity` is excluded because carbon_cost is missing whenever
-    operator carbon price is missing — so scenario carbon never flows into
-    the headline goodput/$ result.
+    Classification is by the value-quality of the cost terms ACTUALLY
+    realized in this row's `sla_safe_goodput_per_dollar` denominator
+    (gpu_cost, energy_cost, cache_value, migration_cost, cold_start_cost) —
+    not by overlays that were merely looked up. A scenario energy price that
+    never enters the cost (because `energy_kwh` is missing) does NOT make the
+    row scenario_prior. `carbon_cost` is excluded because it is missing
+    whenever the operator carbon price is missing.
+
+    - measured_same_record: every realized cost input is `measured`
+      (operator-supplied / same-record measured signal).
+    - scenario_prior: at least one realized cost term is `scenario_prior`.
+    - cross_dataset_joined: otherwise (prior / derived public-data joins,
+      no scenario term realized).
     """
     vq = rec.value_quality_by_field
-    headline_inputs = [
-        vq.get("gpu_price_usd_per_hour"),
-        vq.get("electricity_price_usd_per_kwh"),
-        vq.get("energy_kwh"),
-    ]
-    has_measured_energy = vq.get("energy_kwh") == "measured"
-    gpu_q = vq.get("gpu_price_usd_per_hour")
-    if has_measured_energy and gpu_q == "measured":
+    realized = []
+    if rec.estimated_gpu_cost_usd is not None:
+        realized.append(vq.get("gpu_price_usd_per_hour"))
+    if rec.estimated_energy_cost_usd is not None:
+        realized.append(vq.get("electricity_price_usd_per_kwh"))
+        realized.append(vq.get("energy_kwh"))
+    if rec.estimated_cache_value_usd is not None:
+        realized.append(vq.get("estimated_cache_value_usd"))
+    if rec.estimated_migration_cost_usd is not None:
+        realized.append(vq.get("estimated_migration_cost_usd"))
+    if rec.estimated_cold_start_cost_usd is not None:
+        realized.append(vq.get("estimated_cold_start_cost_usd"))
+
+    if realized and all(q == "measured" for q in realized):
         return "measured_same_record"
-    if any(q == "scenario_prior" for q in headline_inputs):
+    if any(q == "scenario_prior" for q in realized):
         return "scenario_prior"
     return "cross_dataset_joined"
 

@@ -1,0 +1,63 @@
+{
+  "fetched_at_utc": "2026-06-01T17:34:38.005725+00:00",
+  "live_provider_summary": {
+    "measured": [
+      "PJM",
+      "CAISO",
+      "ERCOT"
+    ],
+    "scenario_prior_fallback": [
+      "WattTime (carbon)"
+    ]
+  },
+  "providers": {
+    "caiso_da_energy_price": {
+      "market": "CAISO",
+      "path": "data/external/economic_overlay/economic_overlay_samples/caiso_da_energy_price_7day.jsonl",
+      "region": "us-west",
+      "rows": 168,
+      "status": "success",
+      "value_quality": "measured",
+      "window_days": 7
+    },
+    "ercot_da_energy_price": {
+      "market": "ERCOT",
+      "path": "data/external/economic_overlay/economic_overlay_samples/ercot_da_energy_price_14day.jsonl",
+      "region": "us-south",
+      "rows": 336,
+      "status": "success",
+      "value_quality": "measured",
+      "window_days": 14
+    },
+    "gpu_price_overlay_multiday": {
+      "license": "cc-by-4.0",
+      "path": "data/external/economic_overlay/economic_overlay_samples/gpu_price_overlay_multiday.jsonl",
+      "raw_listings_aggregated": 42943,
+      "rows": 10313,
+      "snapshots": [
+        "prices/dt=2026-05-28/snapshot_20260528T122136Z.parquet",
+        "prices/dt=2026-05-29/snapshot_20260529T121032Z.parquet",
+        "prices/dt=2026-05-30/snapshot_20260530T104438Z.parquet",
+        "prices/dt=2026-05-31/snapshot_20260531T105313Z.parquet",
+        "prices/dt=2026-06-01/snapshot_20260601T145417Z.parquet"
+      ],
+      "source_dataset_id": "afhubbard/gpu-prices",
+      "status": "success",
+      "value_quality": "prior_public_list_price"
+    },
+    "pjm_da_energy_price": {
+      "market": "PJM",
+      "path": "data/external/economic_overlay/economic_overlay_samples/pjm_da_energy_price_14day.jsonl",
+      "region": "us-east",
+      "rows": 337,
+      "status": "success",
+      "value_quality": "measured",
+      "window_days": 14
+    },
+    "watttime_carbon_intensity": {
+      "note": "WattTime login returned HTTP 403 for the supplied account (not authorized for these regions). Skipped per operator instruction; carbon intensity uses scenario_prior midpoint.",
+      "status": "skipped_403",
+      "value_quality": "scenario_prior_fallback"
+    }
+  }
+}

@@ -95,3 +95,8 @@ data/external/hf/*/*/raw/*
 # from the bounded raw download via scripts/audit_cara_swissai_telemetry.py.
 data/external/hf/*/*/processed/analysis_sample.jsonl
 data/external/hf/*/*/*/processed/analysis_sample.jsonl
+
+# Economic overlay analysis-tier full corpus + raw downloads (gitignored;
+# only the bounded committed samples + summary/eval JSON are tracked).
+data/external/economic_overlay/analysis_corpus/
+data/external/economic_overlay/raw/
