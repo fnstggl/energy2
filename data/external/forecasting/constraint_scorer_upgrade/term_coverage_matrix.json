@@ -1,0 +1,553 @@
+{
+  "audit_only": true,
+  "doc_version": "constraint_scorer_term_coverage_matrix_v1",
+  "production_claim": false,
+  "shadow_only": true,
+  "term_catalog": [
+    "ttft_per_gpu_prior",
+    "tpot_per_gpu_prior",
+    "service_time_s",
+    "queue_wait_s",
+    "queue_depth",
+    "expected_latency_s",
+    "prefill_cost_avoided",
+    "cache_hit_value",
+    "cold_start_penalty",
+    "migration_cache_loss_penalty",
+    "per_gpu_hour_price",
+    "vram_pressure_penalty",
+    "energy_kwh_per_request",
+    "energy_cost_per_request_usd",
+    "carbon_cost_per_request",
+    "sla_risk_probability",
+    "timeout_risk",
+    "incremental_gpu_cost"
+  ],
+  "variants": {
+    "A_existing": {
+      "config": {
+        "executable_in_real_cluster": false,
+        "use_cache_prefill_savings": false,
+        "use_energy_term": false,
+        "use_migration_cache_loss": false,
+        "use_optimum_service_time": false,
+        "use_per_gpu_hour_price": false,
+        "use_ttft_p50_prior": false
+      },
+      "term_coverage": {
+        "cache_hit_value": "missing",
+        "carbon_cost_per_request": "missing",
+        "cold_start_penalty": "static_prior",
+        "energy_cost_per_request_usd": "missing",
+        "energy_kwh_per_request": "missing",
+        "expected_latency_s": "derived",
+        "incremental_gpu_cost": "derived",
+        "migration_cache_loss_penalty": "missing",
+        "per_gpu_hour_price": "static_global_default",
+        "prefill_cost_avoided": "missing",
+        "queue_depth": "measured",
+        "queue_wait_s": "measured_or_proxy",
+        "service_time_s": "heuristic",
+        "sla_risk_probability": "derived_binary",
+        "timeout_risk": "missing",
+        "tpot_per_gpu_prior": "missing",
+        "ttft_per_gpu_prior": "missing",
+        "vram_pressure_penalty": "derived"
+      },
+      "term_signal_levels": {
+        "cache_hit_value": {
+          "classification": "missing",
+          "signal_level": null
+        },
+        "carbon_cost_per_request": {
+          "classification": "missing",
+          "signal_level": null
+        },
+        "cold_start_penalty": {
+          "classification": "static_prior",
+          "signal_level": "level_3_prior"
+        },
+        "energy_cost_per_request_usd": {
+          "classification": "missing",
+          "signal_level": null
+        },
+        "energy_kwh_per_request": {
+          "classification": "missing",
+          "signal_level": null
+        },
+        "expected_latency_s": {
+          "classification": "derived",
+          "signal_level": "level_2_derived"
+        },
+        "incremental_gpu_cost": {
+          "classification": "derived",
+          "signal_level": "level_2_derived"
+        },
+        "migration_cache_loss_penalty": {
+          "classification": "missing",
+          "signal_level": null
+        },
+        "per_gpu_hour_price": {
+          "classification": "static_global_default",
+          "signal_level": "level_1_operator_policy"
+        },
+        "prefill_cost_avoided": {
+          "classification": "missing",
+          "signal_level": null
+        },
+        "queue_depth": {
+          "classification": "measured",
+          "signal_level": "level_1_measured"
+        },
+        "queue_wait_s": {
+          "classification": "measured_or_proxy",
+          "signal_level": "level_1_measured"
+        },
+        "service_time_s": {
+          "classification": "heuristic",
+          "signal_level": "level_4_prohibited_or_uncalibrated"
+        },
+        "sla_risk_probability": {
+          "classification": "derived_binary",
+          "signal_level": "level_2_derived"
+        },
+        "timeout_risk": {
+          "classification": "missing",
+          "signal_level": null
+        },
+        "tpot_per_gpu_prior": {
+          "classification": "missing",
+          "signal_level": null
+        },
+        "ttft_per_gpu_prior": {
+          "classification": "missing",
+          "signal_level": null
+        },
+        "vram_pressure_penalty": {
+          "classification": "derived",
+          "signal_level": "level_2_derived"
+        }
+      }
+    },
+    "B_shadow_default_priors": {
+      "config": {
+        "executable_in_real_cluster": false,
+        "use_cache_prefill_savings": false,
+        "use_energy_term": true,
+        "use_migration_cache_loss": true,
+        "use_optimum_service_time": true,
+        "use_per_gpu_hour_price": true,
+        "use_ttft_p50_prior": false
+      },
+      "term_coverage": {
+        "cache_hit_value": "missing",
+        "carbon_cost_per_request": "derived_iff_operator_carbon_price_supplied",
+        "cold_start_penalty": "operator_supplied_via_ModelLoadProfile",
+        "energy_cost_per_request_usd": "derived_iff_operator_energy_price_supplied",
+        "energy_kwh_per_request": "derived_from_optimum_or_acmetrace",
+        "expected_latency_s": "derived",
+        "incremental_gpu_cost": "derived",
+        "migration_cache_loss_penalty": "derived_from_per_gpu_prior",
+        "per_gpu_hour_price": "operator_policy_or_operator_global_default",
+        "prefill_cost_avoided": "missing",
+        "queue_depth": "measured",
+        "queue_wait_s": "measured_or_proxy",
+        "service_time_s": "derived_from_per_gpu_prior",
+        "sla_risk_probability": "derived_latency_margin_indicator",
+        "timeout_risk": "missing",
+        "tpot_per_gpu_prior": "derived_from_optimum_benchmark",
+        "ttft_per_gpu_prior": "derived_from_optimum_benchmark",
+        "vram_pressure_penalty": "derived"
+      },
+      "term_signal_levels": {
+        "cache_hit_value": {
+          "classification": "missing",
+          "signal_level": null
+        },
+        "carbon_cost_per_request": {
+          "classification": "derived_iff_operator_carbon_price_supplied",
+          "signal_level": "level_2_derived"
+        },
+        "cold_start_penalty": {
+          "classification": "operator_supplied_via_ModelLoadProfile",
+          "signal_level": "level_1_operator_policy"
+        },
+        "energy_cost_per_request_usd": {
+          "classification": "derived_iff_operator_energy_price_supplied",
+          "signal_level": "level_2_derived"
+        },
+        "energy_kwh_per_request": {
+          "classification": "derived_from_optimum_or_acmetrace",
+          "signal_level": "level_3_prior"
+        },
+        "expected_latency_s": {
+          "classification": "derived",
+          "signal_level": "level_2_derived"
+        },
+        "incremental_gpu_cost": {
+          "classification": "derived",
+          "signal_level": "level_2_derived"
+        },
+        "migration_cache_loss_penalty": {
+          "classification": "derived_from_per_gpu_prior",
+          "signal_level": "level_2_derived"
+        },
+        "per_gpu_hour_price": {
+          "classification": "operator_policy_or_operator_global_default",
+          "signal_level": "level_1_operator_policy"
+        },
+        "prefill_cost_avoided": {
+          "classification": "missing",
+          "signal_level": null
+        },
+        "queue_depth": {
+          "classification": "measured",
+          "signal_level": "level_1_measured"
+        },
+        "queue_wait_s": {
+          "classification": "measured_or_proxy",
+          "signal_level": "level_1_measured"
+        },
+        "service_time_s": {
+          "classification": "derived_from_per_gpu_prior",
+          "signal_level": "level_2_derived"
+        },
+        "sla_risk_probability": {
+          "classification": "derived_latency_margin_indicator",
+          "signal_level": "level_2_derived"
+        },
+        "timeout_risk": {
+          "classification": "missing",
+          "signal_level": null
+        },
+        "tpot_per_gpu_prior": {
+          "classification": "derived_from_optimum_benchmark",
+          "signal_level": "level_3_prior"
+        },
+        "ttft_per_gpu_prior": {
+          "classification": "derived_from_optimum_benchmark",
+          "signal_level": "level_3_prior"
+        },
+        "vram_pressure_penalty": {
+          "classification": "derived",
+          "signal_level": "level_2_derived"
+        }
+      }
+    },
+    "C_shadow_with_ttft_p50_prior": {
+      "config": {
+        "executable_in_real_cluster": false,
+        "use_cache_prefill_savings": false,
+        "use_energy_term": true,
+        "use_migration_cache_loss": true,
+        "use_optimum_service_time": true,
+        "use_per_gpu_hour_price": true,
+        "use_ttft_p50_prior": true
+      },
+      "term_coverage": {
+        "cache_hit_value": "missing",
+        "carbon_cost_per_request": "derived_iff_operator_carbon_price_supplied",
+        "cold_start_penalty": "operator_supplied_via_ModelLoadProfile",
+        "energy_cost_per_request_usd": "derived_iff_operator_energy_price_supplied",
+        "energy_kwh_per_request": "derived_from_optimum_or_acmetrace",
+        "expected_latency_s": "derived",
+        "incremental_gpu_cost": "derived",
+        "migration_cache_loss_penalty": "derived_from_per_gpu_prior",
+        "per_gpu_hour_price": "operator_policy_or_operator_global_default",
+        "prefill_cost_avoided": "missing",
+        "queue_depth": "measured",
+        "queue_wait_s": "measured_or_proxy",
+        "service_time_s": "derived_from_per_gpu_prior",
+        "sla_risk_probability": "derived_latency_margin_indicator",
+        "timeout_risk": "missing",
+        "tpot_per_gpu_prior": "derived_from_optimum_benchmark",
+        "ttft_per_gpu_prior": "forecasted_cara_ttft_p50_shadow_prior",
+        "vram_pressure_penalty": "derived"
+      },
+      "term_signal_levels": {
+        "cache_hit_value": {
+          "classification": "missing",
+          "signal_level": null
+        },
+        "carbon_cost_per_request": {
+          "classification": "derived_iff_operator_carbon_price_supplied",
+          "signal_level": "level_2_derived"
+        },
+        "cold_start_penalty": {
+          "classification": "operator_supplied_via_ModelLoadProfile",
+          "signal_level": "level_1_operator_policy"
+        },
+        "energy_cost_per_request_usd": {
+          "classification": "derived_iff_operator_energy_price_supplied",
+          "signal_level": "level_2_derived"
+        },
+        "energy_kwh_per_request": {
+          "classification": "derived_from_optimum_or_acmetrace",
+          "signal_level": "level_3_prior"
+        },
+        "expected_latency_s": {
+          "classification": "derived",
+          "signal_level": "level_2_derived"
+        },
+        "incremental_gpu_cost": {
+          "classification": "derived",
+          "signal_level": "level_2_derived"
+        },
+        "migration_cache_loss_penalty": {
+          "classification": "derived_from_per_gpu_prior",
+          "signal_level": "level_2_derived"
+        },
+        "per_gpu_hour_price": {
+          "classification": "operator_policy_or_operator_global_default",
+          "signal_level": "level_1_operator_policy"
+        },
+        "prefill_cost_avoided": {
+          "classification": "missing",
+          "signal_level": null
+        },
+        "queue_depth": {
+          "classification": "measured",
+          "signal_level": "level_1_measured"
+        },
+        "queue_wait_s": {
+          "classification": "measured_or_proxy",
+          "signal_level": "level_1_measured"
+        },
+        "service_time_s": {
+          "classification": "derived_from_per_gpu_prior",
+          "signal_level": "level_2_derived"
+        },
+        "sla_risk_probability": {
+          "classification": "derived_latency_margin_indicator",
+          "signal_level": "level_2_derived"
+        },
+        "timeout_risk": {
+          "classification": "missing",
+          "signal_level": null
+        },
+        "tpot_per_gpu_prior": {
+          "classification": "derived_from_optimum_benchmark",
+          "signal_level": "level_3_prior"
+        },
+        "ttft_per_gpu_prior": {
+          "classification": "forecasted_cara_ttft_p50_shadow_prior",
+          "signal_level": "level_3_prior"
+        },
+        "vram_pressure_penalty": {
+          "classification": "derived",
+          "signal_level": "level_2_derived"
+        }
+      }
+    },
+    "D_shadow_with_cache_prefill": {
+      "config": {
+        "executable_in_real_cluster": false,
+        "use_cache_prefill_savings": true,
+        "use_energy_term": true,
+        "use_migration_cache_loss": true,
+        "use_optimum_service_time": true,
+        "use_per_gpu_hour_price": true,
+        "use_ttft_p50_prior": false
+      },
+      "term_coverage": {
+        "cache_hit_value": "forecasted_cache_prefix_reuse_v1_proxy",
+        "carbon_cost_per_request": "derived_iff_operator_carbon_price_supplied",
+        "cold_start_penalty": "operator_supplied_via_ModelLoadProfile",
+        "energy_cost_per_request_usd": "derived_iff_operator_energy_price_supplied",
+        "energy_kwh_per_request": "derived_from_optimum_or_acmetrace",
+        "expected_latency_s": "derived",
+        "incremental_gpu_cost": "derived",
+        "migration_cache_loss_penalty": "derived_from_per_gpu_prior",
+        "per_gpu_hour_price": "operator_policy_or_operator_global_default",
+        "prefill_cost_avoided": "forecasted_cache_prefix_reuse_v1_proxy",
+        "queue_depth": "measured",
+        "queue_wait_s": "measured_or_proxy",
+        "service_time_s": "derived_from_per_gpu_prior",
+        "sla_risk_probability": "derived_latency_margin_indicator",
+        "timeout_risk": "missing",
+        "tpot_per_gpu_prior": "derived_from_optimum_benchmark",
+        "ttft_per_gpu_prior": "derived_from_optimum_benchmark",
+        "vram_pressure_penalty": "derived"
+      },
+      "term_signal_levels": {
+        "cache_hit_value": {
+          "classification": "forecasted_cache_prefix_reuse_v1_proxy",
+          "signal_level": "level_3_prior"
+        },
+        "carbon_cost_per_request": {
+          "classification": "derived_iff_operator_carbon_price_supplied",
+          "signal_level": "level_2_derived"
+        },
+        "cold_start_penalty": {
+          "classification": "operator_supplied_via_ModelLoadProfile",
+          "signal_level": "level_1_operator_policy"
+        },
+        "energy_cost_per_request_usd": {
+          "classification": "derived_iff_operator_energy_price_supplied",
+          "signal_level": "level_2_derived"
+        },
+        "energy_kwh_per_request": {
+          "classification": "derived_from_optimum_or_acmetrace",
+          "signal_level": "level_3_prior"
+        },
+        "expected_latency_s": {
+          "classification": "derived",
+          "signal_level": "level_2_derived"
+        },
+        "incremental_gpu_cost": {
+          "classification": "derived",
+          "signal_level": "level_2_derived"
+        },
+        "migration_cache_loss_penalty": {
+          "classification": "derived_from_per_gpu_prior",
+          "signal_level": "level_2_derived"
+        },
+        "per_gpu_hour_price": {
+          "classification": "operator_policy_or_operator_global_default",
+          "signal_level": "level_1_operator_policy"
+        },
+        "prefill_cost_avoided": {
+          "classification": "forecasted_cache_prefix_reuse_v1_proxy",
+          "signal_level": "level_3_prior"
+        },
+        "queue_depth": {
+          "classification": "measured",
+          "signal_level": "level_1_measured"
+        },
+        "queue_wait_s": {
+          "classification": "measured_or_proxy",
+          "signal_level": "level_1_measured"
+        },
+        "service_time_s": {
+          "classification": "derived_from_per_gpu_prior",
+          "signal_level": "level_2_derived"
+        },
+        "sla_risk_probability": {
+          "classification": "derived_latency_margin_indicator",
+          "signal_level": "level_2_derived"
+        },
+        "timeout_risk": {
+          "classification": "missing",
+          "signal_level": null
+        },
+        "tpot_per_gpu_prior": {
+          "classification": "derived_from_optimum_benchmark",
+          "signal_level": "level_3_prior"
+        },
+        "ttft_per_gpu_prior": {
+          "classification": "derived_from_optimum_benchmark",
+          "signal_level": "level_3_prior"
+        },
+        "vram_pressure_penalty": {
+          "classification": "derived",
+          "signal_level": "level_2_derived"
+        }
+      }
+    },
+    "E_shadow_full": {
+      "config": {
+        "executable_in_real_cluster": false,
+        "use_cache_prefill_savings": true,
+        "use_energy_term": true,
+        "use_migration_cache_loss": true,
+        "use_optimum_service_time": true,
+        "use_per_gpu_hour_price": true,
+        "use_ttft_p50_prior": true
+      },
+      "term_coverage": {
+        "cache_hit_value": "forecasted_cache_prefix_reuse_v1_proxy",
+        "carbon_cost_per_request": "derived_iff_operator_carbon_price_supplied",
+        "cold_start_penalty": "operator_supplied_via_ModelLoadProfile",
+        "energy_cost_per_request_usd": "derived_iff_operator_energy_price_supplied",
+        "energy_kwh_per_request": "derived_from_optimum_or_acmetrace",
+        "expected_latency_s": "derived",
+        "incremental_gpu_cost": "derived",
+        "migration_cache_loss_penalty": "derived_from_per_gpu_prior",
+        "per_gpu_hour_price": "operator_policy_or_operator_global_default",
+        "prefill_cost_avoided": "forecasted_cache_prefix_reuse_v1_proxy",
+        "queue_depth": "measured",
+        "queue_wait_s": "measured_or_proxy",
+        "service_time_s": "derived_from_per_gpu_prior",
+        "sla_risk_probability": "derived_latency_margin_indicator",
+        "timeout_risk": "missing",
+        "tpot_per_gpu_prior": "derived_from_optimum_benchmark",
+        "ttft_per_gpu_prior": "forecasted_cara_ttft_p50_shadow_prior",
+        "vram_pressure_penalty": "derived"
+      },
+      "term_signal_levels": {
+        "cache_hit_value": {
+          "classification": "forecasted_cache_prefix_reuse_v1_proxy",
+          "signal_level": "level_3_prior"
+        },
+        "carbon_cost_per_request": {
+          "classification": "derived_iff_operator_carbon_price_supplied",
+          "signal_level": "level_2_derived"
+        },
+        "cold_start_penalty": {
+          "classification": "operator_supplied_via_ModelLoadProfile",
+          "signal_level": "level_1_operator_policy"
+        },
+        "energy_cost_per_request_usd": {
+          "classification": "derived_iff_operator_energy_price_supplied",
+          "signal_level": "level_2_derived"
+        },
+        "energy_kwh_per_request": {
+          "classification": "derived_from_optimum_or_acmetrace",
+          "signal_level": "level_3_prior"
+        },
+        "expected_latency_s": {
+          "classification": "derived",
+          "signal_level": "level_2_derived"
+        },
+        "incremental_gpu_cost": {
+          "classification": "derived",
+          "signal_level": "level_2_derived"
+        },
+        "migration_cache_loss_penalty": {
+          "classification": "derived_from_per_gpu_prior",
+          "signal_level": "level_2_derived"
+        },
+        "per_gpu_hour_price": {
+          "classification": "operator_policy_or_operator_global_default",
+          "signal_level": "level_1_operator_policy"
+        },
+        "prefill_cost_avoided": {
+          "classification": "forecasted_cache_prefix_reuse_v1_proxy",
+          "signal_level": "level_3_prior"
+        },
+        "queue_depth": {
+          "classification": "measured",
+          "signal_level": "level_1_measured"
+        },
+        "queue_wait_s": {
+          "classification": "measured_or_proxy",
+          "signal_level": "level_1_measured"
+        },
+        "service_time_s": {
+          "classification": "derived_from_per_gpu_prior",
+          "signal_level": "level_2_derived"
+        },
+        "sla_risk_probability": {
+          "classification": "derived_latency_margin_indicator",
+          "signal_level": "level_2_derived"
+        },
+        "timeout_risk": {
+          "classification": "missing",
+          "signal_level": null
+        },
+        "tpot_per_gpu_prior": {
+          "classification": "derived_from_optimum_benchmark",
+          "signal_level": "level_3_prior"
+        },
+        "ttft_per_gpu_prior": {
+          "classification": "forecasted_cara_ttft_p50_shadow_prior",
+          "signal_level": "level_3_prior"
+        },
+        "vram_pressure_penalty": {
+          "classification": "derived",
+          "signal_level": "level_2_derived"
+        }
+      }
+    }
+  }
+}

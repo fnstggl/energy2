@@ -1,0 +1,568 @@
+{
+  "doc_version": "constraint_shadow_scorer_eval_v1",
+  "evaluated_at_s": 1780324974.079437,
+  "headline": {
+    "binding_pass": "pass_priors_only",
+    "binding_reason": "improvement -10.03% < 2% vs existing constraint-aware scorer",
+    "binding_sla_safe_goodput_per_dollar_improvement_pct": -10.031091027605845,
+    "binding_status": "diagnostic_only",
+    "operator_policy_pass_improvement_pct": 93.1865878883306,
+    "operator_policy_pass_status": "shadow_ready_for_integration_review"
+  },
+  "headline_variant": "E_shadow_full",
+  "honest_partitioning_note": "Mission spec: do not invent economic constants. The binding headline is pass_priors_only, which uses only Level-1 measurements + Level-3 priors + the production operator global default gpu_hour_price (existing scorer behaviour). The pass_with_operator_pricing scenario shows what the scorer would yield IF an operator supplies per-GPU $/hr + energy_price \u2014 but every dollar coefficient in that pass is operator-supplied, not invented.",
+  "modifies_controllers_or_defaults": false,
+  "modifies_robust_energy_engine": false,
+  "n_candidates": 8,
+  "n_requests": 80,
+  "pass_priors_only": {
+    "aggregates": {
+      "A_existing": {
+        "fallback_rate": 0.0,
+        "fallback_to_production_count": 0,
+        "n_requests": 80,
+        "ranking_change_rate": 0.0,
+        "sla_safe_count": 32,
+        "sla_safe_count_baseline_A": 32,
+        "sla_safe_goodput_per_dollar_improvement_pct": 0.0,
+        "subgroup_by_gpu": {
+          "a100": {
+            "row_count": 32,
+            "top1_change_rate": 0.0
+          },
+          "missing": {
+            "row_count": 32,
+            "top1_change_rate": 0.0
+          },
+          "t4": {
+            "row_count": 16,
+            "top1_change_rate": 0.0
+          }
+        },
+        "subgroup_by_model_family": {
+          "apertus": {
+            "row_count": 16,
+            "top1_change_rate": 0.0
+          },
+          "llama": {
+            "row_count": 32,
+            "top1_change_rate": 0.0
+          },
+          "mistral": {
+            "row_count": 16,
+            "top1_change_rate": 0.0
+          },
+          "qwen": {
+            "row_count": 16,
+            "top1_change_rate": 0.0
+          }
+        },
+        "top1_change_rate": 0.0,
+        "total_goodput_per_dollar": 10905.509574576277,
+        "total_goodput_per_dollar_baseline_A": 10905.509574576277,
+        "uncalibrated_term_counts": {}
+      },
+      "B_shadow_default_priors": {
+        "fallback_rate": 0.5,
+        "fallback_to_production_count": 320,
+        "n_requests": 80,
+        "ranking_change_rate": 0.6,
+        "sla_safe_count": 32,
+        "sla_safe_count_baseline_A": 32,
+        "sla_safe_goodput_per_dollar_improvement_pct": -11.349194113898816,
+        "subgroup_by_gpu": {
+          "a10": {
+            "row_count": 24,
+            "top1_change_rate": 1.0
+          },
+          "missing": {
+            "row_count": 32,
+            "top1_change_rate": 0.0
+          },
+          "p100": {
+            "row_count": 24,
+            "top1_change_rate": 1.0
+          }
+        },
+        "subgroup_by_model_family": {
+          "apertus": {
+            "row_count": 16,
+            "top1_change_rate": 0.0
+          },
+          "llama": {
+            "row_count": 32,
+            "top1_change_rate": 0.5
+          },
+          "mistral": {
+            "row_count": 16,
+            "top1_change_rate": 1.0
+          },
+          "qwen": {
+            "row_count": 16,
+            "top1_change_rate": 1.0
+          }
+        },
+        "top1_change_rate": 0.6,
+        "total_goodput_per_dollar": 9667.822123847795,
+        "total_goodput_per_dollar_baseline_A": 10905.509574576277,
+        "uncalibrated_term_counts": {
+          "energy_cost_per_request_usd": 320
+        }
+      },
+      "C_shadow_with_ttft_p50_prior": {
+        "fallback_rate": 0.5,
+        "fallback_to_production_count": 320,
+        "n_requests": 80,
+        "ranking_change_rate": 0.6,
+        "sla_safe_count": 32,
+        "sla_safe_count_baseline_A": 32,
+        "sla_safe_goodput_per_dollar_improvement_pct": -11.345184853298464,
+        "subgroup_by_gpu": {
+          "a10": {
+            "row_count": 24,
+            "top1_change_rate": 1.0
+          },
+          "missing": {
+            "row_count": 32,
+            "top1_change_rate": 0.0
+          },
+          "p100": {
+            "row_count": 18,
+            "top1_change_rate": 1.0
+          },
+          "t4": {
+            "row_count": 6,
+            "top1_change_rate": 0.0
+          }
+        },
+        "subgroup_by_model_family": {
+          "apertus": {
+            "row_count": 16,
+            "top1_change_rate": 0.0
+          },
+          "llama": {
+            "row_count": 32,
+            "top1_change_rate": 0.5
+          },
+          "mistral": {
+            "row_count": 16,
+            "top1_change_rate": 1.0
+          },
+          "qwen": {
+            "row_count": 16,
+            "top1_change_rate": 0.625
+          }
+        },
+        "top1_change_rate": 0.525,
+        "total_goodput_per_dollar": 9668.259354146436,
+        "total_goodput_per_dollar_baseline_A": 10905.509574576277,
+        "uncalibrated_term_counts": {
+          "energy_cost_per_request_usd": 320
+        }
+      },
+      "D_shadow_with_cache_prefill": {
+        "fallback_rate": 0.5,
+        "fallback_to_production_count": 320,
+        "n_requests": 80,
+        "ranking_change_rate": 0.6,
+        "sla_safe_count": 32,
+        "sla_safe_count_baseline_A": 32,
+        "sla_safe_goodput_per_dollar_improvement_pct": -10.03510852185251,
+        "subgroup_by_gpu": {
+          "a10": {
+            "row_count": 24,
+            "top1_change_rate": 1.0
+          },
+          "missing": {
+            "row_count": 32,
+            "top1_change_rate": 0.0
+          },
+          "p100": {
+            "row_count": 24,
+            "top1_change_rate": 1.0
+          }
+        },
+        "subgroup_by_model_family": {
+          "apertus": {
+            "row_count": 16,
+            "top1_change_rate": 0.0
+          },
+          "llama": {
+            "row_count": 32,
+            "top1_change_rate": 0.5
+          },
+          "mistral": {
+            "row_count": 16,
+            "top1_change_rate": 1.0
+          },
+          "qwen": {
+            "row_count": 16,
+            "top1_change_rate": 1.0
+          }
+        },
+        "top1_change_rate": 0.6,
+        "total_goodput_per_dollar": 9811.129853906532,
+        "total_goodput_per_dollar_baseline_A": 10905.509574576277,
+        "uncalibrated_term_counts": {
+          "cache_hit_value_usd": 320,
+          "energy_cost_per_request_usd": 320
+        }
+      },
+      "E_shadow_full": {
+        "fallback_rate": 0.5,
+        "fallback_to_production_count": 320,
+        "n_requests": 80,
+        "ranking_change_rate": 0.6,
+        "sla_safe_count": 32,
+        "sla_safe_count_baseline_A": 32,
+        "sla_safe_goodput_per_dollar_improvement_pct": -10.031091027605845,
+        "subgroup_by_gpu": {
+          "a10": {
+            "row_count": 24,
+            "top1_change_rate": 1.0
+          },
+          "missing": {
+            "row_count": 32,
+            "top1_change_rate": 0.0
+          },
+          "p100": {
+            "row_count": 18,
+            "top1_change_rate": 1.0
+          },
+          "t4": {
+            "row_count": 6,
+            "top1_change_rate": 0.0
+          }
+        },
+        "subgroup_by_model_family": {
+          "apertus": {
+            "row_count": 16,
+            "top1_change_rate": 0.0
+          },
+          "llama": {
+            "row_count": 32,
+            "top1_change_rate": 0.5
+          },
+          "mistral": {
+            "row_count": 16,
+            "top1_change_rate": 1.0
+          },
+          "qwen": {
+            "row_count": 16,
+            "top1_change_rate": 0.625
+          }
+        },
+        "top1_change_rate": 0.525,
+        "total_goodput_per_dollar": 9811.56798212626,
+        "total_goodput_per_dollar_baseline_A": 10905.509574576277,
+        "uncalibrated_term_counts": {
+          "cache_hit_value_usd": 320,
+          "energy_cost_per_request_usd": 320
+        }
+      }
+    },
+    "description": "No operator pricing policy supplied. The upgraded scorer can compute Level-2 prefill/decode/energy quantities from Level-3 priors but cannot translate them into $-denominated savings. This is the honest ''do the ML priors alone improve SLA-safe goodput/$?'' result.",
+    "final_status": "diagnostic_only",
+    "final_status_reason": "improvement -10.03% < 2% vs existing constraint-aware scorer",
+    "priors_meta": {
+      "operator_policy": {
+        "carbon_price_supplied": false,
+        "energy_price_supplied": false,
+        "gpu_hour_price_per_type_supplied": false
+      },
+      "priors_wired": {
+        "cache_reuse_predict_families": [
+          "apertus",
+          "qwen",
+          "llama"
+        ],
+        "gpu_power_sample_count": 5,
+        "optimum_benchmark_fixtures": 9,
+        "optimum_benchmark_rows": 45,
+        "ttft_p50_prior_fit_rows": 61460
+      }
+    }
+  },
+  "pass_with_operator_pricing": {
+    "aggregates": {
+      "A_existing": {
+        "fallback_rate": 0.0,
+        "fallback_to_production_count": 0,
+        "n_requests": 80,
+        "ranking_change_rate": 0.0,
+        "sla_safe_count": 32,
+        "sla_safe_count_baseline_A": 32,
+        "sla_safe_goodput_per_dollar_improvement_pct": 0.0,
+        "subgroup_by_gpu": {
+          "a100": {
+            "row_count": 32,
+            "top1_change_rate": 0.0
+          },
+          "missing": {
+            "row_count": 32,
+            "top1_change_rate": 0.0
+          },
+          "t4": {
+            "row_count": 16,
+            "top1_change_rate": 0.0
+          }
+        },
+        "subgroup_by_model_family": {
+          "apertus": {
+            "row_count": 16,
+            "top1_change_rate": 0.0
+          },
+          "llama": {
+            "row_count": 32,
+            "top1_change_rate": 0.0
+          },
+          "mistral": {
+            "row_count": 16,
+            "top1_change_rate": 0.0
+          },
+          "qwen": {
+            "row_count": 16,
+            "top1_change_rate": 0.0
+          }
+        },
+        "top1_change_rate": 0.0,
+        "total_goodput_per_dollar": 10905.509574576277,
+        "total_goodput_per_dollar_baseline_A": 10905.509574576277,
+        "uncalibrated_term_counts": {}
+      },
+      "B_shadow_default_priors": {
+        "fallback_rate": 0.5,
+        "fallback_to_production_count": 320,
+        "n_requests": 80,
+        "ranking_change_rate": 0.6,
+        "sla_safe_count": 32,
+        "sla_safe_count_baseline_A": 32,
+        "sla_safe_goodput_per_dollar_improvement_pct": 71.78900094802934,
+        "subgroup_by_gpu": {
+          "a10": {
+            "row_count": 24,
+            "top1_change_rate": 1.0
+          },
+          "missing": {
+            "row_count": 32,
+            "top1_change_rate": 0.0
+          },
+          "p100": {
+            "row_count": 16,
+            "top1_change_rate": 1.0
+          },
+          "t4": {
+            "row_count": 8,
+            "top1_change_rate": 0.0
+          }
+        },
+        "subgroup_by_model_family": {
+          "apertus": {
+            "row_count": 16,
+            "top1_change_rate": 0.0
+          },
+          "llama": {
+            "row_count": 32,
+            "top1_change_rate": 0.5
+          },
+          "mistral": {
+            "row_count": 16,
+            "top1_change_rate": 1.0
+          },
+          "qwen": {
+            "row_count": 16,
+            "top1_change_rate": 0.5
+          }
+        },
+        "top1_change_rate": 0.5,
+        "total_goodput_per_dollar": 18734.465946456272,
+        "total_goodput_per_dollar_baseline_A": 10905.509574576277,
+        "uncalibrated_term_counts": {}
+      },
+      "C_shadow_with_ttft_p50_prior": {
+        "fallback_rate": 0.5,
+        "fallback_to_production_count": 320,
+        "n_requests": 80,
+        "ranking_change_rate": 0.6,
+        "sla_safe_count": 32,
+        "sla_safe_count_baseline_A": 32,
+        "sla_safe_goodput_per_dollar_improvement_pct": 90.41187210689075,
+        "subgroup_by_gpu": {
+          "a10": {
+            "row_count": 16,
+            "top1_change_rate": 1.0
+          },
+          "missing": {
+            "row_count": 32,
+            "top1_change_rate": 0.0
+          },
+          "p100": {
+            "row_count": 13,
+            "top1_change_rate": 1.0
+          },
+          "t4": {
+            "row_count": 19,
+            "top1_change_rate": 0.42105263157894735
+          }
+        },
+        "subgroup_by_model_family": {
+          "apertus": {
+            "row_count": 16,
+            "top1_change_rate": 0.0
+          },
+          "llama": {
+            "row_count": 32,
+            "top1_change_rate": 0.5
+          },
+          "mistral": {
+            "row_count": 16,
+            "top1_change_rate": 1.0
+          },
+          "qwen": {
+            "row_count": 16,
+            "top1_change_rate": 0.3125
+          }
+        },
+        "top1_change_rate": 0.4625,
+        "total_goodput_per_dollar": 20765.384943746907,
+        "total_goodput_per_dollar_baseline_A": 10905.509574576277,
+        "uncalibrated_term_counts": {}
+      },
+      "D_shadow_with_cache_prefill": {
+        "fallback_rate": 0.5,
+        "fallback_to_production_count": 320,
+        "n_requests": 80,
+        "ranking_change_rate": 0.6,
+        "sla_safe_count": 32,
+        "sla_safe_count_baseline_A": 32,
+        "sla_safe_goodput_per_dollar_improvement_pct": 74.13797620375234,
+        "subgroup_by_gpu": {
+          "a10": {
+            "row_count": 24,
+            "top1_change_rate": 1.0
+          },
+          "missing": {
+            "row_count": 32,
+            "top1_change_rate": 0.0
+          },
+          "p100": {
+            "row_count": 16,
+            "top1_change_rate": 1.0
+          },
+          "t4": {
+            "row_count": 8,
+            "top1_change_rate": 0.0
+          }
+        },
+        "subgroup_by_model_family": {
+          "apertus": {
+            "row_count": 16,
+            "top1_change_rate": 0.0
+          },
+          "llama": {
+            "row_count": 32,
+            "top1_change_rate": 0.5
+          },
+          "mistral": {
+            "row_count": 16,
+            "top1_change_rate": 1.0
+          },
+          "qwen": {
+            "row_count": 16,
+            "top1_change_rate": 0.5
+          }
+        },
+        "top1_change_rate": 0.5,
+        "total_goodput_per_dollar": 18990.63366787357,
+        "total_goodput_per_dollar_baseline_A": 10905.509574576277,
+        "uncalibrated_term_counts": {
+          "cache_hit_value_usd": 64
+        }
+      },
+      "E_shadow_full": {
+        "fallback_rate": 0.5,
+        "fallback_to_production_count": 320,
+        "n_requests": 80,
+        "ranking_change_rate": 0.6,
+        "sla_safe_count": 32,
+        "sla_safe_count_baseline_A": 32,
+        "sla_safe_goodput_per_dollar_improvement_pct": 93.1865878883306,
+        "subgroup_by_gpu": {
+          "a10": {
+            "row_count": 16,
+            "top1_change_rate": 1.0
+          },
+          "missing": {
+            "row_count": 32,
+            "top1_change_rate": 0.0
+          },
+          "p100": {
+            "row_count": 13,
+            "top1_change_rate": 1.0
+          },
+          "t4": {
+            "row_count": 19,
+            "top1_change_rate": 0.42105263157894735
+          }
+        },
+        "subgroup_by_model_family": {
+          "apertus": {
+            "row_count": 16,
+            "top1_change_rate": 0.0
+          },
+          "llama": {
+            "row_count": 32,
+            "top1_change_rate": 0.5
+          },
+          "mistral": {
+            "row_count": 16,
+            "top1_change_rate": 1.0
+          },
+          "qwen": {
+            "row_count": 16,
+            "top1_change_rate": 0.3125
+          }
+        },
+        "top1_change_rate": 0.4625,
+        "total_goodput_per_dollar": 21067.98183895911,
+        "total_goodput_per_dollar_baseline_A": 10905.509574576277,
+        "uncalibrated_term_counts": {
+          "cache_hit_value_usd": 64
+        }
+      }
+    },
+    "description": "Operator supplies (illustrative) per-GPU $/hr from cloud invoice and energy price per kWh from utility bill. The improvement in this pass is dominated by the per-GPU $/hr spread (an OPERATOR-POLICY input), not by the ML priors. Reported separately so reviewers can partition prior-driven improvement from operator-policy-driven improvement.",
+    "final_status": "shadow_ready_for_integration_review",
+    "final_status_reason": "improvement 93.19% > 5% with no SLA / subgroup regression \u2014 safe to begin shadow-integration review",
+    "priors_meta": {
+      "operator_policy": {
+        "carbon_price_supplied": false,
+        "energy_price_supplied": true,
+        "gpu_hour_price_per_type_supplied": true
+      },
+      "priors_wired": {
+        "cache_reuse_predict_families": [
+          "apertus",
+          "qwen",
+          "llama"
+        ],
+        "gpu_power_sample_count": 5,
+        "optimum_benchmark_fixtures": 9,
+        "optimum_benchmark_rows": 45,
+        "ttft_p50_prior_fit_rows": 61460
+      }
+    }
+  },
+  "pilot_only_remaining_items": [
+    "real measured energy per request from production (Optimum is a prior)",
+    "real measured per-GPU power draw on production cluster (AcmeTrace is a prior)",
+    "real measured cache_hit per request (no HF dataset provides this)",
+    "real cold-start latency per (model, GPU, cluster)",
+    "operator-supplied energy_price_per_kwh_usd from utility bill",
+    "operator-supplied per-GPU $/hr from cloud invoice or chargeback policy"
+  ],
+  "production_claim": false,
+  "shadow_only": true,
+  "shadow_scorer_version": "constraint_shadow_scorer_v1",
+  "uses_oracle_as_headline": false
+}
