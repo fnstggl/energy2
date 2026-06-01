@@ -1,0 +1,411 @@
+{
+  "config_name": "operation_events",
+  "dataset_id": "Lightcap/agent-runtime-telemetry-small",
+  "example_values": {
+    "backend_preference": [
+      "None",
+      "None",
+      "None"
+    ],
+    "created_at_iso": [
+      "'2026-04-16T14:32:58.191177+00:00'",
+      "'2026-04-16T14:32:58.204421+00:00'",
+      "'2026-04-16T14:33:04.778134+00:00'"
+    ],
+    "created_at_s": [
+      "1776349978.191177",
+      "1776349978.204421",
+      "1776349984.778134"
+    ],
+    "duration_ms": [
+      "0.0",
+      "13.244152069091797",
+      "6586.957216262817"
+    ],
+    "duration_s": [
+      "0.0",
+      "0.013244152069091797",
+      "6.586957216262817"
+    ],
+    "event_id": [
+      "1",
+      "2",
+      "3"
+    ],
+    "event_type": [
+      "'started'",
+      "'stage'",
+      "'stage'"
+    ],
+    "is_cancelled": [
+      "False",
+      "False",
+      "False"
+    ],
+    "is_error": [
+      "False",
+      "False",
+      "False"
+    ],
+    "operation_id": [
+      "'deploy-smoke-1776349977'",
+      "'deploy-smoke-1776349977'",
+      "'deploy-smoke-1776349977'"
+    ],
+    "operation_mode": [
+      "None",
+      "None",
+      "None"
+    ],
+    "payload_bytes": [
+      "109",
+      "31",
+      "31"
+    ],
+    "payload_key_count": [
+      "3",
+      "1",
+      "1"
+    ],
+    "payload_keys": [
+      "'public_task_state|request_id|tool_name'",
+      "'public_task_state'",
+      "'public_task_state'"
+    ],
+    "payload_sha256": [
+      "'da92444ca9bc65e1e1406ecf225a7cb8ccca1e1c854d06234748d8aa5caa13ff'",
+      "'44f7c42ea21fc813b2c0afed6082a00707086b6e9b9b17d265eb4f0485247220'",
+      "'d0c899d65509d6ba6530a7e9177715c80407e70bcc225016f66b1d4bc8654a8d'"
+    ],
+    "payload_stage": [
+      "None",
+      "None",
+      "None"
+    ],
+    "payload_status": [
+      "None",
+      "None",
+      "None"
+    ],
+    "request_id": [
+      "None",
+      "None",
+      "None"
+    ],
+    "stage": [
+      "'started'",
+      "'executing'",
+      "'execution_completed'"
+    ],
+    "status": [
+      "'running'",
+      "'running'",
+      "'running'"
+    ],
+    "tool_name": [
+      "None",
+      "None",
+      "None"
+    ],
+    "updated_at_iso": [
+      "'2026-04-16T14:32:58.191177+00:00'",
+      "'2026-04-16T14:32:58.204421+00:00'",
+      "'2026-04-16T14:33:04.778134+00:00'"
+    ],
+    "updated_at_s": [
+      "1776349978.191177",
+      "1776349978.204421",
+      "1776349984.778134"
+    ]
+  },
+  "file_size_bytes": 610446,
+  "inspected_row_count": 9903,
+  "missing_rates": {
+    "backend_preference": 1.0,
+    "created_at_iso": 0.0,
+    "created_at_s": 0.0,
+    "duration_ms": 0.0,
+    "duration_s": 0.0,
+    "event_id": 0.0,
+    "event_type": 0.0,
+    "is_cancelled": 0.0,
+    "is_error": 0.0,
+    "operation_id": 0.0,
+    "operation_mode": 1.0,
+    "payload_bytes": 0.0,
+    "payload_key_count": 0.0,
+    "payload_keys": 0.0,
+    "payload_sha256": 0.0,
+    "payload_stage": 1.0,
+    "payload_status": 1.0,
+    "request_id": 1.0,
+    "stage": 0.0,
+    "status": 0.0,
+    "tool_name": 1.0,
+    "updated_at_iso": 0.0,
+    "updated_at_s": 0.0
+  },
+  "normalized_columns": [
+    "backend_preference",
+    "created_at_iso",
+    "created_at_s",
+    "duration_ms",
+    "duration_s",
+    "event_id",
+    "event_type",
+    "is_cancelled",
+    "is_error",
+    "operation_id",
+    "operation_mode",
+    "payload_bytes",
+    "payload_key_count",
+    "payload_keys",
+    "payload_sha256",
+    "payload_stage",
+    "payload_status",
+    "request_id",
+    "stage",
+    "status",
+    "tool_name",
+    "updated_at_iso",
+    "updated_at_s"
+  ],
+  "normalized_dtypes": {
+    "backend_preference": [
+      "null"
+    ],
+    "created_at_iso": [
+      "str"
+    ],
+    "created_at_s": [
+      "float"
+    ],
+    "duration_ms": [
+      "float"
+    ],
+    "duration_s": [
+      "float"
+    ],
+    "event_id": [
+      "int"
+    ],
+    "event_type": [
+      "str"
+    ],
+    "is_cancelled": [
+      "bool"
+    ],
+    "is_error": [
+      "bool"
+    ],
+    "operation_id": [
+      "str"
+    ],
+    "operation_mode": [
+      "null"
+    ],
+    "payload_bytes": [
+      "int"
+    ],
+    "payload_key_count": [
+      "int"
+    ],
+    "payload_keys": [
+      "str"
+    ],
+    "payload_sha256": [
+      "str"
+    ],
+    "payload_stage": [
+      "null"
+    ],
+    "payload_status": [
+      "null"
+    ],
+    "request_id": [
+      "null"
+    ],
+    "stage": [
+      "str"
+    ],
+    "status": [
+      "str"
+    ],
+    "tool_name": [
+      "null"
+    ],
+    "updated_at_iso": [
+      "str"
+    ],
+    "updated_at_s": [
+      "float"
+    ]
+  },
+  "presence_rates": {
+    "backend_preference": 0.0,
+    "created_at_iso": 1.0,
+    "created_at_s": 1.0,
+    "duration_ms": 1.0,
+    "duration_s": 1.0,
+    "event_id": 1.0,
+    "event_type": 1.0,
+    "is_cancelled": 1.0,
+    "is_error": 1.0,
+    "operation_id": 1.0,
+    "operation_mode": 0.0,
+    "payload_bytes": 1.0,
+    "payload_key_count": 1.0,
+    "payload_keys": 1.0,
+    "payload_sha256": 1.0,
+    "payload_stage": 0.0,
+    "payload_status": 0.0,
+    "request_id": 0.0,
+    "stage": 1.0,
+    "status": 1.0,
+    "tool_name": 0.0,
+    "updated_at_iso": 1.0,
+    "updated_at_s": 1.0
+  },
+  "raw_columns": [
+    "event_id",
+    "event_time_utc",
+    "event_type",
+    "operation_id",
+    "payload_bytes",
+    "payload_key_count",
+    "payload_keys",
+    "payload_sha256",
+    "payload_stage",
+    "payload_status",
+    "payload_tool",
+    "stage",
+    "status"
+  ],
+  "raw_dtypes": {
+    "event_id": [
+      "int"
+    ],
+    "event_time_utc": [
+      "str"
+    ],
+    "event_type": [
+      "str"
+    ],
+    "operation_id": [
+      "str"
+    ],
+    "payload_bytes": [
+      "int"
+    ],
+    "payload_key_count": [
+      "int"
+    ],
+    "payload_keys": [
+      "str"
+    ],
+    "payload_sha256": [
+      "str"
+    ],
+    "payload_stage": [
+      "str"
+    ],
+    "payload_status": [
+      "str"
+    ],
+    "payload_tool": [
+      "str"
+    ],
+    "stage": [
+      "str"
+    ],
+    "status": [
+      "str"
+    ]
+  },
+  "raw_example_values": {
+    "event_id": [
+      "1",
+      "2",
+      "3"
+    ],
+    "event_time_utc": [
+      "'2026-04-16T14:32:58.191177+00:00'",
+      "'2026-04-16T14:32:58.204421+00:00'",
+      "'2026-04-16T14:33:04.778134+00:00'"
+    ],
+    "event_type": [
+      "'started'",
+      "'stage'",
+      "'stage'"
+    ],
+    "operation_id": [
+      "'deploy-smoke-1776349977'",
+      "'deploy-smoke-1776349977'",
+      "'deploy-smoke-1776349977'"
+    ],
+    "payload_bytes": [
+      "109",
+      "31",
+      "31"
+    ],
+    "payload_key_count": [
+      "3",
+      "1",
+      "1"
+    ],
+    "payload_keys": [
+      "'public_task_state|request_id|tool_name'",
+      "'public_task_state'",
+      "'public_task_state'"
+    ],
+    "payload_sha256": [
+      "'da92444ca9bc65e1e1406ecf225a7cb8ccca1e1c854d06234748d8aa5caa13ff'",
+      "'44f7c42ea21fc813b2c0afed6082a00707086b6e9b9b17d265eb4f0485247220'",
+      "'d0c899d65509d6ba6530a7e9177715c80407e70bcc225016f66b1d4bc8654a8d'"
+    ],
+    "payload_stage": [
+      "''",
+      "''",
+      "''"
+    ],
+    "payload_status": [
+      "''",
+      "''",
+      "''"
+    ],
+    "payload_tool": [
+      "''",
+      "''",
+      "''"
+    ],
+    "stage": [
+      "'started'",
+      "'executing'",
+      "'execution_completed'"
+    ],
+    "status": [
+      "'running'",
+      "'running'",
+      "'running'"
+    ]
+  },
+  "raw_presence_rates": {
+    "event_id": 1.0,
+    "event_time_utc": 1.0,
+    "event_type": 1.0,
+    "operation_id": 1.0,
+    "payload_bytes": 1.0,
+    "payload_key_count": 1.0,
+    "payload_keys": 1.0,
+    "payload_sha256": 1.0,
+    "payload_stage": 1.0,
+    "payload_status": 1.0,
+    "payload_tool": 1.0,
+    "stage": 1.0,
+    "status": 1.0
+  },
+  "raw_row_count": 9903,
+  "source_files_inspected": [
+    "data/operation_events.parquet"
+  ]
+}

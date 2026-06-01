@@ -3680,3 +3680,164 @@ representative or Lightcap-specific. Remaining PR-#142
 next-actions (additional Exgentic shards, optimum × AgentPerfBench
 cross-validation, energy × CO2 carbon-aware placement prior, MoE
 benchmark probe) still pending.
+
+## 2026-06-01 — hf-corpus: Lightcap follow-up — `operation_events` + `audit_records` configs
+
+**Milestone.** Resolves the documented next-run priority in
+`docs/HF_DATASET_REGISTRY.md` §10
+"Next: Lightcap operation_events + audit_records configs" — both
+remaining Lightcap configs ingested into the existing
+`tool_runtime_trace` canonical type. No new dataclass; the existing
+`ToolRuntimeRecord` + `TOOL_RUNTIME_PAYLOAD_FIELDS` are extended by 16
+optional fields (8 per-event lifecycle + 8 per-MCP-audit-record) so
+the canonical schema covers both grains end-to-end without breaking
+the existing `operations` / `tool_summary` configs.
+
+**Why this matters for Aurelius' objective function.** The
+operation_events config exposes per-event ms-since-started as
+**derived `duration_ms`** broken down by lifecycle stage. The
+constraint-aware engine can now read off:
+
+- **Real dispatch latency** (started → stage(executing)): p50 = 19 ms
+  / p95 = 399 ms — the agent-runtime delivery overhead from request
+  acceptance to execution start. This is a first-class routing-quality
+  prior (not GPU placement; agent-runtime layer).
+- **Affinity-warning stage cost**: p50 = 806 ms / p95 = 129 s. The
+  affinity_warning stage is ~42× slower than executing at p50 → a
+  lifecycle hotspot the routing layer should avoid when soft-routable.
+- **Artifacts-published stage cost**: p50 = 3.0 s / p95 = 32 s for
+  the 694 operations that publish artifacts → input to deferral /
+  batching decisions on artifact-heavy tools.
+- **Full lifecycle** (completed stage): p50 = 125 ms / p95 = 19.4 s
+  / max = 399 s — cross-validates `operations.duration_ms` via the
+  operation_id join.
+
+The audit_records config exposes **real measured MCP-shell-layer
+`duration_ms`** on tool_results rows (7,041 / 14,053; 50 % of audit
+records). MCP-shell timing is a distinct measurement boundary from
+operations' runtime-layer timing: joining via request_id yields the
+**MCP envelope-vs-execution overhead** prior per tool / per status.
+Overall: count = 7,041; p50 = 4.7 ms / p90 = 58 ms / p95 = 400 ms /
+p99 = 2.46 s / max = 900.6 s; error_rate = 8.6 % on tool_results.
+
+**Two configs ingested.**
+
+- `operation_events` (9,903 lifecycle events × 2,262 operations × 13
+  raw cols → 23 normalized cols; moderate strength) →
+  `promoted_for_backtest` + `promoted_for_constraint_aware_evaluation`
+  + `promoted_for_training_priors`.
+- `audit_records` (14,053 rows × 17 raw cols → 27 normalized cols;
+  strong strength = ≥ 10k rows) → `promoted_for_backtest` +
+  `promoted_for_constraint_aware_evaluation` +
+  `promoted_for_training_priors`. (No `dynamic_calibration` even at
+  strong strength — `tool_runtime_trace` does not have a queue /
+  replica / GPU-util signal, so the safe-utilization-frontier
+  evaluator cannot consume it.)
+
+**Schema additions.**
+
+- `aurelius/traces/hf_corpus/schemas.py`:
+  - `TOOL_RUNTIME_PAYLOAD_FIELDS` += 16 new fields (8 per-event:
+    `event_id` / `event_type` / `payload_bytes` / `payload_sha256` /
+    `payload_key_count` / `payload_keys` / `payload_status` /
+    `payload_stage`; 8 per-audit-record: `record_id` / `category` /
+    `record_name` / `record_file` / `record_path_scope` / `kind` /
+    `response_key_count` / `response_keys`).
+  - `ToolRuntimeRecord` dataclass += 16 `Optional[...]` fields.
+  - Validator unchanged — every `field_quality` key must still be in
+    the canonical payload-fields set, so the test suite catches any
+    silently-introduced unknown column.
+- `aurelius/traces/hf_corpus/promotion.py`: unchanged. The new fields
+  don't change the promotion graph; `tool_runtime_trace` still maps
+  to `[backtest, constraint_aware_evaluation, training_priors]`.
+
+**Output artefacts (all committed).**
+
+- `scripts/ingest_hf_lightcap_runtime_telemetry.py` — extended with
+  the two new `TARGETS` entries (`operation_events`, `audit_records`),
+  two new schema mapping tables (`OPERATION_EVENTS_MAPPING`,
+  `AUDIT_RECORDS_MAPPING`), two new normalizers
+  (`_normalize_operation_events_rows` — batch-level for the per-event
+  ms-since-started computation; `_normalize_audit_records_row`), two
+  new signal detectors, two new statistical-rollup functions
+  (`_compute_rollups_operation_events` exposes per-stage +
+  per-event_type duration_ms distributions + the per-operation event
+  count;
+  `_compute_rollups_audit_records` exposes per-(tool, status) duration
+  + per-request audit-pair counts + per-tool failure rates over
+  tool_results). All 4 configs share the same `audit_one` driver via
+  the per-config dispatch dicts.
+- `scripts/register_hf_lightcap_runtime_telemetry.py` — extended
+  `NEW_ENTRIES` to include `operation_events` + `audit_records`;
+  added a `focused_audit_2026_06_01d` follow-up audit block to the
+  candidates JSON (alongside the original `focused_audit_2026_06_01c`
+  block, which is preserved); records the canonical join keys
+  (`operation_id` for operation_events ↔ operations; `request_id`
+  for audit_records ↔ operations).
+- `data/external/hf/Lightcap__agent-runtime-telemetry-small/operation_events/processed/`
+  — `summary.json`, `schema_profile.json`, `schema_mapping.json`,
+  `statistical_rollups.json`, `normalized_sample.jsonl` (6.6 MiB —
+  well under the 100-MiB-per-file / 300-MiB-per-PR policy cap).
+- `data/external/hf/Lightcap__agent-runtime-telemetry-small/audit_records/processed/`
+  — same 5 artefacts; `normalized_sample.jsonl` is 13.6 MiB.
+- `tests/fixtures/hf/Lightcap__agent-runtime-telemetry-small__operation_events_sample.jsonl`
+  (5-row deterministic fixture, 3.3 KiB).
+- `tests/fixtures/hf/Lightcap__agent-runtime-telemetry-small__audit_records_sample.jsonl`
+  (5-row deterministic fixture, 5.0 KiB).
+- `data/external/hf_discovery/lightcap_runtime_telemetry_ingest_summary.json`
+  — re-written with all 4 configs.
+- `data/external/hf_discovery/canonical_corpus_registry.json` — 50 →
+  52 entries; the 2 new entries are `Lightcap/...
+  /operation_events` and `Lightcap/.../audit_records`.
+- `data/external/hf_discovery/hf_dataset_candidates.json` —
+  `focused_audit_2026_06_01d` follow-up block added; existing
+  `focused_audit_2026_06_01c` block preserved; Lightcap candidate
+  row updated with the new follow-up audit_note.
+- `docs/HF_DATASET_REGISTRY.md` — §4 pipeline updated to list all 4
+  Lightcap configs; §7.1 registry table adds the operation_events +
+  audit_records rows; §7.1 follow-up prose subsection documents the
+  per-stage latency rollups + envelope-vs-execution overhead pattern;
+  §10 next-actions marks the follow-up done.
+
+**Test suite.** `tests/test_hf_lightcap_runtime_telemetry_ingest.py`
+extended from 30 to 60 tests (all green), parametrized across all 4
+configs. New coverage: per-stage rollup shape (operation_events must
+expose `numeric_distributions.duration_ms.per_stage` +
+`per_event_type` + `per_operation_event_count`; audit_records must
+expose `overall_tool_results` duration + `per_request_audit_record_count`
++ `overall_failure_rates`); promotion outcome (operation_events =
+moderate → `promoted_for_backtest`; audit_records = strong →
+`promoted_for_backtest`, NEVER `promoted_for_dynamic_calibration`);
+per-event duration_ms is labeled DERIVED while audit_records
+duration_ms is labeled REAL; both new configs explicitly absent of
+GPU / queue / replica / TTFT / TPOT / model signals (anti-overclaim
+guard parametrized across all 3 per-call-grain configs); registry
+includes both new configs; candidates JSON records the
+`focused_audit_2026_06_01d` follow-up block alongside the inaugural
+`focused_audit_2026_06_01c` block; the 16 new payload fields are
+present in `TOOL_RUNTIME_PAYLOAD_FIELDS`; `ToolRuntimeRecord` accepts
+the new event + audit-record dimensions without raising. The full HF
+test suite (758 tests across all `test_hf_*.py`) remains green.
+
+**Honesty + scope guarantees.** No production claim; no scheduler /
+controller / robust energy engine touched; no oracle as headline;
+no Tier 1 promotion. Per-event `duration_ms` explicitly labeled
+**derived** (real timestamps + derived ms-since-started); audit-shell
+`duration_ms` explicitly labeled **real** (raw measurement on
+tool_results rows only); `payload_bytes` / `payload_key_count` /
+`response_key_count` labeled **proxy** (payload-shape proxies, not
+token measurements). The `limitations` block per config pins the
+"NOT GPU TTFT/TPOT, NOT LLM serving telemetry" caveat and the
+agent-runtime-layer (not cluster-scheduler-layer) interpretation of
+the dispatch-latency signal so the constraint-aware engine cannot
+silently overclaim. Raw parquets gitignored; analysis_sample.jsonl
+gitignored; bounded normalized samples committed only because
+cc-by-4.0 permits redistribution.
+
+**Next.** Cross-validate Lightcap's MCP-shell-vs-runtime overhead
+(audit_records.duration_ms − operations.duration_ms via request_id
+join) against any future tool-runtime trace to calibrate whether the
+envelope overhead is broadly representative or Lightcap-specific.
+Remaining PR-#143 next-actions (additional Exgentic shards, optimum
+× AgentPerfBench cross-validation, energy × CO2 carbon-aware
+placement prior, MoE benchmark probe) still pending.

@@ -144,6 +144,18 @@ TARGETS: list[dict] = [
         "expected_raw_bytes": 9_000,
         "primary": False,
     },
+    {
+        "config_name": "operation_events",
+        "raw_file": "data/operation_events.parquet",
+        "expected_raw_bytes": 620_000,
+        "primary": False,
+    },
+    {
+        "config_name": "audit_records",
+        "raw_file": "data/audit_records.parquet",
+        "expected_raw_bytes": 2_300_000,
+        "primary": False,
+    },
 ]
 
 
@@ -330,6 +342,128 @@ def _normalize_operations_row(raw: dict) -> dict:
         "has_source_binding": raw.get("has_source_binding"),
         "series_rows_count": raw.get("series_rows_count"),
         "scenario_rows_count": raw.get("scenario_rows_count"),
+    }
+
+
+def _normalize_operation_events_rows(raw_rows: list[dict]) -> list[dict]:
+    """Map all raw operation_events.parquet rows → flat ToolRuntimeRecord-shaped
+    rows, with ``duration_ms`` computed per-event as ms-since the operation's
+    ``started`` event (queue-wait-style prior).
+
+    Each operation_id has 2-8 lifecycle events ordered by ``event_time_utc``;
+    the per-event ``duration_ms`` lets the constraint-aware harness read off
+    dispatch latency (``started -> stage(executing)``), execution latency
+    (``stage(executing) -> stage(execution_completed)``), and post-processing
+    latency (``stage(execution_completed) -> completed``) directly without
+    re-grouping. ``field_quality`` for ``duration_ms`` is therefore
+    ``derived`` (computed from real measured ``event_time_utc`` timestamps).
+    """
+    # First pass: per-operation_id, find the earliest event_time_utc.
+    started_at_s: dict[str, float] = {}
+    for r in raw_rows:
+        op = r.get("operation_id")
+        if not op:
+            continue
+        ts = _iso_to_epoch_s(r.get("event_time_utc"))
+        if ts is None:
+            continue
+        cur = started_at_s.get(op)
+        if cur is None or ts < cur:
+            started_at_s[op] = ts
+
+    out: list[dict] = []
+    for r in raw_rows:
+        op = r.get("operation_id")
+        event_time_iso = r.get("event_time_utc")
+        event_time_s = _iso_to_epoch_s(event_time_iso)
+        start_s = started_at_s.get(op) if op else None
+        if event_time_s is not None and start_s is not None:
+            duration_ms = max(0.0, (event_time_s - start_s) * 1000.0)
+            duration_s = duration_ms / 1000.0
+        else:
+            duration_ms = None
+            duration_s = None
+        status = (r.get("status") or "") or None
+        stage = (r.get("stage") or "") or None
+        event_type = (r.get("event_type") or "") or None
+        is_error = (status == "error") if status is not None else None
+        is_cancelled = (status == "cancelled") if status is not None else None
+        # payload_tool is only populated on 'started' events; treat as
+        # tool_name when present.
+        payload_tool = (r.get("payload_tool") or "") or None
+        out.append({
+            "operation_id": op,
+            "request_id": None,  # operation_events does not carry MCP request_id
+            "tool_name": payload_tool,
+            "stage": stage,
+            "status": status,
+            "operation_mode": None,
+            "backend_preference": None,
+            "created_at_iso": event_time_iso,
+            "updated_at_iso": event_time_iso,
+            "created_at_s": event_time_s,
+            "updated_at_s": event_time_s,
+            "duration_ms": duration_ms,
+            "duration_s": duration_s,
+            "event_id": r.get("event_id"),
+            "event_type": event_type,
+            "payload_bytes": r.get("payload_bytes"),
+            "payload_sha256": (r.get("payload_sha256") or "") or None,
+            "payload_key_count": r.get("payload_key_count"),
+            "payload_keys": (r.get("payload_keys") or "") or None,
+            "payload_status": (r.get("payload_status") or "") or None,
+            "payload_stage": (r.get("payload_stage") or "") or None,
+            "is_error": is_error,
+            "is_cancelled": is_cancelled,
+        })
+    return out
+
+
+def _normalize_audit_records_row(raw: dict) -> dict:
+    """Map one raw audit_records.parquet row → flat ToolRuntimeRecord-shaped row.
+
+    MCP-shell-layer audit records: category in {tool_requests, tool_results};
+    ``duration_ms`` is real (populated only on tool_results); ``status`` and
+    ``response_*`` fields are populated only on results; ``payload_*`` is the
+    audit-record payload (request body for tool_requests; response body for
+    tool_results).
+    """
+    duration_ms = raw.get("duration_ms")
+    duration_s = (float(duration_ms) / 1000.0
+                  if isinstance(duration_ms, (int, float)) else None)
+    status = (raw.get("status") or "") or None
+    created_iso = raw.get("created_at_utc")
+    created_s = _iso_to_epoch_s(created_iso)
+    is_error = (status == "error") if status is not None else None
+    is_cancelled = (status == "cancelled") if status is not None else None
+    return {
+        "operation_id": None,
+        "request_id": (raw.get("request_id") or "") or None,
+        "tool_name": (raw.get("tool") or "") or None,
+        "stage": None,
+        "status": status,
+        "operation_mode": None,
+        "backend_preference": None,
+        "created_at_iso": created_iso,
+        "updated_at_iso": created_iso,
+        "created_at_s": created_s,
+        "updated_at_s": created_s,
+        "duration_ms": duration_ms,
+        "duration_s": duration_s,
+        "record_id": raw.get("record_id"),
+        "category": (raw.get("category") or "") or None,
+        "record_name": (raw.get("record_name") or "") or None,
+        "record_file": (raw.get("record_file") or "") or None,
+        "record_path_scope": (raw.get("record_path_scope") or "") or None,
+        "kind": (raw.get("kind") or "") or None,
+        "payload_bytes": raw.get("payload_bytes"),
+        "payload_sha256": (raw.get("payload_sha256") or "") or None,
+        "payload_key_count": raw.get("payload_key_count"),
+        "payload_keys": (raw.get("payload_keys") or "") or None,
+        "response_key_count": raw.get("response_key_count"),
+        "response_keys": (raw.get("response_keys") or "") or None,
+        "is_error": is_error,
+        "is_cancelled": is_cancelled,
     }
 
 
@@ -678,14 +812,248 @@ TOOL_SUMMARY_MAPPING: dict = {
 }
 
 
+OPERATION_EVENTS_MAPPING: dict = {
+    "event_id": {
+        "normalized_field": "event_id", "field_quality": "real",
+        "aurelius_signal_category": "metadata_only",
+        "usable_for": ["workload_shape_only"],
+        "notes": "Per-event sequence id (1..N). Used for stable ordering "
+                 "within a single export.",
+    },
+    "operation_id": {
+        "normalized_field": "operation_id", "field_quality": "real",
+        "aurelius_signal_category": "session_id",
+        "usable_for": ["routing_quality", "constraint_aware_backtest"],
+        "notes": "Joins to operations.operation_id. Each operation has 2-8 "
+                 "lifecycle events ordered by event_time_utc.",
+    },
+    "event_type": {
+        "normalized_field": "event_type", "field_quality": "real",
+        "aurelius_signal_category": "scheduler_state",
+        "usable_for": ["routing_quality", "constraint_aware_backtest"],
+        "notes": "Lifecycle event type: started / stage / completed / "
+                 "failed / reconciled. The started/completed pair bounds the "
+                 "operation's wall-clock; stage events expose dispatch + "
+                 "execution + post-processing transitions.",
+    },
+    "status": {
+        "normalized_field": "status", "field_quality": "real",
+        "aurelius_signal_category": "failure_timeout",
+        "usable_for": ["routing_quality", "constraint_aware_backtest"],
+        "notes": "Per-event status: running / ok / error / cancelled. "
+                 "running on transient events; ok / error / cancelled on "
+                 "terminal events.",
+    },
+    "stage": {
+        "normalized_field": "stage", "field_quality": "real",
+        "aurelius_signal_category": "scheduler_state",
+        "usable_for": ["routing_quality", "constraint_aware_backtest"],
+        "notes": "Lifecycle stage: started / executing / execution_completed "
+                 "/ completed / failed / accepted / affinity_rejected / "
+                 "affinity_warning / artifacts_published / startup_reconciled.",
+    },
+    "event_time_utc": {
+        "normalized_field": "created_at_iso", "field_quality": "real",
+        "aurelius_signal_category": "request_arrival",
+        "usable_for": ["latency_prior", "constraint_aware_backtest"],
+        "notes": "RFC3339 ISO event timestamp. Per-event duration_ms is "
+                 "derived as (event_time_utc - started_event_time_utc) for "
+                 "the same operation_id — that's the dispatch-stage + "
+                 "execution-stage latency prior.",
+    },
+    "payload_bytes": {
+        "normalized_field": "payload_bytes", "field_quality": "real",
+        "aurelius_signal_category": "tokens",
+        "usable_for": ["workload_shape_only", "latency_prior"],
+        "notes": "Real measured per-event payload byte count. started "
+                 "events carry the args fingerprint; completed events carry "
+                 "the result summary.",
+    },
+    "payload_sha256": {
+        "normalized_field": "payload_sha256", "field_quality": "real",
+        "aurelius_signal_category": "cache_residency",
+        "usable_for": ["cache_residency_evaluation"],
+        "notes": "sha256 of the per-event payload body. Same fingerprint "
+                 "across operations = identical event payload (cache-reuse "
+                 "proxy at the event grain).",
+    },
+    "payload_key_count": {
+        "normalized_field": "payload_key_count", "field_quality": "real",
+        "aurelius_signal_category": "tokens",
+        "usable_for": ["workload_shape_only"],
+        "notes": "Per-event payload key count (payload-shape proxy).",
+    },
+    "payload_keys": {
+        "normalized_field": "payload_keys", "field_quality": "real",
+        "aurelius_signal_category": "metadata_only",
+        "usable_for": ["workload_shape_only"],
+        "notes": "Pipe-delimited per-event payload key list.",
+    },
+    "payload_status": {
+        "normalized_field": "payload_status", "field_quality": "real",
+        "aurelius_signal_category": "failure_timeout",
+        "usable_for": ["routing_quality"],
+        "notes": "Status string carried inside the event payload (often "
+                 "duplicates row-level status on terminal events; blank "
+                 "on transient stage events).",
+    },
+    "payload_stage": {
+        "normalized_field": "payload_stage", "field_quality": "real",
+        "aurelius_signal_category": "scheduler_state",
+        "usable_for": ["routing_quality"],
+        "notes": "Stage string carried inside the event payload (often "
+                 "duplicates row-level stage; blank on transient events).",
+    },
+    "payload_tool": {
+        "normalized_field": "tool_name", "field_quality": "real",
+        "aurelius_signal_category": "metadata_only",
+        "usable_for": ["routing_quality", "workload_shape_only"],
+        "notes": "Tool routing key column in the raw schema. In this export "
+                 "payload_tool is always blank — the tool name lives inside "
+                 "the started-event payload body (one of payload_keys = "
+                 "'public_task_state|request_id|tool_name') which is NOT "
+                 "redistributed in this export. Tool resolution requires "
+                 "joining to operations.tool_name via operation_id.",
+    },
+}
+
+
+AUDIT_RECORDS_MAPPING: dict = {
+    "record_id": {
+        "normalized_field": "record_id", "field_quality": "real",
+        "aurelius_signal_category": "metadata_only",
+        "usable_for": ["workload_shape_only"],
+        "notes": "Per-record sequence id (1..N).",
+    },
+    "category": {
+        "normalized_field": "category", "field_quality": "real",
+        "aurelius_signal_category": "scheduler_state",
+        "usable_for": ["routing_quality", "constraint_aware_backtest"],
+        "notes": "Audit-record category: tool_requests (inbound MCP "
+                 "request) or tool_results (outbound MCP response). The "
+                 "pair shares request_id; results carry duration_ms.",
+    },
+    "record_name": {
+        "normalized_field": "record_name", "field_quality": "real",
+        "aurelius_signal_category": "metadata_only",
+        "usable_for": ["workload_shape_only"],
+        "notes": "Audit-record name (typically '{tool}_{request_id}').",
+    },
+    "record_file": {
+        "normalized_field": "record_file", "field_quality": "real",
+        "aurelius_signal_category": "metadata_only",
+        "usable_for": ["workload_shape_only"],
+        "notes": "Audit-record filename ('{timestamp}_{record_name}.json').",
+    },
+    "record_path_scope": {
+        "normalized_field": "record_path_scope", "field_quality": "real",
+        "aurelius_signal_category": "metadata_only",
+        "usable_for": ["workload_shape_only"],
+        "notes": "Audit-record file path scope (e.g. 'workspace').",
+    },
+    "tool": {
+        "normalized_field": "tool_name", "field_quality": "real",
+        "aurelius_signal_category": "metadata_only",
+        "usable_for": ["routing_quality", "workload_shape_only"],
+        "notes": "Tool routing key. Same set as operations.tool_name.",
+    },
+    "kind": {
+        "normalized_field": "kind", "field_quality": "real",
+        "aurelius_signal_category": "metadata_only",
+        "usable_for": ["routing_quality"],
+        "notes": "MCP message kind: mcp_tool_request or mcp_tool_result.",
+    },
+    "status": {
+        "normalized_field": "status", "field_quality": "real",
+        "aurelius_signal_category": "failure_timeout",
+        "usable_for": ["routing_quality", "constraint_aware_backtest"],
+        "notes": "Terminal status (only populated on tool_results: ok / "
+                 "error / accepted / running). Blank on tool_requests.",
+    },
+    "duration_ms": {
+        "normalized_field": "duration_ms", "field_quality": "real",
+        "aurelius_signal_category": "latency",
+        "usable_for": ["latency_prior", "constraint_aware_backtest"],
+        "notes": "Real measured MCP-shell-layer duration in ms. Populated "
+                 "only on tool_results rows (50% of audit_records). Heavy "
+                 "tail: p99=2.5 s, max=900 s in this export.",
+    },
+    "request_id": {
+        "normalized_field": "request_id", "field_quality": "real",
+        "aurelius_signal_category": "session_id",
+        "usable_for": ["routing_quality", "constraint_aware_backtest"],
+        "notes": "MCP request UUID. Joins to operations.request_id. Each "
+                 "request_id has 2 audit records: one tool_requests + one "
+                 "tool_results.",
+    },
+    "payload_bytes": {
+        "normalized_field": "payload_bytes", "field_quality": "real",
+        "aurelius_signal_category": "tokens",
+        "usable_for": ["workload_shape_only", "latency_prior"],
+        "notes": "Real measured audit-record payload byte count. For "
+                 "tool_requests: request-body bytes. For tool_results: "
+                 "response-body bytes.",
+    },
+    "payload_sha256": {
+        "normalized_field": "payload_sha256", "field_quality": "real",
+        "aurelius_signal_category": "cache_residency",
+        "usable_for": ["cache_residency_evaluation"],
+        "notes": "sha256 of the audit-record payload body. Same fingerprint "
+                 "across requests = identical request body (cache-reuse "
+                 "proxy at the MCP shell layer).",
+    },
+    "payload_key_count": {
+        "normalized_field": "payload_key_count", "field_quality": "real",
+        "aurelius_signal_category": "tokens",
+        "usable_for": ["workload_shape_only"],
+        "notes": "Audit-record payload key count (payload-shape proxy).",
+    },
+    "payload_keys": {
+        "normalized_field": "payload_keys", "field_quality": "real",
+        "aurelius_signal_category": "metadata_only",
+        "usable_for": ["workload_shape_only"],
+        "notes": "Pipe-delimited audit-record payload key list.",
+    },
+    "response_key_count": {
+        "normalized_field": "response_key_count", "field_quality": "real",
+        "aurelius_signal_category": "tokens",
+        "usable_for": ["workload_shape_only", "latency_prior"],
+        "notes": "Audit-record response key count. Populated only on "
+                 "tool_results rows.",
+    },
+    "response_keys": {
+        "normalized_field": "response_keys", "field_quality": "real",
+        "aurelius_signal_category": "metadata_only",
+        "usable_for": ["workload_shape_only"],
+        "notes": "Pipe-delimited response key list. Populated only on "
+                 "tool_results rows.",
+    },
+    "created_at_utc": {
+        "normalized_field": "created_at_iso", "field_quality": "real",
+        "aurelius_signal_category": "request_arrival",
+        "usable_for": ["latency_prior", "constraint_aware_backtest"],
+        "notes": "RFC3339 ISO arrival timestamp; epoch seconds derived as "
+                 "created_at_s.",
+    },
+}
+
+
 CONFIG_MAPPINGS = {
     "operations": OPERATIONS_MAPPING,
     "tool_summary": TOOL_SUMMARY_MAPPING,
+    "operation_events": OPERATION_EVENTS_MAPPING,
+    "audit_records": AUDIT_RECORDS_MAPPING,
 }
 
 CONFIG_NORMALIZERS = {
     "operations": _normalize_operations_row,
     "tool_summary": _normalize_tool_summary_row,
+    # operation_events normalisation needs a list-level view (per-operation
+    # 'started' timestamp lookup) so the entry is the batch normaliser. The
+    # audit driver wraps single-row normalisers in a list-comprehension; the
+    # batch entry is dispatched on a per-config branch in ``audit_one``.
+    "operation_events": _normalize_operation_events_rows,
+    "audit_records": _normalize_audit_records_row,
 }
 
 
@@ -830,9 +1198,68 @@ def _detect_signals_tool_summary(profile: dict, normalized: list[dict]) -> dict:
     return out
 
 
+def _detect_signals_operation_events(profile: dict,
+                                       normalized: list[dict]) -> dict:
+    out = {s: False for s in ALL_SIGNALS}
+    cols = set(profile["normalized_columns"])
+    if {"created_at_iso", "created_at_s"} & cols:
+        out["request_timestamps"] = True
+        out["arrivals"] = True
+    if "duration_ms" in cols:
+        # Derived per-event duration_ms (ms since started event) — exposes
+        # dispatch / execution / completion latency stages directly.
+        out["latency"] = True
+        out["duration_measured"] = True
+    if "tool_name" in cols and any(r.get("tool_name") for r in normalized):
+        out["tool_routing"] = True
+        out["customer_traffic_mix"] = True
+    if "is_error" in cols and any(r.get("is_error") for r in normalized):
+        out["tool_failure_label"] = True
+    if "is_cancelled" in cols and any(r.get("is_cancelled") for r in normalized):
+        out["tool_cancellation_label"] = True
+    if "payload_sha256" in cols:
+        out["args_fingerprint_for_cache_reuse"] = True
+    if "payload_bytes" in cols or "payload_key_count" in cols:
+        out["workload_shape"] = True
+    if "payload_bytes" in cols:
+        out["result_size_proxy"] = True
+    return out
+
+
+def _detect_signals_audit_records(profile: dict,
+                                    normalized: list[dict]) -> dict:
+    out = {s: False for s in ALL_SIGNALS}
+    cols = set(profile["normalized_columns"])
+    if "created_at_iso" in cols:
+        out["request_timestamps"] = True
+        out["arrivals"] = True
+    if "duration_ms" in cols and any(
+            isinstance(r.get("duration_ms"), (int, float))
+            for r in normalized):
+        out["latency"] = True
+        out["duration_measured"] = True
+    if "tool_name" in cols and any(r.get("tool_name") for r in normalized):
+        out["tool_routing"] = True
+        out["customer_traffic_mix"] = True
+    if "is_error" in cols and any(r.get("is_error") for r in normalized):
+        out["tool_failure_label"] = True
+    if "is_cancelled" in cols and any(r.get("is_cancelled") for r in normalized):
+        out["tool_cancellation_label"] = True
+    if "payload_sha256" in cols:
+        out["args_fingerprint_for_cache_reuse"] = True
+    if any(c in cols for c in ("payload_bytes", "payload_key_count",
+                                "response_key_count")):
+        out["workload_shape"] = True
+    if "payload_bytes" in cols:
+        out["result_size_proxy"] = True
+    return out
+
+
 CONFIG_SIGNAL_DETECTORS = {
     "operations": _detect_signals_operations,
     "tool_summary": _detect_signals_tool_summary,
+    "operation_events": _detect_signals_operation_events,
+    "audit_records": _detect_signals_audit_records,
 }
 
 
@@ -990,9 +1417,170 @@ def _compute_rollups_tool_summary(normalized: list[dict],
     return rollups
 
 
+def _compute_rollups_operation_events(normalized: list[dict],
+                                        raw_rows: list[dict]) -> dict:
+    """Per-stage transition timing rollups.
+
+    The key Aurelius signal exposed by operation_events is per-stage
+    duration_ms (ms since the operation's 'started' event), so the rollups
+    break down duration_ms by stage and event_type. The dispatch-latency
+    prior is the 'started -> stage(executing)' delta; the execution-latency
+    prior is the 'stage(executing) -> stage(execution_completed)' delta.
+    """
+    rollups: dict = {"subgroup_counts": {}, "numeric_distributions": {}}
+
+    event_type_counts: dict[str, int] = {}
+    stage_counts: dict[str, int] = {}
+    status_counts: dict[str, int] = {}
+    for r in normalized:
+        et = r.get("event_type") or "<unset>"
+        st = r.get("stage") or "<unset>"
+        sts = r.get("status") or "<unset>"
+        event_type_counts[et] = event_type_counts.get(et, 0) + 1
+        stage_counts[st] = stage_counts.get(st, 0) + 1
+        status_counts[sts] = status_counts.get(sts, 0) + 1
+    rollups["subgroup_counts"]["event_type"] = event_type_counts
+    rollups["subgroup_counts"]["stage"] = stage_counts
+    rollups["subgroup_counts"]["status"] = status_counts
+
+    # Overall duration_ms (ms-since-started) distribution + per-stage +
+    # per-event_type breakdowns. duration_ms for the 'started' event is
+    # always 0; the value progresses through the lifecycle.
+    rollups["numeric_distributions"]["duration_ms"] = {
+        "overall": _summarize_durations(normalized, "duration_ms"),
+        "per_event_type": {
+            et: _summarize_durations([r for r in normalized
+                                       if (r.get("event_type") or "<unset>") == et])
+            for et in sorted(event_type_counts.keys())
+        },
+        "per_stage": {
+            st: _summarize_durations([r for r in normalized
+                                       if (r.get("stage") or "<unset>") == st])
+            for st in sorted(stage_counts.keys())
+        },
+    }
+
+    # Unique-operations + average events/op (lifecycle granularity proxy).
+    from collections import Counter
+    op_event_counts = Counter(r.get("operation_id") for r in normalized
+                              if r.get("operation_id"))
+    if op_event_counts:
+        sizes = sorted(op_event_counts.values())
+        rollups["per_operation_event_count"] = {
+            "unique_operations": len(op_event_counts),
+            "min_events_per_op": sizes[0],
+            "max_events_per_op": sizes[-1],
+            "mean_events_per_op": sum(sizes) / len(sizes),
+            "p50_events_per_op": _quantile(sizes, 0.50),
+            "p95_events_per_op": _quantile(sizes, 0.95),
+        }
+
+    # Per-event payload byte distribution (request shape proxy).
+    rollups["numeric_distributions"]["payload_bytes"] = _summarize_durations(
+        normalized, "payload_bytes",
+    )
+
+    rollups["raw_row_count"] = len(raw_rows)
+    return rollups
+
+
+def _compute_rollups_audit_records(normalized: list[dict],
+                                     raw_rows: list[dict]) -> dict:
+    """Per-(tool, category, status) audit-record duration rollups."""
+    rollups: dict = {"subgroup_counts": {}, "numeric_distributions": {}}
+
+    category_counts: dict[str, int] = {}
+    kind_counts: dict[str, int] = {}
+    status_counts: dict[str, int] = {}
+    tool_counts: dict[str, int] = {}
+    for r in normalized:
+        cat = r.get("category") or "<unset>"
+        knd = r.get("kind") or "<unset>"
+        sts = r.get("status") or "<unset>"
+        t = r.get("tool_name") or "<unset>"
+        category_counts[cat] = category_counts.get(cat, 0) + 1
+        kind_counts[knd] = kind_counts.get(knd, 0) + 1
+        status_counts[sts] = status_counts.get(sts, 0) + 1
+        tool_counts[t] = tool_counts.get(t, 0) + 1
+    rollups["subgroup_counts"]["category"] = category_counts
+    rollups["subgroup_counts"]["kind"] = kind_counts
+    rollups["subgroup_counts"]["status"] = status_counts
+    rollups["subgroup_counts"]["tool_name"] = tool_counts
+
+    # duration_ms distribution (only populated on tool_results rows).
+    results_only = [r for r in normalized
+                    if r.get("category") == "tool_results"]
+    rollups["numeric_distributions"]["duration_ms"] = {
+        "overall_tool_results": _summarize_durations(results_only,
+                                                      "duration_ms"),
+        "per_status": {
+            s: _summarize_durations([r for r in results_only
+                                     if (r.get("status") or "<unset>") == s])
+            for s in sorted(set(r.get("status") or "<unset>"
+                                for r in results_only))
+        },
+        "per_tool": {
+            t: _summarize_durations([r for r in results_only
+                                     if (r.get("tool_name") or "<unset>") == t])
+            for t in sorted(tool_counts.keys())
+            if any((r.get("tool_name") or "<unset>") == t for r in results_only)
+        },
+    }
+
+    # Per-request audit-record pair counts (should be ~2: one request + one
+    # result per request_id).
+    from collections import Counter
+    req_counts = Counter(r.get("request_id") for r in normalized
+                          if r.get("request_id"))
+    if req_counts:
+        rollups["per_request_audit_record_count"] = {
+            "unique_request_ids": len(req_counts),
+            "mean_records_per_request":
+                sum(req_counts.values()) / len(req_counts),
+            "max_records_per_request": max(req_counts.values()),
+        }
+
+    # Per-tool failure rates (over tool_results rows where status is set).
+    per_tool_failure = {}
+    for t in sorted(tool_counts.keys()):
+        rows_t = [r for r in results_only
+                  if (r.get("tool_name") or "<unset>") == t]
+        if not rows_t:
+            continue
+        n = len(rows_t)
+        errors = sum(1 for r in rows_t if r.get("is_error"))
+        per_tool_failure[t] = {
+            "count": n,
+            "error_count": errors,
+            "error_rate": errors / n if n else 0.0,
+        }
+    rollups["per_tool_failure_rates"] = per_tool_failure
+
+    # Overall failure rate over tool_results only.
+    n_total = len(results_only)
+    n_err = sum(1 for r in results_only if r.get("is_error"))
+    rollups["overall_failure_rates"] = {
+        "count": n_total,
+        "error_count": n_err,
+        "error_rate": n_err / n_total if n_total else 0.0,
+    }
+
+    rollups["numeric_distributions"]["payload_bytes"] = _summarize_durations(
+        normalized, "payload_bytes",
+    )
+    rollups["numeric_distributions"]["response_key_count"] = (
+        _summarize_durations(results_only, "response_key_count")
+    )
+
+    rollups["raw_row_count"] = len(raw_rows)
+    return rollups
+
+
 CONFIG_ROLLUPS = {
     "operations": _compute_rollups_operations,
     "tool_summary": _compute_rollups_tool_summary,
+    "operation_events": _compute_rollups_operation_events,
+    "audit_records": _compute_rollups_audit_records,
 }
 
 
@@ -1045,7 +1633,12 @@ def audit_one(target: dict, *, token: str | None,
 
     hb.update(phase="normalize", force=True)
     normalizer = CONFIG_NORMALIZERS[config]
-    normalized = [normalizer(r) for r in raw_rows]
+    # operation_events needs a list-level pass (per-operation 'started'
+    # timestamp lookup) to compute the derived per-event duration_ms.
+    if config == "operation_events":
+        normalized = normalizer(raw_rows)
+    else:
+        normalized = [normalizer(r) for r in raw_rows]
     hb.update(phase="normalized", rows_done=len(normalized), force=True)
 
     hb.update(phase="profile", force=True)
@@ -1127,11 +1720,19 @@ def audit_one(target: dict, *, token: str | None,
         # In tool_summary, the duration_ms in the normalized sample is the
         # median of the aggregate bucket — that's derived, not real.
         derived_fields = derived_fields + ["duration_ms", "duration_s"]
+    elif config == "operation_events":
+        # Per-event duration_ms is ms-since-started (derived from real
+        # measured event_time_utc timestamps).
+        derived_fields = derived_fields + ["duration_ms", "duration_s"]
     proxy_fields = [
         "args_count", "kwargs_key_count", "series_rows_count",
         "scenario_rows_count", "result_payload_key_count",
         "result_payload_bytes", "artifacts_bytes",
     ]
+    if config in {"operation_events", "audit_records"}:
+        proxy_fields = proxy_fields + [
+            "payload_bytes", "payload_key_count", "response_key_count",
+        ]
 
     if config == "operations":
         limitations = [
@@ -1141,13 +1742,31 @@ def audit_one(target: dict, *, token: str | None,
             "Single export (one runtime, ~7 days, 2,262 operations across 22 tools). Treat as routing-quality + failure-rate + tail-latency PRIOR for agent workloads — not as a serving telemetry calibration source. Pilot telemetry remains the only Tier 1 calibration source.",
             "Raw args / kwargs / result payload bodies are NOT redistributed in this export — only fingerprints (args_fingerprint = sha256), counts (args_count, kwargs_key_count), key lists (pipe-delimited), and byte totals (result_payload_bytes, artifacts_bytes). Error messages are stored as a preview + sha256 only.",
         ]
-    else:
+    elif config == "tool_summary":
         limitations = [
             "Pre-aggregated per-(tool_name, status) bucket summary from Faruk Alpay's Lightcap tool-runtime (tool_summary.parquet, 32 rows, 22 distinct tools).",
             "Derived aggregate latency — the normalized sample's duration_ms is the per-bucket MEDIAN computed by the upstream exporter; field_quality=derived. The exact avg / median / p95 per (tool, status) live in statistical_rollups.json::per_tool_status_aggregates.",
             "NOT a per-call trace — operations.parquet config is the per-call counterpart. Use this config as a quick per-tool latency prior; use operations for distributional analysis.",
             "NOT GPU TTFT/TPOT, NOT LLM serving telemetry — closed tool-runtime end-to-end timing only. No model_id / no input_tokens / no GPU type / no queue / no replica / no cache state.",
             "Same provenance + scope caveats as the operations config — single runtime, single ~7-day window, 22 tools.",
+        ]
+    elif config == "operation_events":
+        limitations = [
+            "Per-event lifecycle transitions from Faruk Alpay's Lightcap tool-runtime (operation_events.parquet, 9,903 events across 2,262 operations).",
+            "duration_ms is DERIVED — computed as (event_time_utc - operation's earliest-event event_time_utc) for the same operation_id; field_quality=derived. The underlying event_time_utc timestamps are real, the per-event ms-since-started is a derived signal.",
+            "Per-stage transition latency is exposed via duration_ms broken down by stage in statistical_rollups: dispatch (started -> stage(executing)) is ~10-15 ms; execution (stage(executing) -> stage(execution_completed)) holds the tool wall-clock; post-processing (stage(execution_completed) -> completed) is sub-millisecond.",
+            "NOT GPU TTFT/TPOT, NOT LLM serving telemetry — closed tool-runtime event timing only. No model_id / no GPU type / no queue depth / no replica count / no cache state. The 'queue-wait-style' interpretation is dispatch latency at the agent-runtime level, NOT cluster scheduler queue wait.",
+            "operation_id joins to operations.parquet so dispatch-stage latency can be cross-referenced with operations' end-to-end duration_ms. payload_tool is populated only on 'started' events; subsequent stage/completed events leave tool_name null and the join via operation_id is required.",
+            "Single export (same provenance window + 22-tool set as operations / tool_summary). Treat as scheduler-state + dispatch-latency PRIOR for agent workloads — not as a serving telemetry calibration source.",
+        ]
+    else:  # audit_records
+        limitations = [
+            "MCP-shell-layer audit records from Faruk Alpay's Lightcap tool-runtime (audit_records.parquet, 14,053 records: 7,012 tool_requests + 7,041 tool_results).",
+            "duration_ms is REAL but populated only on category='tool_results' rows (50% of audit_records). tool_requests rows have duration_ms=null because the request hasn't completed yet. Heavy tail: p95=400 ms, p99=2.5 s, max=900 s in this export.",
+            "MCP-shell-layer timing is distinct from operations' runtime-layer timing — both measure tool-call latency but at different boundaries. The shell-layer duration_ms captures the request/response envelope; operations' duration_ms captures the internal execution. Joining via request_id lets the harness compare envelope-vs-execution overhead.",
+            "NOT GPU TTFT/TPOT, NOT LLM serving telemetry — closed MCP-shell e2e timing only. No model_id / no GPU type / no queue depth / no replica count / no LLM-serving signal.",
+            "Raw payload bodies are NOT redistributed — only fingerprints (payload_sha256), counts (payload_key_count, response_key_count), key lists (pipe-delimited payload_keys, response_keys), and byte totals (payload_bytes).",
+            "Same provenance + scope caveats as the operations / tool_summary / operation_events configs — single runtime, single ~7-day window, 22 tools. Treat as MCP-shell-layer latency PRIOR + per-request cache-reuse PROXY (via payload_sha256), not as a serving telemetry calibration source.",
         ]
 
     strength = _statistical_sample_strength(len(normalized))
@@ -1187,7 +1806,13 @@ def audit_one(target: dict, *, token: str | None,
         "normalized_sample_sha256": normalized_sha,
         "sample_sha256": fixture_sha,
         "sampling_method": "full_bounded",
-        "stratification_keys": ["tool_name", "status", "stage", "error_type"],
+        "stratification_keys": (
+            ["operation_id", "event_type", "stage", "status"]
+            if config == "operation_events"
+            else ["request_id", "category", "tool_name", "status"]
+            if config == "audit_records"
+            else ["tool_name", "status", "stage", "error_type"]
+        ),
         "statistical_sample_strength": strength,
         "ingestion_timestamp_s": time.time(),
         "summary_path_relative": f"data/external/hf/{SAFE_DATASET}/{config}/processed/summary.json",

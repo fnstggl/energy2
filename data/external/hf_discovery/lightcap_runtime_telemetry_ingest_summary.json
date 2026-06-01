@@ -2,24 +2,87 @@
   "configs": [
     {
       "audit_status": "ok",
+      "config": "operations",
+      "decision_state": "promoted_for_backtest",
+      "decision_tags": [
+        "promoted_for_backtest",
+        "promoted_for_constraint_aware_evaluation",
+        "promoted_for_training_priors"
+      ],
+      "manifest": {
+        "cached": false,
+        "dest": "/home/user/energy2/data/external/hf/Lightcap__agent-runtime-telemetry-small/raw/operations.parquet",
+        "downloaded_bytes": 276568,
+        "error": null,
+        "max_bytes": null,
+        "status": 200,
+        "truncated": false,
+        "url": "https://huggingface.co/datasets/Lightcap/agent-runtime-telemetry-small/resolve/main/data/operations.parquet"
+      },
+      "summary_path": "/home/user/energy2/data/external/hf/Lightcap__agent-runtime-telemetry-small/operations/processed/summary.json"
+    },
+    {
+      "audit_status": "ok",
       "config": "tool_summary",
       "decision_state": "promoted_for_schema_only",
       "decision_tags": [
         "promoted_for_schema_only"
       ],
       "manifest": {
-        "cached": true,
+        "cached": false,
         "dest": "/home/user/energy2/data/external/hf/Lightcap__agent-runtime-telemetry-small/raw/tool_summary.parquet",
         "downloaded_bytes": 8030,
         "error": null,
         "max_bytes": null,
-        "status": null,
-        "truncated": null,
+        "status": 200,
+        "truncated": false,
         "url": "https://huggingface.co/datasets/Lightcap/agent-runtime-telemetry-small/resolve/main/data/tool_summary.parquet"
       },
       "summary_path": "/home/user/energy2/data/external/hf/Lightcap__agent-runtime-telemetry-small/tool_summary/processed/summary.json"
+    },
+    {
+      "audit_status": "ok",
+      "config": "operation_events",
+      "decision_state": "promoted_for_backtest",
+      "decision_tags": [
+        "promoted_for_backtest",
+        "promoted_for_constraint_aware_evaluation",
+        "promoted_for_training_priors"
+      ],
+      "manifest": {
+        "cached": true,
+        "dest": "/home/user/energy2/data/external/hf/Lightcap__agent-runtime-telemetry-small/raw/operation_events.parquet",
+        "downloaded_bytes": 610446,
+        "error": null,
+        "max_bytes": null,
+        "status": null,
+        "truncated": null,
+        "url": "https://huggingface.co/datasets/Lightcap/agent-runtime-telemetry-small/resolve/main/data/operation_events.parquet"
+      },
+      "summary_path": "/home/user/energy2/data/external/hf/Lightcap__agent-runtime-telemetry-small/operation_events/processed/summary.json"
+    },
+    {
+      "audit_status": "ok",
+      "config": "audit_records",
+      "decision_state": "promoted_for_backtest",
+      "decision_tags": [
+        "promoted_for_backtest",
+        "promoted_for_constraint_aware_evaluation",
+        "promoted_for_training_priors"
+      ],
+      "manifest": {
+        "cached": true,
+        "dest": "/home/user/energy2/data/external/hf/Lightcap__agent-runtime-telemetry-small/raw/audit_records.parquet",
+        "downloaded_bytes": 2247227,
+        "error": null,
+        "max_bytes": null,
+        "status": null,
+        "truncated": null,
+        "url": "https://huggingface.co/datasets/Lightcap/agent-runtime-telemetry-small/resolve/main/data/audit_records.parquet"
+      },
+      "summary_path": "/home/user/energy2/data/external/hf/Lightcap__agent-runtime-telemetry-small/audit_records/processed/summary.json"
     }
   ],
   "dataset_id": "Lightcap/agent-runtime-telemetry-small",
-  "wrote_at_s": 1780337610.6956177
+  "wrote_at_s": 1780345335.9794562
 }
