@@ -68,6 +68,8 @@
   "git_sha": "2a76939d70df38c1ce8f683e39cb8129dcdd71ef",
   "ingestion_timestamp_s": 1780294331.7910469,
   "license": null,
+  "license_redistribution_source": "HF card frontmatter has no `license:` field; recorded as unspecified",
+  "license_redistribution_status": "unspecified_no_committed_sample",
   "limitations": [
     "vLLM-HUST benchmark leaderboard (intellistream). Submissions-driven leaderboard with per-entry hardware \u00d7 model \u00d7 workload \u00d7 engine \u00d7 engine_version metadata.",
     "Single point measurement per entry \u2014 TTFT_ms / TBT_ms (=TPOT) are scalar means with NO p50/p90/p95/p99 breakdown.",
@@ -161,6 +163,11 @@
     "total_token_throughput",
     "run_id"
   ],
+  "redistribution_gate_operator_grant_dataset_id": null,
+  "redistribution_gate_permitted": false,
+  "redistribution_gate_reason_code": "no_grant_recorded",
+  "redistribution_gate_reason_detail": "license=None for 'intellistream/vllm-hust-benchmark-results'; no operator grant recorded \u2014 default policy denies. no operator grant recorded for 'intellistream/vllm-hust-benchmark-results'; default policy is deny_all",
+  "redistribution_gate_scope": "committed_normalized_sample",
   "sample_sha256": "296e2280289561997938480776067c02e14a70d078975dec39de5be4ce2eeb9f",
   "sampling_method": "full_bounded",
   "schema_mapping_path": "data/external/hf/intellistream__vllm-hust-benchmark-results/single_gpu/processed/schema_mapping.json",

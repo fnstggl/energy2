@@ -34,6 +34,38 @@ It also writes a discovery audit summary at
 ``data/external/hf_discovery/broadened_discovery_audit_summary.json`` that
 includes rejected / blocked datasets from the same pool.
 
+Redistribution gate wiring
+--------------------------
+
+Sixth consumer of the canonical
+:func:`aurelius.ingestion.redistribution_gate.decide_redistribution`
+gate (after ``scripts/audit_hf_redistribution_gate.py``,
+``scripts/commit_hf_gap_normalized_samples.py``,
+``scripts/ingest_hf_agent_llm_traces.py``,
+``scripts/ingest_hf_h200_quantization.py``, and
+``scripts/ingest_hf_llm_energy_consumption.py``).
+
+This script differs from the first five gate consumers because it
+covers **three datasets with two different license tags in one
+script** (mixed Apache-2.0 / ``None``):
+
+* ``odyn-network/odyn-benchmarks`` — ``apache-2.0`` → gate permits →
+  committed normalised sample.
+* ``memoriant/dgx-spark-kv-cache-benchmark`` — ``apache-2.0`` → gate
+  permits → committed normalised sample.
+* ``intellistream/vllm-hust-benchmark-results`` — ``None`` → gate
+  denies under the default ``deny_all`` / zero-grants ledger → no
+  committed normalised sample (the pre-existing
+  ``"license_unspecified_no_redistribution_promise"`` reason string is
+  preserved verbatim on the ``committed_normalized_sample_reason_skipped``
+  field for downstream-test back-compat; the canonical gate verdict
+  lives in the additive ``redistribution_gate_*`` fields).
+
+The on-disk committed normalised samples are byte-for-byte unchanged
+under the gate-wired path; only the additive ``redistribution_gate_*``
+metadata gains presence in the per-config summary.json and the
+broadened-discovery audit summary.
+
 NO production claims. NO scheduler / controller / robust-energy-engine changes.
 """
 
@@ -56,17 +88,62 @@ from typing import Any, Optional
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
+from aurelius.ingestion.operator_redistribution_policy import (  # noqa: E402
+    OperatorPolicyLedger,
+)
+from aurelius.ingestion.redistribution_gate import (  # noqa: E402
+    RedistributionGateDecision,
+    decide_redistribution,
+)
 from aurelius.traces.hf_corpus import promotion  # noqa: E402
 
 REPO_ROOT = Path(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 HF_DIR = REPO_ROOT / "data" / "external" / "hf"
 DISC_DIR = REPO_ROOT / "data" / "external" / "hf_discovery"
 FIXTURES_DIR = REPO_ROOT / "tests" / "fixtures" / "hf"
+POLICY_PATH = DISC_DIR / "operator_redistribution_policy.json"
 
 FIXTURE_MAX_BYTES = 16 * 1024
 COMMITTED_NORMALIZED_MAX_BYTES = 100 * 1024  # 100 KiB per file
 PROMOTION_BOUNDED_GUARD = 16 * 1024 * 1024
 PER_DATASET_TIMEOUT_S = 30 * 60
+
+# ---------------------------------------------------------------------------
+# Per-dataset license metadata — single source of truth for the gate
+# ---------------------------------------------------------------------------
+# Each dataset's raw HF license tag lives at module level so a future tag
+# change (e.g. an upstream owner declaring ``license: mit``) is a one-line
+# edit; the canonical
+# :func:`aurelius.ingestion.redistribution_gate.decide_redistribution` gate
+# derives both the ``permissive_*`` / ``unspecified_no_committed_sample`` /
+# ``declared_non_permissive`` status code AND the redistribute-yes/no
+# commit decision. This script never classifies the tag itself.
+
+ODYN_DATASET_ID = "odyn-network/odyn-benchmarks"
+ODYN_LICENSE_TAG: Optional[str] = "apache-2.0"
+ODYN_LICENSE_SOURCE = "HF card frontmatter license: apache-2.0"
+
+MEMORIANT_DATASET_ID = "memoriant/dgx-spark-kv-cache-benchmark"
+MEMORIANT_LICENSE_TAG: Optional[str] = "apache-2.0"
+MEMORIANT_LICENSE_SOURCE = "HF card frontmatter license: apache-2.0"
+
+INTELLISTREAM_DATASET_ID = "intellistream/vllm-hust-benchmark-results"
+INTELLISTREAM_LICENSE_TAG: Optional[str] = None  # no `license:` in frontmatter
+INTELLISTREAM_LICENSE_SOURCE = (
+    "HF card frontmatter has no `license:` field; recorded as unspecified"
+)
+
+GATE_SCOPE = "committed_normalized_sample"
+
+# Pre-existing script-level reason string for skipping the committed
+# normalised sample under ``license = None``. Kept VERBATIM — downstream
+# tests (e.g. ``test_intellistream_has_no_committed_normalized_sample``
+# in ``tests/test_hf_latency_benchmarks_ingest.py``) pin this exact
+# string. The canonical gate verdict is recorded additively in the new
+# ``redistribution_gate_*`` fields.
+COMMITTED_NORMALIZED_SAMPLE_SKIP_REASON = (
+    "license_unspecified_no_redistribution_promise"
+)
 
 logger = logging.getLogger("aurelius.hf_latency_benchmarks_ingest")
 
@@ -151,6 +228,68 @@ def _git_sha() -> str:
 
 
 # ---------------------------------------------------------------------------
+# Redistribution gate — wire the canonical gate, do not classify here
+# ---------------------------------------------------------------------------
+
+
+def _load_ledger(policy_path: Path = POLICY_PATH) -> OperatorPolicyLedger:
+    """Load the operator policy ledger from disk, or fall back to empty.
+
+    The committed default file ships zero grants under
+    ``policy_default=deny_all``; an absent file is identical in
+    behaviour. We use ``empty()`` as the fallback so the script
+    remains self-sufficient in a fresh checkout that may not yet have
+    the committed JSON pulled — the gate still produces correct
+    decisions (deny for ``license = None`` intellistream, permit for
+    ``apache-2.0`` odyn/memoriant) instead of crashing.
+    """
+
+    if policy_path.exists():
+        return OperatorPolicyLedger.load(policy_path)
+    return OperatorPolicyLedger.empty()
+
+
+def evaluate_redistribution(
+    *,
+    ledger: OperatorPolicyLedger,
+    dataset_id: str,
+    license_tag: Optional[str],
+    scope: str = GATE_SCOPE,
+    now_iso: Optional[str] = None,
+) -> RedistributionGateDecision:
+    """Ask the canonical gate whether the committed normalised sample of
+    a given dataset may be redistributed under the supplied license tag.
+
+    Pure function — no I/O. Exposed so tests can drive the gate path
+    without invoking the CSV/JSON download / normalisation pipeline.
+    This script covers three datasets with two distinct license tags
+    so ``dataset_id`` and ``license_tag`` are required arguments (no
+    sensible default exists at the module level — each ingest function
+    supplies its own pair).
+
+    Under the default-empty ledger:
+
+    * ``license_tag = "apache-2.0"`` → permitted=True, license_status=
+      ``"permissive_apache_2_0"``, reason_code=
+      ``"permitted_declared_permissive_license"`` (odyn + memoriant).
+    * ``license_tag = None`` → permitted=False, license_status=
+      ``"unspecified_no_committed_sample"``, reason_code=
+      ``"no_grant_recorded"`` (intellistream).
+
+    Both verdicts match the v1 commit behaviour byte-for-byte (odyn +
+    memoriant samples committed, intellistream skipped).
+    """
+
+    return decide_redistribution(
+        dataset_id=dataset_id,
+        license_str=license_tag,
+        scope=scope,
+        ledger=ledger,
+        now_iso=now_iso,
+    )
+
+
+# ---------------------------------------------------------------------------
 # Field-quality + signals (Aurelius signal vocabulary)
 # ---------------------------------------------------------------------------
 
@@ -169,7 +308,8 @@ AURELIUS_SIGNALS = [
 # ---------------------------------------------------------------------------
 
 
-def _ingest_odyn(safe_root: Path) -> list[dict]:
+def _ingest_odyn(safe_root: Path,
+                 ledger: Optional[OperatorPolicyLedger] = None) -> list[dict]:
     """odyn-network/odyn-benchmarks → 2 configs:
 
     * ``qwen_chat_streaming`` — Qwen2.5-7B-Instruct on DGX Spark Blackwell,
@@ -181,8 +321,15 @@ def _ingest_odyn(safe_root: Path) -> list[dict]:
     contains measured TTFT_avg / TTFT_p95 / TPOT_avg / TPOT_p95 / e2e_avg /
     e2e_p95 / throughput_tok_s / throughput_req_s / failure counts.
     """
-    dataset_id = "odyn-network/odyn-benchmarks"
-    license = "apache-2.0"
+    if ledger is None:
+        ledger = _load_ledger()
+    dataset_id = ODYN_DATASET_ID
+    license = ODYN_LICENSE_TAG
+    gate_decision = evaluate_redistribution(
+        ledger=ledger,
+        dataset_id=dataset_id,
+        license_tag=license,
+    )
     base = HF_DIR / "odyn-network__odyn-benchmarks"
     base_raw = base / "raw"
     base_raw.mkdir(parents=True, exist_ok=True)
@@ -315,6 +462,8 @@ def _ingest_odyn(safe_root: Path) -> list[dict]:
             normalized_rows=normalized_rows,
             raw_rows=rows,
             license=license,
+            license_source=ODYN_LICENSE_SOURCE,
+            gate_decision=gate_decision,
             gated=False,
             field_quality=_odyn_field_quality(is_chat),
             available_signals=_odyn_available_signals(is_chat),
@@ -325,7 +474,6 @@ def _ingest_odyn(safe_root: Path) -> list[dict]:
                 else ["profile", "batch_size"]
             ),
             git_sha=git_sha,
-            commit_normalized=True,
         ))
     return out
 
@@ -444,14 +592,23 @@ def _odyn_limitations(cfg: str, meta: dict) -> list[str]:
 # ---------------------------------------------------------------------------
 
 
-def _ingest_memoriant(safe_root: Path) -> list[dict]:
+def _ingest_memoriant(safe_root: Path,
+                      ledger: Optional[OperatorPolicyLedger] = None
+                      ) -> list[dict]:
     """memoriant/dgx-spark-kv-cache-benchmark → 1 config:
 
     * ``v3_corrected`` — corrected KV cache quantization benchmark on NVIDIA
       DGX Spark GB10 (Grace Blackwell unified memory, llama.cpp).
     """
-    dataset_id = "memoriant/dgx-spark-kv-cache-benchmark"
-    license = "apache-2.0"
+    if ledger is None:
+        ledger = _load_ledger()
+    dataset_id = MEMORIANT_DATASET_ID
+    license = MEMORIANT_LICENSE_TAG
+    gate_decision = evaluate_redistribution(
+        ledger=ledger,
+        dataset_id=dataset_id,
+        license_tag=license,
+    )
     base = HF_DIR / "memoriant__dgx-spark-kv-cache-benchmark"
     base_raw = base / "raw"
     base_raw.mkdir(parents=True, exist_ok=True)
@@ -505,6 +662,8 @@ def _ingest_memoriant(safe_root: Path) -> list[dict]:
         normalized_rows=normalized_rows,
         raw_rows=rows,
         license=license,
+        license_source=MEMORIANT_LICENSE_SOURCE,
+        gate_decision=gate_decision,
         gated=False,
         field_quality={
             "model": "real",
@@ -563,7 +722,6 @@ def _ingest_memoriant(safe_root: Path) -> list[dict]:
         ],
         stratification_keys=["cache_type", "context_tokens"],
         git_sha=git_sha,
-        commit_normalized=True,
     ))
     return out
 
@@ -573,7 +731,9 @@ def _ingest_memoriant(safe_root: Path) -> list[dict]:
 # ---------------------------------------------------------------------------
 
 
-def _ingest_intellistream(safe_root: Path) -> list[dict]:
+def _ingest_intellistream(safe_root: Path,
+                          ledger: Optional[OperatorPolicyLedger] = None
+                          ) -> list[dict]:
     """intellistream/vllm-hust-benchmark-results → 2 configs:
 
     * ``single_gpu`` — single-GPU leaderboard (≈ 200 KiB JSON).
@@ -583,8 +743,15 @@ def _ingest_intellistream(safe_root: Path) -> list[dict]:
     TPOT), throughput_tps, peak_mem_mb, error_rate across Huawei 910B3
     hardware running vLLM 0.11.0 / vLLM-HUST forks.
     """
-    dataset_id = "intellistream/vllm-hust-benchmark-results"
-    license = None  # no declared license — recorded explicitly
+    if ledger is None:
+        ledger = _load_ledger()
+    dataset_id = INTELLISTREAM_DATASET_ID
+    license = INTELLISTREAM_LICENSE_TAG
+    gate_decision = evaluate_redistribution(
+        ledger=ledger,
+        dataset_id=dataset_id,
+        license_tag=license,
+    )
     base = HF_DIR / "intellistream__vllm-hust-benchmark-results"
     base_raw = base / "raw"
     base_raw.mkdir(parents=True, exist_ok=True)
@@ -665,6 +832,8 @@ def _ingest_intellistream(safe_root: Path) -> list[dict]:
             normalized_rows=normalized_rows,
             raw_rows=entries,
             license=license,
+            license_source=INTELLISTREAM_LICENSE_SOURCE,
+            gate_decision=gate_decision,
             gated=False,
             field_quality={
                 "model": "real",
@@ -728,7 +897,6 @@ def _ingest_intellistream(safe_root: Path) -> list[dict]:
                 "engine", "model_family", "workload_name",
             ],
             git_sha=git_sha,
-            commit_normalized=False,  # license=None — no committed normalised sample
         ))
     return out
 
@@ -820,11 +988,13 @@ def _sample_strength(rows: int, has_strata_coverage: bool) -> str:
 def _finalize_config(*, dataset_id: str, safe_name: str, config: str,
                      source_file_relative: str, raw_local_path: Path,
                      raw_columns: list[str], normalized_rows: list[dict],
-                     license: Optional[str], gated: bool,
+                     license: Optional[str],
+                     license_source: str,
+                     gate_decision: RedistributionGateDecision,
+                     gated: bool,
                      field_quality: dict, available_signals: list[str],
                      missing_signals: list[str], limitations: list[str],
                      stratification_keys: list[str], git_sha: str,
-                     commit_normalized: bool,
                      raw_rows: Optional[list[dict]] = None) -> dict:
     proc_dir = HF_DIR / safe_name / config / "processed"
     proc_dir.mkdir(parents=True, exist_ok=True)
@@ -854,12 +1024,23 @@ def _finalize_config(*, dataset_id: str, safe_name: str, config: str,
     fixture_sha = _sha256(fixture_path)
     fixture_size = fixture_path.stat().st_size
 
+    # The canonical redistribution gate (not this script) decides whether
+    # the committed normalised sample may be redistributed. Under the
+    # default ``deny_all`` / zero-grants ledger the verdicts match the
+    # v1 behaviour byte-for-byte: ``apache-2.0`` (odyn + memoriant)
+    # permits → sample committed; ``None`` (intellistream) denies →
+    # sample skipped. The pre-existing
+    # ``"license_unspecified_no_redistribution_promise"`` reason string
+    # is preserved verbatim on ``committed_normalized_sample_reason_skipped``
+    # so downstream tests stay green; the canonical gate verdict is
+    # recorded additively in the new ``redistribution_gate_*`` fields
+    # below.
     committed_norm_path = None
     committed_norm_rows = 0
     committed_norm_bytes = 0
     committed_norm_sha = None
     committed_norm_reason_skipped: Optional[str] = None
-    if commit_normalized and license:
+    if gate_decision.permitted:
         committed_path = proc_dir / "committed_normalized_sample.jsonl"
         buf = io.BytesIO()
         for row in normalized_rows:
@@ -872,12 +1053,8 @@ def _finalize_config(*, dataset_id: str, safe_name: str, config: str,
         committed_norm_path = str(committed_path.relative_to(REPO_ROOT))
         committed_norm_bytes = committed_path.stat().st_size
         committed_norm_sha = _sha256(committed_path)
-    elif not license:
-        committed_norm_reason_skipped = (
-            "license_unspecified_no_redistribution_promise"
-        )
-    elif not commit_normalized:
-        committed_norm_reason_skipped = "explicit_per_dataset_redistribution_skip"
+    else:
+        committed_norm_reason_skipped = COMMITTED_NORMALIZED_SAMPLE_SKIP_REASON
 
     # Schema profile — dtypes / examples are computed from RAW rows (when
     # provided) so that columns dropped during normalisation (e.g. raw
@@ -953,6 +1130,15 @@ def _finalize_config(*, dataset_id: str, safe_name: str, config: str,
         "config_name": config,
         "source_url": f"https://huggingface.co/datasets/{dataset_id}",
         "license": license,
+        "license_redistribution_status": gate_decision.license_status,
+        "license_redistribution_source": license_source,
+        "redistribution_gate_reason_code": gate_decision.reason_code,
+        "redistribution_gate_reason_detail": gate_decision.reason_detail,
+        "redistribution_gate_permitted": gate_decision.permitted,
+        "redistribution_gate_operator_grant_dataset_id": (
+            gate_decision.operator_grant_dataset_id
+        ),
+        "redistribution_gate_scope": GATE_SCOPE,
         "gated": gated,
         "canonical_trace_type": "latency_benchmark_trace",
         "raw_committed": False,
@@ -1257,52 +1443,120 @@ REJECTED_OR_BLOCKED = [
 ]
 
 
-def _write_audit_summary(ingested: list[dict]) -> Path:
+def _write_audit_summary(
+    ingested: list[dict],
+    *,
+    ledger: Optional[OperatorPolicyLedger] = None,
+) -> Path:
+    """Write/merge the broadened-discovery audit summary.
+
+    The audit file is a running log shared with later rounds (e.g. the
+    optimum-benchmark round-2 ingest also appends here). We MERGE
+    rather than overwrite: previous ``ingested`` entries from other
+    scripts (keyed on ``(dataset_id, config_name)``) are preserved
+    byte-for-byte; this script's seven latency-benchmark entries are
+    written through with the new ``redistribution_gate_*`` fields the
+    sixth gate consumer attaches.
+
+    ``doc_version`` advances to ``broadened_discovery_audit_summary_v2``
+    when this script runs, signalling to downstream consumers that
+    every latency-benchmark ingested row now carries the canonical
+    gate's verdict. Optimum-benchmark entries (and any future
+    pre-existing entries) remain at their original shape until those
+    scripts are wired through the gate themselves in follow-up PRs.
+    """
+
+    if ledger is None:
+        ledger = _load_ledger()
+
+    out_path = DISC_DIR / "broadened_discovery_audit_summary.json"
+    out_path.parent.mkdir(parents=True, exist_ok=True)
+
+    prev_payload = None
+    if out_path.exists():
+        try:
+            prev_payload = json.loads(out_path.read_text())
+        except Exception:  # noqa: BLE001
+            prev_payload = None
+
+    prev_ingested = (prev_payload or {}).get("ingested") or []
+    prev_disc_only = (prev_payload or {}).get("discovery_only_records") or []
+    prev_failed = (prev_payload or {}).get("failed") or []
+
+    new_ingested = [
+        {
+            "dataset_id": x["summary"]["dataset_id"],
+            "config_name": x["summary"]["config_name"],
+            "canonical_trace_type": x["summary"]["canonical_trace_type"],
+            "license": x["summary"]["license"],
+            "license_redistribution_status": x["summary"][
+                "license_redistribution_status"],
+            "redistribution_gate_reason_code": x["summary"][
+                "redistribution_gate_reason_code"],
+            "redistribution_gate_permitted": x["summary"][
+                "redistribution_gate_permitted"],
+            "redistribution_gate_operator_grant_dataset_id": x["summary"][
+                "redistribution_gate_operator_grant_dataset_id"],
+            "gated": x["summary"]["gated"],
+            "analysis_sample_rows": x["summary"]["analysis_sample_rows"],
+            "fixture_sample_rows": x["summary"]["fixture_sample_rows"],
+            "committed_normalized_sample_rows": x["summary"][
+                "committed_normalized_sample_rows"],
+            "committed_normalized_sample_bytes": x["summary"][
+                "committed_normalized_sample_bytes"],
+            "available_signals": x["summary"]["available_signals"],
+            "missing_signals": x["summary"]["missing_signals"],
+            "limitations": x["summary"]["limitations"],
+            "statistical_sample_strength": x["summary"][
+                "statistical_sample_strength"],
+            "promotion_state": x["decision"]["state"],
+            "promotion_tags": x["decision"]["promotion_tags"],
+            "promotion_reasons": x["decision"]["reasons"],
+        }
+        for x in ingested
+    ]
+
+    # Merge previous + new, deduplicating on (dataset_id, config_name).
+    new_keys = {(e["dataset_id"], e["config_name"]) for e in new_ingested}
+    merged_ingested = [
+        e for e in prev_ingested
+        if (e.get("dataset_id"), e.get("config_name")) not in new_keys
+    ] + new_ingested
+
+    # Discovery-only records: replace this script's authoritative set,
+    # preserve any records owned by other scripts.
+    rejected_ids = {r["dataset_id"] for r in REJECTED_OR_BLOCKED}
+    merged_disc = [
+        r for r in prev_disc_only if r.get("dataset_id") not in rejected_ids
+    ] + REJECTED_OR_BLOCKED
+
     payload = {
-        "doc_version": "broadened_discovery_audit_summary_v1",
+        "doc_version": "broadened_discovery_audit_summary_v2",
         "scope": (
             "Broadened HF discovery follow-on to PR #133 — bounded ingest of "
             "3 new Tier-4 latency_benchmark_trace candidates "
             "(odyn-network/odyn-benchmarks, memoriant/dgx-spark-kv-cache-benchmark, "
             "intellistream/vllm-hust-benchmark-results) plus 8 rejection / "
-            "deferral records from the same INGEST_LATER / MONITOR pool."
+            "deferral records from the same INGEST_LATER / MONITOR pool. "
+            "v2 wires the per-dataset summary writer through the canonical "
+            "redistribution gate (sixth consumer); optimum-benchmark rows "
+            "remain at v1 shape until that script is gate-wired separately."
         ),
         "production_claim": False,
         "modifies_robust_energy_engine": False,
         "modifies_controllers_or_defaults": False,
+        "uses_oracle_as_headline": False,
         "git_sha": _git_sha(),
         "audited_at_s": time.time(),
-        "ingested": [
-            {
-                "dataset_id": x["summary"]["dataset_id"],
-                "config_name": x["summary"]["config_name"],
-                "canonical_trace_type": x["summary"]["canonical_trace_type"],
-                "license": x["summary"]["license"],
-                "gated": x["summary"]["gated"],
-                "analysis_sample_rows": x["summary"]["analysis_sample_rows"],
-                "fixture_sample_rows": x["summary"]["fixture_sample_rows"],
-                "committed_normalized_sample_rows": x["summary"][
-                    "committed_normalized_sample_rows"],
-                "committed_normalized_sample_bytes": x["summary"][
-                    "committed_normalized_sample_bytes"],
-                "available_signals": x["summary"]["available_signals"],
-                "missing_signals": x["summary"]["missing_signals"],
-                "limitations": x["summary"]["limitations"],
-                "statistical_sample_strength": x["summary"][
-                    "statistical_sample_strength"],
-                "promotion_state": x["decision"]["state"],
-                "promotion_tags": x["decision"]["promotion_tags"],
-                "promotion_reasons": x["decision"]["reasons"],
-            }
-            for x in ingested
-        ],
-        "discovery_only_records": REJECTED_OR_BLOCKED,
-        "failed": [],
+        "redistribution_gate_scope": GATE_SCOPE,
+        "redistribution_gate_policy_default": ledger.policy_default,
+        "redistribution_gate_policy_grant_count": len(ledger.grants),
+        "ingested": merged_ingested,
+        "discovery_only_records": merged_disc,
+        "failed": prev_failed,
     }
-    out = DISC_DIR / "broadened_discovery_audit_summary.json"
-    out.parent.mkdir(parents=True, exist_ok=True)
-    out.write_text(json.dumps(payload, indent=2, sort_keys=True))
-    return out
+    out_path.write_text(json.dumps(payload, indent=2, sort_keys=True))
+    return out_path
 
 
 # ---------------------------------------------------------------------------
@@ -1344,15 +1598,21 @@ def main(argv: Optional[list[str]] = None) -> int:
         format="%(asctime)s %(levelname)s %(name)s :: %(message)s",
     )
 
+    # Load the operator policy ledger once; thread it through every
+    # ingest function and the audit summary writer so a single source
+    # of truth records ``redistribution_gate_policy_default`` and
+    # ``redistribution_gate_policy_grant_count``.
+    ledger = _load_ledger()
+
     safe_root = HF_DIR
     ingested: list[dict] = []
 
     if args.only in ("odyn", "all"):
-        ingested.extend(_ingest_odyn(safe_root))
+        ingested.extend(_ingest_odyn(safe_root, ledger=ledger))
     if args.only in ("memoriant", "all"):
-        ingested.extend(_ingest_memoriant(safe_root))
+        ingested.extend(_ingest_memoriant(safe_root, ledger=ledger))
     if args.only in ("intellistream", "all"):
-        ingested.extend(_ingest_intellistream(safe_root))
+        ingested.extend(_ingest_intellistream(safe_root, ledger=ledger))
 
     logger.info("Ingested %d configs", len(ingested))
 
@@ -1364,7 +1624,7 @@ def main(argv: Optional[list[str]] = None) -> int:
         path = _merge_into_registry(new_entries)
         logger.info("Updated registry at %s", path)
 
-    summary_path = _write_audit_summary(ingested)
+    summary_path = _write_audit_summary(ingested, ledger=ledger)
     logger.info("Wrote audit summary %s", summary_path)
     return 0
 

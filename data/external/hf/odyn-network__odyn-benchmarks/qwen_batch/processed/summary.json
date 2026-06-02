@@ -64,6 +64,8 @@
   "git_sha": "2a76939d70df38c1ce8f683e39cb8129dcdd71ef",
   "ingestion_timestamp_s": 1780294331.7739456,
   "license": "apache-2.0",
+  "license_redistribution_source": "HF card frontmatter license: apache-2.0",
+  "license_redistribution_status": "permissive_apache_2_0",
   "limitations": [
     "Odyn Network public benchmark (vLLM + Ray Serve based, Apache-2.0).",
     "Single model \u00d7 single hardware target (Qwen/Qwen2.5-7B-Instruct on DGX Spark (Blackwell)); do NOT generalise these latency numbers to other deployments.",
@@ -136,6 +138,11 @@
     "num_requests",
     "request_throughput"
   ],
+  "redistribution_gate_operator_grant_dataset_id": null,
+  "redistribution_gate_permitted": true,
+  "redistribution_gate_reason_code": "permitted_declared_permissive_license",
+  "redistribution_gate_reason_detail": "declared HF license 'apache-2.0' maps to 'permissive_apache_2_0'; ledger not consulted",
+  "redistribution_gate_scope": "committed_normalized_sample",
   "sample_sha256": "4fd1e56d7c7c7ddaa3119f1eeefa1f3ebf443cfcb5baaf6f9740be9f28112a2d",
   "sampling_method": "full_bounded",
   "schema_mapping_path": "data/external/hf/odyn-network__odyn-benchmarks/qwen_batch/processed/schema_mapping.json",

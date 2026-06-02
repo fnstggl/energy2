@@ -61,6 +61,8 @@
   "git_sha": "2a76939d70df38c1ce8f683e39cb8129dcdd71ef",
   "ingestion_timestamp_s": 1780294331.7802413,
   "license": "apache-2.0",
+  "license_redistribution_source": "HF card frontmatter license: apache-2.0",
+  "license_redistribution_status": "permissive_apache_2_0",
   "limitations": [
     "Tiny corrected benchmark (18 rows total) \u2014 KV cache quantization ablation on a single GPU (DGX Spark GB10).",
     "v3 fixes the v1 memory-measurement error (RSS was wrong on unified memory; v3 uses nvidia-smi + llama.cpp internals per the CORRECTION notice).",
@@ -127,6 +129,11 @@
     "total_token_throughput",
     "input_token_throughput"
   ],
+  "redistribution_gate_operator_grant_dataset_id": null,
+  "redistribution_gate_permitted": true,
+  "redistribution_gate_reason_code": "permitted_declared_permissive_license",
+  "redistribution_gate_reason_detail": "declared HF license 'apache-2.0' maps to 'permissive_apache_2_0'; ledger not consulted",
+  "redistribution_gate_scope": "committed_normalized_sample",
   "sample_sha256": "694290a06f19649716eaca30ccfce0f08e07d8372343cd59cc61c9f02f695a92",
   "sampling_method": "full_bounded",
   "schema_mapping_path": "data/external/hf/memoriant__dgx-spark-kv-cache-benchmark/v3_corrected/processed/schema_mapping.json",

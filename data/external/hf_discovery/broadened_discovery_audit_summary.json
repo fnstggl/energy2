@@ -146,7 +146,7 @@
       "reason": "Every row in ``data/perf-df-openvino-cpu-unquantized-32vCPU-C7i.csv`` is an isolated-process crash (``report.traceback = 'RuntimeError: Isolated process exited with non-zero code -6'``) \u2014 ZERO measured ``report.prefill.latency.*`` / ``report.decode.latency.*`` columns are present in the CSV header. Ingesting this config would write an all-null latency_benchmark_trace, which is misleading. The 9 working configs already cover the pytorch-cpu C7i baseline for cross-backend comparison. If a future openvino sub-run produces actual latency data, the config can be re-added to the matrix in scripts/ingest_hf_optimum_benchmark.py."
     }
   ],
-  "doc_version": "broadened_discovery_audit_summary_v1",
+  "doc_version": "broadened_discovery_audit_summary_v2",
   "failed": [],
   "git_sha": "f3694e96b16828d71f1df871bfd5da6c4ccee679",
   "ingested": [
@@ -171,6 +171,7 @@
       "fixture_sample_rows": 5,
       "gated": false,
       "license": "apache-2.0",
+      "license_redistribution_status": "permissive_apache_2_0",
       "limitations": [
         "Odyn Network public benchmark (vLLM + Ray Serve based, Apache-2.0).",
         "Single model \u00d7 single hardware target (Qwen/Qwen2.5-7B-Instruct on DGX Spark (Blackwell)); do NOT generalise these latency numbers to other deployments.",
@@ -194,6 +195,9 @@
         "promoted_for_constraint_aware_evaluation",
         "promoted_for_training_priors"
       ],
+      "redistribution_gate_operator_grant_dataset_id": null,
+      "redistribution_gate_permitted": true,
+      "redistribution_gate_reason_code": "permitted_declared_permissive_license",
       "statistical_sample_strength": "moderate"
     },
     {
@@ -217,6 +221,7 @@
       "fixture_sample_rows": 5,
       "gated": false,
       "license": "apache-2.0",
+      "license_redistribution_status": "permissive_apache_2_0",
       "limitations": [
         "Odyn Network public benchmark (vLLM + Ray Serve based, Apache-2.0).",
         "Single model \u00d7 single hardware target (facebook/opt-125m on RTX 3090); do NOT generalise these latency numbers to other deployments.",
@@ -240,6 +245,9 @@
         "promoted_for_constraint_aware_evaluation",
         "promoted_for_training_priors"
       ],
+      "redistribution_gate_operator_grant_dataset_id": null,
+      "redistribution_gate_permitted": true,
+      "redistribution_gate_reason_code": "permitted_declared_permissive_license",
       "statistical_sample_strength": "moderate"
     },
     {
@@ -260,6 +268,7 @@
       "fixture_sample_rows": 5,
       "gated": false,
       "license": "apache-2.0",
+      "license_redistribution_status": "permissive_apache_2_0",
       "limitations": [
         "Odyn Network public benchmark (vLLM + Ray Serve based, Apache-2.0).",
         "Single model \u00d7 single hardware target (Qwen/Qwen2.5-7B-Instruct on DGX Spark (Blackwell)); do NOT generalise these latency numbers to other deployments.",
@@ -287,6 +296,9 @@
         "promoted_for_constraint_aware_evaluation",
         "promoted_for_training_priors"
       ],
+      "redistribution_gate_operator_grant_dataset_id": null,
+      "redistribution_gate_permitted": true,
+      "redistribution_gate_reason_code": "permitted_declared_permissive_license",
       "statistical_sample_strength": "moderate"
     },
     {
@@ -307,6 +319,7 @@
       "fixture_sample_rows": 4,
       "gated": false,
       "license": "apache-2.0",
+      "license_redistribution_status": "permissive_apache_2_0",
       "limitations": [
         "Odyn Network public benchmark (vLLM + Ray Serve based, Apache-2.0).",
         "Single model \u00d7 single hardware target (facebook/opt-125m on RTX 3090); do NOT generalise these latency numbers to other deployments.",
@@ -334,6 +347,9 @@
       "promotion_tags": [
         "promoted_for_training_priors"
       ],
+      "redistribution_gate_operator_grant_dataset_id": null,
+      "redistribution_gate_permitted": true,
+      "redistribution_gate_reason_code": "permitted_declared_permissive_license",
       "statistical_sample_strength": "weak"
     },
     {
@@ -354,6 +370,7 @@
       "fixture_sample_rows": 5,
       "gated": false,
       "license": "apache-2.0",
+      "license_redistribution_status": "permissive_apache_2_0",
       "limitations": [
         "Tiny corrected benchmark (18 rows total) \u2014 KV cache quantization ablation on a single GPU (DGX Spark GB10).",
         "v3 fixes the v1 memory-measurement error (RSS was wrong on unified memory; v3 uses nvidia-smi + llama.cpp internals per the CORRECTION notice).",
@@ -379,6 +396,9 @@
       "promotion_tags": [
         "promoted_for_training_priors"
       ],
+      "redistribution_gate_operator_grant_dataset_id": null,
+      "redistribution_gate_permitted": true,
+      "redistribution_gate_reason_code": "permitted_declared_permissive_license",
       "statistical_sample_strength": "weak"
     },
     {
@@ -406,6 +426,7 @@
       "fixture_sample_rows": 5,
       "gated": false,
       "license": null,
+      "license_redistribution_status": "unspecified_no_committed_sample",
       "limitations": [
         "vLLM-HUST benchmark leaderboard (intellistream). Submissions-driven leaderboard with per-entry hardware \u00d7 model \u00d7 workload \u00d7 engine \u00d7 engine_version metadata.",
         "Single point measurement per entry \u2014 TTFT_ms / TBT_ms (=TPOT) are scalar means with NO p50/p90/p95/p99 breakdown.",
@@ -428,6 +449,9 @@
         "promoted_for_constraint_aware_evaluation",
         "promoted_for_training_priors"
       ],
+      "redistribution_gate_operator_grant_dataset_id": null,
+      "redistribution_gate_permitted": false,
+      "redistribution_gate_reason_code": "no_grant_recorded",
       "statistical_sample_strength": "moderate"
     },
     {
@@ -455,6 +479,7 @@
       "fixture_sample_rows": 3,
       "gated": false,
       "license": null,
+      "license_redistribution_status": "unspecified_no_committed_sample",
       "limitations": [
         "vLLM-HUST benchmark leaderboard (intellistream). Submissions-driven leaderboard with per-entry hardware \u00d7 model \u00d7 workload \u00d7 engine \u00d7 engine_version metadata.",
         "Single point measurement per entry \u2014 TTFT_ms / TBT_ms (=TPOT) are scalar means with NO p50/p90/p95/p99 breakdown.",
@@ -477,6 +502,9 @@
       "promotion_tags": [
         "promoted_for_training_priors"
       ],
+      "redistribution_gate_operator_grant_dataset_id": null,
+      "redistribution_gate_permitted": false,
+      "redistribution_gate_reason_code": "no_grant_recorded",
       "statistical_sample_strength": "weak"
     },
     {
@@ -1093,5 +1121,9 @@
   "modifies_controllers_or_defaults": false,
   "modifies_robust_energy_engine": false,
   "production_claim": false,
-  "scope": "Round-2 broadened HF discovery \u2014 bounded ingest of ``optimum-benchmark/llm-perf-leaderboard`` (10 configs across A100 / A10 / T4 / 32vCPU-C7i \u00d7 pytorch / openvino \u00d7 unquantized / awq / bnb / gptq / torchao) plus 9 new rejection / deferral records. Merged with round-1 audit (odyn-network / memoriant / intellistream)."
+  "redistribution_gate_policy_default": "deny_all",
+  "redistribution_gate_policy_grant_count": 0,
+  "redistribution_gate_scope": "committed_normalized_sample",
+  "scope": "Broadened HF discovery follow-on to PR #133 \u2014 bounded ingest of 3 new Tier-4 latency_benchmark_trace candidates (odyn-network/odyn-benchmarks, memoriant/dgx-spark-kv-cache-benchmark, intellistream/vllm-hust-benchmark-results) plus 8 rejection / deferral records from the same INGEST_LATER / MONITOR pool. v2 wires the per-dataset summary writer through the canonical redistribution gate (sixth consumer); optimum-benchmark rows remain at v1 shape until that script is gate-wired separately.",
+  "uses_oracle_as_headline": false
 }
