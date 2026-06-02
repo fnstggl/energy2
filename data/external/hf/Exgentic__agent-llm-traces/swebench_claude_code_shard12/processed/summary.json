@@ -171,6 +171,11 @@
     "start_time_iso",
     "status_code"
   ],
+  "redistribution_gate_operator_grant_dataset_id": null,
+  "redistribution_gate_permitted": true,
+  "redistribution_gate_reason_code": "permitted_declared_permissive_license",
+  "redistribution_gate_reason_detail": "declared HF license 'cdla-permissive-2.0' maps to 'permissive_cdla_2'; ledger not consulted",
+  "redistribution_gate_scope": "committed_normalized_sample",
   "sample_sha256": "768aa28d252e2c469aa62643b5e026622b07079db059e6acc2dcd0d3b1998548",
   "sampling_method": "head_session_then_flatten_spans",
   "schema_mapping_path": "data/external/hf/Exgentic__agent-llm-traces/swebench_claude_code_shard12/processed/schema_mapping.json",

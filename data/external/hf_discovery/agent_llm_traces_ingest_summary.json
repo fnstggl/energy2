@@ -1,5 +1,5 @@
 {
-  "doc_version": "exgentic_agent_llm_traces_ingest_summary_v1",
+  "doc_version": "exgentic_agent_llm_traces_ingest_summary_v2",
   "failed": [],
   "git_sha": "3a9ef2e43d441a0c687e1ab17d1904479b0866aa",
   "ingested": [
@@ -20,6 +20,7 @@
       "config_name": "swebench_claude_code_shard12",
       "dataset_id": "Exgentic/agent-llm-traces",
       "license": "cdla-permissive-2.0",
+      "license_redistribution_status": "permissive_cdla_2",
       "limitations": [
         "Single parquet shard (train-00012-of-00039, data/train-00012-of-00039.parquet) of the 39-shard 2.77 GB Exgentic agent-LLM-traces set (1,781 sessions total).",
         "OpenTelemetry span-list dataset; each row is one LLM-call span flattened from the parent agent session. duration_ms is closed-API end-to-end (network + provider serving), NOT GPU TTFT/TPOT.",
@@ -47,6 +48,9 @@
         "promoted_for_training_priors"
       ],
       "raw_bytes_downloaded": 41029485,
+      "redistribution_gate_operator_grant_dataset_id": null,
+      "redistribution_gate_permitted": true,
+      "redistribution_gate_reason_code": "permitted_declared_permissive_license",
       "rows_sampled": 2294,
       "strength": "moderate",
       "summary_path": "data/external/hf/Exgentic__agent-llm-traces/swebench_claude_code_shard12/processed/summary.json",
@@ -58,6 +62,9 @@
   "modifies_controllers_or_defaults": false,
   "modifies_robust_energy_engine": false,
   "production_claim": false,
+  "redistribution_gate_policy_default": "deny_all",
+  "redistribution_gate_policy_grant_count": 0,
+  "redistribution_gate_scope": "committed_normalized_sample",
   "stage": "discovery_and_bounded_ingest",
   "uses_oracle_as_headline": false
 }
