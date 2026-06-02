@@ -1,5 +1,5 @@
 {
-  "audited_at_s": 1780287027.6909802,
+  "audited_at_s": 1780430826.6033576,
   "discovery_only_records": [
     {
       "candidate_trace_type": "cluster_scheduler_trace",
@@ -26,9 +26,9 @@
       "reason": "Schema is a single `prompt: string` column with 20 rows (57 KB total). No measured TTFT, no cache-hit telemetry, no GPU/queue/SLA signals \u2014 just synthetic test prompts for users to run their own benchmark. The existing jaytonde05/prefixbench config already covers the synthetic prefix-cache role with 4 jsonl files and a richer schema. Rejected as a request_shape_trace duplicate of low information density."
     }
   ],
-  "doc_version": "acmetrace_audit_summary_v1",
+  "doc_version": "acmetrace_audit_summary_v2",
   "failed": [],
-  "git_sha": "030737e25fbed75379ad225529e477e597d9e9d9",
+  "git_sha": "757172e65e2fc9f16bc22735c235418e96e12f6e",
   "ingested": [
     {
       "analysis_sample_rows": 62413,
@@ -47,6 +47,7 @@
       "dataset_id": "Qinghao/AcmeTrace",
       "elapsed_s": 4,
       "license": "cc-by-4.0",
+      "license_redistribution_status": "permissive_cc_by_4_0",
       "limitations": [
         "Full ingest of trace_kalos.csv (~8.6 MB, hundreds of thousands of jobs).",
         "Real Shanghai AI Lab Kalos cluster scheduler trace (NSDI'24 'Characterization of LLM Development in the Datacenter').",
@@ -79,6 +80,9 @@
         "promoted_for_constraint_aware_evaluation",
         "promoted_for_training_priors"
       ],
+      "redistribution_gate_operator_grant_dataset_id": null,
+      "redistribution_gate_permitted": true,
+      "redistribution_gate_reason_code": "permitted_declared_permissive_license",
       "statistical_sample_strength": "strong"
     },
     {
@@ -98,6 +102,7 @@
       "dataset_id": "Qinghao/AcmeTrace",
       "elapsed_s": 5,
       "license": "cc-by-4.0",
+      "license_redistribution_status": "permissive_cc_by_4_0",
       "limitations": [
         "Bounded head-sample of trace_seren.csv (~32 MiB cap; full file is ~94 MiB).",
         "Real Shanghai AI Lab Seren cluster scheduler trace (NSDI'24).",
@@ -129,6 +134,9 @@
         "promoted_for_constraint_aware_evaluation",
         "promoted_for_training_priors"
       ],
+      "redistribution_gate_operator_grant_dataset_id": null,
+      "redistribution_gate_permitted": true,
+      "redistribution_gate_reason_code": "permitted_declared_permissive_license",
       "statistical_sample_strength": "strong"
     },
     {
@@ -143,6 +151,7 @@
       "dataset_id": "Qinghao/AcmeTrace",
       "elapsed_s": 20,
       "license": "cc-by-4.0",
+      "license_redistribution_status": "permissive_cc_by_4_0",
       "limitations": [
         "Bounded head-sample of Kalos GPU_UTIL.csv (~32 MiB cap; full file is ~843 MiB).",
         "Real DCGM-collected GPU utilisation per server IP at 15-second sampling (README \u00a72).",
@@ -179,6 +188,9 @@
         "promoted_for_constraint_aware_evaluation",
         "promoted_for_backtest"
       ],
+      "redistribution_gate_operator_grant_dataset_id": null,
+      "redistribution_gate_permitted": true,
+      "redistribution_gate_reason_code": "permitted_declared_permissive_license",
       "statistical_sample_strength": "moderate"
     },
     {
@@ -194,6 +206,7 @@
       "dataset_id": "Qinghao/AcmeTrace",
       "elapsed_s": 4,
       "license": "cc-by-4.0",
+      "license_redistribution_status": "permissive_cc_by_4_0",
       "limitations": [
         "Bounded head-sample of Seren GPU_AB_Power.csv (~16 MiB cap; full file is ~277 MiB).",
         "Real IPMI-collected per-server-model GPU power consumption (Watts) (README \u00a72).",
@@ -229,11 +242,18 @@
         "promoted_for_constraint_aware_evaluation",
         "promoted_for_backtest"
       ],
+      "redistribution_gate_operator_grant_dataset_id": null,
+      "redistribution_gate_permitted": true,
+      "redistribution_gate_reason_code": "permitted_declared_permissive_license",
       "statistical_sample_strength": "strong"
     }
   ],
   "modifies_controllers_or_defaults": false,
   "modifies_robust_energy_engine": false,
   "production_claim": false,
-  "stage": "hf_focused_audit_acmetrace_v1"
+  "redistribution_gate_policy_default": "deny_all",
+  "redistribution_gate_policy_grant_count": 0,
+  "redistribution_gate_scope": "committed_normalized_sample",
+  "stage": "hf_focused_audit_acmetrace_v2",
+  "uses_oracle_as_headline": false
 }

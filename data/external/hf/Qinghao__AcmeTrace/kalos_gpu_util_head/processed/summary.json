@@ -27,6 +27,8 @@
   "git_sha": "030737e25fbed75379ad225529e477e597d9e9d9",
   "ingestion_timestamp_s": 1780287023.2864883,
   "license": "cc-by-4.0",
+  "license_redistribution_source": "HF card frontmatter license: cc-by-4.0 (NSDI'24 'Characterization of LLM Development in the Datacenter')",
+  "license_redistribution_status": "permissive_cc_by_4_0",
   "limitations": [
     "Bounded head-sample of Kalos GPU_UTIL.csv (~32 MiB cap; full file is ~843 MiB).",
     "Real DCGM-collected GPU utilisation per server IP at 15-second sampling (README \u00a72).",
@@ -2432,6 +2434,11 @@
   "real_fields": [
     "sample_ts"
   ],
+  "redistribution_gate_operator_grant_dataset_id": null,
+  "redistribution_gate_permitted": true,
+  "redistribution_gate_reason_code": "permitted_declared_permissive_license",
+  "redistribution_gate_reason_detail": "declared HF license 'cc-by-4.0' maps to 'permissive_cc_by_4_0'; ledger not consulted",
+  "redistribution_gate_scope": "committed_normalized_sample",
   "sample_sha256": "4876ef5b9f5a6b444da9c71614b8388159683d6c58ae09933f0dfd2823db4a43",
   "sampling_method": "head",
   "schema_mapping_path": "data/external/hf/Qinghao__AcmeTrace/kalos_gpu_util_head/processed/schema_mapping.json",

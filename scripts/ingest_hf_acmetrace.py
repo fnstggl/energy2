@@ -69,17 +69,50 @@ from pathlib import Path
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
+from typing import Optional  # noqa: E402
+
+from aurelius.ingestion.operator_redistribution_policy import (  # noqa: E402
+    OperatorPolicyLedger,
+)
+from aurelius.ingestion.redistribution_gate import (  # noqa: E402
+    RedistributionGateDecision,
+    decide_redistribution,
+)
 from aurelius.traces.hf_corpus import promotion  # noqa: E402
 
 REPO_ROOT = Path(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 HF_DIR = REPO_ROOT / "data" / "external" / "hf"
 DISC_DIR = REPO_ROOT / "data" / "external" / "hf_discovery"
 FIXTURES_DIR = REPO_ROOT / "tests" / "fixtures" / "hf"
+POLICY_PATH = DISC_DIR / "operator_redistribution_policy.json"
 
 MAX_FIXTURE_BYTES = 16 * 1024
 PER_DATASET_TIMEOUT_S = 30 * 60
 PROGRESS_INTERVAL_S = 30
 ROW_CAP_FOR_NORMALIZATION = 80_000  # cap analysis sample writes
+
+# ── Redistribution-gate metadata ───────────────────────────────────────────
+# Raw HF license tag + human-curated provenance for the canonical
+# redistribution gate. The gate (not this script) classifies the tag
+# into a ``permissive_*`` / ``unspecified_no_committed_sample`` /
+# ``declared_non_permissive`` status code. Keeping the raw tag separate
+# from the per-target ``license`` value here means a future HF tag
+# change (e.g. the dataset owner re-licensing to apache-2.0) is a
+# one-line edit; the gate handles the rest.
+#
+# Qinghao/AcmeTrace (NSDI'24) is the only dataset this script ingests;
+# the three discovery-only records (HuggingAGree/AcmeTrace,
+# osteele/llm-calibration-db, jaytonde05/iris-prefix-cache-benchmark)
+# do not flow through the gate because no normalised sample is written
+# for them. cc-by-4.0 is the canonical permissive HF tag — the gate
+# classifies it as ``permissive_cc_by_4_0`` and permits redistribution.
+DATASET_ID = "Qinghao/AcmeTrace"
+LICENSE_TAG: Optional[str] = "cc-by-4.0"
+LICENSE_SOURCE = (
+    "HF card frontmatter license: cc-by-4.0 "
+    "(NSDI'24 'Characterization of LLM Development in the Datacenter')"
+)
+GATE_SCOPE = "committed_normalized_sample"
 
 logger = logging.getLogger("aurelius.hf_acmetrace")
 
@@ -135,6 +168,61 @@ def _install_timeout(seconds: int) -> None:
 
 def _clear_timeout() -> None:
     signal.alarm(0)
+
+
+# ── Redistribution gate — wire the canonical gate, do not classify here ────
+
+
+def _load_ledger(policy_path: Path = POLICY_PATH) -> OperatorPolicyLedger:
+    """Load the operator policy ledger from disk, or fall back to empty.
+
+    The committed default file ships zero grants under
+    ``policy_default=deny_all``; an absent file is identical in
+    behaviour. We use ``empty()`` as the fallback so the script
+    remains self-sufficient in a fresh checkout that may not yet have
+    the committed JSON pulled — the gate still produces correct
+    decisions (permit for ``cc-by-4.0`` Qinghao/AcmeTrace) instead of
+    crashing.
+    """
+
+    if policy_path.exists():
+        return OperatorPolicyLedger.load(policy_path)
+    return OperatorPolicyLedger.empty()
+
+
+def evaluate_redistribution(
+    *,
+    ledger: OperatorPolicyLedger,
+    license_tag: Optional[str] = LICENSE_TAG,
+    dataset_id: str = DATASET_ID,
+    scope: str = GATE_SCOPE,
+    now_iso: Optional[str] = None,
+) -> RedistributionGateDecision:
+    """Ask the canonical gate whether the bounded normalised sample of
+    Qinghao/AcmeTrace may be redistributed under the supplied license tag.
+
+    Pure function — no I/O. Exposed so tests can drive the gate path
+    without invoking the CSV download / normalisation pipeline. The
+    defaults reflect the module-level constants this script ships;
+    tests override them to verify the wiring (e.g. swap ``license_tag``
+    to ``"cc-by-nc-4.0"`` and check that the gate denies).
+
+    Under the default-empty ledger and the dataset's declared
+    cc-by-4.0 license tag, this returns
+    ``permitted=True``,
+    ``license_status="permissive_cc_by_4_0"``,
+    ``reason_code="permitted_declared_permissive_license"`` — the gate
+    ledger is NOT consulted because the license is on the closed
+    permissive allow-list.
+    """
+
+    return decide_redistribution(
+        dataset_id=dataset_id,
+        license_str=license_tag,
+        scope=scope,
+        ledger=ledger,
+        now_iso=now_iso,
+    )
 
 
 # ── Bounded HTTP download ───────────────────────────────────────────────────
@@ -739,9 +827,17 @@ def _detect_signals_util(profile: dict, target: dict) -> dict:
     return out
 
 
-def audit_one(target: dict, *, token: str | None, force_redownload: bool) -> dict:
+def audit_one(target: dict, *, token: str | None, force_redownload: bool,
+              ledger: OperatorPolicyLedger | None = None) -> dict:
     dataset_id = target["dataset_id"]
     config = target["config_name"]
+    if ledger is None:
+        ledger = _load_ledger()
+    gate_decision = evaluate_redistribution(
+        ledger=ledger,
+        license_tag=target.get("license", LICENSE_TAG),
+        dataset_id=dataset_id,
+    )
     hb = _Heartbeat(f"{dataset_id}@{config}")
     hb.update(phase="setup", force=True)
 
@@ -997,6 +1093,26 @@ def audit_one(target: dict, *, token: str | None, force_redownload: bool) -> dic
         "config_name": config,
         "source_url": f"https://huggingface.co/datasets/{dataset_id}",
         "license": target["license"],
+        # Redistribution-gate metadata (eighth consumer of the canonical
+        # gate). The gate classifies the per-target license tag —
+        # cc-by-4.0 → ``permissive_cc_by_4_0`` → permit; ledger NOT
+        # consulted (the closed permissive allow-list short-circuits).
+        # These fields are ADDITIVE — the on-disk fixture / analysis
+        # sample paths are unchanged. The script does NOT read the gate
+        # verdict to decide whether to write its samples (the fixture
+        # was already committed under the existing cc-by-4.0 declaration);
+        # the gate fields here document the canonical permit verdict so a
+        # future audit can prove the script consulted the gate rather
+        # than carrying its own classifier.
+        "license_redistribution_status": gate_decision.license_status,
+        "license_redistribution_source": LICENSE_SOURCE,
+        "redistribution_gate_reason_code": gate_decision.reason_code,
+        "redistribution_gate_reason_detail": gate_decision.reason_detail,
+        "redistribution_gate_permitted": gate_decision.permitted,
+        "redistribution_gate_operator_grant_dataset_id": (
+            gate_decision.operator_grant_dataset_id
+        ),
+        "redistribution_gate_scope": GATE_SCOPE,
         "gated": False,
         "canonical_trace_type": target["trace_type"],
         "committed_sample_rows": len(fixture_rows),
@@ -1078,6 +1194,12 @@ def main() -> int:
             logger.error("--only filter matched no targets")
             return 2
 
+    # Load the operator policy ledger once; thread it through every
+    # audit_one call and the audit summary writer so a single source of
+    # truth records ``redistribution_gate_policy_default`` and
+    # ``redistribution_gate_policy_grant_count``.
+    ledger = _load_ledger()
+
     ingested: list[dict] = []
     failed: list[dict] = []
 
@@ -1087,7 +1209,11 @@ def main() -> int:
         t_start = time.monotonic()
         try:
             _install_timeout(PER_DATASET_TIMEOUT_S)
-            r = audit_one(t, token=token, force_redownload=args.force_redownload)
+            r = audit_one(
+                t, token=token,
+                force_redownload=args.force_redownload,
+                ledger=ledger,
+            )
         except _PerDatasetTimeout as e:
             elapsed = int(time.monotonic() - t_start)
             failed.append({
@@ -1116,6 +1242,18 @@ def main() -> int:
             "config_name": r["config_name"],
             "canonical_trace_type": r["summary"]["canonical_trace_type"],
             "license": r["summary"]["license"],
+            # Eighth-consumer gate-derived fields. The audit summary
+            # mirrors the same closed-set fields the per-config
+            # summary.json carries so reviewers can pivot on either
+            # source without re-running the gate.
+            "license_redistribution_status":
+                r["summary"]["license_redistribution_status"],
+            "redistribution_gate_reason_code":
+                r["summary"]["redistribution_gate_reason_code"],
+            "redistribution_gate_permitted":
+                r["summary"]["redistribution_gate_permitted"],
+            "redistribution_gate_operator_grant_dataset_id":
+                r["summary"]["redistribution_gate_operator_grant_dataset_id"],
             "available_signals": r["summary"]["available_signals"],
             "missing_signals": r["summary"]["missing_signals"],
             "analysis_sample_rows": r["summary"]["analysis_sample_rows"],
@@ -1128,13 +1266,22 @@ def main() -> int:
 
     rollup_path = DISC_DIR / "acmetrace_audit_summary.json"
     payload = {
-        "doc_version": "acmetrace_audit_summary_v1",
-        "stage": "hf_focused_audit_acmetrace_v1",
+        # v2 schema introduces the redistribution_gate_* top-level triple
+        # mirroring the broadened_discovery_audit_summary v2 schema.
+        # Per-row gate fields are also added under ``ingested``. v1
+        # readers continue to function: the v1 schema is a strict
+        # subset of v2 (all v1 keys are preserved).
+        "doc_version": "acmetrace_audit_summary_v2",
+        "stage": "hf_focused_audit_acmetrace_v2",
         "modifies_robust_energy_engine": False,
         "modifies_controllers_or_defaults": False,
         "production_claim": False,
+        "uses_oracle_as_headline": False,
         "git_sha": _git_sha(),
         "audited_at_s": time.time(),
+        "redistribution_gate_scope": GATE_SCOPE,
+        "redistribution_gate_policy_default": ledger.policy_default,
+        "redistribution_gate_policy_grant_count": len(ledger.grants),
         "ingested": ingested,
         "failed": failed,
         "discovery_only_records": DISCOVERY_ONLY_RECORDS,

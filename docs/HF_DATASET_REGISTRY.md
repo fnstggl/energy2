@@ -3509,3 +3509,157 @@ re-emitted. None of them write into the shared
 coverage milestone is not gated on them. (iv) Pilot telemetry
 (Tier 1) remains the only path to production calibration; no HF
 dataset closes that gate.
+
+### 12.14 RedistributionGate — eighth consumer wires per-dataset ingestion (Qinghao/AcmeTrace)
+
+**Scope.** Wire `scripts/ingest_hf_acmetrace.py` — the focused
+NSDI'24 AcmeTrace ingester (4 configs: kalos_jobs / seren_jobs_head
+/ kalos_gpu_util_head / seren_ipmi_gpu_power_head) — through the
+canonical `decide_redistribution` gate as the eighth consumer of
+the ledger. The pre-wiring shape carried the per-target license
+inline inside the `TARGETS` table and a hard-coded
+`"license": target["license"]` write into `summary.json` with no
+gate consultation. The refactor lifts a single `LICENSE_TAG`
+constant to module level (cc-by-4.0, the only license across all
+four configs), routes the commit verdict through the canonical
+gate, and writes the gate-derived fields additively onto every
+summary and onto every `ingested` row of
+`acmetrace_audit_summary.json`. The eighth consumer is the FIRST
+gate-wired script whose default license is a CC-BY tag — every
+earlier consumer used Apache-2.0, CDLA-Permissive-2.0, or
+declared-None tags. The cc-by-4.0 path of the gate's permissive
+allow-list is now exercised end-to-end.
+
+The acmetrace audit summary moves from `v1` to
+`v2`; v1 is a strict subset of v2 (every v1 key is preserved).
+v2 adds the top-level `redistribution_gate_scope` /
+`redistribution_gate_policy_default` /
+`redistribution_gate_policy_grant_count` triple mirroring the
+broadened-discovery v2 schema, and the four per-row gate fields
+(`license_redistribution_status`, `redistribution_gate_reason_code`,
+`redistribution_gate_permitted`,
+`redistribution_gate_operator_grant_dataset_id`).
+
+The script does NOT change its on-disk artefacts: fixture
+samples, gitignored analysis samples, schema profiles, schema
+mappings, and statistical rollups are byte-for-byte unchanged.
+The gate fields are additive metadata. The
+`refresh_hf_acmetrace_gate_metadata.py` helper rewrites the
+four committed `summary.json` files and the audit summary in
+place — no HF API call, no HF_TOKEN read, no data re-download.
+
+**Files changed.**
+- `scripts/ingest_hf_acmetrace.py` — adds `LICENSE_TAG` /
+  `LICENSE_SOURCE` / `GATE_SCOPE` / `POLICY_PATH` module-level
+  constants; imports `decide_redistribution`,
+  `RedistributionGateDecision`, and `OperatorPolicyLedger`;
+  adds `_load_ledger()` and `evaluate_redistribution()`; threads
+  `ledger` through `audit_one()` and `main()`; writes
+  `license_redistribution_status` / `_source` /
+  `redistribution_gate_*` (5 fields) into every summary.json;
+  writes per-row gate fields into every `ingested` row of
+  `acmetrace_audit_summary.json` and the top-level
+  `redistribution_gate_*` triple; bumps `doc_version` to
+  `acmetrace_audit_summary_v2`.
+- `scripts/refresh_hf_acmetrace_gate_metadata.py` (new) —
+  in-place refresh helper that updates the four already-committed
+  summary.json files and the audit summary with the new gate
+  fields without re-downloading the dataset.
+- `data/external/hf/Qinghao__AcmeTrace/<config>/processed/summary.json`
+  × 4 — refreshed with the new gate fields.
+- `data/external/hf_discovery/acmetrace_audit_summary.json` —
+  refreshed to v2 schema.
+- `tests/test_hf_acmetrace_gate_wiring.py` (new) — 38 tests
+  pinning the eighth-consumer wiring.
+- `docs/HF_DATASET_REGISTRY.md` — this section.
+
+**Tests.** The new `tests/test_hf_acmetrace_gate_wiring.py` pins:
+the four module-level constants (`DATASET_ID` /
+`LICENSE_TAG` / `LICENSE_SOURCE` / `GATE_SCOPE`); every entry of
+`TARGETS` declares the same license tag as the module constant
+(zero drift rail); the script imports `decide_redistribution`,
+`RedistributionGateDecision`, and `OperatorPolicyLedger` from
+the canonical gate module; the script does NOT redeclare the
+closed permissive allow-list (no `"permissive_cc_by_4_0":` /
+`"permissive_apache_2_0":` / etc. dict literal in the script
+source); the script does NOT hardcode the
+`"permissive_cc_by_4_0"` status code in any AST node outside
+docstrings; `evaluate_redistribution` returns a
+`RedistributionGateDecision`; default-tag/empty-ledger PERMITS;
+swap to `None` denies (proves the wiring consults the tag —
+not hardcoded to permit); swap to `cc-by-nc-4.0` denies with
+`denied_declared_non_permissive_license` (proves the closed
+allow-list is conservative — variant tags are NOT auto-promoted);
+an operator opt-out grant does NOT revoke the permissive verdict
+(proves the gate short-circuits the ledger for permissive
+licenses); every per-config summary.json carries the seven
+gate metadata fields (× 4 configs, parametrised); the permit
+verdict on each summary matches the recorded license cc-by-4.0;
+the committed `license_redistribution_status` matches
+`classify_license(s["license"])` on every config (zero drift
+rail); the audit summary holds `doc_version` at v2; the
+top-level gate scope / default / grant-count triple matches the
+in-memory ledger; v1 invariants (modifies_robust_energy_engine /
+modifies_controllers / production_claim / git_sha / ingested /
+failed / discovery_only_records) are preserved; all 4 acmetrace
+rows carry the four gate fields and agree on the permit verdict;
+the discovery-only records (HuggingAGree/AcmeTrace,
+osteele/llm-calibration-db,
+jaytonde05/iris-prefix-cache-benchmark) are preserved;
+`audit_one` accepts `ledger` as a keyword argument;
+`_load_ledger` falls back to `OperatorPolicyLedger.empty()` when
+the policy file is absent (fresh-checkout self-sufficiency); no
+`HF_TOKEN` literal in either the refactored script or the
+refresh helper; the committed fixture sha256 in every summary
+matches the on-disk file bytes (proves the gate wiring did not
+change sample bytes); the refresh helper does NOT add extra
+targets to the audit summary; the refresh helper preserves
+pre-existing v1 row fields (promotion_state / promotion_tags /
+elapsed_s / canonical_trace_type / available_signals /
+missing_signals / analysis_sample_rows /
+statistical_sample_strength / limitations).
+
+**Result.** All 38 new tests pass. All 46 pre-existing tests
+in `tests/test_hf_acmetrace_ingest.py` continue to pass. All 35
+tests in `tests/test_hf_redistribution_gate.py` continue to
+pass. All 24 tests in
+`tests/test_hf_operator_redistribution_policy.py` continue to
+pass. The previous seven gate-wiring test files
+(latency-benchmarks, llm-energy-consumption, h200-quantization,
+agent-llm-traces, gap-commit-script, the gate audit, and
+optimum-benchmark) continue to pass. **1,148 tests total in
+`tests/test_hf_*.py` pass.** The on-disk fixture sample bytes for
+every acmetrace config are unchanged; the 4 summary.json files
+record identical `fixture_sample_bytes` / `fixture_sample_rows` /
+`sample_sha256` / `fixture_sample_path` they recorded under the
+v1 script.
+
+**Honesty + scope guarantees.** No production claim. No
+scheduler / controller / robust-energy-engine touched. No
+oracle as headline. No Tier 1 promotion. No new HF data
+downloaded. No new candidate-registry entry. The on-disk
+fixture / analysis / schema / rollup artefacts are byte-for-byte
+identical to v1; only the summary.json metadata and the audit
+summary metadata gain the new gate-derived fields. No
+`HF_TOKEN` leak. No raw data committed. The script's downloader
+path is unchanged (still requires `HF_TOKEN` for re-ingest of
+gated files); only the redistribution classifier moved from
+inline to the canonical gate.
+
+**Next.** (i) The acmetrace audit summary v2 schema is now
+fully covered: 4 of 4 ingested rows carry the gate fields, and
+the top-level gate triple is refreshed from the in-memory
+ledger at write time. (ii) Five per-dataset ingestion scripts
+remain unwired:
+`scripts/ingest_hf_aurelius_dataset.py`,
+`scripts/ingest_hf_gap_datasets.py`,
+`scripts/ingest_hf_lightcap_runtime_telemetry.py`,
+`scripts/ingest_hf_llmperf_bedrock.py`,
+`scripts/ingest_hf_metrum_llmperfdata.py`. Each is a candidate
+for a follow-up PR once its canonical-corpus rows need to be
+re-emitted. (iii) The cc-by-4.0 path of the gate's permissive
+allow-list is now exercised end-to-end — future cc-by-4.0
+datasets do not need to re-prove the permit path; they only
+need to wire through the gate. (iv) Pilot telemetry (Tier 1)
+remains the only path to production calibration; no HF dataset
+closes that gate.

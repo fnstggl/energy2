@@ -45,6 +45,8 @@
   "git_sha": "030737e25fbed75379ad225529e477e597d9e9d9",
   "ingestion_timestamp_s": 1780287002.7877986,
   "license": "cc-by-4.0",
+  "license_redistribution_source": "HF card frontmatter license: cc-by-4.0 (NSDI'24 'Characterization of LLM Development in the Datacenter')",
+  "license_redistribution_status": "permissive_cc_by_4_0",
   "limitations": [
     "Bounded head-sample of trace_seren.csv (~32 MiB cap; full file is ~94 MiB).",
     "Real Shanghai AI Lab Seren cluster scheduler trace (NSDI'24).",
@@ -125,6 +127,11 @@
     "user_hash",
     "workload_type"
   ],
+  "redistribution_gate_operator_grant_dataset_id": null,
+  "redistribution_gate_permitted": true,
+  "redistribution_gate_reason_code": "permitted_declared_permissive_license",
+  "redistribution_gate_reason_detail": "declared HF license 'cc-by-4.0' maps to 'permissive_cc_by_4_0'; ledger not consulted",
+  "redistribution_gate_scope": "committed_normalized_sample",
   "sample_sha256": "e34ff3a65acf881ba378e08807350e71c673a2b15a845048c1c143a0a4f1ab55",
   "sampling_method": "head_with_stratification_keys_recorded",
   "schema_mapping_path": "data/external/hf/Qinghao__AcmeTrace/seren_jobs_head/processed/schema_mapping.json",
