@@ -1,0 +1,20 @@
+{
+  "any_reuse_rate": 0.9649,
+  "bounded_ingest": {
+    "cap_mb": 100,
+    "fully_ingested": true,
+    "raw_bytes_under_cap": true
+  },
+  "committed_sample_rows": 5000,
+  "high_reuse_rate": 0.6598,
+  "limitations": "Mooncake repo (citation requested); derived numeric sample only.",
+  "mean_cache_reuse_pct": 57.0022,
+  "measured_vs_proxy": {
+    "reuse_label": "derived_proxy",
+    "timestamps_tokens_blocks": "measured_anonymized"
+  },
+  "normalized_rows": 63240,
+  "source": "mooncake",
+  "trace_role": "cache_residency_trace",
+  "unique_prefix_groups": 2220
+}

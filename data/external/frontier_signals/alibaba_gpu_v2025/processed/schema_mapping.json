@@ -1,0 +1,13 @@
+{
+  "label_class": "proxy (instance-lifecycle); NOT measured serving autoscaling or queue-wait",
+  "source_field -> canonical_field": {
+    "(absent)": "queue_wait_s=None, utilization=None, failure=None, autoscaling_event=None",
+    "(deletion_time - creation_time)": "instance_lifetime_s (DERIVED)",
+    "(scheduled_time - creation_time)": "scheduler_delay_s (DERIVED proxy)",
+    "creation_time": "creation_time_s (measured)",
+    "deletion_time": "deletion_time_s (measured)",
+    "gpu_request": "gpu_count (measured ALLOCATION, not utilization)",
+    "role": "role / is_gpu_instance",
+    "scheduled_time": "scheduled_time_s (measured)"
+  }
+}

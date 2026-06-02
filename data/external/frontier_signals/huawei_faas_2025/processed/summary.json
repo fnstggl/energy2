@@ -1,0 +1,19 @@
+{
+  "calibration_only": true,
+  "committed_sample_rows": 5000,
+  "days_covered": [
+    28
+  ],
+  "is_gpu_model_load": false,
+  "limitation": "FaaS cold-start (CPU pod). NEVER GPU model-load truth. Simulator-prior calibration only.",
+  "mean_cold_start_latency_s": 5.001591,
+  "measured_vs_proxy": {
+    "faas_cold_start_cost": "measured",
+    "gpu_llm_cold_start": "prior_proxy_only"
+  },
+  "normalized_rows": 239405,
+  "source": "huawei_faas_2025",
+  "trace_role": "cold_start_prior_trace",
+  "trigger_runtime_rows": 2418,
+  "unique_functions": 1280
+}

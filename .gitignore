@@ -48,6 +48,12 @@ data/external/azure_llm_2024/raw/*.csv
 !data/external/azure_llm_2024/raw/.gitkeep
 data/external/alibaba_gpu/raw/*.csv
 data/external/alibaba_gpu/processed/alibaba_gpu_normalized.json
+# Frontier Signal Bounded Ingestion v1 (Mooncake / Huawei FaaS 2025 / Alibaba GPU
+# v2025). Raw downloads are NEVER committed; only bounded normalized samples +
+# the processed summary/rollup/schema JSONs under processed/ ARE committed.
+data/external/frontier_signals/raw/
+data/external/frontier_signals/**/raw/
+data/external/frontier_signals/**/processed/analysis_sample.jsonl
 data/external/philly/raw/*
 !data/external/philly/raw/.gitkeep
 # MIT Supercloud raw archives (~1 TB compressed; downloaded from

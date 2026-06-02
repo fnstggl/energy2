@@ -1,0 +1,168 @@
+{
+  "cache_reuse_cross_dataset_verdict": "single_dataset_promising_only",
+  "doc_version": "frontier_ingest_v1",
+  "measured_vs_proxy_summary": {
+    "alibaba_gpu_v2025": "lifecycle/allocation = measured; queue/autoscaling = derived proxy; utilization/failure = absent",
+    "huawei_faas_2025": "cold-start cost = measured FaaS (CPU pod); GPU usage = prior/proxy only",
+    "mooncake": "reuse label = derived proxy; timestamps/tokens/blocks = measured (anonymized)"
+  },
+  "no_production_behavior_change": true,
+  "phase": "3_signal_strength",
+  "production_claim": false,
+  "public_data_is_not_pilot_telemetry": true,
+  "sources": {
+    "alibaba_gpu_v2025": {
+      "measured_proxy_simulated_breakdown": {
+        "absent": [
+          "queue_wait_s",
+          "utilization",
+          "failure_or_timeout_state",
+          "measured_autoscaling_event"
+        ],
+        "derived_proxy": [
+          "scheduler_delay_s",
+          "instance_lifetime_s",
+          "autoscaling_count_proxy"
+        ],
+        "measured": [
+          "creation_time_s",
+          "scheduled_time_s",
+          "deletion_time_s",
+          "gpu_count(allocation)"
+        ]
+      },
+      "n_apps": 156,
+      "n_gpu_instances": 7386,
+      "rows_normalized": 23871,
+      "subgroup_coverage": {
+        "apps": 156,
+        "roles": {
+          "CN": 16485,
+          "HN": 7386
+        }
+      },
+      "suitable_for": {
+        "autoscaling_proxy_training": "proxy_only -- instance-lifecycle, NOT measured serving autoscaling events",
+        "cache_reuse_cross_dataset_validation": "no",
+        "cache_reuse_training": "no",
+        "cold_start_ml_training": "no",
+        "cold_start_simulator_prior": "no",
+        "diagnostic_only": "applies; no measured serving autoscaling/queue",
+        "queue_risk_training": "proxy_only -- scheduler_delay tail, NOT per-request serving queue-wait; weaker than existing AcmeTrace/CARA queue evidence"
+      },
+      "target_labels_available": {
+        "autoscaling_event": "ABSENT (inferred from per-app create/delete only)",
+        "failure_or_timeout_state": "ABSENT",
+        "queue_wait_s": "ABSENT",
+        "scheduler_delay_s": "derived_proxy",
+        "utilization": "ABSENT"
+      },
+      "timestamp_coverage": 0.695,
+      "unique_jobs_instances": 23871
+    },
+    "huawei_faas_2025": {
+      "days_covered": [
+        28
+      ],
+      "measured_proxy_simulated_breakdown": {
+        "measured_faas": [
+          "cold_start_latency_s",
+          "pod_allocation_s",
+          "deploy_code_s",
+          "deploy_dependency_s",
+          "scheduling_s"
+        ],
+        "prior_proxy_for_gpu": [
+          "all cold-start fields used as GPU prior"
+        ],
+        "simulated": []
+      },
+      "rows_normalized": 239405,
+      "subgroup_coverage": {
+        "clusters": "1-4",
+        "functions": 1280
+      },
+      "suitable_for": {
+        "autoscaling_proxy_training": "weak (num_pods proxy not ingested in this bounded slice)",
+        "cache_reuse_cross_dataset_validation": "no",
+        "cache_reuse_training": "no",
+        "cold_start_ml_training": "no -- FaaS, not GPU model-load; not promoted to GPU ML",
+        "cold_start_simulator_prior": "yes -- calibrates cold-start COST STRUCTURE (FaaS)",
+        "diagnostic_only": "GPU cold-start remains blocked_by_missing_labels",
+        "queue_risk_training": "no"
+      },
+      "target_labels_available": {
+        "cold_start_latency_s": "measured_faas",
+        "deploy_code_s": "measured_faas",
+        "deploy_dependency_s": "measured_faas",
+        "gpu_model_load_s": "ABSENT (FaaS != GPU)",
+        "pod_allocation_s": "measured_faas",
+        "scheduling_s": "measured_faas"
+      },
+      "timestamp_coverage": 1.0,
+      "trigger_runtime_rows": 2418,
+      "unique_functions": 1280
+    },
+    "mooncake": {
+      "measured_proxy_simulated_breakdown": {
+        "derived_proxy": [
+          "cache_reuse_pct",
+          "high_reuse",
+          "cache_hit_proxy"
+        ],
+        "measured_anonymized": [
+          "timestamp_ms",
+          "input_length",
+          "output_length",
+          "hash_ids_count"
+        ],
+        "not_measured": [
+          "cache_hit",
+          "model_id",
+          "session_id"
+        ],
+        "simulated": []
+      },
+      "rows_normalized": 63240,
+      "subgroup_coverage": {
+        "per_trace": {
+          "arxiv": {
+            "high_reuse_rate": 0.738,
+            "rows": 23608
+          },
+          "conversation": {
+            "high_reuse_rate": 0.4247,
+            "rows": 12031
+          },
+          "synthetic": {
+            "high_reuse_rate": 0.4433,
+            "rows": 3993
+          },
+          "toolagent": {
+            "high_reuse_rate": 0.738,
+            "rows": 23608
+          }
+        }
+      },
+      "suitable_for": {
+        "autoscaling_proxy_training": "no",
+        "cache_reuse_cross_dataset_validation": "limited -- derived proxy, NOT identical to SwissAI measured reuse_percentage; transfer to SwissAI underperforms SwissAI's own baseline",
+        "cache_reuse_training": "yes_proxy_only",
+        "cold_start_ml_training": "no",
+        "cold_start_simulator_prior": "no",
+        "diagnostic_only": "applies to cross-dataset claim",
+        "queue_risk_training": "no"
+      },
+      "target_labels_available": {
+        "cache_hit": "not_measured",
+        "cache_hit_proxy": "derived",
+        "cache_reuse_pct": "derived_proxy",
+        "high_reuse": "derived_proxy"
+      },
+      "timestamp_coverage": 1.0,
+      "unique_models": null,
+      "unique_prefix_groups": 2220,
+      "unique_sessions": null
+    }
+  }
+}

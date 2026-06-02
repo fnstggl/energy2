@@ -1,0 +1,17 @@
+{
+  "committed_sample_rows": 5000,
+  "has_measured_serving_autoscaling": false,
+  "has_per_request_queue_wait": false,
+  "limitation": "Proxy only -- no inference autoscaling events, no per-request queue, no utilization.",
+  "measured_vs_proxy": {
+    "queue_autoscaling": "proxy_inferred",
+    "timestamps_allocations": "measured",
+    "utilization_failure": "not_in_source"
+  },
+  "n_apps": 156,
+  "n_gpu_instances": 7386,
+  "normalized_rows": 23871,
+  "scheduler_delay_coverage": 0.695,
+  "source": "alibaba_gpu_v2025",
+  "trace_role": "autoscaling_queue_proxy_trace"
+}

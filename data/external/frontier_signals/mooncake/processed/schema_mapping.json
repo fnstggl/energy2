@@ -1,0 +1,15 @@
+{
+  "label_class": "derived_proxy (NOT measured); NOT identical to SwissAI reuse_percentage",
+  "source_field -> canonical_field": {
+    "(absent)": "model_id=None, session_id=None, cache_hit=None (NOT in source)",
+    "(derived from hash_ids overlap)": "cache_reuse_pct / high_reuse / cache_hit_proxy (DERIVED proxy)",
+    "hash_ids": "hash_ids_count + hash_ids_hash + prefix_group (derived)",
+    "input_length": "input_length (measured)",
+    "output_length": "output_length (measured)",
+    "timestamp": "timestamp_ms (measured_anonymized)"
+  },
+  "target_for_ml": {
+    "binary": "high_reuse",
+    "continuous": "cache_reuse_pct"
+  }
+}

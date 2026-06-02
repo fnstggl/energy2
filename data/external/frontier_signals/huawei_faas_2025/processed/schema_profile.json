@@ -1,0 +1,34 @@
+{
+  "bounded_ingest": "100MB range-download of R1.zip (467MB, over cap) -> raw-inflate of first fully-contained member R1/day_28.csv. Full file NOT downloaded.",
+  "field_presence": {
+    "cold_start_latency_s": 1.0,
+    "deploy_code_s": 1.0,
+    "deploy_dependency_s": 1.0,
+    "pod_allocation_s": 1.0,
+    "runtime": 0.0,
+    "scheduling_s": 1.0
+  },
+  "license": "CC BY 4.0 (attribution required). requestID/podID hashed by authors; requestID hash omitted from committed sample.",
+  "normalized_rows": 239405,
+  "raw_files": {
+    "cold_start_events": "data/external/frontier_signals/raw/huawei_faas_2025/R1_coldstart_first100mb.recovered.csv",
+    "trigger_runtime": "data/external/frontier_signals/raw/huawei_faas_2025/R2_funcID_runtime_triggerType.csv"
+  },
+  "raw_schema_cold_start": [
+    "day",
+    "time",
+    "clusterName",
+    "funcName",
+    "userID",
+    "requestID(hash)",
+    "totalCost_cold_start",
+    "podAllocationCost",
+    "deployCodeCost",
+    "deployDependencyCost",
+    "schedulingCost",
+    "podID"
+  ],
+  "source": "huawei_faas_2025",
+  "trace_role": "cold_start_prior_trace",
+  "trigger_runtime_rows": 2418
+}

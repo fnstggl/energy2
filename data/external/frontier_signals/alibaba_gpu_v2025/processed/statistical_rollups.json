@@ -1,0 +1,56 @@
+{
+  "autoscaling_proxy": {
+    "method": "per-app instance create/delete counts in 1h bins (INFERRED, not measured)",
+    "n_apps": 156,
+    "n_gpu_instances": 7386,
+    "total_create_events": 16591,
+    "total_delete_events": 14993
+  },
+  "gpu_count_distribution": {
+    "0.0": 16485,
+    "1.0": 7386
+  },
+  "instance_lifetime_s_quantiles": {
+    "count": 12390,
+    "mean": 102610.867797,
+    "p0": 0.0,
+    "p10": 128.0,
+    "p100": 2462429.0,
+    "p25": 1152.0,
+    "p50": 8408.0,
+    "p75": 67851.0,
+    "p90": 286724.0,
+    "p95": 611454.0,
+    "p99": 1378585.0
+  },
+  "instances_per_app_quantiles": {
+    "count": 156,
+    "mean": 153.019231,
+    "p0": 3.0,
+    "p10": 9.0,
+    "p100": 2551.0,
+    "p25": 17.0,
+    "p50": 43.0,
+    "p75": 163.0,
+    "p90": 437.0,
+    "p95": 609.0,
+    "p99": 940.0
+  },
+  "role_distribution": {
+    "CN": 16485,
+    "HN": 7386
+  },
+  "scheduler_delay_s_quantiles": {
+    "count": 16591,
+    "mean": 187.927431,
+    "p0": 0.0,
+    "p10": 0.0,
+    "p100": 238116.0,
+    "p25": 0.0,
+    "p50": 0.0,
+    "p75": 11.0,
+    "p90": 59.0,
+    "p95": 136.0,
+    "p99": 1650.0
+  }
+}

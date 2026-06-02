@@ -1,0 +1,24 @@
+{
+  "doc_version": "frontier_ingest_v1",
+  "no_production_behavior_change": true,
+  "no_production_savings_claim": true,
+  "public_data_is_not_pilot_telemetry": true,
+  "sample_caps": {
+    "bytes": 8388608,
+    "rows": 5000
+  },
+  "sources": {
+    "alibaba_gpu_v2025": {
+      "role": "autoscaling_queue_proxy_trace",
+      "rows": 23871
+    },
+    "huawei_faas_2025": {
+      "role": "cold_start_prior_trace",
+      "rows": 239405
+    },
+    "mooncake": {
+      "role": "cache_residency_trace",
+      "rows": 63240
+    }
+  }
+}

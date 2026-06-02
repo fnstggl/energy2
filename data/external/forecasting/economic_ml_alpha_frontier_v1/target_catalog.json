@@ -1,0 +1,62 @@
+{
+  "autoscaling_queue_risk": {
+    "label_class": "proxy",
+    "note": "instance-level scheduler-delay proxy; not measured serving autoscaling",
+    "source": "alibaba_gpu_v2025",
+    "status": "proxy_trained"
+  },
+  "cache_reuse_pct": {
+    "datasets": [
+      "swissai (measured)",
+      "mooncake (derived proxy)"
+    ],
+    "second_independent_MEASURED_source": false,
+    "second_independent_PROXY_source": true,
+    "verdict": {
+      "absolute_auroc": {
+        "mooncake_only_ml": 0.8736106912853654,
+        "mooncake_own_baseline": 0.5,
+        "mooncake_to_swissai_transfer": 0.6071680399815405,
+        "swissai_only_ml": 0.7600357390387347,
+        "swissai_own_baseline": 0.7149553272308133,
+        "swissai_to_mooncake_transfer": 0.6371412590349342
+      },
+      "label_compatibility": "SwissAI reuse_percentage = MEASURED bucket overlap; Mooncake cache_reuse_pct = DERIVED global-prefix-cache proxy. Same DEFINITION (reused_blocks/total_blocks) but different PROVENANCE; only a harmonized high_reuse proxy is cross-comparable.",
+      "mooncake_only_caveat": "Mooncake's high within-dataset gain is partly an ARTIFACT: the derived reuse proxy is autocorrelated and the decision-time rolling reuse-mean feature predicts it strongly; the per-trace baseline is near-degenerate (AUROC~0.5). Not evidence of measured alpha.",
+      "mooncake_only_improvement_pct": 74.72,
+      "reason": "SwissAI-only (MEASURED label) beats its strong per-model baseline by 6.31%, but cross-dataset transfer does NOT beat the target's own baseline in both directions (mooncake->swissai AUROC 0.6071680399815405 vs swissai baseline 0.7149553272308133). No second MEASURED source validates it -> remains single-dataset.",
+      "status": "single_dataset_promising_only",
+      "swissai_only_improvement_pct": 6.31,
+      "transfer_vs_degenerate_cross_baseline": {
+        "caveat": "cross-dataset per-group baseline degrades to ~0.5 (source groups absent in target), so these % are INFLATED; use transfer_vs_target_own_baseline instead.",
+        "mooncake_to_swissai_pct": 21.43,
+        "swissai_to_mooncake_pct": 27.43
+      },
+      "transfer_vs_target_own_baseline": {
+        "both_directions_beat_target_own_baseline": false,
+        "mooncake_to_swissai_pct": -15.08,
+        "swissai_to_mooncake_pct": 27.43
+      }
+    }
+  },
+  "carried_from_v1_unchanged": {
+    "e2e_latency_s": "diagnostic_only",
+    "energy_kwh": "diagnostic_only",
+    "estimated_gpu_cost_usd_DETERMINISTIC": "diagnostic_only_deterministic_formula",
+    "peak_vram_gb": "shadow_ready_for_integration_review",
+    "tpot_s": "diagnostic_only",
+    "ttft_s": "promising_needs_validation"
+  },
+  "cold_start_cost": {
+    "is_gpu_model_load": false,
+    "note": "calibration-only FaaS prior; GPU cold-start ML remains blocked_by_missing_labels",
+    "source": "huawei_faas_2025",
+    "status": "simulator_prior_calibrated"
+  },
+  "doc_version": "economic_ml_alpha_frontier_v1",
+  "high_reuse": {
+    "derived_from": "cache_reuse_pct >= 50",
+    "verdict": "single_dataset_promising_only"
+  },
+  "no_new_data_for_carried_targets": true
+}

@@ -1,0 +1,78 @@
+{
+  "doc_version": "frontier_ingest_v1",
+  "phase": "0_source_verification",
+  "no_production_behavior_change": true,
+  "no_real_execution": true,
+  "no_production_savings_claim": true,
+  "public_data_is_not_pilot_telemetry": true,
+  "bounded_ingest_cap_mb": {"start": 100, "max_expand": 300, "rule": "start 100MB or full-if-smaller; expand to 300MB only if high-value and subgroup coverage weak; never unbounded"},
+  "sources": [
+    {
+      "name": "mooncake",
+      "role": "cache/KV reuse cross-validation source",
+      "main_question": "Does cache_reuse_pct remain shadow-ready beyond SwissAI?",
+      "source_urls": [
+        "https://github.com/kvcache-ai/Mooncake",
+        "https://raw.githubusercontent.com/kvcache-ai/Mooncake/main/FAST25-release/traces/conversation_trace.jsonl",
+        "https://raw.githubusercontent.com/kvcache-ai/Mooncake/main/FAST25-release/traces/synthetic_trace.jsonl",
+        "https://raw.githubusercontent.com/kvcache-ai/Mooncake/main/FAST25-release/traces/toolagent_trace.jsonl",
+        "https://raw.githubusercontent.com/kvcache-ai/Mooncake/main/FAST25-release/arxiv-trace/mooncake_trace.jsonl"
+      ],
+      "paper": "Mooncake: A KVCache-centric Disaggregated Architecture for LLM Serving (FAST'25; arXiv 2407.00079)",
+      "exact_schema": "JSONL rows: {timestamp:int(ms), input_length:int(tokens), output_length:int(tokens), hash_ids:[int...]}. block_size=512; identical hash_ids => shared prefix/KVCache reuse.",
+      "license": "Repo root has no standalone data LICENSE file (HTTP 404); README requests citation. Trace values are author-anonymized integers (privacy-remapped block hashes, token counts, relative timestamps) — NO raw prompt/response text exists. Commit policy: only derived NUMERIC normalized sample (no full hash_ids list), with attribution + citation.",
+      "classification": "workload_only + derived_reuse_structure",
+      "measured_vs_derived": "timestamps/token-lengths/block-hash-structure are real (production-derived, anonymized); cache reuse is NOT a measured label — it must be DERIVED from hash_ids overlap (a global-prefix-cache hit SIMULATION). No model_id, no session_id, no request_id, no measured latency/queue/cache-hit.",
+      "bounded_ingest_safe": true,
+      "downloaded": {"files": 4, "bytes": 13200000, "fully_ingested": true, "note": "all 4 files < 5MB; full ingest under 100MB cap, no sampling needed"},
+      "label_compatibility_with_swissai": "LIMITED — SwissAI provides MEASURED reuse_percentage (bucket overlap %); Mooncake provides only a DERIVED prefix-reuse proxy. The native targets are NOT identical; only a derived high_reuse proxy on a shared minimal feature set is cross-comparable."
+    },
+    {
+      "name": "huawei_faas_2025",
+      "role": "cold-start realism prior, calibration-only",
+      "main_question": "Can public FaaS cold-start breakdowns improve simulator priors without pretending they are GPU model-load truth?",
+      "source_urls": [
+        "https://github.com/sir-lab/data-release",
+        "https://github.com/sir-lab/data-release/blob/main/README_data_release_2025.md",
+        "https://drive.google.com/file/d/1mMQtfZNtg-EPmGmGYuOzC5KPbZoXRd8e/view (Region 1 cold start events R1.zip, 467MB)",
+        "https://drive.google.com/file/d/1dUg_yxeLR5OyldivPZGW5djYF31166EG/view (Region 2 funcID runtime/triggerType CSV, 117KB)"
+      ],
+      "paper": "Serverless Cold Starts and Where to Find Them (EuroSys'25; arXiv 2410.06145)",
+      "exact_schema": "cold-start events: day, time(s), clusterName(int), funcName(int), userID(int), requestID(hash), totalCost_cold_start(s), podAllocationCost(s), deployCodeCost(s), deployDependencyCost(s), schedulingCost(s), podID(pool name encoding cpu/mem limits). trigger table: funcID, cpu_request(millicores), runtime, triggerType-invocationType.",
+      "license": "Creative Commons Attribution 4.0 International (CC BY 4.0) — redistribution permitted WITH attribution. requestID/podID are author-hashed; NO raw prompt/response text. Commit policy: bounded derived numeric sample + attribution; requestID hash omitted from committed sample.",
+      "classification": "measured (FaaS cold-start) — but cold-start EVENT files exceed the 300MB cap",
+      "measured_vs_derived": "MEASURED FaaS cold-start cost breakdown (pod allocation, code deploy, dependency deploy, scheduling). This is CPU serverless pod startup, NOT GPU model-load. For GPU LLM usage it is a STRUCTURAL prior/proxy only, calibration-only, never server-class model_load_duration truth.",
+      "bounded_ingest_safe": true,
+      "bounded_ingest_method": "Smallest cold-start region file R1.zip=467MB > 300MB cap and is a non-range-able zip; quantiles zips are 0.9-5.5GB. Used a bounded 100MB range-download of R1.zip + raw-DEFLATE-inflate of the first fully-contained member (R1/day_28.csv) -> 239,405 complete cold-start rows recovered (truncated tail discarded). Full 467MB+ download was NOT performed (would violate the bound). Trigger/runtime CSV (117KB) ingested in full.",
+      "downloaded": {"bytes": 104974259, "cold_start_rows_recovered": 239405, "trigger_rows": 2418, "fully_ingested": false, "note": "bounded 100MB slice of one region only"},
+      "gpu_coldstart_warning": "Do NOT convert FaaS cold-start into GPU LLM cold-start. deployCodeCost/deployDependencyCost are code/dependency download, NOT model-weight load. Usable ONLY as a simulator-prior calibration of cold-start COST STRUCTURE."
+    },
+    {
+      "name": "alibaba_gpu_v2025",
+      "role": "inference autoscaling / queue / utilization proxy",
+      "main_question": "Can this add useful autoscaling or queue-risk proxy labels to the Economic ML Alpha audit?",
+      "source_urls": [
+        "https://github.com/alibaba/clusterdata/tree/master/cluster-trace-gpu-v2025",
+        "https://raw.githubusercontent.com/alibaba/clusterdata/master/cluster-trace-gpu-v2025/disaggregated_DLRM_trace.csv"
+      ],
+      "paper": "GPU-Disaggregated Serving for Deep Learning Recommendation Models at Scale (NSDI'25)",
+      "exact_schema": "instance lifecycle records: instance_sn, role(CN/HN), app_name, cpu_request/limit, gpu_request/limit, rdma_request/limit, memory_request/limit, disk_request/limit, max_instance_per_node, creation_time(s), scheduled_time(s), deletion_time(s).",
+      "license": "Alibaba clusterdata repo terms (citation required; no standalone LICENSE at repo root - HTTP 404). Values are integers + hashed app/instance names; NO raw text. Commit policy: bounded derived numeric sample + citation.",
+      "classification": "proxy (instance-lifecycle allocation records)",
+      "measured_vs_derived": "MEASURED instance creation/scheduled/deletion timestamps + resource ALLOCATIONS (gpu_request). NOT per-request. NO measured serving queue_wait (only a DERIVABLE scheduler_delay = scheduled_time - creation_time). NO utilization (only allocation). NO failure/timeout. NO autoscaling EVENT labels (scaling can only be INFERRED from per-app create/delete counts over time).",
+      "bounded_ingest_safe": true,
+      "downloaded": {"bytes": 2118900, "rows": 23871, "fully_ingested": true, "note": "2.1MB CSV; full ingest under cap"},
+      "autoscaling_warning": "Do NOT convert this proxy into measured serving autoscaling. There are no scale-up/scale-down event labels and no per-request queue. Any autoscaling/queue signal is an INFERRED instance-lifecycle proxy."
+    }
+  ],
+  "summary": {
+    "sources_inspected": 3,
+    "sources_safe_to_ingest": 3,
+    "total_raw_bytes_downloaded_approx": 120300000,
+    "honest_constraints": [
+      "Mooncake has NO measured reuse label -> derived prefix-reuse proxy only; label NOT identical to SwissAI reuse_percentage.",
+      "Huawei is FaaS (CPU pod) cold-start, NOT GPU model-load -> calibration-only prior; cold-start event files exceed 300MB cap so only a bounded 100MB slice of one region was recovered.",
+      "Alibaba v2025 is instance-lifecycle, NOT per-request -> autoscaling/queue are inferred proxies, no measured serving autoscaling or queue-wait."
+    ]
+  }
+}

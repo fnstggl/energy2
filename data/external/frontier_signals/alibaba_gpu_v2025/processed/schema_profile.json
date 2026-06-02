@@ -1,0 +1,32 @@
+{
+  "field_presence": {
+    "creation_time_s": 0.695,
+    "deletion_time_s": 0.6281,
+    "failure_or_timeout_state": 0.0,
+    "gpu_count": 1.0,
+    "instance_lifetime_s": 0.519,
+    "queue_wait_s": 0.0,
+    "scheduled_time_s": 0.695,
+    "scheduler_delay_s": 0.695,
+    "utilization": 0.0
+  },
+  "license": "Alibaba clusterdata terms (citation required). Numeric/hashed only.",
+  "normalized_rows": 23871,
+  "raw_file": "data/external/frontier_signals/raw/alibaba_gpu_v2025/disaggregated_DLRM_trace.csv",
+  "raw_schema": [
+    "instance_sn",
+    "role(CN/HN)",
+    "app_name",
+    "cpu_request/limit",
+    "gpu_request/limit",
+    "rdma_request/limit",
+    "memory_request/limit",
+    "disk_request/limit",
+    "max_instance_per_node",
+    "creation_time",
+    "scheduled_time",
+    "deletion_time"
+  ],
+  "source": "alibaba_gpu_v2025",
+  "trace_role": "autoscaling_queue_proxy_trace"
+}
