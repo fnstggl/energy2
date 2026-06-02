@@ -2369,3 +2369,108 @@ Future PRs may wire the gate in to replace the TARGETS table; until
 they do, neither default-policy outcome changes and the
 `telemetry_gap_normalized_sample_commit_summary.json` artifact in
 §12.4 remains valid.
+
+### 12.8 RedistributionGate — second consumer wires the script's TARGETS table
+
+The previous milestone (§12.7) wired the gate into the audit script
+(`scripts/audit_hf_redistribution_gate.py`) but explicitly left
+`scripts/commit_hf_gap_normalized_samples.py` carrying its own
+hard-coded `license_redistribution_status` / `commit_sample` fields.
+This milestone closes that loop: the commit script's TARGETS table
+no longer pre-classifies redistribution decisions. Each entry now
+holds only `dataset_id`, `config_name`, the raw HF license tag
+(`license_tag`), and a human-curated provenance string
+(`license_source`). The script asks
+`aurelius.ingestion.redistribution_gate.decide_redistribution` for
+both the canonical `license_redistribution_status` label and the
+permit/deny decision.
+
+**Behavioural equivalence on the four already-committed samples.**
+Under the committed default policy (deny-all, zero grants):
+
+| Dataset | license_tag | Gate verdict | reason_code | Commit decision |
+|---|---|---|---|---|
+| `lzzmm/BurstGPT` | `cc-by-4.0` | permitted | `permitted_declared_permissive_license` | COMMITTED |
+| `lsliwko/google-cluster-data-2019-sorted-by-timestamp` | `cc-by-4.0` | permitted | `permitted_declared_permissive_license` | COMMITTED |
+| `sammshen/lmcache-agentic-traces` | `mit` | permitted | `permitted_declared_permissive_license` | COMMITTED |
+| `semianalysisai/cc-traces-weka-no-subagents-051226` | `apache-2.0` | permitted | `permitted_declared_permissive_license` | COMMITTED |
+| `jaytonde05/prefixbench` | `None` | denied | `no_grant_recorded` | SKIPPED (gate denied: no_grant_recorded) |
+
+`total_committed_bytes` is unchanged at 30,366,604 bytes (sum of the
+four committed `normalized_sample.jsonl` files); every
+`committed_normalized_sample_sha256` recorded in the per-dataset
+`summary.json` files is unchanged. The script's `materialize` function
+now detects when the gitignored `analysis_sample.jsonl` source is
+missing (e.g. a fresh checkout) but the committed
+`normalized_sample.jsonl` is present and whose sha256 matches the
+recorded value — in that case it idempotently reuses the existing
+committed sample instead of reporting SKIPPED. This is what makes the
+script safe to re-run in CI to refresh the rollup's gate-derived
+metadata.
+
+**New fields the script records.** Each per-dataset `summary.json` now
+also carries `redistribution_gate_reason_code`,
+`redistribution_gate_reason_detail`,
+`redistribution_gate_permitted`, and
+`redistribution_gate_operator_grant_dataset_id` (None except when an
+operator grant matched). The rollup
+(`telemetry_gap_normalized_sample_commit_summary.json`,
+`doc_version = telemetry_gap_normalized_sample_commit_v2`) now also
+carries `redistribution_gate_scope`,
+`redistribution_gate_policy_default`, and
+`redistribution_gate_policy_grant_count` at the top level, plus the
+per-dataset gate fields on each row. Downstream tooling that pivots on
+the gate's closed reason-code set (e.g. operator dashboards) can now
+read the same tokens the audit script uses, without re-classifying
+licenses.
+
+**Operator-grant smoke test pinned.** A new test
+(`test_operator_grant_for_prefixbench_would_permit` in
+`tests/test_hf_gap_commit_script_gate_wiring.py`) builds an in-memory
+ledger with a `committed_normalized_sample` grant for
+`jaytonde05/prefixbench`, calls the script's `evaluate_target` for
+that target, and asserts the gate flips to PERMITTED with
+`reason_code = permitted_operator_grant`. Nothing is written to disk;
+the test verifies the wiring is real (the script consults the ledger,
+not a hard-coded `unspecified → deny` table). With the committed
+default policy file shipping zero grants this has no observable
+effect on the committed artifacts, but it pins the operator-grant
+path so a future regression that re-introduces hard-coded denials
+fails this test instead of silently breaking operator workflows.
+
+**Forbidden duplications pinned.** The wiring test file also asserts
+that the script:
+
+- does NOT carry `license_redistribution_status` or `commit_sample`
+  keys in any TARGETS entry (those are computed, not declared),
+- does NOT re-declare `PERMISSIVE_LICENSE_TAGS` or any equivalent
+  permissive-status table inside the script (only the gate may
+  classify licenses),
+- does NOT import `huggingface_hub` or `datasets` (sample-commit
+  decisions are pure-Python and read only gitignored local files),
+- contains no `hf_<token>` literal and no `HF_TOKEN = "hf_..."`
+  assignment.
+
+**Tests landed.** 27 new tests in
+`tests/test_hf_gap_commit_script_gate_wiring.py` covering: TARGETS
+schema is minimal (no pre-classified status); script imports the
+canonical gate; `evaluate_target` is a pure function returning a
+`RedistributionGateDecision`; under the default policy every TARGETS
+entry produces the expected `(permitted, license_status, reason_code)`
+triple (5 cases, one per dataset); the rollup carries the new
+gate metadata; per-dataset summary.json files carry
+`redistribution_gate_reason_code`; the committed
+`license_redistribution_status` matches `classify_license(license_tag)`
+on every committed dataset; an in-memory operator grant flips the
+prefixbench verdict; safety invariants (no HF_TOKEN literal, no HF
+SDK import, no duplicated permissive allow-list); and `materialize`
+is idempotent on the existing committed samples.
+
+The pre-existing 60 tests in
+`tests/test_hf_gap_normalized_samples.py` continue to pass on the
+same committed artifacts, and the pre-existing 34 tests in
+`tests/test_hf_redistribution_gate.py` continue to pass — including
+`test_classify_license_agrees_with_commit_script_targets`, which
+pinned the gate's verdicts on the script's licenses before the
+wiring landed and now serves as the cross-file backstop that the
+two paths stay consistent.

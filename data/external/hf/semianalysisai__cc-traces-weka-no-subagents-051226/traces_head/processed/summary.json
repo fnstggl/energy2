@@ -143,6 +143,10 @@
     "ttft_s",
     "turn_index"
   ],
+  "redistribution_gate_operator_grant_dataset_id": null,
+  "redistribution_gate_permitted": true,
+  "redistribution_gate_reason_code": "permitted_declared_permissive_license",
+  "redistribution_gate_reason_detail": "declared HF license 'apache-2.0' maps to 'permissive_apache_2_0'; ledger not consulted",
   "sample_sha256": "b9bd6ad697ea537dbad040428be0c2ebd2a8e38a1a6d220b32a0ef8194502723",
   "sampling_method": "head_with_stratification_keys_recorded",
   "schema_mapping_path": "data/external/hf/semianalysisai__cc-traces-weka-no-subagents-051226/traces_head/processed/schema_mapping.json",

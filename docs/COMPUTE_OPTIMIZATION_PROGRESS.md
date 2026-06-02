@@ -4594,3 +4594,145 @@ economic signals stands — this milestone does not close the
 operational × economic join gap on its own. (v) Pilot telemetry
 (Tier 1) remains the only path to production calibration; no HF
 dataset closes that gate.
+
+### Done 2026-06-02 — RedistributionGate: second consumer wires `commit_hf_gap_normalized_samples.py` through the gate
+
+**Scope.** The previous milestone (PR #152, `RedistributionGate —
+first consumer`) introduced the canonical
+`decide_redistribution` function and the
+`scripts/audit_hf_redistribution_gate.py` audit consumer, but it
+explicitly left `scripts/commit_hf_gap_normalized_samples.py`
+carrying its own hard-coded `license_redistribution_status` /
+`commit_sample` fields in a per-target TARGETS table. The previous
+PR's "Next" section called this out as the canonical next milestone:
+*"Wire the gate in to replace the hard-coded TARGETS table in
+`scripts/commit_hf_gap_normalized_samples.py`. The backwards-
+compatibility test (`test_classify_license_agrees_with_commit_
+script_targets`) already pins that the gate agrees with the four
+existing verdicts; the wiring PR would mainly be a refactor that
+removes the duplicated license string."* This PR is that wiring.
+No HF ingestion. No scheduler / controller / robust-energy-engine
+change. No production claim. No Tier 1 promotion. No new HF data
+downloaded. No new candidate-registry entry. No new committed
+normalised sample. With the committed default policy file shipping
+zero grants and the gate's pre-existing backwards-compat test
+pinning verdict equality on every license tag the script ships, the
+four already-committed normalised samples are byte-identical and
+every `committed_normalized_sample_sha256` field is unchanged.
+
+**Why now.** The previous PR's "Next" section listed this as
+milestone (i). The wiring removes the only remaining duplicated
+license-classifier in the codebase (the script's TARGETS table was
+the second copy after the gate's `PERMISSIVE_LICENSE_TAGS`). Once
+wired in, an operator who records a `committed_normalized_sample`
+grant in `operator_redistribution_policy.json` for a `license=None`
+dataset in TARGETS (today: `jaytonde05/prefixbench`) will see the
+script flip that dataset from SKIPPED to COMMITTED on the next run
+— without any code change. That is the entire point of having the
+gate as a consumer.
+
+**What landed.**
+
+- `scripts/commit_hf_gap_normalized_samples.py` — refactored.
+  - TARGETS table no longer carries `license_redistribution_status`
+    or `commit_sample` keys. Each entry now holds only the raw HF
+    `license_tag` (string or None) and the human-curated
+    `license_source` provenance string.
+  - New module-level imports of `OperatorPolicyLedger` and
+    `decide_redistribution` from `aurelius.ingestion.*`.
+  - New `evaluate_target(target, *, ledger, now_iso=None)` pure
+    function returning the gate's `RedistributionGateDecision`.
+    Exposed so tests can drive the gate path without touching the
+    filesystem.
+  - `materialize(target, total_committed_so_far, *, ledger,
+    now_iso=None)` now derives `license_redistribution_status` and
+    the permit/deny decision from the gate, writes
+    `redistribution_gate_reason_code`,
+    `redistribution_gate_reason_detail`,
+    `redistribution_gate_permitted`, and
+    `redistribution_gate_operator_grant_dataset_id` into the
+    per-dataset summary.json, and idempotently reuses an existing
+    `normalized_sample.jsonl` when the gitignored
+    `analysis_sample.jsonl` source is missing but the committed
+    sample's sha256 matches the recorded value. This makes the
+    script safe to re-run in CI to refresh gate-derived metadata
+    after a fresh checkout.
+  - `main()` loads the default policy file from
+    `data/external/hf_discovery/operator_redistribution_policy.json`
+    via `OperatorPolicyLedger.load`, falling back to
+    `OperatorPolicyLedger.empty()` if missing. The rollup now
+    carries `redistribution_gate_scope`,
+    `redistribution_gate_policy_default`, and
+    `redistribution_gate_policy_grant_count` at the top level, plus
+    the gate's reason_code / permitted / operator_grant fields on
+    every per-dataset row. `doc_version` bumped to
+    `telemetry_gap_normalized_sample_commit_v2`.
+- `data/external/hf/<dataset>/<config>/processed/summary.json` —
+  4 permissive-licensed summaries (BurstGPT, Google cluster-data,
+  lmcache-agentic, semianalysisai cc-traces) gained the new
+  `redistribution_gate_*` keys recording the gate's permit verdict
+  and reason code. The prefixbench summary's `license_redistribution_
+  status` stays at `unspecified_no_committed_sample` (unchanged) and
+  the new gate keys record the `no_grant_recorded` denial. No
+  `committed_normalized_sample_*` field changed on any of the five
+  summaries.
+- `data/external/hf_discovery/telemetry_gap_normalized_sample_
+  commit_summary.json` — rollup regenerated under the wiring.
+  Per-dataset rows now carry `license_tag`,
+  `redistribution_gate_reason_code`,
+  `redistribution_gate_permitted`, and
+  `redistribution_gate_operator_grant_dataset_id`. The
+  prefixbench row's `commit_decision` is now `SKIPPED (gate denied:
+  no_grant_recorded)` (was `SKIPPED (license)`). `total_committed_
+  bytes = 30,366,604` is unchanged.
+- `tests/test_hf_gap_commit_script_gate_wiring.py` — new file with
+  27 tests pinning every dimension of the wiring (see "Result"
+  below).
+- `docs/HF_DATASET_REGISTRY.md` — new §12.8
+  "RedistributionGate — second consumer wires the script's TARGETS
+  table" documenting the refactor, the equivalence table on the
+  five datasets, the new summary / rollup fields, the
+  operator-grant smoke test, and the forbidden duplications
+  pinned by the tests.
+- `docs/COMPUTE_OPTIMIZATION_PROGRESS.md` — this entry.
+
+**Result.** All 27 new tests pass. All 60 pre-existing tests in
+`tests/test_hf_gap_normalized_samples.py` still pass on the
+unchanged committed artifacts. All 34 pre-existing tests in
+`tests/test_hf_redistribution_gate.py` still pass, including
+`test_classify_license_agrees_with_commit_script_targets` (the
+backwards-compat backstop that pinned the gate's verdicts on every
+license tag the script ships, *before* the wiring landed). All
+24 pre-existing tests in
+`tests/test_hf_operator_redistribution_policy.py` still pass. All
+922 tests in the broader HF suite (`tests/test_hf_*.py`) pass.
+`telemetry_gap_normalized_sample_commit_summary.json` records the
+identical `total_committed_bytes = 30,366,604` it recorded under
+the v1 script.
+
+**Honesty + scope guarantees.** No production claim. No scheduler /
+controller / robust-energy-engine touched. No oracle as headline.
+No Tier 1 promotion. No new HF data downloaded. No new candidate-
+registry entry. No new committed normalised sample. No `HF_TOKEN`
+leak. No raw data committed. The script does not import
+`huggingface_hub` or `datasets`. The TARGETS table now carries the
+*raw* HF license tag — the canonical gate is the only classifier.
+
+**Next.** (i) Wire the gate in to the per-dataset ingestion scripts
+(`scripts/ingest_hf_*.py`) that today carry their own hard-coded
+`license_redistribution_status` string. Same pattern as this PR:
+remove the duplicated label, call
+`classify_license(license_tag)` or `decide_redistribution(...)`,
+record the gate's reason code in the per-dataset summary. (ii) If/
+when an operator decides to opt one of the four Round-8 license-
+blocked candidates (or `jaytonde05/prefixbench`) in, they add a
+grant entry to `operator_redistribution_policy.json`; both the
+audit script and the commit script will flip that dataset's row to
+`permitted_operator_grant` with the grant's identity recorded on
+the next run. (iii) The Rounds 5-8 negative result on economic
+signals stands — this milestone does not close the operational ×
+economic join gap on its own; it makes the consent path for the few
+license=None candidates that *could* close part of that gap
+reachable through the canonical commit script. (iv) Pilot
+telemetry (Tier 1) remains the only path to production
+calibration; no HF dataset closes that gate.

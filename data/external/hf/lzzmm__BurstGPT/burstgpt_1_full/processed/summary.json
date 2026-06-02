@@ -105,6 +105,10 @@
     "output_tokens",
     "request_arrival_ts_s"
   ],
+  "redistribution_gate_operator_grant_dataset_id": null,
+  "redistribution_gate_permitted": true,
+  "redistribution_gate_reason_code": "permitted_declared_permissive_license",
+  "redistribution_gate_reason_detail": "declared HF license 'cc-by-4.0' maps to 'permissive_cc_by_4_0'; ledger not consulted",
   "sample_sha256": "73f4c9703ff78efb4e49aacd3249fc3063010f2f8a165eb94e1752f15b70fe3a",
   "sampling_method": "head_with_stratification_keys_recorded",
   "schema_mapping_path": "data/external/hf/lzzmm__BurstGPT/burstgpt_1_full/processed/schema_mapping.json",

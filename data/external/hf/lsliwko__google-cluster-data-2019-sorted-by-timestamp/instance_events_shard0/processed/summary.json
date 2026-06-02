@@ -132,6 +132,10 @@
     "resource_request_summary",
     "scheduling_class"
   ],
+  "redistribution_gate_operator_grant_dataset_id": null,
+  "redistribution_gate_permitted": true,
+  "redistribution_gate_reason_code": "permitted_declared_permissive_license",
+  "redistribution_gate_reason_detail": "declared HF license 'cc-by-4.0' maps to 'permissive_cc_by_4_0'; ledger not consulted",
   "sample_sha256": "e97833347d888a69369148f6416808c979454e2f0a6c6b3aaa1ada4a3e5b8107",
   "sampling_method": "head_with_stratification_keys_recorded",
   "schema_mapping_path": "data/external/hf/lsliwko__google-cluster-data-2019-sorted-by-timestamp/instance_events_shard0/processed/schema_mapping.json",

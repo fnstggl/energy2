@@ -9,7 +9,11 @@
       "config_name": "burstgpt_1_full",
       "dataset_id": "lzzmm/BurstGPT",
       "license_redistribution_status": "permissive_cc_by_4_0",
-      "license_source": "LICENSE file at https://huggingface.co/datasets/lzzmm/BurstGPT/blob/main/LICENSE = 'Attribution 4.0 International' (CC-BY-4.0)"
+      "license_source": "LICENSE file at https://huggingface.co/datasets/lzzmm/BurstGPT/blob/main/LICENSE = 'Attribution 4.0 International' (CC-BY-4.0)",
+      "license_tag": "cc-by-4.0",
+      "redistribution_gate_operator_grant_dataset_id": null,
+      "redistribution_gate_permitted": true,
+      "redistribution_gate_reason_code": "permitted_declared_permissive_license"
     },
     {
       "commit_decision": "COMMITTED",
@@ -20,7 +24,11 @@
       "config_name": "instance_events_shard0",
       "dataset_id": "lsliwko/google-cluster-data-2019-sorted-by-timestamp",
       "license_redistribution_status": "permissive_cc_by_4_0",
-      "license_source": "Mirror of github.com/google/cluster-data, released by Google under CC-BY-4.0; HF redistribution preserves the same terms"
+      "license_source": "Mirror of github.com/google/cluster-data, released by Google under CC-BY-4.0; HF redistribution preserves the same terms",
+      "license_tag": "cc-by-4.0",
+      "redistribution_gate_operator_grant_dataset_id": null,
+      "redistribution_gate_permitted": true,
+      "redistribution_gate_reason_code": "permitted_declared_permissive_license"
     },
     {
       "commit_decision": "COMMITTED",
@@ -31,7 +39,11 @@
       "config_name": "train_shard4",
       "dataset_id": "sammshen/lmcache-agentic-traces",
       "license_redistribution_status": "permissive_mit",
-      "license_source": "HF card frontmatter license: mit"
+      "license_source": "HF card frontmatter license: mit",
+      "license_tag": "mit",
+      "redistribution_gate_operator_grant_dataset_id": null,
+      "redistribution_gate_permitted": true,
+      "redistribution_gate_reason_code": "permitted_declared_permissive_license"
     },
     {
       "commit_decision": "COMMITTED",
@@ -42,24 +54,35 @@
       "config_name": "traces_head",
       "dataset_id": "semianalysisai/cc-traces-weka-no-subagents-051226",
       "license_redistribution_status": "permissive_apache_2_0",
-      "license_source": "HF card frontmatter license: apache-2.0"
+      "license_source": "HF card frontmatter license: apache-2.0",
+      "license_tag": "apache-2.0",
+      "redistribution_gate_operator_grant_dataset_id": null,
+      "redistribution_gate_permitted": true,
+      "redistribution_gate_reason_code": "permitted_declared_permissive_license"
     },
     {
-      "commit_decision": "SKIPPED (license)",
+      "commit_decision": "SKIPPED (gate denied: no_grant_recorded)",
       "config_name": "prefixbench_all",
       "dataset_id": "jaytonde05/prefixbench",
       "license_redistribution_status": "unspecified_no_committed_sample",
-      "license_source": "HF card frontmatter has no `license:` key; README provides no redistribution statement. Conservative: do NOT commit a normalized sample."
+      "license_source": "HF card frontmatter has no `license:` key; README provides no redistribution statement. Conservative: the gate denies under the default deny_all policy with reason_code `no_grant_recorded`. An operator grant entry in `operator_redistribution_policy.json` would unblock without a code change.",
+      "license_tag": null,
+      "redistribution_gate_operator_grant_dataset_id": null,
+      "redistribution_gate_permitted": false,
+      "redistribution_gate_reason_code": "no_grant_recorded"
     }
   ],
-  "doc_version": "telemetry_gap_normalized_sample_commit_v1",
-  "git_sha": "f1df1de07ff31dad5e7c07586f962dfdf4644121",
-  "materialized_at_s": 1780280387.5448782,
+  "doc_version": "telemetry_gap_normalized_sample_commit_v2",
+  "git_sha": "0273aedfff55ab51a21fe295dfac554b23ed747c",
+  "materialized_at_s": 1780387930.7106044,
   "max_per_sample_bytes": 52428800,
   "max_total_committed_bytes": 157286400,
   "modifies_controllers_or_defaults": false,
   "modifies_robust_energy_engine": false,
   "production_claim": false,
+  "redistribution_gate_policy_default": "deny_all",
+  "redistribution_gate_policy_grant_count": 0,
+  "redistribution_gate_scope": "committed_normalized_sample",
   "stage": "phase_a_normalized_sample_commit",
   "total_committed_bytes": 30366604
 }

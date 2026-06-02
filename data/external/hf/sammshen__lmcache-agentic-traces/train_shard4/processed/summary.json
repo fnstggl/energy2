@@ -100,6 +100,10 @@
     "pre_gap_s",
     "session_id"
   ],
+  "redistribution_gate_operator_grant_dataset_id": null,
+  "redistribution_gate_permitted": true,
+  "redistribution_gate_reason_code": "permitted_declared_permissive_license",
+  "redistribution_gate_reason_detail": "declared HF license 'mit' maps to 'permissive_mit'; ledger not consulted",
   "sample_sha256": "09afc7bfc6a342b3cd4b13a29d90d6b5e73d83f9da497fe65fe7723c2ecfdd3b",
   "sampling_method": "head_with_stratification_keys_recorded",
   "schema_mapping_path": "data/external/hf/sammshen__lmcache-agentic-traces/train_shard4/processed/schema_mapping.json",

@@ -6,18 +6,56 @@ script promotes the gitignored ``processed/analysis_sample.jsonl`` to a
 committed ``processed/normalized_sample.jsonl`` for datasets whose
 license permits redistribution.
 
+Redistribution decision (wired through the canonical gate)
+----------------------------------------------------------
+
+This script is now the second consumer of
+:func:`aurelius.ingestion.redistribution_gate.decide_redistribution`
+(after ``scripts/audit_hf_redistribution_gate.py``). The hard-coded
+``license_redistribution_status`` / ``commit_sample`` fields that used to
+live in this script's TARGETS table have been removed; the script now
+records only the raw HF license tag plus a human-curated provenance
+string (``license_source``), and asks the gate for both the canonical
+status label and the commit decision.
+
+Behaviour under the default policy (committed
+``operator_redistribution_policy.json`` ships zero grants):
+
+- Permissive declared licenses (apache-2.0, mit, cc-by-4.0, cdla-2, …)
+  → permitted; ``license_redistribution_status`` is the canonical
+  ``permissive_*`` label from the gate (unchanged from before).
+- ``license = None`` → denied with ``no_grant_recorded`` (unchanged
+  from before, but now this is the gate denying via the ledger rather
+  than a hard-coded ``commit_sample=False``).
+
+The pre-existing backwards-compat test
+(``test_classify_license_agrees_with_commit_script_targets`` in
+``tests/test_hf_redistribution_gate.py``) pins the gate's verdicts on
+every license tag this script ships, so wiring the gate in cannot
+change the four already-committed normalised samples' status.
+
+If an operator records a grant entry in
+``operator_redistribution_policy.json`` for a ``license = None`` row
+listed in TARGETS (e.g. prefixbench), the gate flips that row to
+``permitted_operator_grant`` and this script will commit a normalised
+sample on the next run — without any code change. That is the entire
+point of wiring the gate in.
+
 Policy (binding):
 - raw downloads remain gitignored
 - each committed normalized sample ≤ 50 MB
 - sum of all committed normalized samples in this run ≤ 150 MB
-- ``license_redistribution_status`` must be one of:
-    ``permissive_apache_2_0`` / ``permissive_mit`` / ``permissive_cc_by_4_0``
-- samples with ``license_redistribution_status == "unspecified"`` are
-  recorded but NOT copied to a committed file.
+- redistribution decision comes from ``decide_redistribution`` only;
+  this script does NOT classify licenses itself
 
 Summary additions per dataset:
 - committed_normalized_sample_path / _bytes / _rows / _sha256
-- license_redistribution_status
+- license_redistribution_status (canonical ``permissive_*`` or
+  ``unspecified_no_committed_sample`` etc., produced by the gate)
+- license_redistribution_source (human-curated provenance — where the
+  license tag came from)
+- redistribution_gate_reason_code (gate's closed-set verdict code so
+  downstream tooling can pivot on a stable token)
 - raw_committed=false
 """
 from __future__ import annotations
@@ -29,63 +67,82 @@ import subprocess
 import sys
 import time
 from pathlib import Path
+from typing import Optional
 
 REPO_ROOT = Path(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+if str(REPO_ROOT) not in sys.path:
+    sys.path.insert(0, str(REPO_ROOT))
+
+from aurelius.ingestion.operator_redistribution_policy import (  # noqa: E402
+    OperatorPolicyLedger,
+)
+from aurelius.ingestion.redistribution_gate import (  # noqa: E402
+    RedistributionGateDecision,
+    decide_redistribution,
+)
+
 HF_DIR = REPO_ROOT / "data" / "external" / "hf"
 DISC_DIR = REPO_ROOT / "data" / "external" / "hf_discovery"
+POLICY_PATH = DISC_DIR / "operator_redistribution_policy.json"
 
 MAX_PER_SAMPLE_BYTES = 50 * 1024 * 1024  # 50 MB
 MAX_TOTAL_COMMITTED_BYTES = 150 * 1024 * 1024  # 150 MB
 
-# Per-dataset license verdict + commit decision. Verified against each
-# dataset's HF card (frontmatter `license:` field) or, where the HF card
-# was ambiguous (BurstGPT), against the LICENSE file fetched directly
-# from the dataset repo.
+GATE_SCOPE = "committed_normalized_sample"
+
+# Per-dataset RAW HF license tag + human-curated provenance.
+#
+# The script does NOT classify the tag here — it asks the gate. The tag
+# is the same string that appears on the HF dataset card frontmatter
+# (or, where the HF card was silent, the string read from the dataset's
+# LICENSE file fetched directly from the repo and recorded in
+# ``license_source``). ``None`` means the HF card has no ``license:``
+# key and no LICENSE file was found → the gate denies under the default
+# policy, but an operator grant could opt this dataset in without any
+# code change.
 TARGETS = [
     {
         "dataset_id": "lzzmm/BurstGPT",
         "config_name": "burstgpt_1_full",
-        "license_redistribution_status": "permissive_cc_by_4_0",
+        "license_tag": "cc-by-4.0",
         "license_source": (
             "LICENSE file at https://huggingface.co/datasets/lzzmm/BurstGPT/blob/main/LICENSE "
             "= 'Attribution 4.0 International' (CC-BY-4.0)"
         ),
-        "commit_sample": True,
     },
     {
         "dataset_id": "lsliwko/google-cluster-data-2019-sorted-by-timestamp",
         "config_name": "instance_events_shard0",
-        "license_redistribution_status": "permissive_cc_by_4_0",
+        "license_tag": "cc-by-4.0",
         "license_source": (
             "Mirror of github.com/google/cluster-data, released by Google "
             "under CC-BY-4.0; HF redistribution preserves the same terms"
         ),
-        "commit_sample": True,
     },
     {
         "dataset_id": "sammshen/lmcache-agentic-traces",
         "config_name": "train_shard4",
-        "license_redistribution_status": "permissive_mit",
+        "license_tag": "mit",
         "license_source": "HF card frontmatter license: mit",
-        "commit_sample": True,
     },
     {
         "dataset_id": "semianalysisai/cc-traces-weka-no-subagents-051226",
         "config_name": "traces_head",
-        "license_redistribution_status": "permissive_apache_2_0",
+        "license_tag": "apache-2.0",
         "license_source": "HF card frontmatter license: apache-2.0",
-        "commit_sample": True,
     },
     {
         "dataset_id": "jaytonde05/prefixbench",
         "config_name": "prefixbench_all",
-        "license_redistribution_status": "unspecified_no_committed_sample",
+        "license_tag": None,
         "license_source": (
             "HF card frontmatter has no `license:` key; README provides no "
-            "redistribution statement. Conservative: do NOT commit a "
-            "normalized sample."
+            "redistribution statement. Conservative: the gate denies under "
+            "the default deny_all policy with reason_code "
+            "`no_grant_recorded`. An operator grant entry in "
+            "`operator_redistribution_policy.json` would unblock without a "
+            "code change."
         ),
-        "commit_sample": False,
     },
 ]
 
@@ -123,46 +180,141 @@ def _count_rows(path: Path) -> int:
     return n
 
 
-def materialize(target: dict, total_committed_so_far: int) -> tuple[dict, int]:
+def _load_ledger(policy_path: Path) -> OperatorPolicyLedger:
+    """Load the operator policy ledger from disk, or fall back to empty.
+
+    The default behaviour when the policy file is missing is the same
+    as the committed default file: deny-all, zero grants. We use
+    ``empty()`` so the script remains self-sufficient (e.g. in a fresh
+    checkout without the committed JSON, the script still produces
+    correct deny decisions instead of crashing).
+    """
+
+    if policy_path.exists():
+        return OperatorPolicyLedger.load(policy_path)
+    return OperatorPolicyLedger.empty()
+
+
+def evaluate_target(
+    target: dict,
+    *,
+    ledger: OperatorPolicyLedger,
+    now_iso: Optional[str] = None,
+) -> RedistributionGateDecision:
+    """Ask the gate whether this target's normalised sample may be committed.
+
+    Pure function — no I/O. Exposed so tests can drive the gate path
+    without invoking the filesystem-mutating ``materialize``.
+    """
+
+    return decide_redistribution(
+        dataset_id=target["dataset_id"],
+        license_str=target.get("license_tag"),
+        scope=GATE_SCOPE,
+        ledger=ledger,
+        now_iso=now_iso,
+    )
+
+
+def materialize(
+    target: dict,
+    total_committed_so_far: int,
+    *,
+    ledger: OperatorPolicyLedger,
+    now_iso: Optional[str] = None,
+) -> tuple[dict, int]:
     pd = _processed_dir(target["dataset_id"], target["config_name"])
     summary_path = pd / "summary.json"
     if not summary_path.exists():
-        return {"target": target, "audit_status": "summary_missing"}, total_committed_so_far
+        return (
+            {"target": target, "audit_status": "summary_missing"},
+            total_committed_so_far,
+        )
     with open(summary_path) as fh:
         summary = json.load(fh)
+
+    decision = evaluate_target(target, ledger=ledger, now_iso=now_iso)
 
     analysis = pd / "analysis_sample.jsonl"
     committed_path = pd / "normalized_sample.jsonl"
     result = {
         "dataset_id": target["dataset_id"],
         "config_name": target["config_name"],
-        "license_redistribution_status": target["license_redistribution_status"],
+        "license_tag": target.get("license_tag"),
+        "license_redistribution_status": decision.license_status,
         "license_source": target["license_source"],
+        "redistribution_gate_reason_code": decision.reason_code,
+        "redistribution_gate_permitted": decision.permitted,
+        "redistribution_gate_operator_grant_dataset_id": (
+            decision.operator_grant_dataset_id
+        ),
         "commit_decision": "skip",
     }
 
-    # Always update summary metadata, regardless of commit decision.
-    summary["license_redistribution_status"] = target["license_redistribution_status"]
+    # Always update summary metadata, regardless of commit decision. The
+    # gate's verdict is the single source of truth for the redistribution
+    # status string and the reason code.
+    summary["license_redistribution_status"] = decision.license_status
     summary["license_redistribution_source"] = target["license_source"]
+    summary["redistribution_gate_reason_code"] = decision.reason_code
+    summary["redistribution_gate_reason_detail"] = decision.reason_detail
+    summary["redistribution_gate_permitted"] = decision.permitted
+    summary["redistribution_gate_operator_grant_dataset_id"] = (
+        decision.operator_grant_dataset_id
+    )
     summary["raw_committed"] = False
 
-    if not target["commit_sample"]:
+    if not decision.permitted:
         summary["committed_normalized_sample_path"] = None
         summary["committed_normalized_sample_bytes"] = 0
         summary["committed_normalized_sample_rows"] = 0
         summary["committed_normalized_sample_sha256"] = None
         summary["committed_normalized_sample_reason_skipped"] = (
+            f"redistribution_gate denied: reason_code="
+            f"{decision.reason_code!r}; "
             f"license_redistribution_status="
-            f"{target['license_redistribution_status']}; "
-            "no committed normalized sample"
+            f"{decision.license_status!r}"
         )
         with open(summary_path, "w") as fh:
             json.dump(summary, fh, indent=2, sort_keys=True)
-        result["commit_decision"] = "SKIPPED (license)"
+        result["commit_decision"] = (
+            f"SKIPPED (gate denied: {decision.reason_code})"
+        )
         return result, total_committed_so_far
 
     if not analysis.exists():
-        result["commit_decision"] = "SKIPPED (analysis_sample missing — re-run scripts/ingest_hf_gap_datasets.py)"
+        # Fast path: in a fresh checkout the gitignored
+        # ``analysis_sample.jsonl`` is missing, but the committed
+        # ``normalized_sample.jsonl`` is git-tracked and present. If
+        # the existing committed sample's bytes match the sha256
+        # recorded in summary.json, we are idempotent — the gate's
+        # verdict for this target has not changed (the
+        # backwards-compat test pins that), and there is nothing to
+        # re-do. We still refresh the gate-derived fields in the
+        # summary so a re-run picks up the new reason_code metadata.
+        existing_sha = summary.get("committed_normalized_sample_sha256")
+        existing_path = summary.get("committed_normalized_sample_path")
+        existing_bytes = summary.get("committed_normalized_sample_bytes") or 0
+        existing_rows = summary.get("committed_normalized_sample_rows") or 0
+        if (
+            committed_path.exists()
+            and existing_sha
+            and existing_path
+            and _sha256_file(committed_path) == existing_sha
+        ):
+            with open(summary_path, "w") as fh:
+                json.dump(summary, fh, indent=2, sort_keys=True)
+            result["commit_decision"] = "COMMITTED"
+            result["committed_path"] = existing_path
+            result["committed_bytes"] = int(existing_bytes)
+            result["committed_rows"] = int(existing_rows)
+            result["committed_sha256"] = existing_sha
+            return result, total_committed_so_far + int(existing_bytes)
+
+        result["commit_decision"] = (
+            "SKIPPED (analysis_sample missing — re-run "
+            "scripts/ingest_hf_gap_datasets.py)"
+        )
         return result, total_committed_so_far
 
     sz = analysis.stat().st_size
@@ -213,10 +365,11 @@ def materialize(target: dict, total_committed_so_far: int) -> tuple[dict, int]:
 
 
 def main() -> int:
+    ledger = _load_ledger(POLICY_PATH)
     results = []
     total = 0
     for t in TARGETS:
-        r, total = materialize(t, total)
+        r, total = materialize(t, total, ledger=ledger)
         results.append(r)
         print(f"  {t['dataset_id']}@{t['config_name']}: {r['commit_decision']}")
         if "committed_bytes" in r:
@@ -224,7 +377,7 @@ def main() -> int:
                   f"sha256={r['committed_sha256'][:16]}…")
     rollup_path = DISC_DIR / "telemetry_gap_normalized_sample_commit_summary.json"
     payload = {
-        "doc_version": "telemetry_gap_normalized_sample_commit_v1",
+        "doc_version": "telemetry_gap_normalized_sample_commit_v2",
         "stage": "phase_a_normalized_sample_commit",
         "production_claim": False,
         "modifies_robust_energy_engine": False,
@@ -234,6 +387,9 @@ def main() -> int:
         "total_committed_bytes": total,
         "materialized_at_s": time.time(),
         "git_sha": _git_sha(),
+        "redistribution_gate_scope": GATE_SCOPE,
+        "redistribution_gate_policy_default": ledger.policy_default,
+        "redistribution_gate_policy_grant_count": len(ledger.grants),
         "datasets": results,
     }
     rollup_path.parent.mkdir(parents=True, exist_ok=True)
