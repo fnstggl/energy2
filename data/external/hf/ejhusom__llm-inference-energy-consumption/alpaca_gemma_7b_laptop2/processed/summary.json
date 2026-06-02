@@ -106,7 +106,9 @@
   "has_gpu_energy_signal": true,
   "ingestion_timestamp_s": 1780323160.7660139,
   "license": "cc-by-sa-4.0",
-  "license_redistribution_status": "cc-by-sa-4.0 \u2014 attribution + share-alike required when redistributing committed normalised sample. Citation: Husom et al. 2024, 'The Price of Prompting: Profiling Energy Use in Large Language Models Inference', arxiv:2407.16893.",
+  "license_redistribution_attribution_notes": "cc-by-sa-4.0 \u2014 attribution + share-alike required when redistributing committed normalised sample. Citation: Husom et al. 2024, 'The Price of Prompting: Profiling Energy Use in Large Language Models Inference', arxiv:2407.16893.",
+  "license_redistribution_source": "HF card frontmatter license: cc-by-sa-4.0",
+  "license_redistribution_status": "permissive_cc_by_sa_4_0",
   "limitations": [
     "ejhusom/llm-inference-energy-consumption: cc-by-sa-4.0 benchmark output from the SINTEF Digital + Singapore Management University study (arxiv:2407.16893). Trust Tier 4 (latency_benchmark_trace).",
     "ENGINE: Ollama HTTP API serving stack \u2014 NOT vLLM / SGLang / Triton / Ray Serve. Ollama internally uses llama.cpp; durations reflect llama.cpp prompt-eval + generation timing under the Ollama wrapper. Do NOT generalise to vLLM / TGI throughput without independent validation.",
@@ -376,6 +378,11 @@
     "row_index_in_config",
     "index"
   ],
+  "redistribution_gate_operator_grant_dataset_id": null,
+  "redistribution_gate_permitted": true,
+  "redistribution_gate_reason_code": "permitted_declared_permissive_license",
+  "redistribution_gate_reason_detail": "declared HF license 'cc-by-sa-4.0' maps to 'permissive_cc_by_sa_4_0'; ledger not consulted",
+  "redistribution_gate_scope": "committed_normalized_sample",
   "rejected_columns": [
     "",
     "prompt",

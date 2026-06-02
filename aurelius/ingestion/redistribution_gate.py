@@ -27,8 +27,12 @@ function — :func:`decide_redistribution` — that fuses the two
 permitted paths into a single auditable result:
 
 1. **Declared permissive license** on the HF card (Apache-2.0, MIT,
-   CC-BY-4.0, CC-BY-3.0, CC-BY-2.0, CC0-1.0, CDLA-Permissive-2.0,
-   ODC-BY-1.0). Skip the ledger. Permit.
+   CC-BY-4.0, CC-BY-3.0, CC-BY-2.0, CC-BY-SA-4.0, CC-BY-SA-3.0,
+   CC0-1.0, CDLA-Permissive-2.0, ODC-BY-1.0). Skip the ledger.
+   Permit. ShareAlike clauses constrain *derivative works* — they do
+   not block redistribution of the original; the derivative
+   normalised samples this corpus commits inherit the same license,
+   so SA tags qualify as permissive at the redistribution layer.
 2. **License declared but not on the permissive allow-list** (e.g.
    ``"other"``, ``"openrail"``, GPL, custom research licenses). Deny
    — these require per-dataset manual review even if an operator
@@ -79,11 +83,12 @@ Recognised permissive license tags
 
 The closed set is derived from the HF tags actually present in the
 99-candidate registry today (apache-2.0, mit, cc-by-4.0, cc-by-2.0,
-cc0-1.0, cdla-permissive-2.0) plus a conservative extension to
-near-equivalent CC variants (cc-by-3.0) and the public-domain
-ODC-BY-1.0 used by some scheduler traces. Each tag maps to a single
-canonical ``license_status`` so downstream summary writers continue
-to use the existing string labels (``permissive_apache_2_0`` etc.).
+cc-by-sa-4.0, cc0-1.0, cdla-permissive-2.0) plus a conservative
+extension to near-equivalent CC variants (cc-by-3.0, cc-by-sa-3.0)
+and the public-domain ODC-BY-1.0 used by some scheduler traces.
+Each tag maps to a single canonical ``license_status`` so downstream
+summary writers continue to use the existing string labels
+(``permissive_apache_2_0`` etc.).
 
 Non-permissive declared licenses (e.g. ``"other"``, ``"openrail"``,
 ``"cc"`` without a clause suffix, custom research licenses) are
@@ -118,6 +123,19 @@ PERMISSIVE_LICENSE_TAGS: dict[str, str] = {
     "cc-by-4.0": "permissive_cc_by_4_0",
     "cc-by-3.0": "permissive_cc_by_3_0",
     "cc-by-2.0": "permissive_cc_by_2_0",
+    # CC-BY-SA-* permits redistribution of the original work with
+    # attribution; the ShareAlike clause requires derivative works to be
+    # released under the same license. The bounded normalised sample we
+    # commit IS a derivative (we transform the raw CSV into JSONL with
+    # additional provenance), and the committed federated corpus is
+    # itself released under the same CC-BY-SA license inheritance, so
+    # redistribution is permitted. Attribution is preserved in the
+    # per-dataset summary.json's ``license_redistribution_attribution_notes``
+    # field. This is the gate's first ShareAlike entry; added when
+    # ``scripts/ingest_hf_llm_energy_consumption.py`` was wired through
+    # the gate (fifth consumer).
+    "cc-by-sa-4.0": "permissive_cc_by_sa_4_0",
+    "cc-by-sa-3.0": "permissive_cc_by_sa_3_0",
     "cc0-1.0": "permissive_cc0_1_0",
     "cdla-permissive-2.0": "permissive_cdla_2",
     "cdla-permissive-1.0": "permissive_cdla_1",

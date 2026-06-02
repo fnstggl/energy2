@@ -34,6 +34,38 @@ License: **CC-BY-SA-4.0** (redistribution-friendly with attribution +
 share-alike). Committed normalised samples retain attribution + license
 in the per-config summary.json.
 
+Redistribution decision (wired through the canonical gate)
+----------------------------------------------------------
+
+This script is the fifth consumer of
+:func:`aurelius.ingestion.redistribution_gate.decide_redistribution`
+(after ``scripts/audit_hf_redistribution_gate.py``,
+``scripts/commit_hf_gap_normalized_samples.py``,
+``scripts/ingest_hf_agent_llm_traces.py``, and
+``scripts/ingest_hf_h200_quantization.py``). The previous shape
+hard-coded ``license_redistribution_status`` as a free-form prose
+string (``"cc-by-sa-4.0 — attribution + share-alike required…"``)
+into the summary writer. The new shape records only the raw HF
+license tag (``"cc-by-sa-4.0"``) plus a human-curated provenance
+string (``LICENSE_SOURCE``), and asks the gate for the canonical
+status code (``"permissive_cc_by_sa_4_0"``). The CC-BY-SA
+attribution + share-alike prose moves to a new additive field
+``license_redistribution_attribution_notes`` so the citation is
+preserved verbatim while ``license_redistribution_status`` holds
+the canonical code (mirrors the H200 + agent-llm-traces shape).
+
+Under the default policy (committed
+``operator_redistribution_policy.json`` ships zero grants and
+``policy_default = "deny_all"``) the gate classifies
+``cc-by-sa-4.0`` as ``permissive_cc_by_sa_4_0`` and PERMITS the
+committed normalised sample — identical to the v1 behaviour (which
+committed ~400 KB of normalised samples across 4 configs). The
+gate's PERMISSIVE_LICENSE_TAGS allow-list gained ``cc-by-sa-4.0`` →
+``permissive_cc_by_sa_4_0`` (and ``cc-by-sa-3.0`` →
+``permissive_cc_by_sa_3_0``) in this PR; the ShareAlike clause
+applies to *derivative works* and does not restrict redistribution
+of the original.
+
 Configs ingested (4 of 16 available):
 
 * `alpaca_gemma_7b_laptop2`               (laptop2, gemma:7b, alpaca)
@@ -89,12 +121,20 @@ from typing import Optional
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
+from aurelius.ingestion.operator_redistribution_policy import (  # noqa: E402
+    OperatorPolicyLedger,
+)
+from aurelius.ingestion.redistribution_gate import (  # noqa: E402
+    RedistributionGateDecision,
+    decide_redistribution,
+)
 from aurelius.traces.hf_corpus import promotion  # noqa: E402
 
 REPO_ROOT = Path(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 HF_DIR = REPO_ROOT / "data" / "external" / "hf"
 DISC_DIR = REPO_ROOT / "data" / "external" / "hf_discovery"
 FIXTURES_DIR = REPO_ROOT / "tests" / "fixtures" / "hf"
+POLICY_PATH = DISC_DIR / "operator_redistribution_policy.json"
 
 # Per-config bounds. Each CSV ≤ 30 MiB; we trim linguistic columns when
 # building the normalised sample so committed samples stay << 100 KiB / cfg.
@@ -105,7 +145,35 @@ PER_DATASET_TIMEOUT_S = 30 * 60
 
 DATASET_ID = "ejhusom/llm-inference-energy-consumption"
 SAFE_NAME = "ejhusom__llm-inference-energy-consumption"
-LICENSE = "cc-by-sa-4.0"
+
+# Raw HF license tag + human-curated provenance for the canonical
+# redistribution gate. The gate (not this script) classifies the tag
+# into a canonical ``permissive_*`` / ``declared_non_permissive`` /
+# ``unspecified_no_committed_sample`` status code. Keeping the raw tag
+# separate from the canonical status here means a future HF tag change
+# is a one-line edit; the gate handles the rest.
+LICENSE_TAG = "cc-by-sa-4.0"
+LICENSE_SOURCE = "HF card frontmatter license: cc-by-sa-4.0"
+GATE_SCOPE = "committed_normalized_sample"
+
+# CC-BY-SA-4.0 attribution + share-alike prose preserved verbatim from
+# the v1 ``license_redistribution_status`` shape (the prose moved to
+# ``license_redistribution_attribution_notes`` when the gate wiring
+# claimed ``license_redistribution_status`` for the canonical code).
+# Pinned by ``test_summary_records_redistribution_attribution`` in
+# ``tests/test_hf_llm_energy_consumption_ingest.py``.
+LICENSE_REDISTRIBUTION_ATTRIBUTION_NOTES = (
+    "cc-by-sa-4.0 — attribution + share-alike required when "
+    "redistributing committed normalised sample. "
+    "Citation: Husom et al. 2024, 'The Price of Prompting: "
+    "Profiling Energy Use in Large Language Models Inference', "
+    "arxiv:2407.16893."
+)
+
+# Back-compat alias — referenced by a small number of out-of-tree audits
+# / tests that read the module attribute table. The canonical name for
+# new code is ``LICENSE_TAG``.
+LICENSE = LICENSE_TAG
 GATED = False
 
 logger = logging.getLogger("aurelius.hf_llm_energy_ingest")
@@ -273,6 +341,57 @@ def _git_sha() -> str:
         ).decode().strip()
     except Exception:
         return "unknown"
+
+
+# ---------------------------------------------------------------------------
+# Redistribution gate — wire the canonical gate, do not classify here
+# ---------------------------------------------------------------------------
+
+
+def _load_ledger(policy_path: Path = POLICY_PATH) -> OperatorPolicyLedger:
+    """Load the operator policy ledger from disk, or fall back to empty.
+
+    The committed default file ships zero grants under
+    ``policy_default=deny_all``; an absent file is identical in
+    behaviour. We use ``empty()`` as the fallback so the script
+    remains self-sufficient in a fresh checkout that may not yet have
+    the committed JSON pulled — the gate still produces correct
+    decisions instead of crashing. (For the dataset's declared
+    ``cc-by-sa-4.0`` tag the gate permits via the permissive
+    allow-list, so the ledger is not consulted.)
+    """
+
+    if policy_path.exists():
+        return OperatorPolicyLedger.load(policy_path)
+    return OperatorPolicyLedger.empty()
+
+
+def evaluate_redistribution(
+    *,
+    ledger: OperatorPolicyLedger,
+    license_tag: Optional[str] = LICENSE_TAG,
+    dataset_id: str = DATASET_ID,
+    scope: str = GATE_SCOPE,
+    now_iso: Optional[str] = None,
+) -> RedistributionGateDecision:
+    """Ask the canonical gate whether the committed normalised sample of
+    this dataset may be redistributed under the supplied license tag.
+
+    Pure function — no I/O. Exposed so tests can drive the gate path
+    without invoking the CSV download / normalisation pipeline. The
+    defaults reflect the dataset-level constants this script ships;
+    tests override them to verify the wiring (e.g. swap ``license_tag``
+    to ``None`` and check that the gate denies, or inject an operator
+    grant and check the gate flips to ``permitted_operator_grant``).
+    """
+
+    return decide_redistribution(
+        dataset_id=dataset_id,
+        license_str=license_tag,
+        scope=scope,
+        ledger=ledger,
+        now_iso=now_iso,
+    )
 
 
 def _percentiles(vals: list[float]) -> dict:
@@ -624,8 +743,11 @@ DROPPED_COLUMNS = [
 
 def ingest_config(
     *, run: dict, output_root: Path, git_sha: str,
+    ledger: Optional[OperatorPolicyLedger] = None,
 ) -> dict:
     t0 = time.time()
+    if ledger is None:
+        ledger = _load_ledger()
     base = output_root / SAFE_NAME
     raw_dir = base / "raw"
     raw_dir.mkdir(parents=True, exist_ok=True)
@@ -959,18 +1081,33 @@ def ingest_config(
         if k not in ("source_dataset_id", "trace_type", "provenance")
     })
 
+    # Ask the canonical redistribution gate whether the committed
+    # normalised sample of this dataset may be redistributed under the
+    # supplied license tag. Under the default deny-all/zero-grants
+    # ledger and the declared ``cc-by-sa-4.0`` tag this returns
+    # permitted=True, license_status="permissive_cc_by_sa_4_0",
+    # reason_code="permitted_declared_permissive_license" — identical
+    # to the v1 behaviour (which committed normalised samples). The
+    # script never classifies the tag itself; the gate produces both
+    # the canonical status code and the commit decision.
+    gate_decision = evaluate_redistribution(ledger=ledger)
     summary_obj = {
         "dataset_id": DATASET_ID,
         "config_name": run["config_name"],
         "source_url": f"https://huggingface.co/datasets/{DATASET_ID}",
-        "license": LICENSE,
-        "license_redistribution_status": (
-            "cc-by-sa-4.0 — attribution + share-alike required when "
-            "redistributing committed normalised sample. "
-            "Citation: Husom et al. 2024, 'The Price of Prompting: "
-            "Profiling Energy Use in Large Language Models Inference', "
-            "arxiv:2407.16893."
+        "license": LICENSE_TAG,
+        "license_redistribution_status": gate_decision.license_status,
+        "license_redistribution_source": LICENSE_SOURCE,
+        "license_redistribution_attribution_notes": (
+            LICENSE_REDISTRIBUTION_ATTRIBUTION_NOTES
         ),
+        "redistribution_gate_reason_code": gate_decision.reason_code,
+        "redistribution_gate_reason_detail": gate_decision.reason_detail,
+        "redistribution_gate_permitted": gate_decision.permitted,
+        "redistribution_gate_operator_grant_dataset_id": (
+            gate_decision.operator_grant_dataset_id
+        ),
+        "redistribution_gate_scope": GATE_SCOPE,
         "gated": GATED,
         "canonical_trace_type": "latency_benchmark_trace",
         "raw_committed": False,
@@ -1067,15 +1204,22 @@ def ingest_config(
     }
 
 
-def ingest(*, output_root: Path = HF_DIR) -> dict:
+def ingest(
+    *,
+    output_root: Path = HF_DIR,
+    ledger: Optional[OperatorPolicyLedger] = None,
+) -> dict:
     git_sha = _git_sha()
+    if ledger is None:
+        ledger = _load_ledger()
     results = []
     for run in RUNS:
         logger.info("ingest config %s", run["config_name"])
         results.append(ingest_config(
             run=run, output_root=output_root, git_sha=git_sha,
+            ledger=ledger,
         ))
-    return {"results": results}
+    return {"results": results, "ledger": ledger}
 
 
 # ---------------------------------------------------------------------------
@@ -1179,10 +1323,16 @@ ROUND4_DISCOVERY_RECORDS = [
 ]
 
 
-def write_round4_audit_summary(ingest_out: dict, dest: Path) -> Path:
+def write_round4_audit_summary(
+    ingest_out: dict, dest: Path,
+    *,
+    ledger: Optional[OperatorPolicyLedger] = None,
+) -> Path:
     dest.parent.mkdir(parents=True, exist_ok=True)
+    if ledger is None:
+        ledger = ingest_out.get("ledger") or _load_ledger()
     payload = {
-        "doc_version": "round4_broadened_discovery_audit_summary_v1",
+        "doc_version": "round4_broadened_discovery_audit_summary_v2",
         "scope": (
             "Round 4 broadened HF discovery — bounded ingest of "
             "ejhusom/llm-inference-energy-consumption (Tier-4 "
@@ -1197,8 +1347,12 @@ def write_round4_audit_summary(ingest_out: dict, dest: Path) -> Path:
         "production_claim": False,
         "modifies_robust_energy_engine": False,
         "modifies_controllers_or_defaults": False,
+        "uses_oracle_as_headline": False,
         "git_sha": _git_sha(),
         "audited_at_s": time.time(),
+        "redistribution_gate_scope": GATE_SCOPE,
+        "redistribution_gate_policy_default": ledger.policy_default,
+        "redistribution_gate_policy_grant_count": len(ledger.grants),
         "ingested": [
             {
                 "dataset_id": r["summary"]["dataset_id"],
@@ -1206,6 +1360,16 @@ def write_round4_audit_summary(ingest_out: dict, dest: Path) -> Path:
                 "canonical_trace_type": r["summary"][
                     "canonical_trace_type"],
                 "license": r["summary"]["license"],
+                "license_redistribution_status": r["summary"][
+                    "license_redistribution_status"],
+                "redistribution_gate_reason_code": r["summary"][
+                    "redistribution_gate_reason_code"],
+                "redistribution_gate_permitted": r["summary"][
+                    "redistribution_gate_permitted"],
+                "redistribution_gate_operator_grant_dataset_id":
+                    r["summary"][
+                        "redistribution_gate_operator_grant_dataset_id"
+                    ],
                 "gated": r["summary"]["gated"],
                 "analysis_sample_rows": r["summary"][
                     "analysis_sample_rows"],
@@ -1434,7 +1598,12 @@ def main(argv=None) -> int:
         format="%(levelname)s %(name)s: %(message)s",
     )
 
-    out = ingest(output_root=Path(args.output_root))
+    # Load the operator policy ledger once; thread it through both
+    # the per-config ingest and the round-4 audit summary writer so a
+    # single source of truth records ``redistribution_gate_policy_default``
+    # and ``redistribution_gate_policy_grant_count``.
+    ledger = _load_ledger()
+    out = ingest(output_root=Path(args.output_root), ledger=ledger)
 
     if not args.skip_registry_update:
         registry_path = DISC_DIR / "canonical_corpus_registry.json"
@@ -1446,7 +1615,7 @@ def main(argv=None) -> int:
         entries = [r["registry_entry"] for r in out["results"]]
         update_canonical_registry(registry_path, entries)
         update_candidate_registry(candidates_path, entries)
-        write_round4_audit_summary(out, audit_path)
+        write_round4_audit_summary(out, audit_path, ledger=ledger)
 
     for r in out["results"]:
         decision = r["decision"]

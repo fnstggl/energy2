@@ -274,13 +274,25 @@ def test_summary_committed_sample_hash_matches_file(config):
 
 @pytest.mark.parametrize("config", CONFIGS)
 def test_summary_records_redistribution_attribution(config):
+    """When ``scripts/ingest_hf_llm_energy_consumption.py`` was wired
+    through the canonical redistribution gate (fifth consumer),
+    ``license_redistribution_status`` was repurposed to hold the
+    gate's canonical status code (``permissive_cc_by_sa_4_0``) and
+    the free-form CC-BY-SA attribution + share-alike prose moved to
+    a new additive field ``license_redistribution_attribution_notes``.
+    The prose itself is preserved verbatim — only the field name
+    changed.
+    """
+
     s = _summary(config)
-    lrs = s.get("license_redistribution_status", "").lower()
-    assert "cc-by-sa-4.0" in lrs
-    assert "attribution" in lrs
-    assert "share-alike" in lrs
+    notes = s.get("license_redistribution_attribution_notes", "").lower()
+    assert "cc-by-sa-4.0" in notes
+    assert "attribution" in notes
+    assert "share-alike" in notes
     # arxiv citation must be preserved
-    assert "2407.16893" in lrs
+    assert "2407.16893" in notes
+    # The canonical code lives in license_redistribution_status now.
+    assert s.get("license_redistribution_status") == "permissive_cc_by_sa_4_0"
 
 
 # ───────────────────────── 4. Limitations pinned ────────────────────────

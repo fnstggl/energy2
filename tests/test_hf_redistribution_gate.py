@@ -123,6 +123,27 @@ def test_permissive_cc_variants_classification(gate_module) -> None:
     assert gate_module.classify_license("cc0-1.0") == "permissive_cc0_1_0"
 
 
+def test_permissive_cc_by_sa_classification(gate_module) -> None:
+    """CC-BY-SA-* — added when ``scripts/ingest_hf_llm_energy_consumption.py``
+    was wired through the gate (fifth consumer). ShareAlike permits
+    redistribution of the original work with attribution; the
+    derivative normalised samples inherit the same license.
+    """
+
+    assert gate_module.classify_license(
+        "cc-by-sa-4.0"
+    ) == "permissive_cc_by_sa_4_0"
+    assert gate_module.classify_license(
+        "CC-BY-SA-4.0"
+    ) == "permissive_cc_by_sa_4_0"
+    assert gate_module.classify_license(
+        "  cc-by-sa-4.0 "
+    ) == "permissive_cc_by_sa_4_0"
+    assert gate_module.classify_license(
+        "cc-by-sa-3.0"
+    ) == "permissive_cc_by_sa_3_0"
+
+
 def test_permissive_cdla_classification(gate_module) -> None:
     assert gate_module.classify_license(
         "cdla-permissive-2.0"
@@ -186,6 +207,7 @@ def test_permissive_allow_list_is_closed_set(gate_module) -> None:
         "permissive_apache_2_0",
         "permissive_mit",
         "permissive_cc_by_4_0",
+        "permissive_cc_by_sa_4_0",
         "permissive_cdla_2",
     }
     missing = expected - canonical_status_codes

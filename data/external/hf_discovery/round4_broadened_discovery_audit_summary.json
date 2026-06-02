@@ -58,7 +58,7 @@
       "reason": "HF gated:manual (companion to kshitijthakkar/moe-inference-benchmark). 38 rows, MoE-specific (model_id, prompt, tokens_generated, time_seconds, tokens_per_second, total_params, active_params). HF_TOKEN is NOT authorised. Re-confirmed gated_blocked in Round 4."
     }
   ],
-  "doc_version": "round4_broadened_discovery_audit_summary_v1",
+  "doc_version": "round4_broadened_discovery_audit_summary_v2",
   "failed": [],
   "git_sha": "23a78097453c86f3010470b20ba8049e5cef7853",
   "ingested": [
@@ -88,6 +88,7 @@
       "gated": false,
       "has_gpu_energy_signal": true,
       "license": "cc-by-sa-4.0",
+      "license_redistribution_status": "permissive_cc_by_sa_4_0",
       "missing_signals": [
         "ttft_measured",
         "itl",
@@ -115,6 +116,9 @@
         "promoted_for_constraint_aware_evaluation",
         "promoted_for_training_priors"
       ],
+      "redistribution_gate_operator_grant_dataset_id": null,
+      "redistribution_gate_permitted": true,
+      "redistribution_gate_reason_code": "permitted_declared_permissive_license",
       "statistical_sample_strength": "strong"
     },
     {
@@ -143,6 +147,7 @@
       "gated": false,
       "has_gpu_energy_signal": true,
       "license": "cc-by-sa-4.0",
+      "license_redistribution_status": "permissive_cc_by_sa_4_0",
       "missing_signals": [
         "ttft_measured",
         "itl",
@@ -170,6 +175,9 @@
         "promoted_for_constraint_aware_evaluation",
         "promoted_for_training_priors"
       ],
+      "redistribution_gate_operator_grant_dataset_id": null,
+      "redistribution_gate_permitted": true,
+      "redistribution_gate_reason_code": "permitted_declared_permissive_license",
       "statistical_sample_strength": "strong"
     },
     {
@@ -198,6 +206,7 @@
       "gated": false,
       "has_gpu_energy_signal": true,
       "license": "cc-by-sa-4.0",
+      "license_redistribution_status": "permissive_cc_by_sa_4_0",
       "missing_signals": [
         "ttft_measured",
         "itl",
@@ -225,6 +234,9 @@
         "promoted_for_constraint_aware_evaluation",
         "promoted_for_training_priors"
       ],
+      "redistribution_gate_operator_grant_dataset_id": null,
+      "redistribution_gate_permitted": true,
+      "redistribution_gate_reason_code": "permitted_declared_permissive_license",
       "statistical_sample_strength": "moderate"
     },
     {
@@ -253,6 +265,7 @@
       "gated": false,
       "has_gpu_energy_signal": true,
       "license": "cc-by-sa-4.0",
+      "license_redistribution_status": "permissive_cc_by_sa_4_0",
       "missing_signals": [
         "ttft_measured",
         "itl",
@@ -280,11 +293,18 @@
       "promotion_tags": [
         "promoted_for_training_priors"
       ],
+      "redistribution_gate_operator_grant_dataset_id": null,
+      "redistribution_gate_permitted": true,
+      "redistribution_gate_reason_code": "permitted_declared_permissive_license",
       "statistical_sample_strength": "weak"
     }
   ],
   "modifies_controllers_or_defaults": false,
   "modifies_robust_energy_engine": false,
   "production_claim": false,
-  "scope": "Round 4 broadened HF discovery \u2014 bounded ingest of ejhusom/llm-inference-energy-consumption (Tier-4 cross-hardware-tier \u00d7 workload \u00d7 model-size energy + timing priors, 4 configs) + 7 negative-result discovery records covering ohdoking energy (license unspecified), 3 ejhusom forks (duplicate), nishant-k speculative decoding (low information density \u2014 code-completion only), inference-optimization tool-call (BFCL tasks, no infra signal), kshitijthakkar large-moe (gated)."
+  "redistribution_gate_policy_default": "deny_all",
+  "redistribution_gate_policy_grant_count": 0,
+  "redistribution_gate_scope": "committed_normalized_sample",
+  "scope": "Round 4 broadened HF discovery \u2014 bounded ingest of ejhusom/llm-inference-energy-consumption (Tier-4 cross-hardware-tier \u00d7 workload \u00d7 model-size energy + timing priors, 4 configs) + 7 negative-result discovery records covering ohdoking energy (license unspecified), 3 ejhusom forks (duplicate), nishant-k speculative decoding (low information density \u2014 code-completion only), inference-optimization tool-call (BFCL tasks, no infra signal), kshitijthakkar large-moe (gated).",
+  "uses_oracle_as_headline": false
 }

@@ -2759,3 +2759,230 @@ an operator recording a per-dataset grant in
 `operator_redistribution_policy.json` flips the verdict without a
 code change. Pilot telemetry (Tier 1) remains the only path to
 production calibration; no HF dataset closes that gate.
+
+### 12.11 RedistributionGate — fifth consumer wires per-dataset ingestion (llm-inference-energy-consumption)
+
+The fourth-consumer milestone (§12.10) wired the canonical gate
+into `scripts/ingest_hf_h200_quantization.py` (`license = None`,
+deny-by-default). This milestone closes the same loop for the
+next per-dataset ingest:
+`scripts/ingest_hf_llm_energy_consumption.py`
+(`ejhusom/llm-inference-energy-consumption`,
+`latency_benchmark_trace`, Tier 4, `license = cc-by-sa-4.0` — the
+upstream HF card declares ShareAlike). The script's summary writer
+no longer carries a free-form prose string under
+`"license_redistribution_status"`
+(`"cc-by-sa-4.0 — attribution + share-alike required when …"`);
+the v1 shape baked the attribution + share-alike + arxiv-citation
+prose directly into the canonical status slot. The new shape
+declares `LICENSE_TAG = "cc-by-sa-4.0"`, `LICENSE_SOURCE` (human-
+curated provenance), `LICENSE_REDISTRIBUTION_ATTRIBUTION_NOTES`
+(the prose constant), and `GATE_SCOPE =
+"committed_normalized_sample"` at module level, and asks
+`decide_redistribution` for the canonical status code
+(`"permissive_cc_by_sa_4_0"`), the permit/deny decision, and the
+reason code. The free-form attribution prose moves to a new
+additive `license_redistribution_attribution_notes` field so the
+prose is preserved verbatim while `license_redistribution_status`
+now holds the canonical code (mirrors the H200 + agent-llm-traces
+shape).
+
+**Policy widening — CC-BY-SA-4.0 added to the permissive
+allow-list.** The gate's `PERMISSIVE_LICENSE_TAGS` allow-list
+gained two entries: `cc-by-sa-4.0` → `permissive_cc_by_sa_4_0`
+and `cc-by-sa-3.0` → `permissive_cc_by_sa_3_0`. Justification: the
+CC-BY-SA ShareAlike clause constrains *derivative works* (they
+must be released under the same license) — it does not restrict
+redistribution of the original work. The derivative bounded
+normalised sample this corpus commits inherits the same
+CC-BY-SA-4.0 license (recorded on every per-config summary.json),
+so the redistribution is fully compliant. The prior PR's "Next"
+section explicitly identified `cc-by-sa-4.0` as one of the three
+remaining license tags to wire through the gate; this PR adds the
+classification entry that makes that wiring honest.
+
+**Behavioural equivalence on the already-committed artefacts.**
+Under the committed default policy (deny-all, zero grants):
+
+| Config | license_tag | Gate verdict | reason_code | committed_normalized_sample |
+|---|---|---|---|---|
+| `alpaca_gemma_7b_laptop2` | `cc-by-sa-4.0` | permitted | `permitted_declared_permissive_license` | unchanged: 79 rows, 101,515 bytes |
+| `alpaca_gemma_7b_workstation` | `cc-by-sa-4.0` | permitted | `permitted_declared_permissive_license` | unchanged: 78 rows, 102,156 bytes |
+| `codefeedback_codellama_7b_workstation` | `cc-by-sa-4.0` | permitted | `permitted_declared_permissive_license` | unchanged: 75 rows, 101,410 bytes |
+| `codefeedback_codellama_70b_workstation` | `cc-by-sa-4.0` | permitted | `permitted_declared_permissive_license` | unchanged: 75 rows, 101,996 bytes |
+
+The committed normalised sample bytes on disk for every config
+are byte-for-byte unchanged. `committed_normalized_sample_rows`,
+`committed_normalized_sample_bytes`,
+`committed_normalized_sample_sha256`,
+`committed_normalized_sample_path`, and
+`committed_normalized_sample_reason_skipped` in each summary.json
+are byte-for-byte identical to the v1 values. The only fields
+that change are: (a) the new additive gate-derived fields, (b)
+the new `license_redistribution_source` field, (c) the new
+`license_redistribution_attribution_notes` field (which receives
+the v1 prose verbatim), and (d) `license_redistribution_status`
+which moves from the prose to the canonical code
+`"permissive_cc_by_sa_4_0"`.
+
+**New fields the script records.** Each per-config `summary.json`
+gains:
+
+- `license_redistribution_status` —
+  `permissive_cc_by_sa_4_0` (was the prose string in v1).
+- `license_redistribution_source` — the human-curated provenance
+  string (`"HF card frontmatter license: cc-by-sa-4.0"`).
+- `license_redistribution_attribution_notes` — the v1 free-form
+  attribution + share-alike + arxiv-citation prose, preserved
+  verbatim.
+- `redistribution_gate_reason_code` —
+  `permitted_declared_permissive_license` under the default
+  policy (the permissive allow-list short-circuits the ledger).
+- `redistribution_gate_reason_detail` — free-form audit trail
+  that mentions the declared tag and the canonical status code.
+- `redistribution_gate_permitted` — `true` (`cc-by-sa-4.0` is
+  permissive).
+- `redistribution_gate_operator_grant_dataset_id` — `null` (the
+  ledger is not consulted under a permissive declared license).
+- `redistribution_gate_scope` — `committed_normalized_sample`.
+
+The round-4 cross-dataset audit summary
+`data/external/hf_discovery/round4_broadened_discovery_audit_summary.json`
+gains `redistribution_gate_scope`,
+`redistribution_gate_policy_default`, and
+`redistribution_gate_policy_grant_count` at the top level plus the
+per-dataset gate fields on every ingested row;
+`doc_version` bumps from
+`round4_broadened_discovery_audit_summary_v1` to
+`round4_broadened_discovery_audit_summary_v2` so downstream tooling
+can pivot on the new fields. The audit summary also gains
+`uses_oracle_as_headline: false` at the top level so the
+self-honesty rail is explicit on this file (matches the H200 +
+agent-llm-traces shape).
+
+**None-tag smoke test pinned.** A new test
+(`test_evaluate_redistribution_none_tag_default_ledger_denies` in
+`tests/test_hf_llm_energy_consumption_gate_wiring.py`) overrides
+the script's default `license_tag="cc-by-sa-4.0"` with `None` and
+asserts the gate flips to DENIED with
+`reason_code = no_grant_recorded` and status
+`unspecified_no_committed_sample`. This proves the wiring actually
+consults the gate rather than carrying a hard-coded permit for
+this dataset. The complementary
+`test_evaluate_redistribution_default_tag_under_empty_ledger_permits`
+pins the opposite direction: under the default ledger,
+`license_tag = "cc-by-sa-4.0"` PERMITS with
+`permitted_declared_permissive_license` — the v1 behaviour. And
+`test_evaluate_redistribution_operator_grant_for_none_license_permits`
+constructs an in-memory ledger with a grant for the dataset and
+asserts the verdict flips to PERMITTED with
+`reason_code = permitted_operator_grant`. Nothing is written to
+disk; the three tests pin the wiring's three honest behaviours.
+
+**Back-compat alias preserved.** The script's old module-level
+`LICENSE = "cc-by-sa-4.0"` constant is kept as an alias for
+`LICENSE_TAG` so any out-of-tree audit that imports the script as
+a module and reads `m.LICENSE` continues to work. A test
+(`test_script_license_back_compat_alias`) pins the alias's
+identity to `LICENSE_TAG`.
+
+**Attribution prose preserved verbatim.** The pre-existing
+`test_summary_records_redistribution_attribution` in
+`tests/test_hf_llm_energy_consumption_ingest.py` was updated to
+check the new `license_redistribution_attribution_notes` field
+(the prose moved, the prose itself did not change). The
+attribution + share-alike + arxiv-citation chain that downstream
+CC-BY-SA compliance depends on is byte-identical to the v1
+shape.
+
+**Forbidden duplications pinned.** The wiring test file also
+asserts that the script:
+
+- does NOT re-declare `PERMISSIVE_LICENSE_TAGS` or any equivalent
+  permissive-status table (including a fresh entry for
+  `permissive_cc_by_sa_4_0` — only the gate may classify
+  licenses),
+- does NOT hard-code the `"permissive_cc_by_sa_4_0"` status
+  string in any code path outside docstrings (the gate produces
+  it via `decide_redistribution`),
+- contains no `hf_<token>` literal and no `HF_TOKEN = "hf_..."`
+  assignment.
+
+**Tests landed.** 37 new tests in
+`tests/test_hf_llm_energy_consumption_gate_wiring.py` covering:
+license constants exist at module level (4 of them — including
+the new attribution-notes prose constant); back-compat `LICENSE`
+alias preserved; script imports the canonical gate; no duplicated
+permissive allow-list / hard-coded status string;
+`evaluate_redistribution` is a pure function returning a
+`RedistributionGateDecision`; default-tag/empty-ledger PERMITS;
+None-tag/empty-ledger DENIES; operator grant flips the None-tag
+verdict to PERMIT; every per-config summary.json carries the new
+gate metadata (× 4 configs, parametrised); the committed
+`license_redistribution_status` matches
+`classify_license(s["license"])` on every config; the
+`license_redistribution_source` provenance is recorded on every
+config; the `license_redistribution_attribution_notes` prose is
+preserved verbatim on every config; the v1 commit behaviour
+(non-zero rows / bytes / sha256, sample present on disk) is
+preserved on every config; the round-4 audit summary carries the
+v2 doc_version + top-level + per-row gate fields; no HF_TOKEN
+literal; `ingest`, `ingest_config`, and
+`write_round4_audit_summary` accept `ledger` as keyword-only
+optional arguments; `_load_ledger` falls back to
+`OperatorPolicyLedger.empty()` when the policy file is missing
+(fresh-checkout self-sufficiency rail).
+
+The gate-side test `test_permissive_cc_by_sa_classification` in
+`tests/test_hf_redistribution_gate.py` pins the new
+`cc-by-sa-4.0` / `cc-by-sa-3.0` entries in the permissive
+allow-list (case-insensitive, whitespace-tolerant). The
+`test_permissive_allow_list_is_closed_set` test was extended to
+include `permissive_cc_by_sa_4_0` in its required-label set.
+
+All 122 pre-existing tests in
+`tests/test_hf_llm_energy_consumption_ingest.py` continue to pass
+on the updated committed artefacts (including the renamed
+`test_summary_records_redistribution_attribution`, which now
+pins the prose in
+`license_redistribution_attribution_notes` and additionally
+pins the canonical code in `license_redistribution_status`).
+All 35 tests in
+`tests/test_hf_redistribution_gate.py` continue to pass
+(34 pre-existing + 1 new). All 24 tests in
+`tests/test_hf_operator_redistribution_policy.py` continue to
+pass. All 17 + 20 + 27 tests in the third / fourth / second
+consumer gate-wiring test files continue to pass. All 997 tests
+in the broader HF suite pass.
+
+**Honesty + scope guarantees.** No production claim. No
+scheduler / controller / robust-energy-engine touched. No oracle
+as headline. No Tier 1 promotion. No new HF data downloaded. No
+new candidate-registry entry. The bounded normalised samples
+themselves are unchanged byte-for-byte on disk — only the
+summary.json metadata gains the new gate-derived fields. No
+`HF_TOKEN` leak. No raw data committed. The script's downloader
+path is unchanged (still requires `HF_TOKEN` for re-ingest); only
+the redistribution classifier moved from inline to the canonical
+gate.
+
+**Next.** (i) Extend the same pattern to the remaining two
+per-dataset ingestion scripts:
+`scripts/ingest_hf_latency_benchmarks.py` (mixed Apache-2.0 /
+`None`) and `scripts/ingest_hf_optimum_benchmark.py` (`None`).
+Each is a self-contained PR because each has its own
+summary-writer shape and license tag. (ii) If/when an operator
+decides to opt one of the four Round-8 license-blocked
+candidates (or `jaytonde05/prefixbench`, or the H200 dataset
+under a future `license: mit` change) in, they add a grant
+entry to `operator_redistribution_policy.json`; the fifth
+consumer (and every future per-script consumer) will flip the
+affected dataset's row to `permitted_operator_grant` with the
+grant's identity recorded on the next run. (iii) The Rounds 5-8
+negative result on economic signals stands — this milestone
+does not close the operational × economic join gap on its own;
+it makes the per-script redistribution classifier consistent
+with the canonical gate so future license-tag changes only
+need a one-line constant edit. (iv) Pilot telemetry (Tier 1)
+remains the only path to production calibration; no HF dataset
+closes that gate.

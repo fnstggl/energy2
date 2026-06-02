@@ -5104,3 +5104,214 @@ canonical gate so future license-tag changes only need a
 one-line constant edit. (iv) Pilot telemetry (Tier 1) remains
 the only path to production calibration; no HF dataset closes
 that gate.
+
+### Done 2026-06-02 — RedistributionGate: fifth consumer wires `scripts/ingest_hf_llm_energy_consumption.py` through the gate
+
+**Status.** Audit-only — no scheduler change, no controller
+change, no robust-energy-engine touch, no production claim, no
+oracle as headline, no new HF data downloaded, no new
+committed normalised sample (the 4 already-committed normalised
+samples are byte-for-byte unchanged on disk). Branch:
+`claude/cool-lamport-BEd1N`.
+
+**Why now.** The fourth-consumer PR (#155) wired the canonical
+`decide_redistribution` gate into the H200 quantization ingest
+script (`license = None`, deny-by-default). Its "Next" section
+explicitly listed the three remaining per-dataset ingestion
+scripts to wire in follow-up PRs and identified
+`scripts/ingest_hf_llm_energy_consumption.py` (`cc-by-sa-4.0`)
+as one of them. This PR is that follow-up.
+
+**Mission.** Add `cc-by-sa-4.0` (and `cc-by-sa-3.0`) to the
+gate's `PERMISSIVE_LICENSE_TAGS` allow-list; lift the raw HF
+license tag to a module constant `LICENSE_TAG`; route the
+license-redistribution verdict through the canonical gate;
+move the v1 free-form attribution + share-alike + arxiv-citation
+prose from `license_redistribution_status` to a new additive
+`license_redistribution_attribution_notes` field (so the prose
+is preserved verbatim while the canonical status field holds
+the canonical code `"permissive_cc_by_sa_4_0"`); record the
+gate-derived fields on each per-config summary; bump the
+round-4 audit summary `doc_version` from
+`round4_broadened_discovery_audit_summary_v1` to
+`round4_broadened_discovery_audit_summary_v2`; and pin the
+wiring with a new gate-wiring test file.
+
+**Policy widening — CC-BY-SA-4.0 added to the permissive
+allow-list.** `aurelius/ingestion/redistribution_gate.py` gains
+two new entries in `PERMISSIVE_LICENSE_TAGS`:
+`cc-by-sa-4.0` → `permissive_cc_by_sa_4_0` and
+`cc-by-sa-3.0` → `permissive_cc_by_sa_3_0`. Justification: the
+CC-BY-SA ShareAlike clause constrains *derivative works* — it
+does not restrict redistribution of the original. The
+derivative bounded normalised sample inherits the same
+CC-BY-SA-4.0 license, so the redistribution is compliant.
+
+**Behavioural equivalence on the already-committed artefacts.**
+Under the committed default policy (`policy_default = "deny_all"`,
+zero grants), the gate now classifies `cc-by-sa-4.0` as
+`permissive_cc_by_sa_4_0` and PERMITS the committed normalised
+sample with reason_code
+`permitted_declared_permissive_license` for every config:
+
+| Config | committed_normalized_sample_rows | bytes |
+|---|---|---|
+| `alpaca_gemma_7b_laptop2` | 79 | 101,515 |
+| `alpaca_gemma_7b_workstation` | 78 | 102,156 |
+| `codefeedback_codellama_7b_workstation` | 75 | 101,410 |
+| `codefeedback_codellama_70b_workstation` | 75 | 101,996 |
+
+The committed `.jsonl` files themselves are byte-for-byte
+unchanged on disk. The summary.json for each config gains the
+new additive `redistribution_gate_*` +
+`license_redistribution_source` +
+`license_redistribution_attribution_notes` fields; the
+`license_redistribution_status` field moves from the prose to
+the canonical code (the prose itself moves to
+`license_redistribution_attribution_notes` and is preserved
+verbatim, byte-for-byte).
+
+**Files changed.**
+
+- `aurelius/ingestion/redistribution_gate.py` — adds
+  `cc-by-sa-4.0` / `cc-by-sa-3.0` entries to
+  `PERMISSIVE_LICENSE_TAGS`; module docstring updated to
+  mention CC-BY-SA-* with a justification note for the
+  ShareAlike → permissive classification.
+- `scripts/ingest_hf_llm_energy_consumption.py` — the
+  per-dataset ingestion script. Top-level changes:
+  - Imports `decide_redistribution`, `RedistributionGateDecision`,
+    and `OperatorPolicyLedger` from the canonical gate module.
+  - New module constants:
+    `LICENSE_TAG = "cc-by-sa-4.0"`,
+    `LICENSE_SOURCE = "HF card frontmatter license: cc-by-sa-4.0"`,
+    `GATE_SCOPE = "committed_normalized_sample"`,
+    `LICENSE_REDISTRIBUTION_ATTRIBUTION_NOTES` (the v1 prose
+    constant), and back-compat `LICENSE = LICENSE_TAG` alias.
+  - New module-level helpers `_load_ledger` (with fresh-checkout
+    fallback to `OperatorPolicyLedger.empty()`) and
+    `evaluate_redistribution` (pure function returning a
+    `RedistributionGateDecision`).
+  - `ingest_config`, `ingest`, and `write_round4_audit_summary`
+    each accept `ledger` as a keyword-only optional argument so
+    the round-4 `main()` loads the ledger once and threads it
+    through both the per-config summary writer and the rollup.
+  - Summary writer rewritten: `license_redistribution_status`
+    is now `gate_decision.license_status` (canonical code); the
+    v1 prose moves to `license_redistribution_attribution_notes`;
+    the new `redistribution_gate_*` fields are recorded on
+    every per-config summary.json.
+  - Round-4 audit summary writer rewritten:
+    `doc_version` bumps v1 → v2, top-level gains
+    `redistribution_gate_scope` /
+    `redistribution_gate_policy_default` /
+    `redistribution_gate_policy_grant_count` /
+    `uses_oracle_as_headline`, every ingested row gains
+    `license_redistribution_status` +
+    `redistribution_gate_reason_code` +
+    `redistribution_gate_permitted` +
+    `redistribution_gate_operator_grant_dataset_id`.
+- `data/external/hf/ejhusom__llm-inference-energy-consumption/*/processed/summary.json`
+  (4 files, one per config) — each regenerated through the
+  gate. `license_redistribution_status` now reads
+  `permissive_cc_by_sa_4_0`, the new gate fields are added, the
+  v1 prose moves to `license_redistribution_attribution_notes`.
+  Every other field — including
+  `committed_normalized_sample_rows`,
+  `committed_normalized_sample_bytes`,
+  `committed_normalized_sample_sha256`,
+  `committed_normalized_sample_path`,
+  `committed_normalized_sample_reason_skipped`, and the full
+  `available_signals` / `missing_signals` / `field_quality` /
+  `limitations` lists — is byte-for-byte unchanged from the v1
+  hard-coded write.
+- `data/external/hf_discovery/round4_broadened_discovery_audit_summary.json`
+  — rollup regenerated. `doc_version` bumps to
+  `round4_broadened_discovery_audit_summary_v2`. Top-level
+  gains the gate scope + default-policy + grant-count fields
+  and `uses_oracle_as_headline: false`. All 4 per-config rows
+  gain `license_redistribution_status`,
+  `redistribution_gate_reason_code`,
+  `redistribution_gate_permitted`, and
+  `redistribution_gate_operator_grant_dataset_id`.
+- `tests/test_hf_llm_energy_consumption_gate_wiring.py` — new
+  file with 37 tests pinning every dimension of the wiring
+  (see "Result" below).
+- `tests/test_hf_llm_energy_consumption_ingest.py` — the single
+  pre-existing test `test_summary_records_redistribution_attribution`
+  is updated to check the prose in
+  `license_redistribution_attribution_notes` (the new field
+  name) instead of `license_redistribution_status` (which now
+  holds the canonical code). The prose itself, the attribution
+  + share-alike + arxiv-citation requirement, and all 121
+  other tests are unchanged.
+- `tests/test_hf_redistribution_gate.py` — gains a new
+  `test_permissive_cc_by_sa_classification` test pinning the
+  case-insensitive / whitespace-tolerant classification of
+  `cc-by-sa-4.0` and `cc-by-sa-3.0` into their respective
+  `permissive_cc_by_sa_4_0` / `permissive_cc_by_sa_3_0` codes.
+  The `test_permissive_allow_list_is_closed_set` required-set
+  is extended to include `permissive_cc_by_sa_4_0`.
+- `docs/HF_DATASET_REGISTRY.md` — new §12.11
+  "RedistributionGate — fifth consumer wires per-dataset
+  ingestion (llm-inference-energy-consumption)" documenting
+  the refactor, the policy widening, the equivalence table on
+  the already-committed artefacts, the new summary /
+  audit-summary fields, the gate behaviour smoke tests, and
+  the forbidden duplications pinned by the tests. The §12.11
+  "Next" enumerates the two remaining per-dataset ingestion
+  scripts to wire in follow-up PRs.
+- `docs/COMPUTE_OPTIMIZATION_PROGRESS.md` — this entry.
+
+**Result.** All 37 new tests pass. All 122 pre-existing tests
+in `tests/test_hf_llm_energy_consumption_ingest.py` still
+pass on the updated committed artefacts. All 35 tests in
+`tests/test_hf_redistribution_gate.py` pass (34 pre-existing +
+1 new). All 24 pre-existing tests in
+`tests/test_hf_operator_redistribution_policy.py` still pass.
+All 27 pre-existing tests in
+`tests/test_hf_gap_commit_script_gate_wiring.py` (the second
+consumer's pin) still pass. All 17 pre-existing tests in
+`tests/test_hf_agent_llm_traces_gate_wiring.py` (the third
+consumer's pin) still pass. All 20 pre-existing tests in
+`tests/test_hf_h200_quantization_gate_wiring.py` (the fourth
+consumer's pin) still pass. All 997 tests in the broader HF
+suite (`tests/test_hf_*.py`) pass. The 4 per-config
+normalised samples are byte-for-byte unchanged on disk; the
+4 summary.json files record the identical
+`committed_normalized_sample_bytes` (101,515 / 102,156 /
+101,410 / 101,996) and `committed_normalized_sample_rows`
+(79 / 78 / 75 / 75) they recorded under the v1 script.
+
+**Honesty + scope guarantees.** No production claim. No
+scheduler / controller / robust-energy-engine touched. No
+oracle as headline. No Tier 1 promotion. No new HF data
+downloaded. No new candidate-registry entry. No new committed
+normalised sample (the existing 4 are unchanged byte-for-byte
+on disk). No `HF_TOKEN` leak. No raw data committed. The
+script's downloader path is unchanged (still requires
+`HF_TOKEN` for re-ingest); only the redistribution classifier
+moved from inline to the canonical gate, and the gate's
+allow-list was widened to include `cc-by-sa-4.0` /
+`cc-by-sa-3.0` (the prior PR's "Next" explicitly identified
+`cc-by-sa-4.0` as a follow-up target).
+
+**Next.** (i) Extend the same pattern to the remaining two
+per-dataset ingestion scripts:
+`scripts/ingest_hf_latency_benchmarks.py` (mixed Apache-2.0 /
+`None`) and `scripts/ingest_hf_optimum_benchmark.py` (`None`).
+Each is a self-contained PR because each has its own
+summary-writer shape and license tag. (ii) If/when an operator
+decides to opt one of the four Round-8 license-blocked
+candidates (or `jaytonde05/prefixbench`) in, they add a grant
+entry to `operator_redistribution_policy.json`; the fifth
+consumer (and every future per-script consumer) will flip the
+affected dataset's row to `permitted_operator_grant` with the
+grant's identity recorded on the next run. (iii) The Rounds
+5-8 negative result on economic signals stands — this
+milestone does not close the operational × economic join gap
+on its own; it makes the per-script redistribution classifier
+consistent with the canonical gate so future license-tag
+changes only need a one-line constant edit. (iv) Pilot
+telemetry (Tier 1) remains the only path to production
+calibration; no HF dataset closes that gate.
