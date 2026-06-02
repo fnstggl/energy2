@@ -4035,3 +4035,192 @@ joining operational telemetry with economic signals (the binding
 Aurelius gap; Round 6 confirms it remains open). Pilot telemetry
 (Tier 1) remains the only path to production calibration — no
 HF dataset closes that gate.
+
+
+## 2026-06-02 — hf-corpus: Round-7 broadened HF discovery audit (no new ingest) + H200 cross-source methodology drift (`feature/hf-corpus-round7-cross-validation`)
+
+HF discovery / data-engine PR. No scheduler change, no controller change,
+no robust-energy-engine change, no oracle as headline, no Tier 1 promotion,
+no production claim. No new HF data downloaded beyond what is already
+committed; no canonical registry entry added.
+
+This PR delivers TWO bounded audits:
+
+1. **Round-7 broadened HF discovery — 13 discovery-only rejection
+   records, ZERO new ingest.** Re-ran ~30 search-term groups against
+   the public HF datasets API (`vllm benchmark`, `sglang benchmark`,
+   `inference benchmark`, `mlperf`, `tpot`, `ttft`, `queue depth`,
+   `prefix cache`, `kv cache`, `gpu telemetry`, `placement trace`,
+   `scheduler trace`, `gpu pricing`, `cost aware`, `spot price`,
+   `energy trace`, `carbon intensity`, `datacenter telemetry`, …).
+   Surfaced 13 newly-appearing candidates (none in the existing
+   79-candidate registry); ZERO qualified for bounded ingest. Each
+   candidate was inspected via cardData / siblings / README and
+   rejected with an explicit reason:
+
+   - `core12345/real_GPU_exp_placement_trace` — `gated_blocked`
+     (9.94 GB `Qwen3-235B-A22B-FP8-traces.tar.gz`, `gated=auto`;
+     HF_TOKEN not authorised. Would be high-value as a real-GPU
+     placement trace; revisit if access granted).
+   - `odyn-network/benchmark-dataset-different-gpu-workload` —
+     `reject_synthetic_estimates` (README explicitly self-declares
+     `math_engine` VRAM ESTIMATES + `llm_judge_verdict` audit columns:
+     "Not suitable as Ground-truth hardware measurements." Synthetic
+     capacity-planning data — NOT measured GPU performance.
+     cc-by-4.0).
+   - `BBuf/ltx-fp8-sglang-benchmark-results` —
+     `reject_irrelevant_domain` (Lightricks LTX-2.0 / LTX-2.3 text-to-
+     VIDEO diffusion benchmark on H100, NOT LLM serving).
+   - `Isabella5/sglang-seglen-benchmark`, `fabric/inference-benchmarker`,
+     `vrvrv/vllm-benchmark-datasets` — `duplicate_existing` (all three
+     are ShareGPT-derived INPUT prompt fixtures for benchmark harnesses,
+     not benchmark RESULTS; duplicates of the existing `sharegpt_aiperf`
+     ingester's workload-shape role).
+   - `ashwinnv/agent-telemetry-prompt-framing-mint-full1035-qwen32b` —
+     `reject_irrelevant_domain` (Despite the "agent-telemetry" name,
+     this is a CLINICAL-QA agent eval dataset — MINT medical-QA paper
+     replication, Qwen3-32B. `agent_telemetry_mode` refers to
+     clinical-tools telemetry, NOT server telemetry).
+   - `juniworld/prompt_inference_traces` — `reject_irrelevant_domain`
+     (prompt / domain_list / url_list — federated domain-retrieval
+     prompts, NOT inference latency / throughput / queue / cost /
+     energy).
+   - `efficient-speech/tts-serving-benchmark` —
+     `reject_irrelevant_domain` (TTS / speech-synthesis benchmark
+     INPUT dataset, audio-domain).
+   - `wseaton/prefix-cache-bench` — `reject_low_value` (194 KB single
+     `text` parquet, 500 prompts, no measurements; license=None).
+   - `bldeaw/guardrails-load-test-results` — `reject_empty_repository`
+     (usedStorage=0).
+   - `st192011/KVCaches`, `h4shk4t/fast-kv-compaction-cache` —
+     `reject_raw_artifacts_only` (raw `.bin` KV-cache binaries / raw
+     `.pt` model checkpoint; not benchmark RESULTS datasets).
+
+   Records persist under
+   `data/external/hf_discovery/round7_broadened_discovery_audit_summary.json`
+   + the 13 candidate entries are merged into
+   `data/external/hf_discovery/hf_dataset_candidates.json` (count now
+   92) with `round7_audit_bucket` + `round7_audit_reason` set, so
+   future runs will not re-discover them.
+
+2. **H200 cross-source methodology drift audit.** Bounded comparison
+   between `ssakethch/h200-quantization-benchmarks @ throughput`
+   (275 single-source vLLM H200 SXM MIG-partitioned rows with real
+   per-cell TTFT / TPOT / ITL p50 / p99 + throughput) and the 10 H200
+   rows in `metrum-ai/llm-perfdata @ multi_source_curated_v1`
+   (multi-source curated, mixed engines). The metrum H200 slice has
+   only ONE row with TTFT+TPOT (SGLang / Llama-3.1-70B / BF16, 8 GPUs,
+   c=10; metrum's own source_notes flag TPOT=0.042 ms as "extremely
+   low"), ONE row with tokens_per_sec (vLLM / Llama-3.1-8B / FP8,
+   8 GPUs: 64,915 tok/s aggregate), and 8 "Target" placeholder rows
+   without measurements.
+
+   Per-GPU normalization: metrum 64,915 / 8 = 8,114 tok/s per full
+   H200. ssakethch Llama-3.1-8B FP8 at request_rate=4 on a single
+   MIG-partitioned H200 SXM reports 1,596 tok/s per-replica. The
+   ~5× per-replica-vs-per-GPU gap is consistent with MIG-partition-
+   fraction × concurrency, NOT a methodology drift. Cross-source
+   comparison does NOT reveal a methodology drift; it reveals that
+   ssakethch is a PER-MIG-INSTANCE measurement while metrum is a
+   PER-CLUSTER aggregate. Consumers MUST NOT cross-compare per-row
+   without explicit normalization.
+
+   Bounded conclusion (recorded as bounded — NOT sweeping):
+   - the two sources are MUTUALLY COMPLEMENTARY (ssakethch depth on
+     single-source vLLM MIG H200; metrum-ai breadth across engines /
+     models / vendors) but NOT directly cross-comparable per-row;
+   - Aurelius consumers should treat ssakethch as the strongest
+     single-source H200 vLLM prior (275 measured rows), and metrum-ai's
+     H200 rows as a curated breadth-coverage / TARGET-cell metadata
+     layer;
+   - metrum-ai's SGLang TPOT=0.042 ms cell is flagged in metrum's own
+     source_notes as "extremely low"; likely a unit / definition
+     mismatch — cross-source SGLang comparison is INFEASIBLE with
+     current data.
+
+   Recorded at
+   `data/external/hf_discovery/h200_cross_source_methodology_audit.json`.
+
+**Round-7 negative-result snapshot (economic priority).** This is the
+THIRD CONSECUTIVE ROUND (5, 6, 7) confirming the same finding: NONE of
+the 13 Round-7 candidates carry economic signals. Round 7 was DESIGNED
+to falsify the Round-5 / Round-6 finding (different search-term groups,
+different time-window cohort, broader coverage); it failed to falsify.
+The Aurelius goodput/$ denominator REMAINS operator-policy +
+public-pricing-prior + ElectricityMaps / ENTSO-E carbon intensity
+(already integrated). Recorded under
+`round7_broadened_discovery_audit_summary.json::economic_priority_summary`.
+
+**Files changed (PR scope).**
+- `scripts/audit_hf_round7_discovery.py` — new (~ 600 lines). Audit
+  driver. Writes `round7_broadened_discovery_audit_summary.json`,
+  `h200_cross_source_methodology_audit.json`, and updates
+  `hf_dataset_candidates.json` with the 13 new Round-7-tagged
+  candidates + a `focused_audit_2026_06_02` block.
+- `data/external/hf_discovery/round7_broadened_discovery_audit_summary.json`
+  — new audit rollup.
+- `data/external/hf_discovery/h200_cross_source_methodology_audit.json`
+  — new cross-source audit.
+- `data/external/hf_discovery/hf_dataset_candidates.json` — 13 new
+  candidate entries; candidate_count 79 → 92; new `focused_audit_2026_06_02`
+  block recording the Round-7 scope.
+- `docs/HF_DATASET_REGISTRY.md` — new §7.4 narrative
+  (Round-7 audit + H200 cross-source); 13 new rows in §7.2 table;
+  §10 updated with Done + new Next.
+- `docs/COMPUTE_OPTIMIZATION_PROGRESS.md` — this entry.
+- `tests/test_hf_round7_audit.py` — new (29 tests). Coverage:
+  Round-7 audit summary exists / correct doc_version / no_production_claim
+  / no_oracle / 13 discovery-only records (each with bucket + reason);
+  candidate registry has the new audit block + the 13 Round-7-tagged
+  entries; H200 cross-source audit has correct doc_version / 2 cells /
+  bounded methodology-drift observation (NOT sweeping) / engine-mismatch
+  caveat for cell 2 / >= 7 explicit limitations / recommended consumer
+  action warns against direct cross-source compare / informs
+  constraint_aware_engine + performance_priors; metrum H200 summary
+  (total 10, with_ttft 1, with_tpot 1, with_tps 1, engines vLLM +
+  SGLang) matches the corpus; ssakethch overall_count = 275; no
+  HF_TOKEN leak; the Round-7 audit explicitly carries the
+  third-consecutive-round negative-result finding ("DESIGNED to
+  falsify… failed to falsify").
+
+**Test suite.** `tests/test_hf_round7_audit.py` adds 29 tests, all
+green. Cross-suite: the existing HF test family (820 tests across
+`test_hf_economic_signal_discovery.py`, `test_hf_gap_ingest.py`,
+`test_hf_gap_normalized_samples.py`, `test_hf_llmperf_bedrock_ingest.py`,
+`test_hf_llm_energy_consumption_ingest.py`,
+`test_hf_optimum_benchmark_ingest.py`,
+`test_hf_cara_swissai_audit.py`,
+`test_hf_cara_swissai_analysis_tier.py`,
+`test_hf_agent_llm_traces_ingest.py`,
+`test_hf_metrum_llmperfdata_ingest.py`,
+`test_hf_latency_benchmarks_ingest.py`,
+`test_hf_lightcap_runtime_telemetry_ingest.py`,
+`test_hf_acmetrace_ingest.py`,
+`test_hf_h200_quantization_ingest.py`,
+`test_hf_dataset_discovery.py`, `test_hf_bounded_ingestion.py`,
+`test_hf_corpus_promotion.py`, `test_hf_corpus_evaluation_harness.py`)
+all remain green.
+
+**Honesty + scope guarantees.** No production claim; no scheduler /
+controller / robust energy engine touched; no oracle as headline;
+no Tier 1 promotion; no new HF data downloaded; no new canonical
+registry entry. The Round-7 audit is a NO-NEW-INGEST round with a
+documented negative result on economic signals (third consecutive
+confirmation). The H200 cross-source audit explicitly bounds its
+conclusion — the overlap (1 vLLM tokens/s cell, 1 SGLang TTFT/TPOT
+cell of dubious unit) is too thin to ground a sweeping
+methodology-drift conclusion. No HF_TOKEN leak; no raw data
+committed; no committed_normalized_sample written for any new
+candidate.
+
+**Next.** Continue Round-8+ HF discovery only when new high-priority
+candidates appear. Known-shape gaps remain: (a) a public Tier-2
+telemetry export with ACTUAL queue / GPU-util / replica state
+alongside latency (CARA analysis-tier still dominates); (b) a
+measured-source dataset joining operational telemetry with economic
+signals (THREE rounds confirm this gap is not closed by the public
+HF ecosystem); (c) a public SGLang + H200 measurement campaign with
+real TTFT / TPOT at known concurrency (ssakethch is vLLM-only;
+metrum-ai's SGLang H200 row is too thin and unit-suspect to ground
+a cross-engine prior). Pilot telemetry (Tier 1) remains the only
+path to production calibration — no HF dataset closes that gate.

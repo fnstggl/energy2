@@ -1272,6 +1272,68 @@ Rules (binding):
   (already integrated). Records under
   `data/external/hf_discovery/round6_broadened_discovery_audit_summary.json`.
 
+#### Round-7 broadened discovery + H200 cross-source methodology drift (2026-06-02)
+
+- **Round-7 broadened HF discovery — 13 discovery-only rejection
+  records, ZERO new ingest.** Re-ran ~30 search-term groups against
+  the public HF datasets API (`vllm benchmark`, `sglang benchmark`,
+  `inference benchmark`, `mlperf`, `tpot`, `ttft`, `queue depth`,
+  `prefix cache`, `kv cache`, `gpu telemetry`, `placement trace`,
+  `scheduler trace`, `gpu pricing`, `cost aware`, `spot price`,
+  `energy trace`, `carbon intensity`, `datacenter telemetry`, …).
+  Surfaced 13 newly-appearing candidates (none in the existing
+  79-candidate registry); ZERO qualified for bounded ingest. Records
+  persist under
+  `data/external/hf_discovery/round7_broadened_discovery_audit_summary.json`
+  + `data/external/hf_discovery/hf_dataset_candidates.json` so they
+  won't be re-discovered. Breakdown: 1 `gated_blocked`
+  (`core12345/real_GPU_exp_placement_trace`, 9.94 GB
+  `Qwen3-235B-A22B-FP8-traces.tar.gz` with `gated=auto`), 1
+  `reject_synthetic_estimates`
+  (`odyn-network/benchmark-dataset-different-gpu-workload` — README
+  declares `math_engine` VRAM estimates, NOT measurements), 4
+  `reject_irrelevant_domain` (LTX video diffusion, MINT clinical-QA,
+  retrieval prompts, TTS speech-synthesis), 3 `duplicate_existing`
+  (ShareGPT-derived workload-shape inputs for Isabella5, fabric, vrvrv
+  benchmarker), 3 `reject_low_value` / `reject_raw_artifacts_only`
+  (wseaton/prefix-cache-bench prompts, st192011/KVCaches raw .bin,
+  h4shk4t/fast-kv-compaction-cache .pt checkpoint), and 1
+  `reject_empty_repository` (`bldeaw/guardrails-load-test-results`,
+  usedStorage=0). NONE of the 13 carry economic signals.
+- **Round-7 negative-result finding (economic priority).** This is
+  the THIRD CONSECUTIVE ROUND (5, 6, 7) confirming the same finding:
+  the public HF dataset space does NOT currently close the
+  operational × economic join gap. Round 7 was DESIGNED to falsify
+  the Round-5 / Round-6 finding (different search-term groups,
+  different time-window cohort, broader coverage); it failed to
+  falsify. The Aurelius goodput/$ denominator REMAINS
+  operator-policy + public-pricing-prior + ElectricityMaps /
+  ENTSO-E carbon intensity (already integrated).
+- **H200 cross-source methodology drift audit.** Bounded comparison
+  between the two H200 measurement campaigns in the federated
+  corpus: `ssakethch/h200-quantization-benchmarks @ throughput`
+  (275 rows, single-source vLLM H200 SXM MIG-partitioned, real per-cell
+  TTFT / TPOT / ITL p50 / p99 + throughput) and the 10 H200 rows in
+  `metrum-ai/llm-perfdata @ multi_source_curated_v1` (multi-source
+  curated, mixed engines). The metrum H200 slice has only ONE row
+  with TTFT+TPOT (SGLang / Llama-3.1-70B / BF16, 8 GPUs, c=10;
+  metrum's own source_notes flag TPOT=0.042 ms as "extremely low"),
+  ONE row with tokens_per_sec (vLLM / Llama-3.1-8B / FP8, 8 GPUs,
+  64,915 tok/s aggregate), and 8 "Target" placeholder rows without
+  measurements. Per-GPU normalization: metrum 64,915 / 8 = 8,114
+  tok/s per full H200; ssakethch Llama-3.1-8B FP8 at request_rate=4
+  on a single MIG-partitioned H200 SXM is 1,596 tok/s per-replica
+  (~5× per-replica vs per-GPU gap is consistent with MIG-partition-
+  fraction × concurrency, NOT a methodology drift). The bounded
+  conclusion is that the two sources are MUTUALLY COMPLEMENTARY
+  (ssakethch = depth on single-source vLLM MIG H200; metrum-ai =
+  curated breadth across engines / models / vendors) but NOT
+  directly cross-comparable per-row. Consumers MUST NOT cross-compare
+  ssakethch per-replica tokens/s directly with metrum aggregate
+  tokens/s without explicit (MIG partition fraction, num_gpus,
+  concurrency, engine) normalization. Recorded in
+  `data/external/hf_discovery/h200_cross_source_methodology_audit.json`.
+
 #### `Lightcap/agent-runtime-telemetry-small` — inaugural `tool_runtime_trace`, Tier-3 cluster-scheduler-trace-family
 
 - **Why this dataset matters for Aurelius.** First public Hugging Face
@@ -1550,6 +1612,19 @@ schema covers both grains end-to-end.
 | `crozai/vllm-benchmark-coding` | `request_shape_trace` | `duplicate_existing` (Round 5) | Coding-workload prompt fixtures designed for `vllm/benchmark_serving.py` — workload-shape only (prompt strings + token counts). NO measured TTFT / TPOT / throughput. `aurelius/traces/sharegpt_aiperf.py` and `hlarcher/inference-benchmarker` (already rejected) cover this role at higher density. |
 | `intellistream/sage-agent-benchmark` | `request_shape_trace` | `reject_eval_only_no_telemetry` (Round 5) | AgentBench-style evaluation for tool-selection / task-planning / response-generation accuracy. NO measured latency / GPU / queue / cache signal — agent-capability scoring only. Out of scope for the constraint-aware engine (same rationale as `abdallah1008/semantic-router-benchmark-data`). |
 | `metrum-ai/llm-perfdata` | — | ~~candidate~~ → **ingested 2026-06-01** | see §7.1 (Tier-4 multi-source curated GPU coverage breadth prior, Round 5). |
+| `core12345/real_GPU_exp_placement_trace` | `mixed_or_unknown_trace` | `gated_blocked` (Round 7) | HF `gated=auto`. 9.94 GB `Qwen3-235B-A22B-FP8-traces.tar.gz` (no README, no license). Name suggests real-GPU placement traces (high-value for Aurelius placement/routing) but HF_TOKEN is not authorised. Revisit if access granted; do NOT unbounded-ingest a 9.94 GB compressed archive. |
+| `odyn-network/benchmark-dataset-different-gpu-workload` | `mixed_or_unknown_trace` | `reject_synthetic_estimates` (Round 7) | GPU catalog × LLM workload VRAM benchmark by the same author as the already-ingested `odyn-network/odyn-benchmarks`. README explicitly self-declares the rows as `math_engine` VRAM ESTIMATES paired with `document_engine_recommended_vram_gb` and `llm_judge_verdict` audit columns: "Not suitable as Ground-truth hardware measurements." Synthetic capacity-planning data — NOT measured GPU performance. cc-by-4.0. |
+| `BBuf/ltx-fp8-sglang-benchmark-results` | `mixed_or_unknown_trace` | `reject_irrelevant_domain` (Round 7) | Lightricks LTX-2.0 / LTX-2.3 text-to-VIDEO diffusion benchmark on a single H100. Metrics are total_s / denoise_s / decode_s for VIDEO generation (8 inference steps, 5.04 s clip), NOT LLM serving TTFT / TPOT / throughput. license=None. |
+| `Isabella5/sglang-seglen-benchmark` | `request_shape_trace` | `duplicate_existing` (Round 7) | 1.46 GB ShareGPT_V3 + swebench INPUT prompts for SGLang sequence-length benchmark harness. NOT benchmark RESULTS. Duplicates the existing `sharegpt_aiperf` workload-shape role. license=None. |
+| `fabric/inference-benchmarker` | `request_shape_trace` | `duplicate_existing` (Round 7) | 2.02 GB ShareGPT-derived inputs for huggingface/inference-benchmarker — mirror of the previously-rejected `hlarcher/inference-benchmarker` rationale. Apache-2.0. |
+| `vrvrv/vllm-benchmark-datasets` | `request_shape_trace` | `duplicate_existing` (Round 7) | 11 MB humaneval / spider / dataclaw / novita parquets — INPUT prompts only, no benchmark RESULTS. Duplicate of `sharegpt_aiperf`. Apache-2.0. |
+| `ashwinnv/agent-telemetry-prompt-framing-mint-full1035-qwen32b` | `mixed_or_unknown_trace` | `reject_irrelevant_domain` (Round 7) | Despite the "agent-telemetry" name, this is a CLINICAL-QA agent eval dataset (MINT medical QA paper replication, Qwen3-32B, 4,535 rows × 36 columns). The `agent_telemetry_mode` column refers to clinical-tools telemetry, NOT server / serving telemetry. NO latency / throughput / GPU / queue / energy fields. mit. |
+| `juniworld/prompt_inference_traces` | `mixed_or_unknown_trace` | `reject_irrelevant_domain` (Round 7) | 1.7 MB across 26 parquets: prompt (string) + domain_list + url_list. Federated domain / URL retrieval prompts, NOT inference latency / throughput / queue / cost / energy. Despite "inference_traces" in the name, no measured infrastructure signal. mit. |
+| `efficient-speech/tts-serving-benchmark` | `mixed_or_unknown_trace` | `reject_irrelevant_domain` (Round 7) | Text-to-speech serving benchmark INPUT dataset (HiFi-TTS + VCTK + LJ-Speech + Libri-TTS + Libri-Light + EMOV-DB, 178 MB total). Audio-domain benchmark inputs, not LLM-serving benchmark results. license=None. |
+| `wseaton/prefix-cache-bench` | `request_shape_trace` | `reject_low_value` (Round 7) | 194 KB single `text` parquet (500 rows). INPUT prompts only — no measured TTFT / cache-hit / GPU. license=None. Existing `jaytonde05/prefixbench` covers the role at higher density. (Re-confirmed from the earlier audit pass.) |
+| `bldeaw/guardrails-load-test-results` | `mixed_or_unknown_trace` | `reject_empty_repository` (Round 7) | usedStorage=0. Files listed in cardData are not actually published. Cannot be ingested. license=None. |
+| `st192011/KVCaches` | `mixed_or_unknown_trace` | `reject_raw_artifacts_only` (Round 7) | 2.40 GB of raw `.bin` KV-cache binaries for three text prompts. No measured TTFT / TPOT / cache-hit / GPU / queue. Raw prefix-cache artifacts are not analyzable as a benchmark RESULTS dataset. apache-2.0. |
+| `h4shk4t/fast-kv-compaction-cache` | `mixed_or_unknown_trace` | `reject_raw_artifacts_only` (Round 7) | 634 MB single `Qwen3-4B.pt` file. Model-checkpoint-shaped artifact, not a benchmark RESULTS dataset. license=None. |
 
 ### 7.3 Datasets known in repo (non-HF or other ingest paths)
 
@@ -1853,6 +1928,59 @@ Re-running `scripts/discover_hf_aurelius_datasets.py` rebuilds
   negative result. Recorded in
   `data/external/hf_discovery/round6_broadened_discovery_audit_summary.json`
   under `economic_priority_summary`.
+- **Done 2026-06-02** — Round-7 broadened HF discovery audit (no new
+  ingest): re-ran ~30 search-term groups against the public HF API,
+  surfaced 13 newly-appearing candidates (none in the existing
+  79-candidate registry), and rejected ALL 13 as discovery-only with
+  explicit reasons. ZERO ingestible candidates. Breakdown: 1
+  `gated_blocked` (`core12345/real_GPU_exp_placement_trace`, 9.94 GB
+  `Qwen3-235B-A22B-FP8-traces.tar.gz` with `gated=auto`), 1
+  `reject_synthetic_estimates`
+  (`odyn-network/benchmark-dataset-different-gpu-workload` — README
+  declares `math_engine` VRAM estimates, NOT measurements), 4
+  `reject_irrelevant_domain` (LTX video diffusion, MINT clinical-QA,
+  retrieval prompts, TTS speech-synthesis), 3 `duplicate_existing`
+  (ShareGPT-derived workload-shape inputs), 3 `reject_low_value` /
+  `reject_raw_artifacts_only` (prompt-only parquet, raw .bin KV-cache
+  binaries, raw model checkpoint), and 1 `reject_empty_repository`.
+  See §7.4.1 narrative and
+  `data/external/hf_discovery/round7_broadened_discovery_audit_summary.json`.
+- **Round-7 negative-result snapshot (economic priority).** THIRD
+  CONSECUTIVE ROUND (5, 6, 7) confirming the same finding: NONE of
+  the 13 Round-7 candidates carry economic signals. Round 7 was
+  DESIGNED to falsify the Round-5 / Round-6 finding (different
+  search-term groups, broader coverage); it failed to falsify. This
+  strengthens confidence in the negative result — the Aurelius
+  goodput/$ denominator REMAINS operator-policy + public-pricing-prior
+  + ElectricityMaps / ENTSO-E carbon intensity (already integrated).
+- **Done 2026-06-02** — H200 cross-source methodology drift audit.
+  Bounded comparison between `ssakethch/h200-quantization-benchmarks
+  @ throughput` (275 single-source vLLM H200 SXM MIG rows, real
+  per-cell TTFT/TPOT/ITL p50/p99) and the 10 H200 rows in
+  `metrum-ai/llm-perfdata @ multi_source_curated_v1` (multi-source
+  curated, mixed engines; only 1 row with TTFT+TPOT measurements,
+  1 with tokens/sec, 8 "Target" placeholder rows). Bounded
+  conclusion: the two sources are MUTUALLY COMPLEMENTARY (ssakethch
+  depth vs metrum-ai breadth) but NOT directly cross-comparable
+  per-row. Per-GPU normalization shows ssakethch single-MIG vs
+  metrum 8×H200 aggregate; the ~5× per-replica-vs-per-GPU gap is
+  consistent with MIG-partition-fraction × concurrency, NOT a
+  methodology drift. metrum's SGLang TPOT=0.042 ms cell is flagged
+  in metrum's own source_notes as "extremely low" — likely a unit /
+  definition mismatch. Recorded in
+  `data/external/hf_discovery/h200_cross_source_methodology_audit.json`
+  and §7.4.2 narrative.
+- **Next: Continue Round-8+ HF discovery only when new
+  high-priority candidates appear.** The known-shape gaps remain:
+  (a) a public Tier-2 telemetry export with ACTUAL queue / GPU-util
+  / replica state alongside latency (the CARA analysis-tier still
+  dominates this); (b) a measured-source dataset joining operational
+  telemetry with economic signals (THREE rounds confirm this gap is
+  not closed by the public HF ecosystem); (c) a public SGLang +
+  H200 measurement campaign (ssakethch is vLLM-only; metrum-ai's
+  SGLang H200 row is too thin and unit-suspect to ground a
+  cross-engine prior). Pilot telemetry (Tier 1) remains the only
+  path to production calibration — no HF dataset closes that gate.
 
 ## 11. License + auth
 
