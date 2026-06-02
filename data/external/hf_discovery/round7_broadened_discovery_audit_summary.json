@@ -1,0 +1,154 @@
+{
+  "audited_at_s": 1780359560.2335348,
+  "discovery_only_records": [
+    {
+      "bucket": "C_gated_blocked",
+      "candidate_trace_type": "mixed_or_unknown_trace",
+      "dataset_id": "core12345/real_GPU_exp_placement_trace",
+      "gated": true,
+      "kind": "gated_blocked",
+      "license_observed": null,
+      "reason": "HF dataset card reports `gated=auto`. Single 9.94 GB `Qwen3-235B-A22B-FP8-traces.tar.gz` archive (no README, no license). Name suggests real-GPU placement traces, which would be a high-value candidate for the Aurelius placement / routing engine, but HF_TOKEN is not authorised on the current account. Marked gated_blocked and recorded for follow-up if access is granted; do NOT attempt unbounded ingest of a 9.94 GB compressed archive without explicit approval per the bounded-ingestion guard."
+    },
+    {
+      "bucket": "D_synthetic_estimates",
+      "candidate_trace_type": "mixed_or_unknown_trace",
+      "dataset_id": "odyn-network/benchmark-dataset-different-gpu-workload",
+      "gated": false,
+      "kind": "reject_synthetic_estimates",
+      "license_observed": "cc-by-4.0",
+      "reason": "GPU catalog \u00d7 LLM workload VRAM benchmark by the same author as the already-ingested odyn-network/odyn-benchmarks. README explicitly self-declares the rows as `math_engine` VRAM ESTIMATES paired with `document_engine_recommended_vram_gb` and `llm_judge_verdict` audit columns: 'Not suitable as Ground-truth hardware measurements unless you add and document separate measurement runs.' Synthetic / estimated VRAM capacity-planning data \u2014 NOT measured GPU performance. Rejected per the binding directive 'Do NOT treat synthetic cost fields as real economics' (extended to synthetic VRAM capacity estimates). Same author authored the ingested odyn-benchmarks (real vLLM + Ray Serve TTFT/TPOT/throughput measurements), so the author's measured contributions are already in the corpus."
+    },
+    {
+      "bucket": "F_irrelevant_domain",
+      "candidate_trace_type": "mixed_or_unknown_trace",
+      "dataset_id": "BBuf/ltx-fp8-sglang-benchmark-results",
+      "gated": false,
+      "kind": "reject_irrelevant_domain",
+      "license_observed": null,
+      "reason": "Lightricks LTX-2.0 / LTX-2.3 text-to-video diffusion benchmark on a single H100. Metrics are total_s / denoise_s / decode_s for VIDEO GENERATION (8 inference steps, 5.04 s output clip), NOT LLM serving TTFT / TPOT / throughput. The 'sglang' in the name refers to the diffusion-model launcher, not LLM serving. Out of scope for the LLM-serving / cluster-scheduling federated corpus. Rejected as irrelevant domain (video diffusion, not LLM). license=None so no committed sample is allowed under the conservative redistribution policy."
+    },
+    {
+      "bucket": "F_duplicate_existing",
+      "candidate_trace_type": "request_shape_trace",
+      "dataset_id": "Isabella5/sglang-seglen-benchmark",
+      "gated": false,
+      "kind": "duplicate_existing",
+      "license_observed": null,
+      "reason": "1.46 GB total. Files: ShareGPT_V3_unfiltered_cleaned_split.json, mixed_prefix_eviction_dataset_7k_10k_with_noise.json, multi_group_shared_prefix_dataset.json, swebench_sps=10_art={5,10}_nums=100.jsonl. These are INPUT prompts for the SGLang sequence-length benchmark harness, NOT the benchmark RESULTS (no TTFT / TPOT / throughput / GPU columns). ShareGPT_V3 is identical to the corpus' existing sharegpt_aiperf workload-shape ingester; swebench_* spans duplicate the Exgentic/agent-llm-traces agent-workload role. Rejected as duplicate of existing workload-shape sources. license=None blocks redistribution regardless."
+    },
+    {
+      "bucket": "F_duplicate_existing",
+      "candidate_trace_type": "request_shape_trace",
+      "dataset_id": "fabric/inference-benchmarker",
+      "gated": false,
+      "kind": "duplicate_existing",
+      "license_observed": "apache-2.0",
+      "reason": "2.02 GB total. Files include ShareGPT_V3_unfiltered_cleaned_split_chat_format.json, classification.json, share_gpt_0_turns.json, share_gpt_filtered_small.json + French / story variants. Mirror of the previously-rejected hlarcher/inference-benchmarker rationale: ShareGPT-derived workload INPUT fixtures used by huggingface/inference-benchmarker as request shape, NOT benchmark RESULTS. Duplicates the existing sharegpt_aiperf ingester's workload-shape role. Rejected as duplicate."
+    },
+    {
+      "bucket": "F_duplicate_existing",
+      "candidate_trace_type": "request_shape_trace",
+      "dataset_id": "vrvrv/vllm-benchmark-datasets",
+      "gated": false,
+      "kind": "duplicate_existing",
+      "license_observed": "apache-2.0",
+      "reason": "11 MB total. 4 parquet files (dataclaw, humaneval, novita, spider) + a create_hf_datasets.py script. INPUT prompts for vLLM benchmark_serving.py, not benchmark RESULTS. Workload-shape role already covered by sharegpt_aiperf + Exgentic/agent-llm-traces. Rejected as duplicate."
+    },
+    {
+      "bucket": "F_irrelevant_domain",
+      "candidate_trace_type": "mixed_or_unknown_trace",
+      "dataset_id": "ashwinnv/agent-telemetry-prompt-framing-mint-full1035-qwen32b",
+      "gated": false,
+      "kind": "reject_irrelevant_domain",
+      "license_observed": "mit",
+      "reason": "Despite the 'agent-telemetry' name, this is a CLINICAL-QA agent eval dataset (MINT medical QA paper replication, Qwen3-32B). 4535 rows \u00d7 36 columns: task_id, specialty, question, options, gold_answer, answer, correct, parse_error, raw_response, trajectory (JSON per-turn), lab_placement, n_turns, abstained, lab_lure metric. The `agent_telemetry_mode` column refers to whether the agent had access to clinical-tools telemetry, NOT to server / serving telemetry. NO latency / throughput / GPU / queue / energy fields. Rejected as irrelevant domain (clinical agent capability eval, not infrastructure)."
+    },
+    {
+      "bucket": "F_irrelevant_domain",
+      "candidate_trace_type": "mixed_or_unknown_trace",
+      "dataset_id": "juniworld/prompt_inference_traces",
+      "gated": false,
+      "kind": "reject_irrelevant_domain",
+      "license_observed": "mit",
+      "reason": "1.7 MB. 26 parquet files split across DD16_gpt4 / DD16_local / FEDWEB13_gpt4 / FEDWEB13_local / SESSION14_gpt4 / etc. Schema = prompt (string) + domain_list (sequence[string]) + url_list (sequence[string]). Federated domain / URL retrieval prompts, NOT inference latency / throughput / queue / cost / energy / GPU telemetry. Despite 'inference_traces' in the name, no measured infrastructure signal. Rejected as irrelevant domain (retrieval-prompt fixtures, not infrastructure telemetry)."
+    },
+    {
+      "bucket": "F_irrelevant_domain",
+      "candidate_trace_type": "mixed_or_unknown_trace",
+      "dataset_id": "efficient-speech/tts-serving-benchmark",
+      "gated": false,
+      "kind": "reject_irrelevant_domain",
+      "license_observed": null,
+      "reason": "Text-to-speech serving benchmark INPUT dataset (HiFi-TTS + VCTK + LJ-Speech + Libri-TTS + Libri-Light + EMOV-DB + Tedlium + jenny-tts splits, 178 MB total). Audio-domain benchmark inputs (mostly parquet of speech samples), not LLM-serving benchmark results. Out of scope for the LLM federated corpus. Rejected as irrelevant domain (speech synthesis, not LLM serving)."
+    },
+    {
+      "bucket": "F_low_value",
+      "candidate_trace_type": "request_shape_trace",
+      "dataset_id": "wseaton/prefix-cache-bench",
+      "gated": false,
+      "kind": "reject_low_value",
+      "license_observed": null,
+      "reason": "194 KB single parquet with one column `text` (500 rows). INPUT prompts only \u2014 no measured TTFT / TPOT / cache-hit / GPU / queue. license=None blocks redistribution. The existing jaytonde05/prefixbench config already covers the synthetic prefix-cache role with a 4,000-row corpus and a richer cache-bucket schema. Rejected as low-value duplicate."
+    },
+    {
+      "bucket": "F_empty_repository",
+      "candidate_trace_type": "mixed_or_unknown_trace",
+      "dataset_id": "bldeaw/guardrails-load-test-results",
+      "gated": false,
+      "kind": "reject_empty_repository",
+      "license_observed": null,
+      "reason": "usedStorage=0. Files listed in cardData (load_all_*.json, load_analytics_*.json, api_full_options_*.json) are not actually published. Cannot be ingested. Rejected as empty repository (mirrors the round-5 uohna/llm_inference_energy_combined.parquet rejection)."
+    },
+    {
+      "bucket": "F_low_value",
+      "candidate_trace_type": "mixed_or_unknown_trace",
+      "dataset_id": "st192011/KVCaches",
+      "gated": false,
+      "kind": "reject_raw_artifacts_only",
+      "license_observed": "apache-2.0",
+      "reason": "2.40 GB of raw .bin KV-cache binaries for three text prompts (Wiki_Grimms_M\u00e4rchen, faq_Schengen_visa, guia_consultores_2026). No README schema, no measured TTFT / TPOT / cache-hit / GPU / queue. Raw prefix-cache artifacts are not analyzable as a benchmark RESULTS dataset. Rejected as raw-artifacts only (no infrastructure telemetry signal)."
+    },
+    {
+      "bucket": "F_low_value",
+      "candidate_trace_type": "mixed_or_unknown_trace",
+      "dataset_id": "h4shk4t/fast-kv-compaction-cache",
+      "gated": false,
+      "kind": "reject_raw_artifacts_only",
+      "license_observed": null,
+      "reason": "634 MB single Qwen3-4B.pt file. Model-checkpoint-shaped artifact, not a benchmark RESULTS dataset. No measured TTFT / TPOT / cache-hit / GPU / queue. license=None. Rejected as raw-artifacts only."
+    }
+  ],
+  "doc_version": "round7_broadened_discovery_audit_summary_v1",
+  "economic_priority_summary": {
+    "datasets_with_economic_only_signals": [],
+    "datasets_with_operational_and_economic_signals": [],
+    "join_keys_available_for_economic_overlays": [
+      "gpu_type",
+      "model_id",
+      "engine",
+      "quantization",
+      "request_rate",
+      "region",
+      "cloud_provider"
+    ],
+    "negative_result_finding": "Round 7 surveyed ~30 search-term groups across operational telemetry + economic signal queries. Surfaced 13 new candidates; ZERO qualified for bounded ingest. The public HF dataset space remains saturated for these query terms: synthetic estimators (odyn-network VRAM math_engine), wrong-domain (LTX video diffusion, MINT clinical agent eval, retrieval prompts, speech synthesis), duplicates (3 ShareGPT-derived input fixtures), low-value (prompt-only parquets, empty repo, raw KV-cache binaries, raw model checkpoint), and one gated_blocked (Qwen3-235B placement trace, 9.9 GB gated=auto). NONE carry economic columns. This is the THIRD CONSECUTIVE ROUND (5, 6, 7) confirming the same negative result: Aurelius' goodput/$ denominator REMAINS operator-policy-supplied + public-pricing-prior + ElectricityMaps / ENTSO-E carbon intensity (already integrated). The Round-7 sweep was DESIGNED to falsify the Round-5/Round-6 finding; it failed to falsify, strengthening confidence in the negative result.",
+    "scorer_coefficients_calibratable_from_round7": [],
+    "scorer_coefficients_operator_policy_only_after_round7": [
+      "gpu_hour_price_usd",
+      "kwh_per_request",
+      "carbon_g_per_kwh",
+      "spot_interruption_probability",
+      "egress_cost_per_gb",
+      "regional_price_usd_per_mwh"
+    ]
+  },
+  "failed": [],
+  "git_sha": "00511a8ccca64901dab4d52390b347ed86aeec58",
+  "ingested": [],
+  "modifies_controllers_or_defaults": false,
+  "modifies_robust_energy_engine": false,
+  "production_claim": false,
+  "scope": "Round 7 broadened HF discovery \u2014 no new ingest. Re-ran ~30 search-term groups against the public HF API (vllm benchmark, sglang benchmark, inference benchmark, mlperf, tpot, ttft, queue depth, prefix cache, kv cache, gpu telemetry, placement trace, scheduler trace, gpu pricing, cost aware, spot price, energy trace, carbon intensity, datacenter telemetry, etc.). Surfaced 13 newly-appearing candidates (none in the existing 79-candidate registry). All 13 were rejected as discovery-only. ZERO ingestible candidates this round. Plus a bounded H200 cross-source methodology drift audit between ssakethch/h200-quantization-benchmarks (single-source vLLM H200 SXM MIG-partitioned) and the 10 metrum-ai/llm-perfdata H200 rows (multi-source curated, mixed engines, mostly Target placeholder rows). Confirms Round-5 + Round-6 negative result on economic signals: the public HF dataset space does NOT currently close the operational \u00d7 economic join gap.",
+  "uses_oracle_as_headline": false
+}

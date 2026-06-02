@@ -1,0 +1,130 @@
+{
+  "audited_at_s": 1780359560.221689,
+  "directly_comparable_cells": [
+    {
+      "cell": "Llama-3.1-8B / FP8 / vLLM / 1xH200 SXM (MIG) vs 8xH200 (full GPUs)",
+      "methodology_drift_observation": "Per-GPU normalization: metrum 64915 tok/s / 8 GPUs = 8114 tok/s per full H200. ssakethch Llama-3.1-8B FP8 at request_rate=4 (single MIG-partitioned H200 SXM) reports 1596.41 tok/s. The ~5x gap is consistent with MIG-partition-fraction (1/4-1/7 of a full H200) \u00d7 request_rate=4 vs. metrum's unstated concurrency. Cross-source comparison does NOT reveal a methodology drift; it reveals that ssakethch is a per-MIG-instance measurement and metrum is a per-cluster aggregate. Consumers MUST NOT cross-compare ssakethch per-replica tokens/s directly with metrum aggregate tokens/s without explicitly applying a partition-fraction \u00d7 concurrency normalization.",
+      "metrum_observation": {
+        "engine": "vllm",
+        "model_id": "Llama-3.1-8B",
+        "notes": "metrum is aggregated 8xH200 full-GPU vLLM tokens/s; not per-MIG-instance.",
+        "num_gpus": 8.0,
+        "precision": "FP8",
+        "tokens_per_sec_aggregate": 64915.0,
+        "tokens_per_sec_per_gpu_normalized": 8114.38
+      },
+      "ssakethch_observation": {
+        "engine": "vllm",
+        "gpu_type": "NVIDIA H200 SXM",
+        "mean_tpot_ms": 5.96,
+        "mean_ttft_ms": 41.52,
+        "model_id": "neuralmagic/Meta-Llama-3.1-8B-Instruct-FP8",
+        "notes": "ssakethch is single-replica MIG-partitioned H200 SXM. total_token_throughput is per-replica.",
+        "quantization": "fp8",
+        "request_rate": 4.0,
+        "total_token_throughput_per_replica": 1596.41
+      }
+    },
+    {
+      "cell": "Llama-3.1-70B / BF16 / SGLang vs vLLM (engine mismatch)",
+      "methodology_drift_observation": "Engine mismatch (SGLang vs vLLM) and suspicious metrum measurement (TPOT=0.042 ms is implausibly low for a 70B model on 8 H200 \u2014 likely a unit / definition mismatch). Cross-source quantitative comparison is INFEASIBLE for this cell; recorded as a limitation.",
+      "metrum_observation": {
+        "concurrency": 10.0,
+        "engine": "sglang",
+        "model_id": "Llama-3.1-70B",
+        "notes": "metrum-ai records 'VMware benchmark; E2E Latency 18ms. TPOT is extremely low.' The 7.292 ms TTFT + 0.042 ms TPOT looks suspiciously low \u2014 likely PER-TOKEN aggregate, NOT per-request TTFT. See limitations below.",
+        "num_gpus": 8.0,
+        "precision": "BF16",
+        "tpot_ms": 0.042,
+        "ttft_ms": 7.292
+      },
+      "ssakethch_observation": {
+        "available": false,
+        "notes": "ssakethch is vLLM-only. No SGLang H200 row available for direct cross-source SGLang comparison."
+      }
+    }
+  ],
+  "doc_version": "h200_cross_source_methodology_audit_v1",
+  "git_sha": "00511a8ccca64901dab4d52390b347ed86aeec58",
+  "informs": [
+    "constraint_aware_engine \u2014 H200 latency / throughput priors must be sourced from ssakethch, NOT metrum-ai, when per-replica TTFT/TPOT/ITL is required.",
+    "performance_priors \u2014 metrum-ai H200 'Target' rows are USEFUL as coverage gap indicators (e.g. Qwen-3-235B / Mixtral-8x22B-MoE / DeepSeek-R1-Distill-70B target cells are NOT yet covered by ssakethch).",
+    "cross_trace_frontier_generalization_audit \u2014 the bounded observation here updates the cross-trace audit's H200 row with the per-MIG-instance vs. per-cluster-aggregate caveat."
+  ],
+  "limitations": [
+    "Only 1 of 10 metrum-ai H200 rows carries both TTFT and TPOT measurements (SGLang/Llama-3.1-70B/BF16, c=10, 8 GPUs). The remaining 9 rows are 'Target' coverage-cell placeholders without measurements (per metrum's source_notes 'Target row.').",
+    "metrum-ai's source_notes flag '[2] VMware benchmark; E2E Latency 18ms. TPOT is extremely low.' explicitly. The 0.042 ms TPOT is implausibly low for a 70B-parameter model on any GPU class; likely a per-token aggregate, not per-request TTFT/TPOT. metrum-ai's curated nature means each row's measurement methodology can differ between sources.",
+    "ssakethch is single-replica MIG-partitioned H200 SXM (the MIG partition fraction is NOT recorded in the dataset card YAML \u2014 inferred from the per-replica throughput magnitude). metrum's 8 GPU rows are aggregate full-GPU throughput. Direct cross-source per-row comparison without explicit partition-fraction normalization is unsafe.",
+    "Engine overlap is THIN \u2014 ssakethch is vLLM-only; only 6 of 10 metrum H200 rows are vLLM, of which 5 have NULL TTFT / TPOT / tokens_per_sec (Qwen-3, DeepSeek-R1-Distill, Gemma-3, Qwen-3-Math, Qwen-3 single rows are all placeholders).",
+    "Engine-coverage gap: SGLang results in ssakethch are NOT available (vLLM-only). Cross-engine drift between SGLang and vLLM CANNOT be audited from the H200 corpus today.",
+    "ROCm engine (vLLM-ROCm) overlap is ZERO \u2014 ssakethch has no AMD MI300X / MI355X coverage.",
+    "Quantization overlap is THIN \u2014 ssakethch has 5 quants (awq, bf16, fp8, gptq, nvfp4); metrum-ai H200 carries 2 AWQ rows + 1 FP8 row + 7 unspecified (BF16 by precision field). Direct quant-by-quant cross-source comparison needs additional data.",
+    "Concurrency definitions differ: ssakethch's request_rate (1, 2, 4, 8, 16) is the configured vLLM benchmark_serving closed-loop request rate; metrum's concurrency field is varied across rows (None / 10 / 32 / 50 / 64 / 128) with no harmonization. Concurrency-matched cross-source comparison is INFEASIBLE.",
+    "Conclusion: the H200 cross-source overlap is too thin to draw a sweeping methodology-drift conclusion. The bounded observation is that the two sources are MUTUALLY COMPLEMENTARY (ssakethch = depth on single-source vLLM MIG H200; metrum-ai = curated breadth across engines / models / vendors) but NOT directly cross-comparable per-row. Aurelius consumers should treat ssakethch as the strongest single-source H200 vLLM prior, and metrum-ai's H200 rows as breadth-coverage / target-cell metadata only."
+  ],
+  "metrum_h200_summary": {
+    "engines_present": [
+      "SGLang",
+      "vLLM"
+    ],
+    "models_present": [
+      "DeepSeek-R1-Distill-70B",
+      "Gemma-3-27B",
+      "Llama-3.1-70B",
+      "Llama-3.1-8B",
+      "Mixtral-8x22B MoE",
+      "Qwen-3-14B",
+      "Qwen-3-235B",
+      "Qwen-3-32B",
+      "Qwen-3-Math-72B",
+      "Yi-1.5-34B"
+    ],
+    "rows_with_tokens_per_sec": 1,
+    "rows_with_tpot": 1,
+    "rows_with_ttft": 1,
+    "total_rows": 10
+  },
+  "production_claim": false,
+  "recommended_consumer_action": "Treat ssakethch as the strongest single-source H200 vLLM prior (275 measured rows, real p50/p99 TTFT/TPOT/ITL); treat metrum-ai H200 rows as a curated breadth-coverage metadata layer that flags TARGET cells which would require additional ingest to close. Do NOT cross-compare tokens_per_sec between the two sources without explicit (MIG partition fraction, num_gpus, concurrency, engine) normalization.",
+  "scope": "Bounded H200 cross-source methodology drift audit comparing ssakethch/h200-quantization-benchmarks@throughput (275 rows \u00d7 40 models \u00d7 5 quants \u00d7 5 request_rates \u00d7 vLLM H200 SXM MIG-partitioned) and the 10 H200 rows in metrum-ai/llm-perfdata@multi_source_curated_v1 (multi-source curated, mixed engines). The metrum-ai H200 slice is mostly placeholder 'Target' rows: only 1 of 10 carries TTFT+TPOT, 1 carries tokens_per_sec, and 8 are coverage-cell placeholders. Conclusion: bounded methodology-drift observation, NOT a sweeping methodology conclusion.",
+  "ssakethch_overall": {
+    "overall_count": 275,
+    "overall_mean_total_token_throughput": 2155.8177454545453,
+    "overall_mean_tpot_ms": 27.95789090909091,
+    "overall_mean_ttft_ms": 9600.382981818182,
+    "overall_p50_total_token_throughput": 1574.68,
+    "overall_p50_tpot_ms": 11.63,
+    "overall_p50_ttft_ms": 57.64,
+    "overall_p99_total_token_throughput": 6641.1794,
+    "overall_p99_tpot_ms": 161.23879999999994,
+    "overall_p99_ttft_ms": 187268.32139999972,
+    "subgroup_counts": {
+      "quant=awq|request_rate=1.0": 14,
+      "quant=awq|request_rate=16.0": 14,
+      "quant=awq|request_rate=2.0": 14,
+      "quant=awq|request_rate=4.0": 14,
+      "quant=awq|request_rate=8.0": 14,
+      "quant=bf16|request_rate=1.0": 14,
+      "quant=bf16|request_rate=16.0": 14,
+      "quant=bf16|request_rate=2.0": 14,
+      "quant=bf16|request_rate=4.0": 14,
+      "quant=bf16|request_rate=8.0": 14,
+      "quant=fp8|request_rate=1.0": 14,
+      "quant=fp8|request_rate=16.0": 14,
+      "quant=fp8|request_rate=2.0": 14,
+      "quant=fp8|request_rate=4.0": 14,
+      "quant=fp8|request_rate=8.0": 14,
+      "quant=gptq|request_rate=1.0": 12,
+      "quant=gptq|request_rate=16.0": 12,
+      "quant=gptq|request_rate=2.0": 12,
+      "quant=gptq|request_rate=4.0": 12,
+      "quant=gptq|request_rate=8.0": 12,
+      "quant=nvfp4|request_rate=1.0": 1,
+      "quant=nvfp4|request_rate=16.0": 1,
+      "quant=nvfp4|request_rate=2.0": 1,
+      "quant=nvfp4|request_rate=4.0": 1,
+      "quant=nvfp4|request_rate=8.0": 1
+    }
+  },
+  "uses_oracle_as_headline": false
+}
