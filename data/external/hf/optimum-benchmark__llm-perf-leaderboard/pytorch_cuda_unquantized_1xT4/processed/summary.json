@@ -239,6 +239,8 @@
   "git_sha": "f3694e96b16828d71f1df871bfd5da6c4ccee679",
   "ingestion_timestamp_s": 1780301855.349011,
   "license": null,
+  "license_redistribution_source": "HF card frontmatter has no `license:` field; recorded as unspecified",
+  "license_redistribution_status": "unspecified_no_committed_sample",
   "limitations": [
     "HuggingFace optimum-benchmark official leaderboard (Apache-2.0 library; the HF dataset card itself has NO declared license \u2014 recorded as license=None). Bounded normalised sample is NOT committed for this dataset (license_redistribution_status=unspecified).",
     "Single hardware/backend/quantization combo per CSV: Tesla T4 \u00d7 pytorch \u00d7 unquantized. Cross-config queries must explicitly select the matching CSV.",
@@ -911,6 +913,11 @@
     "report.load_model.efficiency",
     "report.per_token.throughput"
   ],
+  "redistribution_gate_operator_grant_dataset_id": null,
+  "redistribution_gate_permitted": false,
+  "redistribution_gate_reason_code": "no_grant_recorded",
+  "redistribution_gate_reason_detail": "license=None for 'optimum-benchmark/llm-perf-leaderboard'; no operator grant recorded \u2014 default policy denies. no operator grant recorded for 'optimum-benchmark/llm-perf-leaderboard'; default policy is deny_all",
+  "redistribution_gate_scope": "committed_normalized_sample",
   "sample_sha256": "a9a0b41c4435d9103d4cc801d78b45b655d50a347e5df080aa5493e31b90191b",
   "sampling_method": "full_bounded",
   "schema_mapping_path": "data/external/hf/optimum-benchmark__llm-perf-leaderboard/pytorch_cuda_unquantized_1xT4/processed/schema_mapping.json",

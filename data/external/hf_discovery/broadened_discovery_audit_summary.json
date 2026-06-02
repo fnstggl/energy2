@@ -531,6 +531,7 @@
       "fixture_sample_rows": 5,
       "gated": false,
       "license": null,
+      "license_redistribution_status": "unspecified_no_committed_sample",
       "limitations": [
         "HuggingFace optimum-benchmark official leaderboard (Apache-2.0 library; the HF dataset card itself has NO declared license \u2014 recorded as license=None). Bounded normalised sample is NOT committed for this dataset (license_redistribution_status=unspecified).",
         "Single hardware/backend/quantization combo per CSV: 32vCPU Sapphire-Rapids (AWS C7i) \u00d7 openvino \u00d7 unquantized. Cross-config queries must explicitly select the matching CSV.",
@@ -566,6 +567,9 @@
       "promotion_tags": [
         "promoted_for_training_priors"
       ],
+      "redistribution_gate_operator_grant_dataset_id": null,
+      "redistribution_gate_permitted": false,
+      "redistribution_gate_reason_code": "no_grant_recorded",
       "statistical_sample_strength": "weak"
     },
     {
@@ -592,6 +596,7 @@
       "fixture_sample_rows": 5,
       "gated": false,
       "license": null,
+      "license_redistribution_status": "unspecified_no_committed_sample",
       "limitations": [
         "HuggingFace optimum-benchmark official leaderboard (Apache-2.0 library; the HF dataset card itself has NO declared license \u2014 recorded as license=None). Bounded normalised sample is NOT committed for this dataset (license_redistribution_status=unspecified).",
         "Single hardware/backend/quantization combo per CSV: NVIDIA A100-SXM4-80GB \u00d7 pytorch \u00d7 unquantized. Cross-config queries must explicitly select the matching CSV.",
@@ -627,6 +632,9 @@
         "promoted_for_constraint_aware_evaluation",
         "promoted_for_training_priors"
       ],
+      "redistribution_gate_operator_grant_dataset_id": null,
+      "redistribution_gate_permitted": false,
+      "redistribution_gate_reason_code": "no_grant_recorded",
       "statistical_sample_strength": "moderate"
     },
     {
@@ -653,6 +661,7 @@
       "fixture_sample_rows": 5,
       "gated": false,
       "license": null,
+      "license_redistribution_status": "unspecified_no_committed_sample",
       "limitations": [
         "HuggingFace optimum-benchmark official leaderboard (Apache-2.0 library; the HF dataset card itself has NO declared license \u2014 recorded as license=None). Bounded normalised sample is NOT committed for this dataset (license_redistribution_status=unspecified).",
         "Single hardware/backend/quantization combo per CSV: NVIDIA A10G \u00d7 pytorch \u00d7 unquantized. Cross-config queries must explicitly select the matching CSV.",
@@ -688,6 +697,9 @@
         "promoted_for_constraint_aware_evaluation",
         "promoted_for_training_priors"
       ],
+      "redistribution_gate_operator_grant_dataset_id": null,
+      "redistribution_gate_permitted": false,
+      "redistribution_gate_reason_code": "no_grant_recorded",
       "statistical_sample_strength": "strong"
     },
     {
@@ -714,6 +726,7 @@
       "fixture_sample_rows": 5,
       "gated": false,
       "license": null,
+      "license_redistribution_status": "unspecified_no_committed_sample",
       "limitations": [
         "HuggingFace optimum-benchmark official leaderboard (Apache-2.0 library; the HF dataset card itself has NO declared license \u2014 recorded as license=None). Bounded normalised sample is NOT committed for this dataset (license_redistribution_status=unspecified).",
         "Single hardware/backend/quantization combo per CSV: Tesla T4 \u00d7 pytorch \u00d7 unquantized. Cross-config queries must explicitly select the matching CSV.",
@@ -749,6 +762,9 @@
         "promoted_for_constraint_aware_evaluation",
         "promoted_for_training_priors"
       ],
+      "redistribution_gate_operator_grant_dataset_id": null,
+      "redistribution_gate_permitted": false,
+      "redistribution_gate_reason_code": "no_grant_recorded",
       "statistical_sample_strength": "strong"
     },
     {
@@ -775,6 +791,7 @@
       "fixture_sample_rows": 5,
       "gated": false,
       "license": null,
+      "license_redistribution_status": "unspecified_no_committed_sample",
       "limitations": [
         "HuggingFace optimum-benchmark official leaderboard (Apache-2.0 library; the HF dataset card itself has NO declared license \u2014 recorded as license=None). Bounded normalised sample is NOT committed for this dataset (license_redistribution_status=unspecified).",
         "Single hardware/backend/quantization combo per CSV: NVIDIA A100-SXM4-80GB \u00d7 pytorch \u00d7 bnb. Cross-config queries must explicitly select the matching CSV.",
@@ -810,6 +827,9 @@
         "promoted_for_constraint_aware_evaluation",
         "promoted_for_training_priors"
       ],
+      "redistribution_gate_operator_grant_dataset_id": null,
+      "redistribution_gate_permitted": false,
+      "redistribution_gate_reason_code": "no_grant_recorded",
       "statistical_sample_strength": "strong"
     },
     {
@@ -836,6 +856,7 @@
       "fixture_sample_rows": 5,
       "gated": false,
       "license": null,
+      "license_redistribution_status": "unspecified_no_committed_sample",
       "limitations": [
         "HuggingFace optimum-benchmark official leaderboard (Apache-2.0 library; the HF dataset card itself has NO declared license \u2014 recorded as license=None). Bounded normalised sample is NOT committed for this dataset (license_redistribution_status=unspecified).",
         "Single hardware/backend/quantization combo per CSV: NVIDIA A100-SXM4-80GB \u00d7 pytorch \u00d7 gptq. Cross-config queries must explicitly select the matching CSV.",
@@ -871,6 +892,9 @@
         "promoted_for_constraint_aware_evaluation",
         "promoted_for_training_priors"
       ],
+      "redistribution_gate_operator_grant_dataset_id": null,
+      "redistribution_gate_permitted": false,
+      "redistribution_gate_reason_code": "no_grant_recorded",
       "statistical_sample_strength": "strong"
     },
     {
@@ -897,6 +921,7 @@
       "fixture_sample_rows": 5,
       "gated": false,
       "license": null,
+      "license_redistribution_status": "unspecified_no_committed_sample",
       "limitations": [
         "HuggingFace optimum-benchmark official leaderboard (Apache-2.0 library; the HF dataset card itself has NO declared license \u2014 recorded as license=None). Bounded normalised sample is NOT committed for this dataset (license_redistribution_status=unspecified).",
         "Single hardware/backend/quantization combo per CSV: NVIDIA A10G \u00d7 pytorch \u00d7 awq. Cross-config queries must explicitly select the matching CSV.",
@@ -932,6 +957,9 @@
         "promoted_for_constraint_aware_evaluation",
         "promoted_for_training_priors"
       ],
+      "redistribution_gate_operator_grant_dataset_id": null,
+      "redistribution_gate_permitted": false,
+      "redistribution_gate_reason_code": "no_grant_recorded",
       "statistical_sample_strength": "strong"
     },
     {
@@ -958,6 +986,7 @@
       "fixture_sample_rows": 5,
       "gated": false,
       "license": null,
+      "license_redistribution_status": "unspecified_no_committed_sample",
       "limitations": [
         "HuggingFace optimum-benchmark official leaderboard (Apache-2.0 library; the HF dataset card itself has NO declared license \u2014 recorded as license=None). Bounded normalised sample is NOT committed for this dataset (license_redistribution_status=unspecified).",
         "Single hardware/backend/quantization combo per CSV: Tesla T4 \u00d7 pytorch \u00d7 bnb. Cross-config queries must explicitly select the matching CSV.",
@@ -993,6 +1022,9 @@
         "promoted_for_constraint_aware_evaluation",
         "promoted_for_training_priors"
       ],
+      "redistribution_gate_operator_grant_dataset_id": null,
+      "redistribution_gate_permitted": false,
+      "redistribution_gate_reason_code": "no_grant_recorded",
       "statistical_sample_strength": "strong"
     },
     {
@@ -1019,6 +1051,7 @@
       "fixture_sample_rows": 5,
       "gated": false,
       "license": null,
+      "license_redistribution_status": "unspecified_no_committed_sample",
       "limitations": [
         "HuggingFace optimum-benchmark official leaderboard (Apache-2.0 library; the HF dataset card itself has NO declared license \u2014 recorded as license=None). Bounded normalised sample is NOT committed for this dataset (license_redistribution_status=unspecified).",
         "Single hardware/backend/quantization combo per CSV: NVIDIA A10G \u00d7 pytorch \u00d7 torchao. Cross-config queries must explicitly select the matching CSV.",
@@ -1054,6 +1087,9 @@
       "promotion_tags": [
         "promoted_for_training_priors"
       ],
+      "redistribution_gate_operator_grant_dataset_id": null,
+      "redistribution_gate_permitted": false,
+      "redistribution_gate_reason_code": "no_grant_recorded",
       "statistical_sample_strength": "weak"
     },
     {
@@ -1080,6 +1116,7 @@
       "fixture_sample_rows": 5,
       "gated": false,
       "license": null,
+      "license_redistribution_status": "unspecified_no_committed_sample",
       "limitations": [
         "HuggingFace optimum-benchmark official leaderboard (Apache-2.0 library; the HF dataset card itself has NO declared license \u2014 recorded as license=None). Bounded normalised sample is NOT committed for this dataset (license_redistribution_status=unspecified).",
         "Single hardware/backend/quantization combo per CSV: 32vCPU Sapphire-Rapids (AWS C7i) \u00d7 pytorch \u00d7 unquantized. Cross-config queries must explicitly select the matching CSV.",
@@ -1115,6 +1152,9 @@
         "promoted_for_constraint_aware_evaluation",
         "promoted_for_training_priors"
       ],
+      "redistribution_gate_operator_grant_dataset_id": null,
+      "redistribution_gate_permitted": false,
+      "redistribution_gate_reason_code": "no_grant_recorded",
       "statistical_sample_strength": "strong"
     }
   ],
@@ -1124,6 +1164,6 @@
   "redistribution_gate_policy_default": "deny_all",
   "redistribution_gate_policy_grant_count": 0,
   "redistribution_gate_scope": "committed_normalized_sample",
-  "scope": "Broadened HF discovery follow-on to PR #133 \u2014 bounded ingest of 3 new Tier-4 latency_benchmark_trace candidates (odyn-network/odyn-benchmarks, memoriant/dgx-spark-kv-cache-benchmark, intellistream/vllm-hust-benchmark-results) plus 8 rejection / deferral records from the same INGEST_LATER / MONITOR pool. v2 wires the per-dataset summary writer through the canonical redistribution gate (sixth consumer); optimum-benchmark rows remain at v1 shape until that script is gate-wired separately.",
+  "scope": "Broadened HF discovery \u2014 v2 wires the per-dataset summary writers through the canonical redistribution gate. Sixth consumer (PR #158) wired scripts/ingest_hf_latency_benchmarks.py covering 3 Tier-4 latency_benchmark_trace candidates (odyn-network/odyn-benchmarks, memoriant/dgx-spark-kv-cache-benchmark, intellistream/vllm-hust-benchmark-results) plus 8 rejection / deferral records. Seventh consumer wires scripts/ingest_hf_optimum_benchmark.py covering `optimum-benchmark/llm-perf-leaderboard` (9 working configs across A100 / A10 / T4 / 32vCPU-C7i \u00d7 pytorch/openvino \u00d7 unquantized / awq / bnb / gptq / torchao) plus the openvino failure-only record. All 17 ingested rows now carry license_redistribution_status and the four redistribution_gate_* fields.",
   "uses_oracle_as_headline": false
 }

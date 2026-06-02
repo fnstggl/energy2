@@ -595,10 +595,24 @@ def test_audit_summary_latency_benchmark_rows_have_gate_fields():
     )
 
 
-def test_audit_summary_does_not_break_optimum_rows():
-    """Optimum-benchmark rows must be preserved at their pre-wiring
-    shape — adding the gate fields to those rows is the next PR's
-    job. The merge here must not silently drop or rewrite them.
+def test_audit_summary_optimum_rows_present_with_or_without_gate_fields():
+    """Optimum-benchmark rows must remain present in the audit summary.
+
+    Sixth-consumer-era invariant (PR #158): optimum rows did NOT yet
+    carry gate fields — that wiring was deferred to the seventh
+    consumer (this PR, ``scripts/ingest_hf_optimum_benchmark.py``).
+
+    Seventh-consumer-era invariant (current): the seventh consumer is
+    now wired through the gate, so optimum rows DO carry the gate
+    fields. This test accepts either shape so that:
+
+    * downstream consumers that re-run the latency-benchmarks script
+      against an older audit (pre-seventh-consumer) keep passing, and
+    * the post-seventh-consumer audit also passes without flipping a
+      semaphore.
+
+    The license must remain None in both shapes (the dataset still has
+    no declared HF license; only the gate's record-keeping changed).
     """
 
     a = json.loads(AUDIT_PATH.read_text())
@@ -607,22 +621,21 @@ def test_audit_summary_does_not_break_optimum_rows():
         if e.get("dataset_id") == "optimum-benchmark/llm-perf-leaderboard"
     ]
     assert optimum_rows, "audit must still record optimum-benchmark rows"
-    # Each optimum row must NOT have the new gate fields (those are
-    # the next PR's job). The license must remain None.
     for r in optimum_rows:
         assert r["license"] is None
-        # The pre-wiring shape did not record the gate fields, so the
-        # keys are absent rather than null. This preserves the v1
-        # serialisation byte-for-byte.
-        for key in (
-            "license_redistribution_status",
-            "redistribution_gate_reason_code",
-            "redistribution_gate_permitted",
-        ):
-            assert key not in r, (
-                f"optimum row {r.get('config_name')} unexpectedly "
-                f"carries {key!r}; the next PR should add it"
+        # If the gate fields are present (seventh-consumer-era), they
+        # must agree on the deny verdict (license=None → no_grant_recorded).
+        if "license_redistribution_status" in r:
+            assert r["license_redistribution_status"] == (
+                "unspecified_no_committed_sample"
             )
+            assert r["redistribution_gate_reason_code"] == "no_grant_recorded"
+            assert r["redistribution_gate_permitted"] is False
+            assert r[
+                "redistribution_gate_operator_grant_dataset_id"
+            ] is None
+        # If the gate fields are absent, that is also valid (pre-
+        # seventh-consumer shape — no silent drop).
 
 
 # ---------------------------------------------------------------------------
