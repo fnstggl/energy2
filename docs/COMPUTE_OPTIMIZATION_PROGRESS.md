@@ -5315,3 +5315,196 @@ consistent with the canonical gate so future license-tag
 changes only need a one-line constant edit. (iv) Pilot
 telemetry (Tier 1) remains the only path to production
 calibration; no HF dataset closes that gate.
+
+### Done 2026-06-02 — RedistributionGate: sixth consumer wires `scripts/ingest_hf_latency_benchmarks.py` through the gate
+
+**Status.** Audit-only — no scheduler change, no controller
+change, no robust-energy-engine touch, no production claim, no
+oracle as headline, no new HF data downloaded, no new
+committed normalised sample (the 5 already-committed normalised
+samples are byte-for-byte unchanged on disk). Branch:
+`claude/cool-lamport-7fcVs`.
+
+**Why now.** The fifth-consumer PR (#156) wired the canonical
+`decide_redistribution` gate into
+`scripts/ingest_hf_llm_energy_consumption.py` (cc-by-sa-4.0,
+permit + attribution prose). Its "Next" section explicitly
+listed the two remaining per-dataset ingestion scripts:
+`scripts/ingest_hf_latency_benchmarks.py` (mixed Apache-2.0 /
+`None`) and `scripts/ingest_hf_optimum_benchmark.py` (`None`),
+each "a self-contained PR because each has its own
+summary-writer shape and license tag." This PR is the first of
+those two follow-ups.
+
+**Mission.** Wire `scripts/ingest_hf_latency_benchmarks.py`
+through the canonical gate. The script differs from every prior
+gate consumer because it covers **three datasets with two
+distinct license tags in one script**:
+
+- `odyn-network/odyn-benchmarks` — `apache-2.0` (4 configs,
+  ~88 KiB of normalised samples committed under v1).
+- `memoriant/dgx-spark-kv-cache-benchmark` — `apache-2.0`
+  (1 config, ~9 KiB committed under v1).
+- `intellistream/vllm-hust-benchmark-results` — `None` (2
+  configs, zero committed under v1, skip-reason string
+  `"license_unspecified_no_redistribution_promise"`).
+
+Per-dataset license tags + sources + dataset ids lift to module
+constants (`ODYN_DATASET_ID` / `ODYN_LICENSE_TAG` /
+`ODYN_LICENSE_SOURCE` and the same triple for memoriant and
+intellistream). A common `GATE_SCOPE`, `_load_ledger()`, and
+`evaluate_redistribution(*, ledger, dataset_id, license_tag, scope,
+now_iso=None)` pure helper drive the gate decisions; each
+dataset's ingest body supplies its own `(dataset_id,
+license_tag, license_source)` triple. `_finalize_config` drops
+the v1 `commit_normalized: bool` flag — the gate's
+`permitted` field is now the only commit decision. The
+pre-existing skip-reason string is preserved verbatim on
+`committed_normalized_sample_reason_skipped` (downstream tests
+pin it); the canonical gate verdict is recorded additively in
+the new `redistribution_gate_*` fields.
+
+**Gate verdicts under the default `deny_all` / zero-grants
+ledger** (match v1 byte-for-byte):
+
+- `apache-2.0` → permitted=True, license_status=
+  `permissive_apache_2_0`, reason_code=
+  `permitted_declared_permissive_license`. Sample committed.
+- `None` → permitted=False, license_status=
+  `unspecified_no_committed_sample`, reason_code=
+  `no_grant_recorded`. Sample skipped.
+
+The shared audit summary
+`data/external/hf_discovery/broadened_discovery_audit_summary.json`
+gets a merge-aware rewrite: bumps `doc_version` to v2; adds
+top-level `redistribution_gate_scope` / `_policy_default` /
+`_policy_grant_count` / `uses_oracle_as_headline`; adds the
+gate fields to the 7 latency-benchmark ingested rows;
+preserves the 10 optimum-benchmark rows at v1 shape (no new
+keys, no removed keys — those rows get wired in the next PR).
+
+**Files changed.**
+
+- `scripts/ingest_hf_latency_benchmarks.py` — the per-dataset
+  ingestion script. Top-level changes:
+  - Imports `decide_redistribution`, `RedistributionGateDecision`,
+    and `OperatorPolicyLedger` from the canonical modules.
+  - New module constants: nine per-dataset license metadata
+    constants (ODYN / MEMORIANT / INTELLISTREAM × DATASET_ID /
+    LICENSE_TAG / LICENSE_SOURCE), `POLICY_PATH`,
+    `GATE_SCOPE = "committed_normalized_sample"`, and
+    `COMMITTED_NORMALIZED_SAMPLE_SKIP_REASON` (v1 string
+    preserved verbatim).
+  - New module-level helpers `_load_ledger` (fresh-checkout
+    fallback to `OperatorPolicyLedger.empty()`) and
+    `evaluate_redistribution` (pure function returning a
+    `RedistributionGateDecision`).
+  - `_ingest_odyn`, `_ingest_memoriant`,
+    `_ingest_intellistream`, and `_write_audit_summary` each
+    accept `ledger` as a keyword-only optional argument so
+    `main()` loads the ledger once and threads it through.
+  - `_finalize_config` accepts `gate_decision` +
+    `license_source` and emits the seven
+    `license_redistribution_*` / `redistribution_gate_*`
+    fields. The v1 `commit_normalized: bool` parameter is
+    removed — the commit decision is `gate_decision.permitted`
+    alone.
+  - Audit summary writer rewritten to MERGE with the previous
+    shared file (preserving optimum-benchmark rows
+    byte-for-byte), add top-level + per-row gate fields on the
+    7 latency-benchmark rows, and bump `doc_version` to v2.
+- `data/external/hf/odyn-network__odyn-benchmarks/*/processed/summary.json`
+  (4 files, one per config) — regenerated through the gate.
+  `license_redistribution_status = permissive_apache_2_0`;
+  the new gate fields are added; the four normalised samples
+  on disk are unchanged byte-for-byte (42,353 / 30,605 /
+  13,819 / 1,919 bytes; 64 / 47 / 25 / 4 rows).
+- `data/external/hf/memoriant__dgx-spark-kv-cache-benchmark/v3_corrected/processed/summary.json`
+  — regenerated through the gate. Same shape change.
+  Sample unchanged (9,037 bytes / 18 rows).
+- `data/external/hf/intellistream__vllm-hust-benchmark-results/*/processed/summary.json`
+  (2 files) — regenerated through the gate.
+  `license_redistribution_status =
+  unspecified_no_committed_sample`;
+  `redistribution_gate_permitted = false`;
+  `reason_code = no_grant_recorded`. Pre-existing
+  `committed_normalized_sample_reason_skipped =
+  "license_unspecified_no_redistribution_promise"` preserved
+  verbatim. No committed normalised sample on disk for either
+  config — identical to v1.
+- `data/external/hf_discovery/broadened_discovery_audit_summary.json`
+  — regenerated. `doc_version` v1 → v2. Top-level gains
+  `redistribution_gate_scope` /
+  `redistribution_gate_policy_default` /
+  `redistribution_gate_policy_grant_count` /
+  `uses_oracle_as_headline`. All 7 latency-benchmark rows gain
+  `license_redistribution_status` /
+  `redistribution_gate_reason_code` /
+  `redistribution_gate_permitted` /
+  `redistribution_gate_operator_grant_dataset_id`. The 10
+  optimum-benchmark rows are preserved at v1 shape (no new
+  keys); a test asserts this so the next PR's job is clear.
+- `tests/test_hf_latency_benchmarks_gate_wiring.py` — new file
+  with 48 tests pinning every dimension of the wiring (see
+  "Result" below).
+- `tests/test_hf_latency_benchmarks_ingest.py` — unchanged. The
+  pre-existing 17 tests continue to pin the v1 behaviour on the
+  refreshed summaries, including
+  `test_intellistream_has_no_committed_normalized_sample`
+  (skip-reason string preserved verbatim) and the
+  apache-2.0 commit / size pins on odyn + memoriant.
+- `docs/HF_DATASET_REGISTRY.md` — new §12.12.
+- `docs/COMPUTE_OPTIMIZATION_PROGRESS.md` — this entry.
+
+**Result.** All 48 new tests pass. All 17 pre-existing tests in
+`tests/test_hf_latency_benchmarks_ingest.py` continue to pass
+on the updated committed artefacts. All 35 tests in
+`tests/test_hf_redistribution_gate.py` continue to pass. All
+24 tests in `tests/test_hf_operator_redistribution_policy.py`
+continue to pass. All 27 / 17 / 20 / 37 tests in the second /
+third / fourth / fifth consumer gate-wiring test files
+continue to pass. All 128 tests in
+`tests/test_hf_optimum_benchmark_ingest.py` continue to pass
+(audit merge preserved optimum rows). 1045 tests total in
+`tests/test_hf_*.py` pass. The 5 already-committed normalised
+samples (odyn × 4 + memoriant × 1) are byte-for-byte unchanged
+on disk; the 7 summary.json files record the identical
+`committed_normalized_sample_bytes` /
+`committed_normalized_sample_rows` /
+`committed_normalized_sample_sha256` /
+`committed_normalized_sample_path` they recorded under the v1
+script.
+
+**Honesty + scope guarantees.** No production claim. No
+scheduler / controller / robust-energy-engine touched. No
+oracle as headline. No Tier 1 promotion. No new HF data
+downloaded. No new candidate-registry entry. No new committed
+normalised sample (the existing 5 are unchanged byte-for-byte
+on disk). No `HF_TOKEN` leak. No raw data committed. The
+script's downloader path is unchanged (still requires
+`HF_TOKEN` for re-ingest); only the redistribution classifier
+moved from inline to the canonical gate. The gate's
+permissive allow-list is unchanged — `apache-2.0` was already
+recognised from prior consumers; this PR introduces no new
+license tags.
+
+**Next.** (i) Extend the same pattern to the last remaining
+per-dataset ingestion script:
+`scripts/ingest_hf_optimum_benchmark.py` (`None`). That
+script's 10 ingested rows in the shared
+`broadened_discovery_audit_summary.json` are currently
+preserved at v1 shape; the next PR will add the gate fields to
+those rows so the merged audit file reaches full gate
+coverage. (ii) If/when an operator decides to opt the
+intellistream leaderboard (or any other `None`-license
+candidate) in, they add a grant entry to
+`operator_redistribution_policy.json`; the sixth consumer
+(and every future per-script consumer) will flip the affected
+dataset's row to `permitted_operator_grant` on the next run.
+(iii) The Rounds 5-8 negative result on economic signals
+stands — this milestone does not close the operational ×
+economic join gap on its own; it makes the per-script
+redistribution classifier consistent with the canonical gate
+so future license-tag changes only need a one-line constant
+edit. (iv) Pilot telemetry (Tier 1) remains the only path to
+production calibration; no HF dataset closes that gate.

@@ -64,6 +64,8 @@
   "git_sha": "2a76939d70df38c1ce8f683e39cb8129dcdd71ef",
   "ingestion_timestamp_s": 1780294331.7711,
   "license": "apache-2.0",
+  "license_redistribution_source": "HF card frontmatter license: apache-2.0",
+  "license_redistribution_status": "permissive_apache_2_0",
   "limitations": [
     "Odyn Network public benchmark (vLLM + Ray Serve based, Apache-2.0).",
     "Single model \u00d7 single hardware target (facebook/opt-125m on RTX 3090); do NOT generalise these latency numbers to other deployments.",
@@ -159,6 +161,11 @@
     "total_token_throughput",
     "duration_s"
   ],
+  "redistribution_gate_operator_grant_dataset_id": null,
+  "redistribution_gate_permitted": true,
+  "redistribution_gate_reason_code": "permitted_declared_permissive_license",
+  "redistribution_gate_reason_detail": "declared HF license 'apache-2.0' maps to 'permissive_apache_2_0'; ledger not consulted",
+  "redistribution_gate_scope": "committed_normalized_sample",
   "sample_sha256": "f57c5b50e8eb75e77b25b0c050ea5b4cdd4d8d5a6ff0f74f554ccc306bd54f7a",
   "sampling_method": "full_bounded",
   "schema_mapping_path": "data/external/hf/odyn-network__odyn-benchmarks/facebook_chat_streaming/processed/schema_mapping.json",
