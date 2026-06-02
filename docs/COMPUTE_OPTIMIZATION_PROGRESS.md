@@ -4224,3 +4224,135 @@ real TTFT / TPOT at known concurrency (ssakethch is vLLM-only;
 metrum-ai's SGLang H200 row is too thin and unit-suspect to ground
 a cross-engine prior). Pilot telemetry (Tier 1) remains the only
 path to production calibration — no HF dataset closes that gate.
+
+
+## 2026-06-02 — hf-corpus: Round-8 broadened HF discovery audit (no new ingest) — license=None failure mode surfaces (`claude/cool-lamport-Cv1GR`)
+
+HF discovery / data-engine PR. No scheduler change, no controller change,
+no robust-energy-engine change, no oracle as headline, no Tier 1 promotion,
+no production claim. No new HF data downloaded beyond per-dataset
+metadata; no canonical registry entry added; no committed normalised
+sample written for any new candidate.
+
+This PR delivers ONE bounded audit:
+
+1. **Round-8 broadened HF discovery — 11 discovery-only rejection
+   records, ZERO new ingest.** Re-ran ~40 deliberately NEW search-term
+   groups against the public HF datasets API (`codecarbon`, `scaphandre`,
+   `agent runtime`, `opentelemetry`, `mcp telemetry`, `mlcommons`,
+   `datacenter traces`, `cloud billing`, `inference-perf`, `energy
+   consumption`, `carbon`, `dynamo`, `tensorrt`, `llmperf`, `anyscale`,
+   `perfdata`, `cluster log`, `serverless`, `bedrock`, …) — none of
+   which overlap the term groups exhausted in Rounds 5-7. Surfaced 11
+   newly-appearing candidates (none in the existing 92-candidate
+   registry); ZERO qualified for bounded ingest.
+
+**Round-8 finding shape (NEW vs Rounds 5-7).** Rounds 5-7's failure
+modes were `synthetic / duplicate / wrong-domain / empty`. Round 8
+surfaces a NEW category: **REAL infrastructure measurements blocked
+by `license=None`** (4 of 11 candidates). The conservative
+redistribution policy refuses committed normalised samples for
+license=None datasets, but the existence of these candidates is the
+actionable signal — unlike Rounds 5-7's failure modes, a
+license-clearance contact (or an operator-policy permission flow)
+could plausibly unblock them later.
+
+**Round-8 by failure mode (11 total).**
+
+- **`inspect_manually_license_blocked` (4):** `sasha/co2_models`,
+  `ohdoking/energy_consumption_by_model_and_gpu`,
+  `dadadada1/Inference-Performance-Dataset`,
+  `anon-betterbench/betterbench-inference-logs`. All carry real
+  infrastructure measurements; all have `license=None` on the HF
+  card. `sasha/co2_models` is the **FIRST HF candidate in Rounds
+  5-8 carrying simultaneous operational (duration, num_queries) +
+  economic (emissions kgCO2e, energy kWh, region) + infrastructure
+  (gpu_model, gpu_count) signals together** — adjacent (CV, not LLM)
+  but the region × GPU × energy join keys would directly inform the
+  `gpu_hour_price_usd` and `carbon_g_per_kwh` scorer coefficients.
+- **`reject_synthetic_economics` (1):** `sairamn/gcp-cloud-billing-cost`.
+  MIT but `Resource ID` is `resource_1 … resource_999` (sequential
+  synthetic IDs diagnostic of fixture data). Same rule as the
+  Round-4 `tarekmasryo/llm-system-ops-production-telemetry-sft-data`
+  rejection.
+- **`reject_synthetic_estimates` (1):**
+  `ClarusC64/datacenter-power-load-coherence-risk-v0.1`. MIT but
+  every row carries `source_citation = "Synthetic"` + card YAML
+  `validation_status: pre_release`.
+- **`reject_irrelevant_domain` (2):**
+  `deepanjalimishra99/datacenter-traces` (despite the name + 3,674
+  downloads + MIT, the 6,257 siblings are SPEC2017 SimPoint
+  fingerprint + simpoint traces — CPU-architecture simulation),
+  `programasweights/paw-inference-logs` (Programs-As-Weights
+  synthesised execution).
+- **`reject_out_of_scope` (1):** `minhkhoi1026/opencl-llmperf`.
+  Apache-2.0 + 1,344 downloads but schema is OpenCL kernel
+  execution-time training data (BlackScholes, DotProduct,
+  MatVecMul), NOT LLM serving.
+- **`reject_low_value_no_workload_context` (2):**
+  `ICOS-AI/scaphandre_power_consumption`,
+  `ICOS-AI/scaphandre_cpu_usage`. Apache-2.0 Scaphandre power-meter
+  exports with `(timestamp, value)` schema — real telemetry but no
+  workload / model / GPU / request-id join key.
+
+**Round-8 negative-result snapshot (economic priority).** This is
+the FOURTH CONSECUTIVE ROUND (5, 6, 7, 8) confirming the same
+finding on the ingest dimension: the public HF dataset space does
+NOT currently close the operational × economic join gap. Round 8
+WAS designed to falsify on a deliberately fresh angle set (40 NEW
+search terms with no overlap with Rounds 5-7); it failed to
+falsify on the ingest dimension, but DID surface a new actionable
+failure category (license=None on real measurements — 4 of 11
+candidates). The Aurelius `goodput/$` denominator REMAINS
+operator-policy + public-pricing-prior + ElectricityMaps / ENTSO-E
+carbon intensity. Recorded under
+`round8_broadened_discovery_audit_summary.json::economic_priority_summary`.
+
+**Files changed (PR scope).**
+- `scripts/audit_hf_round8_discovery.py` — new (~ 500 lines). Audit
+  driver. Writes `round8_broadened_discovery_audit_summary.json`
+  and updates `hf_dataset_candidates.json` with the 11 new Round-8-
+  tagged candidates + a `focused_audit_2026_06_02_round8` block.
+- `data/external/hf_discovery/round8_broadened_discovery_audit_summary.json`
+  — new audit rollup including `license_blocked_followup_candidates`
+  (the 4 license-blocked candidates with `reason_to_revisit` +
+  `required_action_to_unblock` per row).
+- `data/external/hf_discovery/hf_dataset_candidates.json` — 11 new
+  candidate entries; candidate_count 92 → 99; new
+  `focused_audit_2026_06_02_round8` block.
+- `docs/HF_DATASET_REGISTRY.md` — new §7.4 narrative (Round-8
+  audit); 11 new rows in §7.2 table.
+- `docs/COMPUTE_OPTIMIZATION_PROGRESS.md` — this entry.
+- `tests/test_hf_round8_audit.py` — new tests. Coverage: Round-8
+  audit summary exists / correct doc_version / no_production_claim
+  / no_oracle / 11 discovery-only records (each with bucket +
+  reason); `license_blocked_followup_candidates` is a distinct,
+  populated list with the 4 license-blocked IDs; kind distribution
+  matches the finding (4 license-blocked + 2 synthetic + 3
+  irrelevant/out_of_scope + 2 low_value); candidate registry has
+  the new audit block + the 11 Round-8-tagged entries; no
+  HF_TOKEN leak; no raw data committed.
+
+**Honesty + scope guarantees.** No production claim; no scheduler /
+controller / robust energy engine touched; no oracle as headline;
+no Tier 1 promotion; no new HF data downloaded; no new canonical
+registry entry; no committed normalised sample. The Round-8 audit
+is a NO-NEW-INGEST round with a documented fourth-consecutive
+negative result on economic signals. The license=None failure
+category is documented as an actionable follow-up (license-clearance
+contact or operator-policy permission flow), NOT as production
+signal.
+
+**Next.** (i) Optionally contact owners of the 4 license-blocked
+candidates (`sasha/co2_models`, `ohdoking/energy_consumption_by_
+model_and_gpu`, `dadadada1/Inference-Performance-Dataset`,
+`anon-betterbench/betterbench-inference-logs`) to request a
+permissive license declaration — `sasha/co2_models` is the
+highest-priority target as the FIRST candidate carrying
+operational + economic + infrastructure signals together.
+(ii) Optionally design an operator-policy permission flow that lets
+an operator confirm explicit redistribution consent for a
+license=None dataset — would unblock the category in general.
+(iii) Continue Round-9+ HF discovery only when a new high-priority
+candidate surfaces. Pilot telemetry (Tier 1) remains the only path
+to production calibration — no HF dataset closes that gate.

@@ -1334,6 +1334,125 @@ Rules (binding):
   concurrency, engine) normalization. Recorded in
   `data/external/hf_discovery/h200_cross_source_methodology_audit.json`.
 
+#### Round-8 broadened discovery — license=None failure mode surfaces (2026-06-02)
+
+- **Round-8 broadened HF discovery — 11 discovery-only rejection
+  records, ZERO new ingest.** Re-ran ~40 deliberately NEW search-term
+  groups against the public HF datasets API (`codecarbon`, `scaphandre`,
+  `agent runtime`, `opentelemetry`, `mcp telemetry`, `mlcommons`,
+  `datacenter traces`, `cloud billing`, `inference-perf`, `energy
+  consumption`, `carbon`, `dynamo`, `tensorrt`, `llmperf`, `anyscale`,
+  `perfdata`, `cluster log`, `serverless`, `bedrock`, …) — none of
+  which overlap the term groups exhausted in Rounds 5-7. Surfaced 11
+  newly-appearing candidates (none in the existing 92-candidate
+  registry); ZERO qualified for bounded ingest. Records persist under
+  `data/external/hf_discovery/round8_broadened_discovery_audit_summary.json`
+  + `data/external/hf_discovery/hf_dataset_candidates.json` so they
+  won't be re-discovered.
+- **NEW failure mode — license=None on real measurements.** The
+  Round-8 sweep surfaced a category absent from Rounds 5-7: FOUR
+  datasets carrying REAL infrastructure measurements but no declared
+  license. Conservative redistribution policy (committed normalised
+  sample requires a declared permissive license) blocks ingest, but
+  the existence of these candidates is itself the actionable signal —
+  unlike Rounds 5-7's synthetic / duplicate / wrong-domain failure
+  modes, a license-clearance contact (or an operator-policy
+  permission flow) could plausibly unblock them later.
+  - `sasha/co2_models` — vision models (ViT / BEiT / ResNet) on
+    CIFAR10 with CodeCarbon `emissions` (kgCO2e), `energy` (kWh),
+    `region` (e.g. `virginia`), `gpu_count`, `gpu_model` (e.g.
+    `1 x Tesla T4`). **THE FIRST HF candidate in Rounds 5-8 carrying
+    simultaneous operational (duration, num_queries) + economic
+    (emissions, energy, region) + infrastructure (gpu_model,
+    gpu_count) signals together.** Adjacent (CV, not LLM) but the
+    region × GPU × energy join keys are reusable as an energy / region
+    prior — would directly inform the `gpu_hour_price_usd` and
+    `carbon_g_per_kwh` scorer coefficients if the license question is
+    resolved.
+  - `ohdoking/energy_consumption_by_model_and_gpu` — per-prompt
+    CodeCarbon energy / runtime / CO2 across 8 NVIDIA GPU classes
+    (RTX 3070 / 3090 / 4090, RTX A4000 / A5000 / A6000, RTX 2000 /
+    4000 Ada Gen) + CPU baseline. Multiple HF models (TinyLlama-1.1B
+    etc.). 22 CSV files, 10K-100K rows. Would substantially broaden
+    the existing `ejhusom/llm-inference-energy-consumption` coverage
+    (currently laptop2 + workstation Ollama hosts only) to the
+    consumer / workstation RTX tier.
+  - `dadadada1/Inference-Performance-Dataset` — H100 token-level LLM
+    inference (single-user). Schema: `model` (7b / 13b / 20b),
+    `gpu_type` (H100), per-token mean / max / std latency,
+    `prefill_time` (≈ TTFT), `avg_token_decode_time` (≈ TPOT),
+    `token_throughput`, `early_sync_delay`, `decode_jitter_std`,
+    `stall_ratio_95p`, `token_latency_slope`, `sync_cost_ratio`.
+    100K-1M rows. UNIQUE in the corpus for **token-level JITTER +
+    STALL + SYNC-COST telemetry** — signals not present in
+    agent-perf-bench, optimum-benchmark, or any other entry.
+  - `anon-betterbench/betterbench-inference-logs` — 1.8M parquet rows
+    of inference logs (4.1 GB compressed / 15 GB uncompressed). Schema:
+    `start_time` (float), `system_prompt`, `user_input`,
+    `model_output`, `model_name`, `temperature`, `inference_time`.
+    Real per-request arrival timestamp + e2e — a Tier-5
+    `request_shape_trace` candidate. The `anon-` namespace suggests
+    anonymised benchmark, not production — even if licensed, ceiling
+    at Tier-5.
+- **Round-8 hard rejections.**
+  - `sairamn/gcp-cloud-billing-cost` — MIT-licensed 100K-1M rows of
+    GCP-shaped billing data BUT `Resource ID` is `resource_1 …
+    resource_999` (sequential synthetic IDs). Rejected as
+    `reject_synthetic_economics` per the binding rule (same logic as
+    the Round-4 `tarekmasryo/llm-system-ops-production-telemetry-sft-
+    data` rejection).
+  - `ClarusC64/datacenter-power-load-coherence-risk-v0.1` — MIT but
+    every row carries `source_citation = "Synthetic"` and the card
+    YAML marks `validation_status: pre_release`. Rejected as
+    `reject_synthetic_estimates`. Also n<1K.
+  - `deepanjalimishra99/datacenter-traces` — despite MIT license,
+    3,674 downloads, and a name suggesting datacenter telemetry, the
+    6,257 siblings are SPEC2017 / SimPoint fingerprint + simpoint
+    traces (`bc/bc_web_stanford/fingerprint/bbfp.41`,
+    `bc/bc_web_stanford/simpoints/opt.l`, …) — single-thread CPU-
+    architecture simulation. Rejected as `reject_irrelevant_domain`.
+  - `programasweights/paw-inference-logs` — schema `(spec, input,
+    model_prediction, interpreter, program_id, source, ephemeral)`.
+    Programs-As-Weights synthesised program execution, NOT serving
+    infrastructure. Rejected as `reject_irrelevant_domain`.
+  - `minhkhoi1026/opencl-llmperf` — Apache-2.0, 1,344 downloads, but
+    schema is `(code, gsize, lsize, execution_time, input_sizes)`
+    across 130 OpenCL benchmark configs (BlackScholes, DotProduct,
+    MatVecMul). The "llm" refers to the modelling approach (training
+    an LLM-based OpenCL kernel-runtime predictor), not the workload.
+    Rejected as `reject_out_of_scope`.
+  - `ICOS-AI/scaphandre_power_consumption` +
+    `ICOS-AI/scaphandre_cpu_usage` — Apache-2.0 Scaphandre power-meter
+    exports, 3-second sampling, ~1K-10K rows. REAL telemetry but
+    schema is only `(timestamp, value)` with NO workload / model /
+    GPU / request-id join key. Cannot be attributed to any LLM
+    workload. Rejected as `reject_low_value_no_workload_context`.
+- **Round-8 negative-result finding (economic priority).** This is
+  the FOURTH CONSECUTIVE ROUND (5, 6, 7, 8) confirming the same
+  finding on the ingest dimension: the public HF dataset space does
+  NOT currently close the operational × economic join gap. Round 8
+  WAS designed to falsify on a deliberately fresh angle set, and DID
+  surface a new actionable failure category (license=None on real
+  measurements) — but did not falsify on the ingestible-this-round
+  dimension. The Aurelius `goodput/$` denominator REMAINS
+  operator-policy + public-pricing-prior + ElectricityMaps / ENTSO-E
+  carbon intensity (already integrated). Operator-policy-only scorer
+  coefficients after Round 8: `gpu_hour_price_usd`,
+  `kwh_per_request`, `carbon_g_per_kwh`,
+  `spot_interruption_probability`, `egress_cost_per_gb`,
+  `regional_price_usd_per_mwh`.
+- **Recommended follow-ups.** (i) Contact owners of
+  `sasha/co2_models`, `ohdoking/energy_consumption_by_model_and_gpu`,
+  `dadadada1/Inference-Performance-Dataset`, and
+  `anon-betterbench/betterbench-inference-logs` to request a
+  permissive license declaration. (ii) Design an operator-policy
+  permission flow that lets an operator confirm "I have explicit
+  redistribution consent for this dataset" — would unblock the
+  license=None category in general. (iii) The `sasha/co2_models`
+  schema is the most economically valuable surfaced anywhere in
+  Rounds 5-8 and should be the highest-priority license-clearance
+  target.
+
 #### `Lightcap/agent-runtime-telemetry-small` — inaugural `tool_runtime_trace`, Tier-3 cluster-scheduler-trace-family
 
 - **Why this dataset matters for Aurelius.** First public Hugging Face
@@ -1625,6 +1744,17 @@ schema covers both grains end-to-end.
 | `bldeaw/guardrails-load-test-results` | `mixed_or_unknown_trace` | `reject_empty_repository` (Round 7) | usedStorage=0. Files listed in cardData are not actually published. Cannot be ingested. license=None. |
 | `st192011/KVCaches` | `mixed_or_unknown_trace` | `reject_raw_artifacts_only` (Round 7) | 2.40 GB of raw `.bin` KV-cache binaries for three text prompts. No measured TTFT / TPOT / cache-hit / GPU / queue. Raw prefix-cache artifacts are not analyzable as a benchmark RESULTS dataset. apache-2.0. |
 | `h4shk4t/fast-kv-compaction-cache` | `mixed_or_unknown_trace` | `reject_raw_artifacts_only` (Round 7) | 634 MB single `Qwen3-4B.pt` file. Model-checkpoint-shaped artifact, not a benchmark RESULTS dataset. license=None. |
+| `sasha/co2_models` | `latency_benchmark_trace` | `inspect_manually_license_blocked` (Round 8) | REAL CodeCarbon per-run vision-model inference (ViT/BEiT/ResNet on CIFAR10) with `emissions` (kgCO2e), `energy` (kWh), `region`, `gpu_model`, `gpu_count`. **First HF candidate in Rounds 5-8 carrying simultaneous operational + economic + infrastructure signals.** Adjacent (CV, not LLM) but the region × GPU × energy join keys would directly inform `gpu_hour_price_usd` + `carbon_g_per_kwh` scorer coefficients. license=None blocks committed sample. Highest-priority license-clearance target. |
+| `ohdoking/energy_consumption_by_model_and_gpu` | `latency_benchmark_trace` | `inspect_manually_license_blocked` (Round 8) | REAL per-prompt CodeCarbon energy / runtime / CO2 across 8 NVIDIA GPU classes (RTX 3070/3090/4090, RTX A4000/A5000/A6000, RTX 2000/4000 Ada Gen) + CPU baseline. Multiple HF models (TinyLlama-1.1B etc.). 22 CSV files, 10K-100K rows. Would broaden existing ejhusom coverage to the consumer/workstation RTX tier. license=None. |
+| `dadadada1/Inference-Performance-Dataset` | `latency_benchmark_trace` | `inspect_manually_license_blocked` (Round 8) | H100 token-level LLM inference (single-user) with UNIQUE jitter/stall/sync-cost telemetry: `decode_jitter_std`, `stall_ratio_95p`, `sync_cost_ratio`, `token_latency_slope`. Plus `prefill_time` (≈ TTFT) + `avg_token_decode_time` (≈ TPOT) + `token_throughput`. 100K-1M rows × {7b,13b,20b} models. license=None. |
+| `anon-betterbench/betterbench-inference-logs` | `request_shape_trace` | `inspect_manually_license_blocked` (Round 8) | 1.8M parquet rows of inference logs (4.1 GB compressed, 15 GB uncompressed). Schema: `start_time` (float), `system_prompt`, `user_input`, `model_output`, `model_name`, `temperature`, `inference_time`. Real per-request arrival + e2e — Tier-5 arrival prior candidate. The `anon-` namespace suggests anonymised benchmark, not production. license=None. |
+| `sairamn/gcp-cloud-billing-cost` | `mixed_or_unknown_trace` | `reject_synthetic_economics` (Round 8) | MIT-licensed 100K-1M rows of GCP-shaped billing data. `Resource ID` is `resource_1 … resource_999` (sequential synthetic IDs diagnostic of fixture data; real Google Cloud invoice exports do NOT use that scheme). Service Name + Region / Zone catalog is real-shape but per-row costs are synthetic. Rejected per the binding "Do NOT treat synthetic cost fields as real economics" rule (same logic as the Round-4 `tarekmasryo` rejection). |
+| `ClarusC64/datacenter-power-load-coherence-risk-v0.1` | `mixed_or_unknown_trace` | `reject_synthetic_estimates` (Round 8) | MIT but every row carries `source_citation = "Synthetic"` and the card YAML marks `validation_status: pre_release`. Real-shape datacenter power-load risk schema (`rack_power_kw`, `psu_margin`, `ups_buffer_minutes`, `voltage_variance_pct`, `load_spike_frequency`, `unexpected_resets`) but self-declared synthetic per row. Also n<1K. |
+| `deepanjalimishra99/datacenter-traces` | `mixed_or_unknown_trace` | `reject_irrelevant_domain` (Round 8) | MIT + 3,674 downloads + name suggests datacenter telemetry, BUT the 6,257 siblings are SPEC2017 / SimPoint fingerprint + simpoint traces (`bc/bc_web_stanford/fingerprint/bbfp.41`, `…/simpoints/opt.l`, …). Single-thread CPU-architecture simulation traces, NOT LLM serving / cluster scheduling. |
+| `programasweights/paw-inference-logs` | `mixed_or_unknown_trace` | `reject_irrelevant_domain` (Round 8) | 1K-10K rows. Schema: `spec` / `input` / `model_prediction` / `model_version` / `interpreter` / `program_id` / `source` / `ephemeral`. Programs-As-Weights synthesised program execution logs, NOT serving infrastructure telemetry. license=None. |
+| `minhkhoi1026/opencl-llmperf` | `kernel_profile_trace` | `reject_out_of_scope` (Round 8) | Apache-2.0 + 1,344 downloads. Schema: `(code, gsize, lsize, execution_time, input_sizes)` across 130 OpenCL benchmark configs (BlackScholes, DotProduct, MatVecMul, …). The "llm" in the name refers to the modelling approach (training an LLM-based OpenCL-kernel-runtime predictor), not the workload. `execution_time` is OpenCL kernel runtime, NOT LLM serving TTFT / TPOT. Out of scope for the LLM-serving federated corpus. |
+| `ICOS-AI/scaphandre_power_consumption` | `telemetry_trace` | `reject_low_value_no_workload_context` (Round 8) | Apache-2.0. Schema is ONLY `(timestamp, power_consumption)`. 3-second Scaphandre sampling on ICOS Federated Learning edge infrastructure. ~1K-10K rows. REAL power telemetry but NO workload / model / GPU / request-id join key — cannot be attributed to any LLM workload. |
+| `ICOS-AI/scaphandre_cpu_usage` | `telemetry_trace` | `reject_low_value_no_workload_context` (Round 8) | Apache-2.0 sibling of `scaphandre_power_consumption`. Schema: `(timestamp, cpu_usage)`. Same limitation: no workload join key. (Recorded so future re-discovery doesn't re-evaluate the sibling.) |
 
 ### 7.3 Datasets known in repo (non-HF or other ingest paths)
 
