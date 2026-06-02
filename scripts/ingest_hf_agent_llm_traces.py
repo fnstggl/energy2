@@ -30,6 +30,29 @@ only schema_profile, schema_mapping, summary, statistical_rollups, the
 tiny fixture, and the bounded normalized sample (cdla-permissive-2.0
 permits redistribution) are committed.
 
+Redistribution decision (wired through the canonical gate)
+----------------------------------------------------------
+
+This script is the third consumer of
+:func:`aurelius.ingestion.redistribution_gate.decide_redistribution`
+(after ``scripts/audit_hf_redistribution_gate.py`` and
+``scripts/commit_hf_gap_normalized_samples.py``). The previous shape
+hard-coded ``license_redistribution_status = "permissive_cdla_2"`` into
+the summary writer; the new shape records only the raw HF license tag
+plus a human-curated provenance string (``LICENSE_SOURCE``), and asks
+the gate for both the canonical status label and the commit decision.
+
+Under the default policy (committed
+``operator_redistribution_policy.json`` ships zero grants) the gate
+classifies ``cdla-permissive-2.0`` as ``permissive_cdla_2`` and permits
+the committed normalised sample — identical to the v1 behaviour. The
+existing test
+``test_classify_license_agrees_with_commit_script_targets`` in
+``tests/test_hf_redistribution_gate.py`` pins this verdict on every
+license tag the gap commit script ships; the new test file
+``tests/test_hf_agent_llm_traces_gate_wiring.py`` pins the same for
+this script's license tag.
+
 Layout:
     data/external/hf/Exgentic__agent-llm-traces/raw/<file>     # gitignored
     data/external/hf/Exgentic__agent-llm-traces/<config>/processed/
@@ -60,15 +83,34 @@ from pathlib import Path
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
+from aurelius.ingestion.operator_redistribution_policy import (  # noqa: E402
+    OperatorPolicyLedger,
+)
+from aurelius.ingestion.redistribution_gate import (  # noqa: E402
+    RedistributionGateDecision,
+    decide_redistribution,
+)
 from aurelius.traces.hf_corpus import promotion  # noqa: E402
 
 REPO_ROOT = Path(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 HF_DIR = REPO_ROOT / "data" / "external" / "hf"
 DISC_DIR = REPO_ROOT / "data" / "external" / "hf_discovery"
 FIXTURES_DIR = REPO_ROOT / "tests" / "fixtures" / "hf"
+POLICY_PATH = DISC_DIR / "operator_redistribution_policy.json"
 
 DATASET_ID = "Exgentic/agent-llm-traces"
 SAFE_DATASET = DATASET_ID.replace("/", "__")
+
+# Raw HF license tag + human-curated provenance for the canonical
+# redistribution gate. The gate (not this script) classifies the tag
+# into a ``permissive_*`` / ``unspecified_no_committed_sample`` /
+# ``declared_non_permissive`` status code. Keeping the raw tag separate
+# from the canonical status here means a future HF tag change (e.g.
+# the dataset owner switching to MIT) only needs a single edit; the
+# gate handles the rest.
+LICENSE_TAG = "cdla-permissive-2.0"
+LICENSE_SOURCE = "HF card frontmatter license: cdla-permissive-2.0"
+GATE_SCOPE = "committed_normalized_sample"
 
 MAX_COMMITTED_FIXTURE_BYTES = 16 * 1024
 MAX_COMMITTED_NORMALIZED_BYTES = 100 * 1024 * 1024  # 100 MiB per the policy
@@ -251,6 +293,54 @@ def _statistical_sample_strength(rows: int) -> str:
     if rows >= 100:
         return "weak"
     return "fixture_only"
+
+
+# ---------------------------------------------------------------------------
+# Redistribution gate — wire the canonical gate, do not classify here
+# ---------------------------------------------------------------------------
+
+
+def _load_ledger(policy_path: Path = POLICY_PATH) -> OperatorPolicyLedger:
+    """Load the operator policy ledger from disk, or fall back to empty.
+
+    The committed default file ships zero grants under
+    ``policy_default=deny_all``; an absent file is identical in
+    behaviour. We use ``empty()`` as the fallback so the script remains
+    self-sufficient in a fresh checkout that may not yet have the
+    committed JSON pulled (the gate still produces correct deny
+    decisions for ``license = None`` datasets instead of crashing).
+    """
+
+    if policy_path.exists():
+        return OperatorPolicyLedger.load(policy_path)
+    return OperatorPolicyLedger.empty()
+
+
+def evaluate_redistribution(
+    *,
+    ledger: OperatorPolicyLedger,
+    license_tag: str | None = LICENSE_TAG,
+    dataset_id: str = DATASET_ID,
+    scope: str = GATE_SCOPE,
+    now_iso: str | None = None,
+) -> RedistributionGateDecision:
+    """Ask the canonical gate whether the committed normalised sample
+    of this dataset may be redistributed under the supplied license tag.
+
+    Pure function — no I/O. Exposed so tests can drive the gate path
+    without invoking the parquet download / flatten pipeline. The
+    defaults reflect the dataset-level constants this script ships;
+    tests override them to verify the wiring (e.g. swap ``license_tag``
+    to ``None`` and check that the gate denies).
+    """
+
+    return decide_redistribution(
+        dataset_id=dataset_id,
+        license_str=license_tag,
+        scope=scope,
+        ledger=ledger,
+        now_iso=now_iso,
+    )
 
 
 # ---------------------------------------------------------------------------
@@ -587,10 +677,18 @@ def _detect_signals(profile: dict, normalized: list[dict]) -> dict:
 # ---------------------------------------------------------------------------
 
 
-def audit_one(target: dict, *, token: str | None, force_redownload: bool) -> dict:
+def audit_one(
+    target: dict,
+    *,
+    token: str | None,
+    force_redownload: bool,
+    ledger: OperatorPolicyLedger | None = None,
+) -> dict:
     config = target["config_name"]
     hb = _Heartbeat(f"{DATASET_ID}@{config}")
     hb.update(phase="setup", force=True)
+    if ledger is None:
+        ledger = _load_ledger()
 
     safe_ds = HF_DIR / SAFE_DATASET
     raw_path = safe_ds / "raw" / Path(target["raw_file"]).name
@@ -852,13 +950,29 @@ def audit_one(target: dict, *, token: str | None, force_redownload: bool) -> dic
     # 12. Summary
     raw_schema = sorted(profile["raw_columns"])
     normalized_schema = sorted(profile["flattened_columns"])
+    # Ask the canonical gate for the redistribution verdict — the
+    # script does NOT classify the license tag itself. Under the
+    # default deny-all/zero-grants ledger and the dataset's declared
+    # cdla-permissive-2.0 tag this returns
+    # license_status="permissive_cdla_2",
+    # reason_code="permitted_declared_permissive_license",
+    # permitted=True — identical to the v1 behaviour pinned by
+    # ``tests/test_hf_redistribution_gate.py``.
+    gate_decision = evaluate_redistribution(ledger=ledger)
     summary = {
         "dataset_id": DATASET_ID,
         "config_name": config,
         "source_url": f"https://huggingface.co/datasets/{DATASET_ID}",
-        "license": "cdla-permissive-2.0",
-        "license_redistribution_status": "permissive_cdla_2",
-        "license_redistribution_source": "HF card frontmatter license: cdla-permissive-2.0",
+        "license": LICENSE_TAG,
+        "license_redistribution_status": gate_decision.license_status,
+        "license_redistribution_source": LICENSE_SOURCE,
+        "redistribution_gate_reason_code": gate_decision.reason_code,
+        "redistribution_gate_reason_detail": gate_decision.reason_detail,
+        "redistribution_gate_permitted": gate_decision.permitted,
+        "redistribution_gate_operator_grant_dataset_id": (
+            gate_decision.operator_grant_dataset_id
+        ),
+        "redistribution_gate_scope": GATE_SCOPE,
         "gated": False,
         "canonical_trace_type": "request_shape_trace",
         "committed_sample_rows": len(fixture_rows),
@@ -956,6 +1070,10 @@ def main() -> int:
         logger.error("HF_TOKEN env var required")
         return 2
 
+    # Load the operator policy ledger once; pass it to every audit_one
+    # call so all configs see the same redistribution-gate verdict.
+    ledger = _load_ledger()
+
     results = []
     for t in TARGETS:
         logger.info("ingest %s/%s ... (timeout %ds)",
@@ -963,7 +1081,12 @@ def main() -> int:
         t_start = time.monotonic()
         try:
             _install_timeout(PER_DATASET_TIMEOUT_S)
-            r = audit_one(t, token=token, force_redownload=args.force_redownload)
+            r = audit_one(
+                t,
+                token=token,
+                force_redownload=args.force_redownload,
+                ledger=ledger,
+            )
         except _PerDatasetTimeout as e:
             elapsed = int(time.monotonic() - t_start)
             logger.error("  DEFERRED_TIMEOUT after %ds: %s", elapsed, e)
@@ -994,7 +1117,7 @@ def main() -> int:
     DISC_DIR.mkdir(parents=True, exist_ok=True)
     summary_out = DISC_DIR / "agent_llm_traces_ingest_summary.json"
     payload = {
-        "doc_version": "exgentic_agent_llm_traces_ingest_summary_v1",
+        "doc_version": "exgentic_agent_llm_traces_ingest_summary_v2",
         "stage": "discovery_and_bounded_ingest",
         "production_claim": False,
         "modifies_robust_energy_engine": False,
@@ -1002,6 +1125,9 @@ def main() -> int:
         "uses_oracle_as_headline": False,
         "ingested_at_s": time.time(),
         "git_sha": _git_sha(),
+        "redistribution_gate_scope": GATE_SCOPE,
+        "redistribution_gate_policy_default": ledger.policy_default,
+        "redistribution_gate_policy_grant_count": len(ledger.grants),
         "ingested": [
             {
                 "dataset_id": r["dataset_id"],
@@ -1020,6 +1146,17 @@ def main() -> int:
                 "missing_signals": r["summary"]["missing_signals"],
                 "limitations": r["summary"]["limitations"],
                 "license": r["summary"]["license"],
+                "license_redistribution_status":
+                    r["summary"]["license_redistribution_status"],
+                "redistribution_gate_reason_code":
+                    r["summary"]["redistribution_gate_reason_code"],
+                "redistribution_gate_permitted":
+                    r["summary"]["redistribution_gate_permitted"],
+                "redistribution_gate_operator_grant_dataset_id": (
+                    r["summary"][
+                        "redistribution_gate_operator_grant_dataset_id"
+                    ]
+                ),
                 "url": r["summary"]["source_url"],
                 "summary_path": r["summary"]["summary_path_relative"],
             }
