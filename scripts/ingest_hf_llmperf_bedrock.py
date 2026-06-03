@@ -67,12 +67,20 @@ from typing import Optional
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
+from aurelius.ingestion.operator_redistribution_policy import (  # noqa: E402
+    OperatorPolicyLedger,
+)
+from aurelius.ingestion.redistribution_gate import (  # noqa: E402
+    RedistributionGateDecision,
+    decide_redistribution,
+)
 from aurelius.traces.hf_corpus import promotion  # noqa: E402
 
 REPO_ROOT = Path(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 HF_DIR = REPO_ROOT / "data" / "external" / "hf"
 DISC_DIR = REPO_ROOT / "data" / "external" / "hf_discovery"
 FIXTURES_DIR = REPO_ROOT / "tests" / "fixtures" / "hf"
+POLICY_PATH = DISC_DIR / "operator_redistribution_policy.json"
 
 FIXTURE_MAX_BYTES = 16 * 1024
 COMMITTED_NORMALIZED_MAX_BYTES = 512 * 1024  # 512 KiB — full 350 rows fit
@@ -84,7 +92,84 @@ CONFIG = "bedrock_claude_instant_v1"
 LICENSE = "apache-2.0"
 GATED = False
 
+# ── Redistribution-gate metadata ───────────────────────────────────────────
+# Raw HF license tag + human-curated provenance for the canonical
+# redistribution gate. The gate (not this script) classifies the tag
+# into a ``permissive_*`` / ``unspecified_no_committed_sample`` /
+# ``declared_non_permissive`` status code. Keeping the raw tag separate
+# from any inline ``"license"`` value here means a future HF tag change
+# is a one-line edit; the gate handles the rest.
+#
+# ssong1/llmperf-bedrock is the only dataset this script ingests; the
+# eight Round-3 discovery-only records do not flow through the gate
+# because no normalised sample is written for them. apache-2.0 is the
+# canonical permissive HF tag — the gate classifies it as
+# ``permissive_apache_2_0`` and permits redistribution.
+LICENSE_TAG: Optional[str] = "apache-2.0"
+LICENSE_SOURCE = (
+    "HF card frontmatter license: apache-2.0 "
+    "(ssong1 / Ray LLMPerf token_benchmark_ray.py output against "
+    "AWS Bedrock anthropic.claude-instant-v1)"
+)
+GATE_SCOPE = "committed_normalized_sample"
+
 logger = logging.getLogger("aurelius.hf_llmperf_bedrock_ingest")
+
+
+# ── Redistribution gate — wire the canonical gate, do not classify here ────
+
+
+def _load_ledger(policy_path: Path = POLICY_PATH) -> OperatorPolicyLedger:
+    """Load the operator policy ledger from disk, or fall back to empty.
+
+    The committed default file ships zero grants under
+    ``policy_default=deny_all``; an absent file is identical in
+    behaviour. We use ``empty()`` as the fallback so the script
+    remains self-sufficient in a fresh checkout that may not yet have
+    the committed JSON pulled — the gate still produces correct
+    decisions (permit for ``apache-2.0`` ssong1/llmperf-bedrock)
+    instead of crashing.
+    """
+
+    if policy_path.exists():
+        return OperatorPolicyLedger.load(policy_path)
+    return OperatorPolicyLedger.empty()
+
+
+def evaluate_redistribution(
+    *,
+    ledger: OperatorPolicyLedger,
+    license_tag: Optional[str] = LICENSE_TAG,
+    dataset_id: str = DATASET_ID,
+    scope: str = GATE_SCOPE,
+    now_iso: Optional[str] = None,
+) -> RedistributionGateDecision:
+    """Ask the canonical gate whether the bounded normalised sample of
+    ssong1/llmperf-bedrock may be redistributed under the supplied
+    license tag.
+
+    Pure function — no I/O. Exposed so tests can drive the gate path
+    without invoking the JSON download / normalisation pipeline. The
+    defaults reflect the module-level constants this script ships;
+    tests override them to verify the wiring (e.g. swap ``license_tag``
+    to ``None`` and check that the gate denies).
+
+    Under the default-empty ledger and the dataset's declared
+    apache-2.0 license tag, this returns
+    ``permitted=True``,
+    ``license_status="permissive_apache_2_0"``,
+    ``reason_code="permitted_declared_permissive_license"`` — the gate
+    ledger is NOT consulted because the license is on the closed
+    permissive allow-list.
+    """
+
+    return decide_redistribution(
+        dataset_id=dataset_id,
+        license_str=license_tag,
+        scope=scope,
+        ledger=ledger,
+        now_iso=now_iso,
+    )
 
 
 # ---------------------------------------------------------------------------
@@ -271,9 +356,21 @@ def _percentiles(vals: list[float]) -> dict:
     }
 
 
-def ingest(*, output_root: Path = HF_DIR, force: bool = False) -> dict:
+def ingest(
+    *,
+    output_root: Path = HF_DIR,
+    force: bool = False,
+    ledger: OperatorPolicyLedger | None = None,
+) -> dict:
     t0 = time.time()
     git_sha = _git_sha()
+    if ledger is None:
+        ledger = _load_ledger()
+    gate_decision = evaluate_redistribution(
+        ledger=ledger,
+        license_tag=LICENSE_TAG,
+        dataset_id=DATASET_ID,
+    )
 
     base = output_root / SAFE_NAME
     raw_dir = base / "raw"
@@ -639,6 +736,27 @@ def ingest(*, output_root: Path = HF_DIR, force: bool = False) -> dict:
         "config_name": CONFIG,
         "source_url": f"https://huggingface.co/datasets/{DATASET_ID}",
         "license": LICENSE,
+        # Redistribution-gate metadata (tenth consumer of the canonical
+        # gate). The gate classifies the recorded license tag —
+        # apache-2.0 → ``permissive_apache_2_0`` → permit; ledger NOT
+        # consulted (the closed permissive allow-list short-circuits).
+        # These fields are ADDITIVE — the on-disk fixture / committed
+        # normalized sample / analysis sample paths are unchanged. The
+        # script does NOT read the gate verdict to decide whether to
+        # write its samples (the committed normalised sample was
+        # already committed under the existing apache-2.0 declaration);
+        # the gate fields here document the canonical permit verdict so
+        # a future audit can prove the script consulted the gate rather
+        # than carrying its own classifier.
+        "license_redistribution_status": gate_decision.license_status,
+        "license_redistribution_source": LICENSE_SOURCE,
+        "redistribution_gate_reason_code": gate_decision.reason_code,
+        "redistribution_gate_reason_detail": gate_decision.reason_detail,
+        "redistribution_gate_permitted": gate_decision.permitted,
+        "redistribution_gate_operator_grant_dataset_id": (
+            gate_decision.operator_grant_dataset_id
+        ),
+        "redistribution_gate_scope": GATE_SCOPE,
         "gated": GATED,
         "canonical_trace_type": "latency_benchmark_trace",
         "raw_committed": False,
@@ -1008,10 +1126,24 @@ ROUND3_DISCOVERY_RECORDS = [
 ]
 
 
-def write_round3_audit_summary(ingest_out: dict, dest: Path) -> Path:
+def write_round3_audit_summary(
+    ingest_out: dict,
+    dest: Path,
+    *,
+    ledger: OperatorPolicyLedger | None = None,
+) -> Path:
     dest.parent.mkdir(parents=True, exist_ok=True)
+    if ledger is None:
+        ledger = _load_ledger()
+    s = ingest_out["summary"]
     payload = {
-        "doc_version": "round3_broadened_discovery_audit_summary_v1",
+        # v2 schema introduces the redistribution_gate_* top-level
+        # triple mirroring the broadened_discovery_audit_summary v2 and
+        # acmetrace_audit_summary_v2 schemas. Per-row gate fields are
+        # also added under ``ingested``. v1 readers continue to
+        # function: the v1 schema is a strict subset of v2 (all v1
+        # keys are preserved).
+        "doc_version": "round3_broadened_discovery_audit_summary_v2",
         "scope": (
             "Round 3 broadened HF discovery — bounded ingest of "
             "ssong1/llmperf-bedrock (Tier-4 closed-managed-API LLMPerf "
@@ -1025,29 +1157,42 @@ def write_round3_audit_summary(ingest_out: dict, dest: Path) -> Path:
         "production_claim": False,
         "modifies_robust_energy_engine": False,
         "modifies_controllers_or_defaults": False,
+        "uses_oracle_as_headline": False,
         "git_sha": _git_sha(),
         "audited_at_s": time.time(),
+        "redistribution_gate_scope": GATE_SCOPE,
+        "redistribution_gate_policy_default": ledger.policy_default,
+        "redistribution_gate_policy_grant_count": len(ledger.grants),
         "ingested": [
             {
-                "dataset_id": ingest_out["summary"]["dataset_id"],
-                "config_name": ingest_out["summary"]["config_name"],
-                "canonical_trace_type": ingest_out["summary"][
-                    "canonical_trace_type"],
-                "license": ingest_out["summary"]["license"],
-                "gated": ingest_out["summary"]["gated"],
-                "analysis_sample_rows": ingest_out["summary"][
-                    "analysis_sample_rows"],
-                "fixture_sample_rows": ingest_out["summary"][
-                    "fixture_sample_rows"],
-                "committed_normalized_sample_rows": ingest_out["summary"][
-                    "committed_normalized_sample_rows"],
-                "committed_normalized_sample_bytes": ingest_out["summary"][
-                    "committed_normalized_sample_bytes"],
-                "available_signals": ingest_out["summary"]["available_signals"],
-                "missing_signals": ingest_out["summary"]["missing_signals"],
-                "limitations": ingest_out["summary"]["limitations"],
-                "statistical_sample_strength": ingest_out["summary"][
-                    "statistical_sample_strength"],
+                "dataset_id": s["dataset_id"],
+                "config_name": s["config_name"],
+                "canonical_trace_type": s["canonical_trace_type"],
+                "license": s["license"],
+                # Tenth-consumer gate-derived fields. The audit summary
+                # mirrors the same closed-set fields the per-config
+                # summary.json carries so reviewers can pivot on either
+                # source without re-running the gate.
+                "license_redistribution_status":
+                    s["license_redistribution_status"],
+                "redistribution_gate_reason_code":
+                    s["redistribution_gate_reason_code"],
+                "redistribution_gate_permitted":
+                    s["redistribution_gate_permitted"],
+                "redistribution_gate_operator_grant_dataset_id":
+                    s["redistribution_gate_operator_grant_dataset_id"],
+                "gated": s["gated"],
+                "analysis_sample_rows": s["analysis_sample_rows"],
+                "fixture_sample_rows": s["fixture_sample_rows"],
+                "committed_normalized_sample_rows":
+                    s["committed_normalized_sample_rows"],
+                "committed_normalized_sample_bytes":
+                    s["committed_normalized_sample_bytes"],
+                "available_signals": s["available_signals"],
+                "missing_signals": s["missing_signals"],
+                "limitations": s["limitations"],
+                "statistical_sample_strength":
+                    s["statistical_sample_strength"],
                 "promotion_state": ingest_out["decision"]["state"],
                 "promotion_tags": ingest_out["decision"]["promotion_tags"],
                 "promotion_reasons": ingest_out["decision"]["reasons"],
@@ -1266,7 +1411,13 @@ def main(argv=None) -> int:
         format="%(levelname)s %(name)s: %(message)s",
     )
 
-    out = ingest(output_root=Path(args.output_root))
+    # Load the operator policy ledger once; thread it through the
+    # ingest call and the audit summary writer so a single source of
+    # truth records ``redistribution_gate_policy_default`` and
+    # ``redistribution_gate_policy_grant_count``.
+    ledger = _load_ledger()
+
+    out = ingest(output_root=Path(args.output_root), ledger=ledger)
 
     if not args.skip_registry_update:
         registry_path = DISC_DIR / "canonical_corpus_registry.json"
@@ -1275,7 +1426,7 @@ def main(argv=None) -> int:
 
         update_canonical_registry(registry_path, out["registry_entry"])
         update_candidate_registry(candidates_path, out["registry_entry"])
-        write_round3_audit_summary(out, audit_path)
+        write_round3_audit_summary(out, audit_path, ledger=ledger)
 
     decision = out["decision"]
     print(json.dumps({

@@ -1,5 +1,5 @@
 {
-  "audited_at_s": 1780316224.1718328,
+  "audited_at_s": 1780445259.0902238,
   "discovery_only_records": [
     {
       "candidate_trace_type": "kernel_profile_trace",
@@ -66,9 +66,9 @@
       "reason": "HF gated:manual. Features list (model_id, prompt, tokens_generated, time_seconds, tokens_per_second, total_params, active_params, error) is exactly the MoE-specific latency-benchmark schema we want as a first MoE-specific prior. HF_TOKEN is NOT authorised. Confirmed gated_blocked in Round 3. Revisit if manual approval is granted."
     }
   ],
-  "doc_version": "round3_broadened_discovery_audit_summary_v1",
+  "doc_version": "round3_broadened_discovery_audit_summary_v2",
   "failed": [],
-  "git_sha": "1efab214fde16dc41d088a75488f781bc18560a5",
+  "git_sha": "abe825f3c1cfc527332fea3bd1f7e89b05ac10e7",
   "ingested": [
     {
       "analysis_sample_rows": 350,
@@ -92,6 +92,7 @@
       "fixture_sample_rows": 5,
       "gated": false,
       "license": "apache-2.0",
+      "license_redistribution_status": "permissive_apache_2_0",
       "limitations": [
         "ssong1/llmperf-bedrock: Apache-2.0 LLMPerf benchmark output against AWS Bedrock (closed managed-API).",
         "CLOSED-API timing \u2014 TTFT/ITL/e2e include Bedrock provider scheduling + closed-source batching + AWS network. NOT a GPU-direct serving latency prior. Treat as managed-API SLO prior only.",
@@ -126,11 +127,18 @@
         "promoted_for_constraint_aware_evaluation",
         "promoted_for_training_priors"
       ],
+      "redistribution_gate_operator_grant_dataset_id": null,
+      "redistribution_gate_permitted": true,
+      "redistribution_gate_reason_code": "permitted_declared_permissive_license",
       "statistical_sample_strength": "moderate"
     }
   ],
   "modifies_controllers_or_defaults": false,
   "modifies_robust_energy_engine": false,
   "production_claim": false,
-  "scope": "Round 3 broadened HF discovery \u2014 bounded ingest of ssong1/llmperf-bedrock (Tier-4 closed-managed-API LLMPerf TTFT/ITL/e2e priors) + 8 negative-result discovery records covering DistServe profiling (license unspecified), DynamoRIO drmemtrace (out of scope), intellistream sage-control-plane (insufficient sample), Nathan-Maine + hlarcher (already audited duplicates), kshitijthakkar MoE benchmarks (gated_blocked)."
+  "redistribution_gate_policy_default": "deny_all",
+  "redistribution_gate_policy_grant_count": 0,
+  "redistribution_gate_scope": "committed_normalized_sample",
+  "scope": "Round 3 broadened HF discovery \u2014 bounded ingest of ssong1/llmperf-bedrock (Tier-4 closed-managed-API LLMPerf TTFT/ITL/e2e priors) + 8 negative-result discovery records covering DistServe profiling (license unspecified), DynamoRIO drmemtrace (out of scope), intellistream sage-control-plane (insufficient sample), Nathan-Maine + hlarcher (already audited duplicates), kshitijthakkar MoE benchmarks (gated_blocked).",
+  "uses_oracle_as_headline": false
 }
