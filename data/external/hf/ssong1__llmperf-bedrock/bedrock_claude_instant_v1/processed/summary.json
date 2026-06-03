@@ -74,6 +74,8 @@
   "git_sha": "1efab214fde16dc41d088a75488f781bc18560a5",
   "ingestion_timestamp_s": 1780316224.1629407,
   "license": "apache-2.0",
+  "license_redistribution_source": "HF card frontmatter license: apache-2.0 (ssong1 / Ray LLMPerf token_benchmark_ray.py output against AWS Bedrock anthropic.claude-instant-v1)",
+  "license_redistribution_status": "permissive_apache_2_0",
   "limitations": [
     "ssong1/llmperf-bedrock: Apache-2.0 LLMPerf benchmark output against AWS Bedrock (closed managed-API).",
     "CLOSED-API timing \u2014 TTFT/ITL/e2e include Bedrock provider scheduling + closed-source batching + AWS network. NOT a GPU-direct serving latency prior. Treat as managed-API SLO prior only.",
@@ -332,6 +334,11 @@
     "inter_token_latency_s",
     "end_to_end_latency_s"
   ],
+  "redistribution_gate_operator_grant_dataset_id": null,
+  "redistribution_gate_permitted": true,
+  "redistribution_gate_reason_code": "permitted_declared_permissive_license",
+  "redistribution_gate_reason_detail": "declared HF license 'apache-2.0' maps to 'permissive_apache_2_0'; ledger not consulted",
+  "redistribution_gate_scope": "committed_normalized_sample",
   "sample_sha256": "3fea776ff4c8fc45e54075b8d99ec72ada4fd15dcf3df0106d17244251cc1dbc",
   "sampling_method": "full_bounded",
   "schema_mapping_path": "data/external/hf/ssong1__llmperf-bedrock/bedrock_claude_instant_v1/processed/schema_mapping.json",

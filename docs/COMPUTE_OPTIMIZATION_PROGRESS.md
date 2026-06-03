@@ -6104,3 +6104,186 @@ permissive short-circuit is proven behaviourally equivalent
 across both consumption modes. (iii) Pilot telemetry (Tier 1)
 remains the only path to production calibration; no HF dataset
 closes that gate.
+
+## 2026-06-03 — hf-corpus: RedistributionGate — tenth consumer wires ingest_hf_llmperf_bedrock (`claude/cool-lamport-2wm0A`)
+
+**Branch.** `claude/cool-lamport-2wm0A` (one branch, one PR per the
+close-the-loop policy).
+
+**Stage.** Discovery / data-engine wiring. No production code
+modified. No scheduler / controller / robust-energy-engine
+touched. No oracle as headline. No Tier 1 promotion. No new HF
+data downloaded. No raw data committed.
+
+**Why this milestone.** The ninth-consumer milestone (PR #163)
+wired `scripts/ingest_hf_lightcap_runtime_telemetry.py` through
+the canonical `decide_redistribution` gate, but explicitly left
+four ingestion scripts still carrying their own hard-coded
+license literals: `scripts/ingest_hf_aurelius_dataset.py`,
+`scripts/ingest_hf_gap_datasets.py`,
+`scripts/ingest_hf_llmperf_bedrock.py`, and
+`scripts/ingest_hf_metrum_llmperfdata.py`. This milestone wires
+`scripts/ingest_hf_llmperf_bedrock.py` (apache-2.0, single
+dataset, single config) — the simplest of the four — as the
+tenth consumer. It is also the **second apache-2.0-tagged
+ingester** to wire through the gate (after the
+latency_benchmarks script — the first apache-2.0 consumer), so
+the gate's `permissive_apache_2_0` path is now exercised through
+two independent ingesters. The committed `summary.json` records
+a 350-row normalised sample under apache-2.0; the new wiring
+tests pin sha256 equality on both the 5-row fixture and the
+350-row committed normalised sample, so the gate-wiring refactor
+is proven additive.
+
+**Shape of the change.** Identical to PR #163. Three module-level
+constants lift the per-target license tag + provenance + scope
+out of the inline `summary_obj` write:
+
+- `LICENSE_TAG = "apache-2.0"` (single tag — the one
+  llmperf-bedrock config shares one license);
+- `LICENSE_SOURCE = "HF card frontmatter license: apache-2.0
+  (ssong1 / Ray LLMPerf token_benchmark_ray.py output against
+  AWS Bedrock anthropic.claude-instant-v1)"`;
+- `GATE_SCOPE = "committed_normalized_sample"`.
+
+`ingest` now accepts an `OperatorPolicyLedger` keyword arg and
+calls a new `evaluate_redistribution(*, ledger, license_tag,
+dataset_id, scope, now_iso)` helper that wraps
+`decide_redistribution`. The same `_load_ledger(path)` helper
+used in the eighth- and ninth-consumer wirings loads the
+canonical
+`data/external/hf_discovery/operator_redistribution_policy.json`
+or falls back to `OperatorPolicyLedger.empty()` on fresh
+checkouts. The pre-existing `LICENSE = "apache-2.0"` module
+constant is preserved — `LICENSE_TAG` mirrors it; a regression
+test pins `LICENSE == LICENSE_TAG` so the two cannot drift.
+
+**Where the gate verdict surfaces.** The single committed
+`summary.json` (`data/external/hf/ssong1__llmperf-bedrock/
+bedrock_claude_instant_v1/processed/summary.json`) now carries
+seven new fields:
+
+- `license_redistribution_status` — the gate's canonical
+  status code (`permissive_apache_2_0`);
+- `license_redistribution_source` — the human-curated
+  provenance string `LICENSE_SOURCE`;
+- `redistribution_gate_reason_code`
+  (`permitted_declared_permissive_license`);
+- `redistribution_gate_reason_detail` (gate-generated free-form
+  string: `"declared HF license 'apache-2.0' maps to
+  'permissive_apache_2_0'; ledger not consulted"`);
+- `redistribution_gate_permitted` (`true`);
+- `redistribution_gate_operator_grant_dataset_id` (`null`
+  because the ledger short-circuits on permissive tags);
+- `redistribution_gate_scope` (`committed_normalized_sample`).
+
+The top-level rollup
+`data/external/hf_discovery/round3_broadened_discovery_audit_summary.json`
+bumps to `doc_version =
+"round3_broadened_discovery_audit_summary_v2"` (v1 carried no
+gate metadata) and adds:
+
+- `redistribution_gate_scope` = `"committed_normalized_sample"`;
+- `redistribution_gate_policy_default` = `"deny_all"`;
+- `redistribution_gate_policy_grant_count` = `0`;
+- `uses_oracle_as_headline` = `false` (v1 invariant lifted from
+  implicit to explicit);
+- per-row `license_redistribution_status` /
+  `redistribution_gate_reason_code` /
+  `redistribution_gate_permitted` /
+  `redistribution_gate_operator_grant_dataset_id` on the single
+  llmperf-bedrock ingested row.
+
+The eight Round-3 discovery-only records (DistServe profiling,
+DynamoRIO drmemtrace, intellistream sage-control-plane,
+Nathan-Maine, hlarcher, kshitijthakkar MoE benchmarks) are NOT
+ingested and do NOT flow through the gate — they remain in
+`discovery_only_records` untouched.
+
+**Refresh helper.**
+`scripts/refresh_hf_llmperf_bedrock_gate_metadata.py` is the
+in-place maintenance helper that rewrites the committed
+`summary.json` + the rollup so they carry the new gate fields
+without re-downloading the source LLMPerf JSONs (the raw JSONs
+are gitignored under `data/external/hf/ssong1__llmperf-bedrock/
+raw/`; the gate decision is a pure function of the recorded
+license tag, so the verdict is computed from existing committed
+JSONs alone). The helper is pure-Python; it imports the ingest
+module via `importlib.util.spec_from_file_location`, calls
+`ingest._load_ledger()` once, and threads the verdict through
+the ingest module's `evaluate_redistribution`. Run once after
+this PR lands; subsequent live ingests write the same fields
+directly through the tenth-consumer code path.
+
+**Tests landed.** 30 new tests in
+`tests/test_hf_llmperf_bedrock_gate_wiring.py` cover module
+constants, canonical-gate imports, no duplicated permissive
+allow-list, no hard-coded `permissive_apache_2_0` status string
+in executable code (docstrings allowed),
+`evaluate_redistribution` pure-function path (permits
+apache-2.0; denies None; denies cc-by-nc-4.0; operator opt-out
+cannot revoke a permissive verdict), per-config `summary.json`
+carries the gate triple, status matches gate classification,
+audit-summary v2, per-row gate fields on the single ingested
+row, `ingest` accepts `ledger=` keyword,
+`write_round3_audit_summary` accepts `ledger=` keyword,
+`_load_ledger` fresh-checkout fallback + committed-default load,
+no `hf_<token>` literal in script or refresh helper, fixture
+bytes byte-for-byte unchanged, **committed normalised sample
+bytes byte-for-byte unchanged** (matching the ninth-consumer
+Lightcap invariant — every committed normalised sample byte is
+pinned), refresh helper safety rails (no extra rows; preserves
+v1 row fields), and an independent-consumer cross-check that
+the apache-2.0 verdict reached through the tenth consumer
+equals the verdict reached directly through the canonical gate
+(so a future refactor that introduced a divergent classifier
+here would trip a test).
+
+**Result.** All 30 new tests pass. All 24 pre-existing tests in
+`tests/test_hf_llmperf_bedrock_ingest.py` continue to pass on
+the same committed artifacts. **1,221 tests total in
+`tests/test_hf_*.py` pass** (1,191 before this milestone + 30
+new). The on-disk fixture sample / committed normalised sample
+/ schema / rollup artefacts for the llmperf-bedrock config are
+byte-for-byte unchanged; the `summary.json` records the
+identical `sample_sha256`
+(`3fea776ff4c8fc45e54075b8d99ec72ada4fd15dcf3df0106d17244251cc1dbc`)
+and `committed_normalized_sample_sha256`
+(`83cb29a649e84e2913278c2d2221f43eac8f65e44102d7a3e6b8eb7cd3792910`)
+they recorded under the v1 script.
+
+**Honesty + scope guarantees.** No production claim. No
+scheduler / controller / robust-energy-engine touched. No
+oracle as headline. No Tier 1 promotion. No new HF data
+downloaded. No new candidate-registry entry. No new license
+tags added to the gate's permissive allow-list (apache-2.0 was
+already there). No `HF_TOKEN` leak. No raw data committed. The
+script's downloader path is unchanged; only the redistribution
+metadata moved from inline to the canonical gate.
+
+**Next.** (i) Three per-dataset ingestion scripts remain
+unwired after this milestone:
+`scripts/ingest_hf_aurelius_dataset.py`,
+`scripts/ingest_hf_gap_datasets.py`, and
+`scripts/ingest_hf_metrum_llmperfdata.py`. Each is a candidate
+for a follow-up PR. `scripts/ingest_hf_metrum_llmperfdata.py`
+(mit, single dataset) is the simplest single-target
+single-permissive-license wiring (the metrum-ai/llm-perfdata
+HF card declares mit, which would exercise the
+`permissive_mit` allow-list path for the first time through a
+real ingester); `scripts/ingest_hf_gap_datasets.py` is the
+most complex (multi-target, multi-license, ships its own
+license-classification table — the wiring there must
+deprecate the script's inline classifier in favour of the
+gate). The exact next task: wire
+`scripts/ingest_hf_metrum_llmperfdata.py` through the gate as
+the eleventh consumer, following the same tenth-consumer
+pattern (single `LICENSE_TAG` constant, single ingested row,
+single audit-summary `ingested` row, in-place refresh helper).
+(ii) The apache-2.0 path of the gate's permissive allow-list
+is now exercised through TWO independent consumers
+(latency_benchmarks and llmperf-bedrock) — divergence between
+their verdicts would trip the tenth-consumer cross-check test
+added in this PR. (iii) Pilot telemetry (Tier 1) remains the
+only path to production calibration; no HF dataset closes that
+gate.
