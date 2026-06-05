@@ -1,0 +1,34 @@
+{
+  "field_presence": {
+    "cache_hit": 0.0,
+    "cache_reuse_pct": 1.0,
+    "hash_ids_count": 1.0,
+    "input_length": 1.0,
+    "model_id": 0.0,
+    "output_length": 1.0,
+    "session_id": 0.0,
+    "timestamp_ms": 1.0
+  },
+  "license": "Mooncake repo (citation requested); derived numeric sample only.",
+  "normalized_rows": 63240,
+  "per_trace_rows": {
+    "arxiv": 23608,
+    "conversation": 12031,
+    "synthetic": 3993,
+    "toolagent": 23608
+  },
+  "raw_files": {
+    "arxiv": "data/external/frontier_signals/raw/mooncake/arxiv_mooncake_trace.jsonl",
+    "conversation": "data/external/frontier_signals/raw/mooncake/conversation_trace.jsonl",
+    "synthetic": "data/external/frontier_signals/raw/mooncake/synthetic_trace.jsonl",
+    "toolagent": "data/external/frontier_signals/raw/mooncake/toolagent_trace.jsonl"
+  },
+  "raw_schema": {
+    "hash_ids": "list[int] (block_size=512)",
+    "input_length": "int tokens",
+    "output_length": "int tokens",
+    "timestamp": "int ms"
+  },
+  "source": "mooncake",
+  "trace_role": "cache_residency_trace"
+}

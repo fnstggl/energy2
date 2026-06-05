@@ -1,0 +1,133 @@
+{
+  "doc_version": "frontier_discovery_v2",
+  "phase": "6_economic_value_scoring",
+  "no_ingestion": true,
+  "no_training": true,
+  "no_production_claim": true,
+  "scoring_method": "Each artifact scored on potential impact on the 8 forecasting targets {sla_safe_goodput_per_dollar, ttft, queue, cache, migration, cold_start, autoscaling, memory_pressure}. Class High/Medium/Low/No-Value reflects REALIZABLE incremental alpha given the repo's binding KPI and v1 state — NOT raw signal richness. An artifact that merely restates an already-ingested signal scores Low; one that unblocks a v1 caveat scores High. No percentage savings are claimed (docs/RESULTS.md gate).",
+  "kpi": "sla_safe_goodput_per_dollar = (output_tokens if sla_met else 0) / (gpu_cost + energy_cost + migration_cost + cold_start_cost - cache_value)",
+  "artifact_scores": [
+    {
+      "artifact": "Mooncake FAST'25 traces",
+      "class": "High",
+      "primary_targets": ["cache", "sla_safe_goodput_per_dollar (via cache_value)"],
+      "rationale": "The single most valuable find. Provides a SECOND independent, production-derived prefix-reuse dataset (hash_ids, block_size=512) to cross-validate the cache_reuse_pct model that ML Alpha v1 flagged as shadow-ready BUT single-dataset (SwissAI only). Directly attacks the explicit v1 cross-dataset generalization caveat — the one public-data action that can promote a caveated shadow-ready model toward validation. Also a clean cache-hit-rate SIMULATION substrate.",
+      "caveat": "Workload trace, not operational telemetry: no measured latency/queue/cold-start. Cache-hit is simulated from reuse structure, not a measured per-request label."
+    },
+    {
+      "artifact": "Huawei Cloud Cold-Start 2025 (sir-lab)",
+      "class": "Medium",
+      "primary_targets": ["cold_start", "autoscaling", "memory_pressure (tail)"],
+      "rationale": "Richest MEASURED cold-start dataset in existence, with component decomposition (podAllocation/deployCode/deployDependency/scheduling) that is a structural template for the cold_start cost model in the Economic ML Alpha v1 sensitivity sweep, and a real cold-start DISTRIBUTION to calibrate a prior. num_pods is a warm-pool/autoscaling proxy.",
+      "caveat": "FaaS/CPU, not GPU model-load. Must be labeled cross-domain calibration-only — it CANNOT serve as server-class model_load_duration_s ground truth (the exact v1 pilot gap). Scores Medium not High because it improves the prior/structure but does not unblock the GPU headline."
+    },
+    {
+      "artifact": "Alibaba GPU v2025 (disaggregated DLRM inference)",
+      "class": "Medium",
+      "primary_targets": ["autoscaling", "sla_safe_goodput_per_dollar (placement)"],
+      "rationale": "An actual GPU-INFERENCE serving fleet trace (7,386 GPU instances) with per-instance lifecycle (create/schedule/delete) from which scale-up/down events are derivable. The closest public artifact to inference autoscaling, and a natural extension of the in-repo Alibaba GPU v2020/v2023 lineage.",
+      "caveat": "Instance-level, not per-request; no queue/cache/cold-start/migration; autoscaling is INFERRED from lifecycle timestamps, not labeled."
+    },
+    {
+      "artifact": "Google ClusterData 2019 (Borg)",
+      "class": "Low",
+      "primary_targets": ["migration (EVICT proxy)", "queue", "timeout_or_failure"],
+      "rationale": "Best public preemption/queue/failure EVENT proxies (QUEUE, EVICT, FAIL/KILL). But job/task-level and non-GPU — the same proxy class v1 already credited to Google/Borg. No new economic-alpha unlock beyond what v1 catalogued.",
+      "caveat": "Not LLM-serving; EVICT is preemption not request migration; tail is CPU-util not request latency."
+    },
+    {
+      "artifact": "Alibaba microservices v2021/v2022",
+      "class": "Low",
+      "primary_targets": ["ttft/tail_latency (per-call rt)", "routing_instability"],
+      "rationale": "Genuine per-call response-time + call-graph routing topology — the closest public per-request LATENCY outside the in-repo CARA/Optimum corpora. Could prior a routing-instability proxy, but no failure/queue-depth/cold-start labels and not LLM.",
+      "caveat": "Microservice RPC latency, not LLM TTFT; v2022 paper is about autoscaling but ships no scale-event labels."
+    },
+    {
+      "artifact": "maxday/lambda-perf",
+      "class": "Low",
+      "primary_targets": ["cold_start (FaaS prior)"],
+      "rationale": "Clean per-invocation measured cold-start ms by runtime/memory/arch — a tidy FaaS cold-start distribution. Useful only as a weak cross-domain prior; does not represent GPU weight-load.",
+      "caveat": "CPU FaaS synthetic benchmark, not GPU, not production."
+    },
+    {
+      "artifact": "SeBS (Middleware'21) Zenodo",
+      "class": "Low",
+      "primary_targets": ["cold_start (FaaS prior)"],
+      "rationale": "Measured cold/warm exec times across clouds (2020). Same FaaS-prior value as lambda-perf, older.",
+      "caveat": "CPU FaaS; summary CSVs; per-invocation granularity unconfirmed."
+    },
+    {
+      "artifact": "Llumnix OSDI'24 artifact",
+      "class": "Low",
+      "primary_targets": ["migration"],
+      "rationale": "The most on-topic MIGRATION artifact (live request+KV migration mechanism + reproducible experiments), but ships only aggregated history logs (P99/Mean), not a per-migration event dataset. Reproducible-but-not-a-dataset.",
+      "caveat": "No raw per-migration records; migration cost can only be re-measured by re-running, which is pilot-equivalent."
+    },
+    {
+      "artifact": "Vidur + Vidur-Bench",
+      "class": "Low",
+      "primary_targets": ["queue", "memory_pressure", "tail_latency"],
+      "rationale": "Richest SIGNAL CATEGORY coverage (queue/scheduling-delay, batch, replica MFU/memory, latency CDFs) but the outputs are SIMULATED — training on simulator output would learn the simulator, not reality (same trap v1 flagged for injected-constant latency).",
+      "caveat": "Simulator output; aggregate CDFs; not measured serving telemetry."
+    },
+    {
+      "artifact": "Azure LLM Inference 2023/2024/2025",
+      "class": "Low",
+      "primary_targets": ["queue (arrival shape)"],
+      "rationale": "Real LLM-serving WORKLOAD (arrival + tokens), already partially in-repo (azure_llm_2024). Drives replay but carries zero operational labels.",
+      "caveat": "No latency/failure/cold-start/cache/queue-depth."
+    },
+    {
+      "artifact": "Azure Functions Blob 2020 (Faa$T)",
+      "class": "Low",
+      "primary_targets": ["cache (simulatable)"],
+      "rationale": "Raw blob R/W you can simulate a cache over (Faa$T methodology). A cache-hit SIMULATION substrate, but FaaS object cache not KV cache.",
+      "caveat": "No hit/miss label; not KV/prefix cache."
+    },
+    {
+      "artifact": "ServerlessLLM (OSDI'24)",
+      "class": "No Value (as data)",
+      "primary_targets": ["model_load", "migration"],
+      "rationale": "Most relevant GPU model-load + live-migration SYSTEM, but CODE ONLY — no released measurements. High value as a system reference / pilot-instrumentation template; zero value as an ingestible dataset.",
+      "caveat": "measured_unreleased."
+    },
+    {
+      "artifact": "HydraServe / HeteroScale / Chiron / SageServe",
+      "class": "No Value (as data)",
+      "primary_targets": ["cold_start", "autoscaling"],
+      "rationale": "Production cold-start/autoscaling papers; measurements behind closed doors, figures only.",
+      "caveat": "measured_unreleased; proprietary."
+    },
+    {
+      "artifact": "CSAP SNU VM Live Migration (SoCC'17)",
+      "class": "No Value (as data, currently)",
+      "primary_targets": ["migration"],
+      "rationale": "Only measured migration dataset, but VM-class (2017) and email-gated — not inference/model migration and not openly downloadable.",
+      "caveat": "gated; VM-class; cross-domain."
+    },
+    {
+      "artifact": "IceBreaker (ASPLOS'22) Zenodo",
+      "class": "No Value (unverified)",
+      "primary_targets": ["cold_start", "warm_pool"],
+      "rationale": "ZIP labeled 'Scripts and data' but contents unconfirmed; likely simulation + Azure-derived inputs.",
+      "caveat": "Requires download to verify; not credited until verified."
+    },
+    {
+      "artifact": "Live observability stacks (vLLM/SGLang/Ray Serve/Triton/LMCache/TGI)",
+      "class": "High (as PILOT instrumentation map, not as data)",
+      "primary_targets": ["cache", "queue", "cold_start", "autoscaling", "tail_latency", "memory_pressure"],
+      "rationale": "Not datasets, but they define EXACTLY which frontier signals a pilot can capture off-the-shelf and under which metric names (Ray Serve replica_startup/multiplexed_model_load + autoscaling_*; vLLM prefix_cache_hits + kv_block_lifetime + num_preemptions; SGLang/LMCache cache_hit_rate; Triton GPU util + request_failure). This converts v1's vague 'blocked_by_pilot_telemetry' into a named, actionable PILOT_TELEMETRY_CONTRACT mapping. High value for the pilot roadmap; not ingestible public data.",
+      "caveat": "Runtime telemetry — must run the system; request MIGRATION has no metric anywhere (needs custom instrumentation)."
+    }
+  ],
+  "per_signal_category_scoring": {
+    "cache": "High (Mooncake unblocks the v1 single-dataset caveat; live metrics measure it)",
+    "ttft_tail_latency": "Medium (measured latency exists in-repo + microservices; upstream-cause attribution still pilot)",
+    "queue": "Medium (job-level public proxies extend; serving-request-level still pilot, but now with named metrics)",
+    "memory_pressure": "Medium (peak_vram already shadow-ready; no new public data changes it; vLLM KV metrics aid pilot)",
+    "cold_start": "Medium-leverage / Low-realizable-public (FaaS priors only; GPU model-load measured-unreleased; Ray Serve metric makes it pilot-reconstructable)",
+    "autoscaling": "Medium-leverage / Low-realizable-public (proxies only; Ray Serve/Knative makes it pilot-reconstructable)",
+    "migration": "High-leverage / Very-Low-realizable (no inference migration data anywhere; the ONLY signal needing CUSTOM pilot instrumentation beyond standard metrics)",
+    "sla_safe_goodput_per_dollar": "unchanged as a target (deterministic given inputs per v1); alpha still routes through forecasting the upstream uncertain signals above"
+  }
+}

@@ -1,0 +1,16 @@
+{
+  "gpu_llm_usage": "prior_proxy_only -- field_quality.for_gpu_llm_cold_start='prior_proxy_only'",
+  "limitation": "NOT server-class GPU model-load telemetry.",
+  "source_field -> canonical_field": {
+    "clusterName": "cluster_name",
+    "deployCodeCost": "deploy_code_s (measured_faas)",
+    "deployDependencyCost": "deploy_dependency_s (measured_faas)",
+    "funcName": "function_id",
+    "podAllocationCost": "pod_allocation_s (measured_faas)",
+    "podID": "pool_name + pool_cpu_limit_millicores + pool_mem_limit_mb",
+    "requestID": "DROPPED (hash, not committed)",
+    "schedulingCost": "scheduling_s (measured_faas)",
+    "time": "timestamp_s",
+    "totalCost_cold_start": "cold_start_latency_s / startup_latency_s (measured_faas)"
+  }
+}

@@ -1,0 +1,87 @@
+{
+  "doc_version": "frontier_discovery_v2",
+  "phase": "7_final_verdict",
+  "no_ingestion": true,
+  "no_training": true,
+  "no_production_claim": true,
+  "one_line": "v2 CONFIRMS v1's core negative — the highest-leverage GPU-serving signals (server-class cold-start/model-load, inference migration, autoscaling, per-request timeout) have NO measured public dataset — but delivers two concrete upgrades: (1) Mooncake is a second production-derived cache-reuse trace that can cross-validate the v1 single-dataset shadow-ready cache model; (2) the observability survey turns 'blocked_by_pilot_telemetry' into a named, actionable metric map (only request-migration needs custom instrumentation).",
+  "q1_what_missing_signals_were_found": {
+    "cold_start_duration": "FOUND as measured public data — but FaaS/CPU only (Huawei 2025 with podAllocation/deployCode/deployDependency/scheduling breakdown; maxday/lambda-perf; SeBS). NO server-class GPU model-load dataset.",
+    "model_load_duration": "NOT found as data (ServerlessLLM, HydraServe measured-unreleased). FaaS code/dependency-load proxy only (Huawei).",
+    "autoscaling_events": "PROXY found (Huawei num_pods + scaling-trigger requestID; Alibaba GPU v2025 instance lifecycle -> inferrable). No labeled LLM scale-event dataset.",
+    "migration_events": "Only measured dataset = CSAP SNU VM-class (2017, gated). Proxies = Google EVICT, vLLM preemptions, KV-transfer bytes. Llumnix = mechanism + reproducible experiments, no event dataset.",
+    "cache_loss_events": "No measured dataset; proxies = CC-traces (in-repo), Azure Blob 2020 (simulate), vLLM kv_block_lifetime.",
+    "cache_hit_rate": "NEW reconstruction path — Mooncake hash_ids enable cache-hit SIMULATION (a second source beyond in-repo SwissAI).",
+    "warm_pool_occupancy": "PROXY only (Huawei num_pods/podID pool encoding).",
+    "queue_state_evolution": "Job-level public (Google 2019 QUEUE, Alibaba GPU v2020 queue delay, AcmeTrace in-repo); serving-request-level still pilot.",
+    "timeout_or_failure_labels": "Proxies only (Google FAIL/KILL, Alibaba Failed). No per-request LLM timeout label dataset.",
+    "routing_instability": "Proxy (Alibaba microservices call-graph).",
+    "replica_contention": "Proxies (Alibaba CPI/MPKI, Google CPI, Huawei Platform delay).",
+    "tail_latency_amplification": "Measured partial (Huawei p95/p99 FaaS; Alibaba microservices rt; CARA/Optimum/llmperf in-repo); upstream-cause attribution still pilot."
+  },
+  "q2_which_artifacts_contain_measured_labels": [
+    "Huawei Cloud Cold-Start 2025 (per-cold-start-event + per-request + time-series, FaaS) — strongest",
+    "maxday/lambda-perf (per-invocation cold-start ms, FaaS)",
+    "SeBS Zenodo (cold/warm exec summaries, FaaS)",
+    "FaaSNet (per-request cold-start latency, FaaS, gated)",
+    "Azure Functions Invocation 2021 (per-invocation duration)",
+    "Azure Functions Blob 2020 (per-blob-access)",
+    "Google ClusterData 2011/2019 (task lifecycle EVICT/FAIL/QUEUE events)",
+    "Alibaba GPU v2020 (job/task/instance + GPU sensor time-series)",
+    "Alibaba GPU v2023 (scheduling snapshots), v2025 (instance lifecycle)",
+    "Alibaba microservices v2021/v2022 (per-call response time + topology)",
+    "CSAP SNU VM Live Migration (40k+ samples, gated)",
+    "Llumnix history logs (aggregated P99/Mean)",
+    "Live observability (vLLM/SGLang/Ray Serve/Triton/LMCache/TGI) — measured at RUNTIME, not a dataset"
+  ],
+  "q2_NOT_measured_label_datasets": [
+    "Azure LLM Inference 2023/2024/2025 (workload: arrival+tokens only)",
+    "Mooncake (workload + prefix-reuse structure; cache-hit is simulated not labeled)",
+    "Vidur/Vidur-Bench (simulator output)",
+    "Splitwise/AlpaServe/Helix (simulator + code)",
+    "ServerlessLLM/HydraServe/HeteroScale (measured-unreleased, figures only)"
+  ],
+  "q3_signals_unavailable_publicly": [
+    "Server-class GPU model-load / cold-start DURATION per (model, GPU, storage tier) — NONE",
+    "Per-migration cache-loss seconds for inference/model serving — NONE (only VM-class CSAP, gated)",
+    "Labeled autoscaling scale-event log for LLM inference — NONE",
+    "Per-request timeout/failure LABELS for LLM serving — NONE",
+    "Warm-pool occupancy for GPU model warm pools — NONE (FaaS num_pods proxy only)",
+    "Routing-instability labels for LLM serving — NONE"
+  ],
+  "q4_signals_reconstructable_from_public_traces": {
+    "cache_hit_rate": "Mooncake hash_ids -> prefix-reuse SIMULATION (NEW; second source to validate the SwissAI-only shadow-ready model)",
+    "queue_state_job_level": "Google 2019 QUEUE + Alibaba GPU v2020 queue delay (job-level proxy, same class as AcmeTrace)",
+    "migration_preemption_proxy": "Google EVICT events",
+    "tail_latency": "Alibaba microservices rt (derive p95/p99); in-repo CARA/Optimum",
+    "autoscaling_inferrable": "Alibaba GPU v2025 instance lifecycle + Huawei num_pods",
+    "cold_start_FaaS_prior": "Huawei 2025 / lambda-perf give a measured FaaS cold-start distribution to calibrate a prior — cross-domain, NOT a GPU reconstruction"
+  },
+  "q5_signals_requiring_pilot_telemetry": {
+    "gpu_model_load_cold_start": "PILOT — Ray Serve replica_startup_latency_ms / multiplexed_model_load_latency_ms, or instrument engine startup",
+    "autoscaling_events_llm": "PILOT — Ray Serve autoscaling_* / KServe via Knative KPA",
+    "per_request_migration_events": "PILOT + CUSTOM instrumentation — NO metric exists in any stack (only preemption + KV-transfer-byte proxies)",
+    "per_request_timeout_failure_labels": "PILOT — success/failure counters off-the-shelf; explicit timeout label needs custom",
+    "real_per_request_cache_hit": "PILOT — SGLang cache_hit_rate / vLLM prefix_cache_hits / LMCache retrieve_hit_rate",
+    "warm_pool_occupancy_gpu": "PILOT — Ray Serve replica counts",
+    "refinement_vs_v1": "v1 said these are flatly 'blocked_by_pilot_telemetry'. v2 refines: cold-start, autoscaling, queue, cache-hit, tail-latency, memory-pressure are RECONSTRUCTABLE from a Ray-Serve-wrapped vLLM/SGLang pilot's STANDARD metrics. Only per-request MIGRATION truly needs CUSTOM instrumentation."
+  },
+  "q6_artifacts_to_ingest_next": [
+    {"rank": 1, "artifact": "Mooncake FAST'25 traces", "why": "Second production cache-reuse dataset to cross-validate the v1 single-dataset shadow-ready cache_reuse_pct model — the one concrete public-data unblock. Bounded ingest, public.", "bound": "head-bounded sample; classify as cache-reuse validation set", "honesty": "workload trace; cache-hit SIMULATED from hash_ids, label it as such"},
+    {"rank": 2, "artifact": "Huawei Cloud Cold-Start 2025", "why": "Structural template + measured distribution for the cold_start cost model in the sensitivity sweep; warm-pool/autoscaling proxy.", "bound": "bounded sample of cold-start-events table", "honesty": "FaaS not GPU — calibration-only cross-domain prior; MUST NOT be treated as server-class model_load ground truth"},
+    {"rank": 3, "artifact": "Alibaba GPU v2025 (disaggregated DLRM)", "why": "Closest public GPU-inference autoscaling proxy; extends in-repo Alibaba GPU lineage.", "bound": "the disaggregated_DLRM_trace.csv", "honesty": "instance-level lifecycle; autoscaling INFERRED not labeled"},
+    {"rank": "defer", "artifact": "Vidur-Bench processed traces / Alibaba microservices rt", "why": "workload-shape / per-call latency priors; lower priority, overlap existing corpora", "honesty": "Vidur is simulated; microservices is non-LLM"},
+    {"rank": "ignore", "artifact": "Splitwise/AlpaServe/Helix sims, IceBreaker (unverified), CSAP (gated), ServerlessLLM/HydraServe (code/figures only)", "why": "no measured ingestible labels"}
+  ],
+  "q7_estimated_incremental_economic_alpha_by_category": {
+    "disclaimer": "Qualitative leverage tiers only — NO percentage savings claimed (docs/RESULTS.md production-claim gate). 'Realizable' = can be acted on with public data today; 'leverage' = KPI sensitivity if the signal were available.",
+    "cache_hit_reuse": {"leverage": "High", "realizable_now": "High", "note": "Mooncake converts a caveated single-dataset shadow-ready model into a cross-dataset-validatable one — the largest REALIZABLE increment in this audit."},
+    "queue_state": {"leverage": "Very High", "realizable_now": "Medium", "note": "job-level proxies extend; serving-request-level still pilot, but now with named vLLM/TGI/Triton metrics."},
+    "tail_latency_ttft": {"leverage": "Medium", "realizable_now": "Medium", "note": "measured latency exists; upstream-cause attribution still pilot."},
+    "memory_pressure": {"leverage": "High", "realizable_now": "Medium", "note": "peak_vram already shadow-ready; no new public data; vLLM KV metrics aid pilot."},
+    "cold_start": {"leverage": "High", "realizable_now": "Low (GPU) / Medium (FaaS prior)", "note": "FaaS priors + cost-model structure improve the sensitivity sweep; GPU model-load headline still pilot-gated."},
+    "migration": {"leverage": "High", "realizable_now": "Very Low", "note": "no inference migration data anywhere; the ONLY signal needing CUSTOM pilot instrumentation. Largest gap between leverage and availability."},
+    "autoscaling": {"leverage": "Medium-High", "realizable_now": "Low", "note": "proxies + Ray Serve/Knative metrics; ties cold-start and queue together."}
+  },
+  "bottom_line": "Public-data discovery for the economic frontier has NOT plateaued as flatly as v1 implied: Mooncake is a genuine new cache-reuse cross-validation set, and the systems ecosystem yields measured FaaS cold-start data + GPU-inference autoscaling proxies that v1 (HF-only) missed. BUT the four highest-leverage GPU-serving signals (server-class cold-start/model-load, inference migration, autoscaling events, per-request timeout) remain WITHOUT measured public data and require a pilot. The decisive v2 contribution is operational: a named-metric reconstruction map (Ray Serve + vLLM/SGLang/Triton) that makes the existing PILOT_TELEMETRY_CONTRACT actionable, with request-migration flagged as the single signal no off-the-shelf metric covers."
+}

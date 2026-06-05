@@ -1,0 +1,64 @@
+{
+  "answer": {
+    "absolute_auroc": {
+      "mooncake_only_ml": 0.8736106912853654,
+      "mooncake_own_baseline": 0.5,
+      "mooncake_to_swissai_transfer": 0.6071680399815405,
+      "swissai_only_ml": 0.7600357390387347,
+      "swissai_own_baseline": 0.7149553272308133,
+      "swissai_to_mooncake_transfer": 0.6371412590349342
+    },
+    "label_compatibility": "SwissAI reuse_percentage = MEASURED bucket overlap; Mooncake cache_reuse_pct = DERIVED global-prefix-cache proxy. Same DEFINITION (reused_blocks/total_blocks) but different PROVENANCE; only a harmonized high_reuse proxy is cross-comparable.",
+    "mooncake_only_caveat": "Mooncake's high within-dataset gain is partly an ARTIFACT: the derived reuse proxy is autocorrelated and the decision-time rolling reuse-mean feature predicts it strongly; the per-trace baseline is near-degenerate (AUROC~0.5). Not evidence of measured alpha.",
+    "mooncake_only_improvement_pct": 74.72,
+    "reason": "SwissAI-only (MEASURED label) beats its strong per-model baseline by 6.31%, but cross-dataset transfer does NOT beat the target's own baseline in both directions (mooncake->swissai AUROC 0.6071680399815405 vs swissai baseline 0.7149553272308133). No second MEASURED source validates it -> remains single-dataset.",
+    "status": "single_dataset_promising_only",
+    "swissai_only_improvement_pct": 6.31,
+    "transfer_vs_degenerate_cross_baseline": {
+      "caveat": "cross-dataset per-group baseline degrades to ~0.5 (source groups absent in target), so these % are INFLATED; use transfer_vs_target_own_baseline instead.",
+      "mooncake_to_swissai_pct": 21.43,
+      "swissai_to_mooncake_pct": 27.43
+    },
+    "transfer_vs_target_own_baseline": {
+      "both_directions_beat_target_own_baseline": false,
+      "mooncake_to_swissai_pct": -15.08,
+      "swissai_to_mooncake_pct": 27.43
+    }
+  },
+  "autoscaling_queue_proxy_status": "proxy_trained",
+  "binding_question": "Does cache_reuse_pct remain shadow-ready beyond SwissAI?",
+  "cache_reuse_table": {
+    "mooncake_only": {
+      "baseline_auroc": 0.5,
+      "best_auroc": 0.8736106912853654,
+      "improvement_pct_vs_baseline": 74.72,
+      "label_quality": "derived_proxy"
+    },
+    "mooncake_to_swissai": {
+      "baseline_auroc": 0.5,
+      "best_auroc": 0.6071680399815405,
+      "improvement_pct_vs_baseline": 21.43,
+      "label_quality": "train_derived_proxy_test_measured"
+    },
+    "swissai_only": {
+      "baseline_auroc": 0.7149553272308133,
+      "best_auroc": 0.7600357390387347,
+      "improvement_pct_vs_baseline": 6.31,
+      "label_quality": "measured"
+    },
+    "swissai_to_mooncake": {
+      "baseline_auroc": 0.5,
+      "best_auroc": 0.6371412590349342,
+      "improvement_pct_vs_baseline": 27.43,
+      "label_quality": "train_measured_test_derived_proxy"
+    }
+  },
+  "cold_start_prior_status": "simulator_prior_calibrated",
+  "doc_version": "economic_ml_alpha_frontier_v1",
+  "primary_kpi": "sla_safe_goodput_per_dollar (unchanged); cache reuse feeds cache_value term",
+  "production_claim": false,
+  "real_execution": false,
+  "shadow_only": true,
+  "uses_fifo_as_headline": false,
+  "uses_oracle_as_headline": false
+}

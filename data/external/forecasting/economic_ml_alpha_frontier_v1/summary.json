@@ -1,0 +1,62 @@
+{
+  "autoscaling_queue_verdict": {
+    "has_measured_serving_autoscaling": false,
+    "label_class": "proxy",
+    "status": "proxy_trained"
+  },
+  "becomes_more_production_plausible": false,
+  "cache_reuse_verdict": {
+    "absolute_auroc": {
+      "mooncake_only_ml": 0.8736106912853654,
+      "mooncake_own_baseline": 0.5,
+      "mooncake_to_swissai_transfer": 0.6071680399815405,
+      "swissai_only_ml": 0.7600357390387347,
+      "swissai_own_baseline": 0.7149553272308133,
+      "swissai_to_mooncake_transfer": 0.6371412590349342
+    },
+    "label_compatibility": "SwissAI reuse_percentage = MEASURED bucket overlap; Mooncake cache_reuse_pct = DERIVED global-prefix-cache proxy. Same DEFINITION (reused_blocks/total_blocks) but different PROVENANCE; only a harmonized high_reuse proxy is cross-comparable.",
+    "mooncake_only_caveat": "Mooncake's high within-dataset gain is partly an ARTIFACT: the derived reuse proxy is autocorrelated and the decision-time rolling reuse-mean feature predicts it strongly; the per-trace baseline is near-degenerate (AUROC~0.5). Not evidence of measured alpha.",
+    "mooncake_only_improvement_pct": 74.72,
+    "reason": "SwissAI-only (MEASURED label) beats its strong per-model baseline by 6.31%, but cross-dataset transfer does NOT beat the target's own baseline in both directions (mooncake->swissai AUROC 0.6071680399815405 vs swissai baseline 0.7149553272308133). No second MEASURED source validates it -> remains single-dataset.",
+    "status": "single_dataset_promising_only",
+    "swissai_only_improvement_pct": 6.31,
+    "transfer_vs_degenerate_cross_baseline": {
+      "caveat": "cross-dataset per-group baseline degrades to ~0.5 (source groups absent in target), so these % are INFLATED; use transfer_vs_target_own_baseline instead.",
+      "mooncake_to_swissai_pct": 21.43,
+      "swissai_to_mooncake_pct": 27.43
+    },
+    "transfer_vs_target_own_baseline": {
+      "both_directions_beat_target_own_baseline": false,
+      "mooncake_to_swissai_pct": -15.08,
+      "swissai_to_mooncake_pct": 27.43
+    }
+  },
+  "cold_start_verdict": {
+    "calibration_only": true,
+    "is_gpu_model_load": false,
+    "status": "simulator_prior_calibrated"
+  },
+  "doc_version": "economic_ml_alpha_frontier_v1",
+  "external_claim_guardrails": {
+    "can_claim": [
+      "Mooncake is a second INDEPENDENT reuse dataset (proxy-grade) consistent with SwissAI reuse structure",
+      "Huawei calibrates cold-start COST STRUCTURE for the simulator prior",
+      "Alibaba adds an instance-level scheduler-delay proxy"
+    ],
+    "cannot_claim": [
+      "cache_reuse_pct cross-dataset MEASURED validation (Mooncake label is derived)",
+      "GPU model-load cold-start forecasting from Huawei (FaaS != GPU)",
+      "measured serving autoscaling forecasting from Alibaba (proxy only)",
+      "any production savings"
+    ]
+  },
+  "no_production_behavior_change": true,
+  "production_claim": false,
+  "real_execution": false,
+  "remains_pilot_only": [
+    "server-class GPU model_load_duration_s (Huawei is FaaS, calibration-only)",
+    "measured serving autoscaling events (Alibaba is instance-lifecycle proxy)",
+    "per-request migration / cache-loss seconds",
+    "real per-request measured cache_hit (Mooncake reuse is derived proxy)"
+  ]
+}

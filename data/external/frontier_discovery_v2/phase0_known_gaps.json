@@ -1,0 +1,104 @@
+{
+  "doc_version": "frontier_discovery_v2",
+  "phase": "0_known_gaps",
+  "no_ingestion": true,
+  "no_training": true,
+  "no_production_claim": true,
+  "method": "Extracted verbatim from docs/ECONOMIC_ML_ALPHA_V1.md and docs/FRONTIER_DISCOVERY_AUDIT_V1.md (plus docs/FRONTIER_SIGNAL_HYPOTHESES.md, docs/PILOT_TELEMETRY_CONTRACT.md). No new judgement added in this phase.",
+  "canonical_kpi": "sla_safe_goodput_per_dollar = (output_tokens if sla_met else 0) / (gpu_cost + energy_cost + migration_cost + cold_start_cost - cache_value)",
+  "missing_signals": {
+    "cold_start": {
+      "status_v1": "blocked_by_missing_labels",
+      "kpi_path": "cold_start_cost (denominator) up; sla_met (numerator) down when load adds to e2e",
+      "what_is_missing": "server-class model_load_duration_s per (model, GPU, storage tier); weight_transfer_latency_s; graph_capture_latency_s; compile_latency_s; warmup_duration_s; scale_from_zero_delay_s",
+      "best_public_signal_v1": "ejhusom single-machine consumer-Ollama load_duration_ns (not server-class, not in analysis corpus); Alibaba GenAI 2026 base-model cold-start medians (aggregate, no request->GPU join)",
+      "measured_rows_v1": 0
+    },
+    "model_load_duration": {
+      "status_v1": "blocked_by_missing_labels",
+      "note": "Subcase of cold_start; the single measurable field that makes cold-start measurable rather than inferred (PILOT_TELEMETRY_CONTRACT model_load_start/model_load_end).",
+      "best_public_signal_v1": "none server-class",
+      "measured_rows_v1": 0
+    },
+    "migration": {
+      "status_v1": "blocked_by_missing_labels",
+      "kpi_path": "migration_cost (denominator) up; cache_value down; sla_met down via reroute",
+      "what_is_missing": "per-migration cache_loss_pct (KV/prefix block survival); reroute_latency_s; prefix_reuse_destruction; warmup_after_migration_s; traffic_shift_instability; migration_veto_label",
+      "best_public_signal_v1": "CC-traces (semianalysisai) migration_or_cache_loss_proxy via KV block-hash loss — a PROXY, NOT realized as a per-migration label in any public serving trace",
+      "measured_rows_v1": 0
+    },
+    "cache_loss": {
+      "status_v1": "blocked_by_missing_labels (proxy exists, not realized)",
+      "kpi_path": "migration_cost up; cache_value down; ttft up via re-prefill",
+      "what_is_missing": "per-migration / per-eviction KV block-hash survival realized as cache_loss_pct in overlay rows",
+      "best_public_signal_v1": "CC-traces KV block-hash loss proxy (not realized); CARA KV eviction features",
+      "measured_rows_v1": 0
+    },
+    "cache_hit": {
+      "status_v1": "partial_realized (single-dataset)",
+      "kpi_path": "cache_value (denominator credit); ttft down",
+      "what_is_missing": "real per-request cache_hit boolean across >1 serving stack; cross-dataset generalization for the shadow-ready cache_reuse_pct model (SwissAI-only)",
+      "best_public_signal_v1": "eth-easl swissai-serving-trace cache_reuse_pct (shadow-ready, SINGLE-DATASET caveat); Isabella5 sglang-seglen request shapes (no telemetry)",
+      "measured_rows_v1": 60000
+    },
+    "warm_pool": {
+      "status_v1": "blocked_by_pilot_telemetry",
+      "kpi_path": "trade-off: idle gpu_cost vs avoided cold_start_cost",
+      "what_is_missing": "warm_pool_occupancy time-series; first-token timing after warm vs cold",
+      "best_public_signal_v1": "none",
+      "measured_rows_v1": 0
+    },
+    "queue_state": {
+      "status_v1": "partial / trainable_as_proxy",
+      "kpi_path": "queue_wait adds to e2e -> sla_met down (largest controllable SLA risk)",
+      "what_is_missing": "per-request serving-layer enqueue/dequeue timestamps with queue_depth time-series evolution and replica saturation; current public data is JOB-level not serving-request-level",
+      "best_public_signal_v1": "Qinghao/AcmeTrace job-level queue_wait; CARA (asdwb) queue features; closest realized proxy is the ML Alpha v1 TTFT signal",
+      "measured_rows_v1": "job-level only"
+    },
+    "autoscaling": {
+      "status_v1": "blocked_by_pilot_telemetry (fully blocked; 0 public HF datasets)",
+      "kpi_path": "scale-up too late -> sla_met down + cold_start_cost up; scale-down churn -> re-cold-start",
+      "what_is_missing": "scale_up_latency_s; scale_down_churn; warm_pool_occupancy; oscillation_frequency; HPA/Knative scale event log with timing",
+      "best_public_signal_v1": "Google Cluster/Borg job-level schedule/evict events (proxy only); NONE for inference autoscaling",
+      "measured_rows_v1": 0
+    },
+    "timeout_or_failure_risk": {
+      "status_v1": "blocked_by_missing_labels (weak proxy only)",
+      "kpi_path": "request abandoned -> goodput->0 (biggest single numerator swing)",
+      "what_is_missing": "per-request timeout/failure LABELS; retry_amplification; overload_event",
+      "best_public_signal_v1": "Optimum/Odyn/llmperf-bedrock error_rate (aggregate); AcmeTrace job-level FAILED/TIMEOUT states (proxy, not per-serving-request)",
+      "measured_rows_v1": "aggregate / job-level only"
+    },
+    "routing_instability": {
+      "status_v1": "blocked_by_pilot_telemetry",
+      "kpi_path": "oscillation -> repeated migration penalties; proxy bottleneck -> e2e up",
+      "what_is_missing": "routing decision log; traffic-shift timestamps; per-replica in-flight counts",
+      "best_public_signal_v1": "none",
+      "measured_rows_v1": 0
+    },
+    "replica_contention": {
+      "status_v1": "blocked_by_pilot_telemetry",
+      "kpi_path": "concurrency collapse -> tail blow-up -> sla_met down",
+      "what_is_missing": "per-replica in-flight / saturation time-series",
+      "best_public_signal_v1": "none (CARA has some queue features)",
+      "measured_rows_v1": 0
+    },
+    "tail_latency_amplification": {
+      "status_v1": "partial (proxy)",
+      "kpi_path": "p95/p99 inflation -> tail breaks SLA -> sla_met down",
+      "what_is_missing": "per-request latency distribution under load with the upstream cause (queue/contention/migration) attributed",
+      "best_public_signal_v1": "CARA per-request latency; Optimum benchmark latency; llmperf-bedrock TTFT/TPOT (measured but without upstream-cause attribution)",
+      "measured_rows_v1": "partial"
+    }
+  },
+  "v1_per_category_status_matrix": {
+    "queueing": "partial / trainable as proxy (AcmeTrace job-level, CARA features)",
+    "memory_pressure": "partial->good (Optimum peak_vram realized/shadow-ready; CARA KV evictions)",
+    "serving_stability_timeout": "weak proxy, no per-request labels",
+    "cold_start": "blocked_by_pilot_telemetry (RL 'cold-start' datasets are unrelated)",
+    "migration": "blocked_by_pilot_telemetry (CC-traces KV-loss proxy not realized)",
+    "autoscaling": "blocked_by_pilot_telemetry (Google/Borg job-level proxy only)"
+  },
+  "v1_headline": "Public HF datasets do not contain the missing economic-alpha signals. The highest-leverage un-forecasted signals (timeout, cold-start, migration, autoscaling) have the least public data. Next move per v1 = pilot telemetry + cross-dataset hardening of the two shadow-ready models (cache_reuse_pct, peak_vram_gb).",
+  "v2_mission": "Search the BROADER systems-research ecosystem (conference artifacts, supplemental materials, GitHub releases, Zenodo archives, benchmark packages, observability repositories) for these missing signals. Do not stop after Hugging Face."
+}

@@ -1,0 +1,167 @@
+{
+  "autoscaling_queue_proxy": {
+    "baseline_auroc": 0.5,
+    "comparison_to_existing_queue_baselines": "AcmeTrace job-level queue_wait + CARA queue features (economic_ml_alpha_v1) remain the stronger queue evidence; Alibaba v2025 adds only an instance-level scheduler-delay PROXY, not per-request queue-wait. No measured serving autoscaling events exist in this trace.",
+    "hgb_auroc": 0.5833534916754021,
+    "high_delay_threshold_s_p90": 59.0,
+    "label_class": "proxy (scheduler_delay tail; NOT serving queue-wait, NOT autoscaling event)",
+    "positive_rate": 0.0932,
+    "rows": 16591,
+    "status": "proxy_trained"
+  },
+  "cache_reuse_experiments": {
+    "mooncake_only": {
+      "best_auroc": 0.8736106912853654,
+      "best_model": "hist_gradient_boosting",
+      "holdout": "sequence",
+      "improvement_pct_vs_baseline": 74.72,
+      "label_quality": "derived_proxy",
+      "n_test": 18972,
+      "n_train": 44268,
+      "scores": {
+        "baseline_per_group_rate": 0.5,
+        "hist_gradient_boosting": 0.8736106912853654,
+        "logistic": 0.602983430955253
+      }
+    },
+    "mooncake_to_swissai": {
+      "best_auroc": 0.6071680399815405,
+      "best_model": "logistic",
+      "improvement_pct_vs_baseline": 21.43,
+      "label_quality": "train_derived_proxy_test_measured",
+      "n_test": 67190,
+      "n_train": 63240,
+      "scores": {
+        "baseline_per_group_rate": 0.5,
+        "hist_gradient_boosting": 0.2813705778171729,
+        "logistic": 0.6071680399815405
+      }
+    },
+    "pooled_in_sample": {
+      "note": "in-sample diagnostic only (not binding)",
+      "scores": {
+        "baseline_per_group_rate": 0.7487628674648347,
+        "hist_gradient_boosting": 0.9132434551233741,
+        "logistic": 0.7573930004101765
+      }
+    },
+    "swissai_only": {
+      "best_auroc": 0.7600357390387347,
+      "best_model": "logistic",
+      "holdout": "time",
+      "improvement_pct_vs_baseline": 6.31,
+      "label_quality": "measured",
+      "n_test": 20157,
+      "n_train": 47033,
+      "scores": {
+        "baseline_per_group_rate": 0.7149553272308133,
+        "hist_gradient_boosting": 0.42041770644790966,
+        "logistic": 0.7600357390387347
+      }
+    },
+    "swissai_to_mooncake": {
+      "best_auroc": 0.6371412590349342,
+      "best_model": "logistic",
+      "improvement_pct_vs_baseline": 27.43,
+      "label_quality": "train_measured_test_derived_proxy",
+      "n_test": 63240,
+      "n_train": 67190,
+      "scores": {
+        "baseline_per_group_rate": 0.5,
+        "hist_gradient_boosting": 0.48129924821494385,
+        "logistic": 0.6371412590349342
+      }
+    }
+  },
+  "cold_start_prior": {
+    "calibration_only": true,
+    "cold_start_latency_s_quantiles": {
+      "count": 239405,
+      "mean": 5.001591,
+      "p0": 0.028603,
+      "p10": 0.527652,
+      "p100": 96.62542,
+      "p25": 0.929174,
+      "p50": 2.334343,
+      "p75": 4.554075,
+      "p90": 9.343794,
+      "p95": 29.725929,
+      "p99": 42.091458
+    },
+    "gpu_llm_ml_training": "BLOCKED -- source does not measure GPU model-load; promotion to GPU cold-start ML is not permitted.",
+    "is_gpu_model_load": false,
+    "rows": 239405,
+    "source": "huawei_faas_2025 (EuroSys'25, CC BY 4.0) -- FaaS CPU-pod cold-start",
+    "stage_quantiles": {
+      "deploy_code_s": {
+        "count": 239405,
+        "mean": 0.59967,
+        "p0": 0.0,
+        "p10": 0.001,
+        "p100": 15.557,
+        "p25": 0.002,
+        "p50": 0.062,
+        "p75": 1.029,
+        "p90": 1.83,
+        "p95": 2.383,
+        "p99": 3.847
+      },
+      "deploy_dependency_s": {
+        "count": 239405,
+        "mean": 1.95759,
+        "p0": 0.0,
+        "p10": 0.0,
+        "p100": 87.519,
+        "p25": 0.0,
+        "p50": 0.0,
+        "p75": 0.489,
+        "p90": 2.792,
+        "p95": 20.675,
+        "p99": 32.02
+      },
+      "pod_allocation_s": {
+        "count": 239405,
+        "mean": 0.6224,
+        "p0": 0.000153,
+        "p10": 0.000477,
+        "p100": 56.542813,
+        "p25": 0.000532,
+        "p50": 0.016689,
+        "p75": 0.022249,
+        "p90": 1.520129,
+        "p95": 4.749341,
+        "p99": 8.238613
+      },
+      "scheduling_s": {
+        "count": 239405,
+        "mean": 1.821931,
+        "p0": 0.021718,
+        "p10": 0.110047,
+        "p100": 30.180513,
+        "p25": 0.567584,
+        "p50": 0.87703,
+        "p75": 1.731977,
+        "p90": 4.480336,
+        "p95": 8.591138,
+        "p99": 13.514943
+      }
+    },
+    "stage_share_of_total_mean": {
+      "deploy_code": 0.2338,
+      "deploy_dependency": 0.1545,
+      "pod_allocation": 0.1008,
+      "scheduling": 0.5109
+    },
+    "status": "simulator_prior_calibrated",
+    "usage": "Calibrates the COST STRUCTURE of a cold-start (allocation/code/dependency/scheduling shares + latency distribution) for the Economic ML Alpha v1 simulator-prior sweep ONLY. deploy_code/deploy_dependency != GPU weight load."
+  },
+  "doc_version": "economic_ml_alpha_frontier_v1",
+  "n_mooncake_rows": 63240,
+  "n_swissai_rows": 67190,
+  "shared_features": [
+    "block_count",
+    "rolling_group_reuse_mean",
+    "rolling_block_count_mean"
+  ],
+  "sklearn_available": true
+}
