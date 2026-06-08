@@ -81,6 +81,24 @@ def cmd_simulate(args):
     print(f"Run ID: {results['run_id']}")
     print(f"Jobs Scheduled: {results['summary']['jobs_scheduled']}")
     print()
+    print("!" * 70)
+    print("SYNTHETIC CARBON — NOT REAL WATTTIME DATA")
+    print("  The carbon (kg CO2) figures below are generated from a synthetic")
+    print("  scenario (generate_carbon_scenario), not WattTime MOER. They are")
+    print("  carbon_data_source=synthetic, carbon_claim_validity=not_real_world_verified")
+    print("  and MUST NOT be presented as realized carbon savings. For real carbon")
+    print("  replay use: aurelius backtest --carbon-provider watttime")
+    print("!" * 70)
+    # Tag the machine-readable summary so downstream consumers cannot mistake
+    # these synthetic numbers for real WattTime-backed savings.
+    results.setdefault("carbon_provenance", {})
+    results["carbon_provenance"].update({
+        "carbon_data_source": "synthetic",
+        "carbon_signal_type": "synthetic_scenario",
+        "carbon_claim_validity": "not_real_world_verified",
+        "carbon_data_is_real": False,
+    })
+    print()
 
     print("-" * 70)
     print("BASELINE SCENARIOS")

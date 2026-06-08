@@ -161,6 +161,8 @@ class SavingsReport:
         total_latency_violations = 0
         total_jobs_evaluated = 0
         all_delays: list[float] = []
+        carbon_hours_total = 0
+        carbon_hours_covered = 0
 
         for round_ in backtest_rounds:
             if round_.optimizer_metrics is None:
@@ -192,6 +194,9 @@ class SavingsReport:
             total_latency_violations += violations
             total_jobs_evaluated += opt.jobs_evaluated
             all_delays.extend(delays)
+            # Carbon coverage (real MOER hours / total). Drives carbon_claim_validity.
+            carbon_hours_total += getattr(opt, "carbon_hours_total", 0)
+            carbon_hours_covered += getattr(opt, "carbon_hours_covered", 0)
 
             fold_data.append({
                 "fold_index": round_.fold_index,
@@ -211,6 +216,7 @@ class SavingsReport:
                 "latency_violations": violations,
                 "missing_price_hours": opt.missing_price_hours,
                 "missing_carbon_hours": opt.missing_carbon_hours,
+                "carbon_data_coverage_pct": getattr(opt, "carbon_data_coverage_pct", 0.0),
             })
 
         if not fold_data:
@@ -230,6 +236,20 @@ class SavingsReport:
         )
 
         baseline_comparison = cls._build_baseline_comparison(backtest_rounds, n_bootstrap)
+
+        # Carbon trust gate: a carbon saving may only be called "realized" when
+        # the realized replay had full real MOER coverage. Otherwise it is
+        # explicitly flagged so it cannot be presented as a real-world saving.
+        carbon_coverage_pct = (
+            100.0 * carbon_hours_covered / carbon_hours_total
+            if carbon_hours_total else 0.0
+        )
+        if carbon_hours_total == 0:
+            carbon_claim_validity = "no_carbon_data"
+        elif carbon_coverage_pct >= 99.999:
+            carbon_claim_validity = "realized_historical"
+        else:
+            carbon_claim_validity = "partial_coverage_unverified"
 
         total_opt_cost = sum(f["optimizer_cost_usd"] for f in fold_data)
         total_bl_cost = sum(f["baseline_cost_usd"] for f in fold_data)
@@ -265,6 +285,10 @@ class SavingsReport:
                     100.0 * total_carbon_reduction / total_bl_carbon
                     if total_bl_carbon > 0 else 0.0, 4
                 ),
+                # Carbon trustworthiness — NEVER present carbon savings as real
+                # unless this is "realized_historical".
+                "carbon_data_coverage_pct": round(carbon_coverage_pct, 3),
+                "carbon_claim_validity": carbon_claim_validity,
                 "latency_violations": total_latency_violations,
                 "latency_violation_rate_pct": round(
                     100.0 * total_latency_violations / total_eval_jobs
@@ -311,20 +335,39 @@ class SavingsReport:
         comparison: dict[str, dict] = {}
         for name in sorted(all_names):
             savings_samples: list[float] = []
+            carbon_savings_samples: list[float] = []
+            carbon_complete = True
             for r in rounds:
                 if r.optimizer_metrics is None:
                     continue
                 bl = r.baseline_metrics.get(name)
                 if bl is None:
                     continue
+                opt = r.optimizer_metrics
                 if bl.total_energy_cost_usd > 0:
                     savings_samples.append(
-                        100.0 * (bl.total_energy_cost_usd - r.optimizer_metrics.total_energy_cost_usd)
+                        100.0 * (bl.total_energy_cost_usd - opt.total_energy_cost_usd)
                         / bl.total_energy_cost_usd
                     )
+                # Per-baseline carbon savings (realized historical MOER).
+                if bl.total_carbon_gco2 > 0:
+                    carbon_savings_samples.append(
+                        100.0 * (bl.total_carbon_gco2 - opt.total_carbon_gco2)
+                        / bl.total_carbon_gco2
+                    )
+                if not (getattr(opt, "carbon_complete", False)
+                        and getattr(bl, "carbon_complete", False)):
+                    carbon_complete = False
             ci = _bootstrap_ci(savings_samples, n_bootstrap)
+            carbon_ci = _bootstrap_ci(carbon_savings_samples, n_bootstrap)
             comparison[name] = {
                 "cost_savings_pct": ci.to_dict(),
+                "carbon_savings_pct": carbon_ci.to_dict(),
+                "carbon_claim_validity": (
+                    "realized_historical" if (carbon_savings_samples and carbon_complete)
+                    else "partial_coverage_unverified" if carbon_savings_samples
+                    else "no_carbon_data"
+                ),
                 "n_folds": len(savings_samples),
             }
         return comparison

@@ -22,6 +22,15 @@ from ..models import Job, OptimizationConfig, ScheduleDecision
 
 logger = logging.getLogger(__name__)
 
+# DECISION-TIME ONLY fallback marginal emissions rate, used when a forecast MOER
+# is missing for a (region, hour) while RANKING candidates. This is a planning
+# heuristic — it is NEVER used for realized/reported carbon savings (the realized
+# evaluator in backtesting/evaluator.py records missing MOER and excludes it; see
+# docs/CARBON_AUDIT.md). It only nudges the soft carbon objective term (weight
+# beta) when carbon data is incomplete; the realized number is what's reported.
+# Kept at the historical value so existing cost benchmarks are unaffected.
+DECISION_FALLBACK_MOER_GCO2_PER_KWH = 400.0
+
 
 def _lookup_last_known(series: dict[datetime, float], ts: datetime) -> float:
     """Return the last value at or before `ts` in `series`.
@@ -168,9 +177,11 @@ class ObjectiveFunction:
                 energy_cost = (price_per_mwh / 1000) * facility_energy_kwh
                 total_energy_cost += energy_cost
 
-                # Carbon lookup — use facility energy for carbon accounting
+                # Carbon lookup — use facility energy for carbon accounting.
+                # Missing forecast MOER falls back to the named decision-time
+                # constant (NOT used for realized reporting; see its docstring).
                 region_carbon = carbon_data.get(decision.region, {})
-                gco2_per_kwh = region_carbon.get(hour_key, 400.0)
+                gco2_per_kwh = region_carbon.get(hour_key, DECISION_FALLBACK_MOER_GCO2_PER_KWH)
                 carbon_g = gco2_per_kwh * facility_energy_kwh
                 total_carbon_kg += carbon_g / 1000
                 carbon_cost = carbon_g * 0.001
