@@ -18,7 +18,11 @@ from typing import Optional
 
 from ..models import Job, OptimizationConfig, ScheduleDecision, ScheduleSegment
 from .constraints import ConstraintBuilder
-from .objective import ObjectiveComponents, ObjectiveFunction
+from .objective import (
+    DECISION_FALLBACK_MOER_GCO2_PER_KWH,
+    ObjectiveComponents,
+    ObjectiveFunction,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -561,8 +565,11 @@ class JobScheduler:
                         price = price_data.get(r, {}).get(hour_key, 50.0)
                         energy_cost = (price / 1000) * job.power_kw * hour_fraction
 
-                        # Carbon
-                        carbon = carbon_data.get(r, {}).get(hour_key, 400.0)
+                        # Carbon (decision-time fallback only; not used for
+                        # realized reporting — see DECISION_FALLBACK_MOER docstring)
+                        carbon = carbon_data.get(r, {}).get(
+                            hour_key, DECISION_FALLBACK_MOER_GCO2_PER_KWH
+                        )
                         carbon_cost = carbon * 0.001 * job.power_kw * hour_fraction
 
                         # Risk

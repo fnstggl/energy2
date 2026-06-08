@@ -14,12 +14,13 @@ Optional:
     WATTTIME_API_TOKEN – Pre-cached bearer token (skips login request if fresh)
 
 Region mapping (Aurelius → WattTime balancing authority):
-    "us-west"  → "CAISO_NP15"
-    "us-east"  → "PJM"
-    "us-south" → "ERCOT"
-    "us-north" → "MISO"
+    Resolved from the ONE authoritative map in
+    ``aurelius.carbon.regions.watttime_ba_map`` (derived from the canonical
+    ``region_registry``), so the client, optimizer and evaluator never diverge.
+    Current mapped regions: us-west→CAISO_NP15, us-east→PJM_DOM,
+    us-south→ERCOT_HOUSTON, us-north→MISO_INDIANAPOLIS.
 
-Override with ba_map= constructor argument.
+Override with ba_map= constructor argument (e.g. for tests).
 
 Units:
     WattTime MOER is returned in lbs CO2 / MWh.
@@ -59,6 +60,7 @@ logger = logging.getLogger(__name__)
 
 _WATTTIME_LOGIN_URL = "https://api.watttime.org/login"
 _WATTTIME_HIST_URL = "https://api.watttime.org/v3/historical"
+_WATTTIME_FORECAST_URL = "https://api.watttime.org/v3/forecast"
 _MAX_RETRIES = 3
 _RETRY_BACKOFF = 2.0
 _PAGE_SLEEP = 0.5
@@ -67,12 +69,15 @@ _CHUNK_DAYS = 30        # WattTime free-tier historical window
 # Conversion: lbs CO2/MWh → gCO2/kWh
 _LBS_PER_MWH_TO_GCO2_PER_KWH = 453.592 / 1000.0
 
-_DEFAULT_BA_MAP: dict[str, str] = {
-    "us-west":  "CAISO_NP15",
-    "us-east":  "PJM",
-    "us-south": "ERCOT",
-    "us-north": "MISO",
-}
+
+def _default_ba_map() -> dict[str, str]:
+    """The ONE authoritative Aurelius-region → WattTime BA map.
+
+    Sourced from ``aurelius.carbon.regions`` (derived from region_registry) so
+    there is no second, divergent BA table living in this client (the prior bug).
+    """
+    from ...carbon.regions import watttime_ba_map
+    return watttime_ba_map()
 
 
 class WattTimeCarbonProvider(CarbonProvider):
@@ -94,7 +99,7 @@ class WattTimeCarbonProvider(CarbonProvider):
     ) -> None:
         self._username = username or os.environ.get("WATTTIME_USERNAME", "")
         self._password = password or os.environ.get("WATTTIME_PASSWORD", "")
-        self._ba_map = ba_map or _DEFAULT_BA_MAP
+        self._ba_map = ba_map or _default_ba_map()
         self._signal_type = signal_type
         self._token: Optional[str] = None
 
@@ -245,3 +250,104 @@ class WattTimeCarbonProvider(CarbonProvider):
 
         df = pd.DataFrame(all_rows)
         return normalize_carbon_df(df, source=self.source_name, granularity="hourly")
+
+    def fetch_forecast_carbon(
+        self,
+        region: str,
+        horizon_hours: int = 24,
+    ) -> pd.DataFrame:
+        """Fetch forward-looking marginal carbon (MOER) for scheduling decisions.
+
+        Uses WattTime's ``/v3/forecast`` endpoint, which returns the predicted
+        MOER for the next ``horizon_hours`` from now. This is the signal the
+        scheduler must use to make FORWARD decisions; historical MOER
+        (``fetch_carbon``) is for realized replay/reporting — never mix them.
+
+        Units are normalized to gCO2/kWh and timestamps to UTC, identically to
+        ``fetch_carbon``. The source column is suffixed ``_forecast`` so a
+        forecast value can never be mistaken for a settled historical value.
+
+        Raises:
+            ProviderConfigError: If credentials are missing or auth fails. Never
+            silently substitutes a default emissions rate.
+        """
+        if not self._username or not self._password:
+            raise ProviderConfigError(
+                "WATTTIME_USERNAME and WATTTIME_PASSWORD are required for forecast MOER. "
+                "Export them or pass username=/password=."
+            )
+
+        ba = self._ba_map.get(region)
+        if ba is None:
+            logger.warning(
+                f"Region '{region}' has no WattTime BA (carbon_unavailable); "
+                f"available: {list(self._ba_map)}"
+            )
+            return empty_carbon_df()
+
+        token = self._get_token()
+        headers = {"Authorization": f"Bearer {token}"}
+        params = {
+            "region": ba,
+            "signal_type": self._signal_type,
+            "horizon_hours": int(horizon_hours),
+        }
+
+        payload = None
+        for attempt in range(_MAX_RETRIES):
+            try:
+                resp = requests.get(
+                    _WATTTIME_FORECAST_URL, params=params, headers=headers, timeout=60
+                )
+                if resp.status_code == 429:
+                    wait = _RETRY_BACKOFF * (2 ** attempt)
+                    logger.warning(f"WattTime rate limit; retrying in {wait:.0f}s")
+                    time.sleep(wait)
+                    continue
+                if resp.status_code in (401, 403):
+                    self._token = None
+                    raise ProviderConfigError(
+                        f"WattTime auth rejected ({resp.status_code}) on forecast. "
+                        "Check WATTTIME_USERNAME and WATTTIME_PASSWORD."
+                    )
+                resp.raise_for_status()
+                payload = resp.json()
+                break
+            except ProviderConfigError:
+                raise
+            except Exception as exc:
+                if attempt == _MAX_RETRIES - 1:
+                    logger.error(f"WattTime forecast request failed: {exc}")
+                    raise ProviderConfigError(
+                        f"WattTime forecast fetch failed: {exc}"
+                    ) from exc
+                time.sleep(_RETRY_BACKOFF * (2 ** attempt))
+
+        rows: list[dict] = []
+        # v3 forecast payloads put the series under "forecast" or "data".
+        series = (payload or {}).get("forecast") or (payload or {}).get("data") or []
+        for point in series:
+            try:
+                ts = pd.Timestamp(point["point_time"]).tz_convert("UTC")
+                lbs_per_mwh = float(point["value"])
+                rows.append({
+                    "timestamp": ts,
+                    "region": region,
+                    "gco2_per_kwh": lbs_per_mwh * _LBS_PER_MWH_TO_GCO2_PER_KWH,
+                })
+            except (KeyError, ValueError, TypeError):
+                continue
+
+        if not rows:
+            logger.warning(
+                f"WattTime forecast returned no data for ba={ba} signal={self._signal_type}"
+            )
+            return empty_carbon_df()
+
+        df = pd.DataFrame(rows)
+        df = df.set_index("timestamp").resample("h").mean(numeric_only=True)
+        df["region"] = region
+        df = df.reset_index()
+        return normalize_carbon_df(
+            df, source=f"{self.source_name}_forecast", granularity="hourly"
+        )
